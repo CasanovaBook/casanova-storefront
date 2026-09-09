@@ -166,8 +166,6 @@ export const router = createBrowserRouter([
 
       { path: "checkout/success", Component: CheckoutSuccessPage },
 
-      { path: "login", Component: LoginPage },
-
       { path: "support", Component: SupportPage },
 
       { path: "setup-password", Component: SetupPasswordPage },
@@ -181,6 +179,28 @@ export const router = createBrowserRouter([
 
       { path: "*", Component: NotFoundPage },
     ],
+  },
+
+  {
+    // Auth screens are siblings of the sales letter and of PublicRoot, not
+    // children of the storefront chrome. LoginPage already draws its own
+    // full-page shell; nesting it under PublicRoot made /login look like a
+    // "login subpage" of the public layout, and register lived on that same
+    // path via local state. Distinct URLs, one component.
+
+    path: "/login",
+
+    Component: LoginPage,
+
+    errorElement: <RouteError />,
+  },
+
+  {
+    path: "/register",
+
+    Component: LoginPage,
+
+    errorElement: <RouteError />,
   },
 
   {

@@ -509,10 +509,70 @@ export interface RegisterInput {
   password?: string
 }
 
+export interface RegisterOptions {
+  /**
+   * Session id of the caller. When that account is a passwordless guest
+   * (created at checkout), registration must finish *that* row instead of
+   * inserting a second CUSTOMER — otherwise orders and entitlements stay
+   * attached to the abandoned guest identity.
+   */
+  upgradeUserId?: string | null
+}
+
+function isClaimableGuest(user: StoredUser): boolean {
+  return user.role === "CUSTOMER" && !hasPassword(user)
+}
+
+async function completeGuestRegistration(
+  existing: StoredUser,
+  input: RegisterInput,
+  email: string,
+  password: string,
+): Promise<Result<User>> {
+  const problem = passwordProblem(password)
+
+  if (problem) return fail("VALIDATION", problem)
+
+  const taken = getDb().users.find(
+    (u) => u.email === email && u.user_id !== existing.user_id,
+  )
+
+  if (taken) return fail("CONFLICT", "כבר קיים חשבון עבור כתובת מייל זו.")
+
+  const salt = randomSalt()
+
+  const password_hash = await hashPassword(password, salt)
+
+  const updated = mutate((db) => {
+    db.users = db.users.map((u) =>
+      u.user_id === existing.user_id
+        ? {
+            ...u,
+            first_name: input.first_name.trim() || u.first_name,
+            last_name: input.last_name.trim() || u.last_name,
+            email,
+            phone: input.phone?.trim() || u.phone,
+            password_hash,
+            password_salt: salt,
+            password_set: true,
+            must_change_password: false,
+            last_login_at: nowIso(),
+            updated_at: nowIso(),
+          }
+        : u,
+    )
+
+    return db.users.find((u) => u.user_id === existing.user_id) as StoredUser
+  })
+
+  return ok(toPublicUser(updated))
+}
+
 /** Public customer registration (also used by checkout). */
 
 export async function registerCustomer(
   input: RegisterInput,
+  options?: RegisterOptions,
 ): Promise<Result<User>> {
   if (hasHebrewChars(input.email))
     return fail("VALIDATION", "כתובת אימייל אינה יכולה להכיל אותיות בעברית.")
@@ -521,8 +581,27 @@ export async function registerCustomer(
 
   if (!isEmail(email)) return fail("VALIDATION", "כתובת המייל אינה תקינה.")
 
-  if (getDb().users.some((u) => u.email === email))
+  const db = getDb()
+
+  const sessionUser = options?.upgradeUserId
+    ? db.users.find((u) => u.user_id === options.upgradeUserId)
+    : undefined
+
+  // A signed-in guest completing the register form is converting their
+  // existing purchase identity, not opening a parallel account.
+  if (sessionUser && isClaimableGuest(sessionUser) && input.password) {
+    return completeGuestRegistration(sessionUser, input, email, input.password)
+  }
+
+  const existing = db.users.find((u) => u.email === email)
+
+  if (existing) {
+    if (isClaimableGuest(existing) && input.password) {
+      return completeGuestRegistration(existing, input, email, input.password)
+    }
+
     return fail("CONFLICT", "כבר קיים חשבון עבור כתובת מייל זו.")
+  }
 
   let salt: string | undefined
 
@@ -538,7 +617,7 @@ export async function registerCustomer(
     password_hash = await hashPassword(input.password, salt)
   }
 
-  const created = mutate((db) => {
+  const created = mutate((d) => {
     const user: StoredUser = {
       user_id: uid("usr"),
 
@@ -562,12 +641,14 @@ export async function registerCustomer(
 
       password_set: Boolean(password_hash),
 
+      last_login_at: password_hash ? nowIso() : undefined,
+
       created_at: nowIso(),
 
       updated_at: nowIso(),
     }
 
-    db.users = [...db.users, user]
+    d.users = [...d.users, user]
 
     return user
   })

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link, useNavigate } from "react-router"
+import { Link, useLocation, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { passwordProblem } from "../lib/auth"
 import Icon from "../components/icons"
@@ -13,8 +13,9 @@ function hasHebrewChars(text: string): boolean {
 export default function LoginPage() {
   const { login, register, bootstrapRequired } = useApp()
   const navigate = useNavigate()
+  const location = useLocation()
+  const mode = location.pathname === "/register" ? "register" : "login"
 
-  const [mode, setMode] = useState<"login" | "register">("login")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
@@ -24,6 +25,10 @@ export default function LoginPage() {
   const [hebrewWarning, setHebrewWarning] = useState(false)
   const [emailHebrewWarning, setEmailHebrewWarning] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+
+  useEffect(() => {
+    setError("")
+  }, [mode])
 
   // Check for Hebrew characters in email
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -352,32 +357,24 @@ export default function LoginPage() {
           {mode === "login" ? (
             <>
               אין לכם חשבון?{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("register")
-                  setError("")
-                }}
+              <Link
+                to="/register"
                 className="font-medium transition-opacity hover:opacity-70"
                 style={{ color: "var(--color-primary)" }}
               >
-                צרו חשבון חינם
-              </button>
+                צרו חשבון חדש
+              </Link>
             </>
           ) : (
             <>
               כבר יש לכם חשבון?{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("login")
-                  setError("")
-                }}
+              <Link
+                to="/login"
                 className="font-medium transition-opacity hover:opacity-70"
                 style={{ color: "var(--color-primary)" }}
               >
                 התחברות
-              </button>
+              </Link>
             </>
           )}
         </p>
