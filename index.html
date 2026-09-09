@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <!-- figma:head-start -->
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover is what makes env(safe-area-inset-*) non-zero on a
+         notched phone; the reader and the navigation drawers pad against it. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0B0D16" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F7F5F0" media="(prefers-color-scheme: light)" />
+    <!-- Reveal only the origin when navigating away, never the reader URL,
+         which carries the product id of a purchased book. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <!-- The webfonts are pulled in from index.css; opening the connections
+         early keeps the first paint from waiting on a DNS lookup. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <title>Casanova — ספרייה דיגיטלית פרטית</title>
+    <!-- figma:head-end -->
+  </head>
+  <body>
+    <!-- figma:body-start -->
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- figma:body-end -->
+  </body>
+</html>

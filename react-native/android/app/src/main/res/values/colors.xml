@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Native-side palette. These are the values the window manager and the
+  launcher see; the in-app palette lives in `src/theme.ts` and is the source
+  of truth for anything React renders. Keep the two in step — a mismatch
+  shows up as a flash of the wrong colour between the splash frame and the
+  first React frame.
+-->
+<resources>
+    <color name="app_background">#0B0D16</color>
+    <color name="accent">#E3AE3C</color>
+    <color name="ic_launcher_background">#0B0D16</color>
+</resources>

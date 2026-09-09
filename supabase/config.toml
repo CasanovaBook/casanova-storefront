@@ -1,0 +1,14 @@
+# Supabase project configuration for the content-delivery Edge Functions.
+#
+# These functions are called by a storefront that has no Supabase Auth
+# session (login is handled client-side), so there is no JWT to verify.
+# verify_jwt = false lets them be invoked with just the public anon key;
+# they authorize by deriving the Storage path server-side from the validated
+# product_id and by keeping the service_role key inside the function runtime.
+project_id = "zlweiqsqfsspecrubfuf"
+
+[functions.get-content-url]
+verify_jwt = false
+
+[functions.create-upload-url]
+verify_jwt = false

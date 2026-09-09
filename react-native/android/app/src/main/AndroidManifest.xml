@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Release/base manifest.
+
+  Every attribute here that differs from the React Native template differs
+  because of the content-protection requirement, and the reason is written
+  next to it. Read the comments before changing one: several of them look
+  like hardening that could be relaxed for convenience and are not.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- The only permission this app asks for. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+      Permissions deliberately absent, each of which would open a hole in
+      the "the PDF never leaves the app" rule:
+
+        WRITE_EXTERNAL_STORAGE / READ_EXTERNAL_STORAGE / READ_MEDIA_IMAGES
+          A vault on shared storage is a vault every other app can read, and
+          on Android 10+ a vault in MediaStore is a vault the user can see in
+          a file manager. The vault lives in getFilesDir(), which needs none
+          of these.
+
+        MANAGE_EXTERNAL_STORAGE
+          Never.
+
+        REQUEST_INSTALL_PACKAGES
+          The app does not update itself; forced updates deep-link to the
+          Play Store, which needs no permission.
+
+        FOREGROUND_SERVICE
+          There is no background download and no playback service, so there
+          is nothing legitimate to keep running.
+
+        CAMERA / RECORD_AUDIO / POST_NOTIFICATIONS
+          Unused. Asking for them would cost the store listing an
+          explanation and would make customers suspicious of an app whose
+          whole promise is that it protects them.
+    -->
+
+    <!--
+      Package visibility, required from API 30 for canOpenURL to answer
+      honestly. Without this, `Linking.canOpenURL('market://...')` returns
+      false on a device that has the Play Store, and the forced-update
+      screen falls through to its web link — which works, but which sends a
+      customer to a browser to install an app.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="market" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".MainApplication"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:hasFragileUserData="false"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
+        android:hardwareAccelerated="true"
+        android:theme="@style/AppTheme"
+        tools:targetApi="35"
+        tools:ignore="GoogleAppIndexingWarning">
+
+        <!--
+          android:allowBackup="false" is the single most important line in
+          this file. With it true, `adb backup` and every cloud backup path
+          would carry the vault directory — including any offline copy of a
+          book — onto another device, where the TTL and the device session
+          that authorised it do not exist. `fullBackupContent` and
+          `dataExtractionRules` are belt-and-braces for the API levels that
+          read one or the other; neither can turn a backup back on once
+          allowBackup is false, and both would stop a future edit that does.
+
+          android:hasFragileUserData="false" means uninstalling does not
+          offer to keep the app's data. A customer who uninstalls a reader
+          expects the books to go with it.
+
+          android:usesCleartextTraffic="false" applies to the WebView, to
+          fetch(), and — importantly — to react-native-pdf's own downloader,
+          which is a native code path that does not go through the JS
+          client. `src/debug/AndroidManifest.xml` overrides it, because the
+          Metro dev server is plain HTTP on localhost.
+
+          android:supportsRtl="true" is required for the Hebrew layout, and
+          is also what makes FLAG_SECURE-independent mirroring behave.
+        -->
+
+        <activity
+            android:name=".MainActivity"
+            android:label="@string/app_name"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode|layoutDirection|locale"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="unspecified"
+            android:exported="true"
+            android:resizeableActivity="false"
+            android:excludeFromRecents="false">
+
+            <!--
+              android:resizeableActivity="false" keeps the app out of
+              split-screen and freeform windows. FLAG_SECURE still blanks the
+              pane, so this is not the protection — it removes the case where
+              a second app sits beside the reader and can be pointed at it by
+              an accessibility service or a window-capture tool that reads
+              the composition rather than the framebuffer.
+
+              android:screenOrientation is deliberately NOT locked to
+              portrait. Locking orientation is a common accessibility defect
+              and it does nothing for capture protection: FLAG_SECURE is
+              per-window, not per-orientation.
+
+              android:launchMode="singleTask" means a deep link from the web
+              store reuses the running task rather than starting a second
+              activity, so there is only ever one window owning FLAG_SECURE.
+            -->
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

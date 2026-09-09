@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Round pre-adaptive launcher icon, API 24 and 25 only.
+
+  Same mark as `mipmap-anydpi/ic_launcher.xml` on a circular ground. The
+  circle is approximated with four cubic segments using the standard kappa of
+  0.5523, which keeps the outline within a fraction of a pixel of a true
+  circle at every density — an arc command would do the same, but curves are
+  what `VectorDrawable`'s path parser handles most consistently across the
+  API levels this file has to support.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#0B0D16"
+        android:pathData="M54,0 C83.82,0 108,24.18 108,54 C108,83.82 83.82,108 54,108 C24.18,108 0,83.82 0,54 C0,24.18 24.18,0 54,0 Z" />
+
+    <path
+        android:fillColor="#E3AE3C"
+        android:pathData="M52,38 C46,34 38,32 30,34 L30,72 C38,70 46,72 52,76 Z" />
+
+    <path
+        android:fillColor="#E3AE3C"
+        android:pathData="M56,38 C62,34 70,32 78,34 L78,72 C70,70 62,72 56,76 Z" />
+</vector>

@@ -1,0 +1,12 @@
+{
+  "title": "Casanova — ספרייה דיגיטלית פרטית",
+  "language": "he",
+  "description": "חנות לספרים דיגיטליים, הרצאות ומוצרים נלווים — קורא מוגן, מעקב התקדמות וגישה לספרייה מכל מכשיר.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

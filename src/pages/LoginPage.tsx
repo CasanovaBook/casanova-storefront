@@ -1,0 +1,403 @@
+import { useEffect, useState } from "react"
+import { Link, useNavigate } from "react-router"
+import { useApp } from "../context/AppContext"
+import { passwordProblem } from "../lib/auth"
+import Icon from "../components/icons"
+import logoImg from "../../images/main_photo.jpg"
+
+// Function to detect Hebrew characters
+function hasHebrewChars(text: string): boolean {
+  return /[\u0590-\u05FF]/.test(text)
+}
+
+export default function LoginPage() {
+  const { login, register, bootstrapRequired } = useApp()
+  const navigate = useNavigate()
+
+  const [mode, setMode] = useState<"login" | "register">("login")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [hebrewWarning, setHebrewWarning] = useState(false)
+  const [emailHebrewWarning, setEmailHebrewWarning] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+
+  // Check for Hebrew characters in email
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value
+    setEmail(newEmail)
+    setEmailHebrewWarning(hasHebrewChars(newEmail))
+    if (
+      error ===
+        "כתובת האימייל אינה יכולה להכיל אותיות בעברית. יש להזין כתובת באנגלית בלבד." &&
+      !hasHebrewChars(newEmail)
+    ) {
+      setError("")
+    }
+  }
+
+  // Check for Hebrew characters in password
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value
+    setPassword(newPassword)
+    setHebrewWarning(hasHebrewChars(newPassword))
+  }
+
+  // A fresh installation has no accounts at all, so nobody can sign in
+  // until the first administrator is created.
+  useEffect(() => {
+    if (bootstrapRequired) navigate("/setup", { replace: true })
+  }, [bootstrapRequired, navigate])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+
+    // Disallow Hebrew in email
+    if (hasHebrewChars(email)) {
+      setError(
+        "כתובת האימייל אינה יכולה להכיל אותיות בעברית. יש להזין כתובת באנגלית בלבד.",
+      )
+      return
+    }
+
+    if (mode === "register") {
+      const problem = passwordProblem(password)
+      if (problem) {
+        setError(problem)
+        return
+      }
+    }
+    setIsLoading(true)
+    const result =
+      mode === "login"
+        ? await login(email.trim(), password)
+        : await register({
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            email: email.trim(),
+            password,
+          })
+    setIsLoading(false)
+    if (result.ok) {
+      // Navigate based on the freshly-authenticated user (state hasn't re-rendered yet)
+      navigate(result.user?.role === "ADMIN" ? "/admin" : "/dashboard", {
+        replace: true,
+      })
+    } else {
+      setError(result.error ?? "הפעולה נכשלה.")
+    }
+  }
+
+  const inputClass =
+    "w-full px-4 py-3 rounded-lg border text-sm outline-none transition-all"
+  const inputStyle = {
+    background: "var(--color-secondary)",
+    borderColor: "var(--color-border)",
+    color: "var(--color-foreground)",
+  }
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden"
+      style={{ background: "var(--color-background)" }}
+    >
+      {/* Ambient glows */}
+      <div
+        className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(212,160,48,0.09) 0%, transparent 70%)",
+          top: "-140px",
+          right: "-120px",
+        }}
+      />
+      <div
+        className="absolute w-[400px] h-[400px] rounded-full pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(212,160,48,0.06) 0%, transparent 70%)",
+          bottom: "-100px",
+          left: "-100px",
+        }}
+      />
+
+      <div className="w-full max-w-sm page-enter relative">
+        <div className="text-center mb-8">
+          <Link to="/" className="inline-flex items-center gap-2 mb-6">
+            <img
+              src={logoImg}
+              alt="Casanova"
+              className="w-9 h-9 rounded-lg object-cover"
+            />
+            <span
+              dir="ltr"
+              className="font-display text-xl font-semibold tracking-wide"
+              style={{ color: "var(--color-primary)" }}
+            >
+              Casanova
+            </span>
+          </Link>
+          <h1 className="font-display text-3xl font-semibold mb-2">
+            {mode === "login" ? "התחברות" : "יצירת חשבון"}
+          </h1>
+          <p
+            className="text-sm"
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
+            {mode === "login"
+              ? "גש לספרייה ולהתקדמות הקריאה שלך."
+              : "החשבון ישמש אותך לרכישה, לספרייה ולמעקב אחרי ההזמנות."}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === "register" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "var(--color-muted-foreground)" }}
+                >
+                  שם פרטי
+                </label>
+                <input
+                  type="text"
+                  className={inputClass}
+                  style={inputStyle}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  autoComplete="given-name"
+                  required
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "var(--color-muted-foreground)" }}
+                >
+                  שם משפחה
+                </label>
+                <input
+                  type="text"
+                  className={inputClass}
+                  style={inputStyle}
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  autoComplete="family-name"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label
+              className="block text-xs font-medium mb-1.5"
+              style={{ color: "var(--color-muted-foreground)" }}
+            >
+              אימייל
+            </label>
+            <input
+              type="email"
+              dir="ltr"
+              className={
+                inputClass +
+                " text-left" +
+                (emailHebrewWarning ? " border-amber-500/60" : "")
+              }
+              style={inputStyle}
+              value={email}
+              onChange={handleEmailChange}
+              placeholder="you@example.com"
+              autoComplete="email"
+              required
+            />
+            {emailHebrewWarning && (
+              <div
+                className="flex items-center gap-2 mt-1.5 px-3 py-2 rounded-md"
+                style={{
+                  background: "rgba(245,158,11,0.1)",
+                  borderColor: "rgba(245,158,11,0.3)",
+                  border: "1px solid rgba(245,158,11,0.3)",
+                }}
+              >
+                <Icon
+                  name="alert-triangle"
+                  className="w-4 h-4 flex-shrink-0"
+                  style={{ color: "rgb(245,158,11)" }}
+                />
+                <span className="text-xs" style={{ color: "rgb(245,158,11)" }}>
+                  כתובת האימייל חייבת להכיל אותיות באנגלית בלבד (ללא אותיות
+                  בעברית)
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label
+                className="text-xs font-medium"
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                סיסמה
+              </label>
+              {mode === "login" && (
+                <Link
+                  to="/forgot-password"
+                  className="text-xs transition-opacity hover:opacity-70"
+                  style={{ color: "var(--color-primary)" }}
+                >
+                  שכחת סיסמה?
+                </Link>
+              )}
+            </div>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                dir="ltr"
+                className={inputClass + " text-left pl-10"}
+                style={inputStyle}
+                value={password}
+                onChange={handlePasswordChange}
+                placeholder="••••••••"
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
+                style={{
+                  color: showPassword
+                    ? "#FFFFFF"
+                    : "var(--color-muted-foreground)",
+                  opacity: showPassword ? 1 : 0.5,
+                }}
+                tabIndex={-1}
+                title={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}
+              >
+                <Icon name="eye" size={16} />
+              </button>
+            </div>
+            {hebrewWarning && (
+              <div
+                className="flex items-center gap-2 mt-1.5 px-3 py-2 rounded-md"
+                style={{
+                  background: "rgba(245,158,11,0.1)",
+                  borderColor: "rgba(245,158,11,0.3)",
+                }}
+              >
+                <Icon
+                  name="alert-triangle"
+                  className="w-4 h-4"
+                  style={{ color: "rgb(245,158,11)" }}
+                />
+                <span className="text-xs" style={{ color: "rgb(245,158,11)" }}>
+                  הסיסמה חייבת להכיל רק אותיות אנגליות וספרות
+                </span>
+              </div>
+            )}
+            {mode === "register" && (
+              <p
+                className="text-[11px] mt-1.5"
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                8 תווים לפחות, כולל אותיות וספרה אחת.
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div
+              className="px-4 py-3 rounded-lg border text-sm"
+              style={{
+                background: "rgba(239,68,68,0.08)",
+                borderColor: "rgba(239,68,68,0.3)",
+                color: "var(--color-danger)",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="btn-gradient w-full py-3 rounded-full font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                {mode === "login" ? "מתחבר..." : "יוצר חשבון..."}
+              </>
+            ) : mode === "login" ? (
+              "התחברות"
+            ) : (
+              "יצירת חשבון"
+            )}
+          </button>
+        </form>
+
+        <p
+          className="text-center text-sm mt-6"
+          style={{ color: "var(--color-muted-foreground)" }}
+        >
+          {mode === "login" ? (
+            <>
+              אין לכם חשבון?{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("register")
+                  setError("")
+                }}
+                className="font-medium transition-opacity hover:opacity-70"
+                style={{ color: "var(--color-primary)" }}
+              >
+                צרו חשבון חינם
+              </button>
+            </>
+          ) : (
+            <>
+              כבר יש לכם חשבון?{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("login")
+                  setError("")
+                }}
+                className="font-medium transition-opacity hover:opacity-70"
+                style={{ color: "var(--color-primary)" }}
+              >
+                התחברות
+              </button>
+            </>
+          )}
+        </p>
+
+        <p
+          className="text-center text-xs mt-2 flex items-center justify-center gap-1.5"
+          style={{ color: "var(--color-muted-foreground)" }}
+        >
+          <Icon name="bag" size={13} />
+          ניתן גם לרכוש ישירות מ־
+          <Link
+            to="/store"
+            className="transition-opacity hover:opacity-70"
+            style={{ color: "var(--color-primary)" }}
+          >
+            החנות
+          </Link>
+          — החשבון ייווצר אוטומטית.
+        </p>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,182 @@
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+/* ── Version identity ───────────────────────────────────────
+ *
+ * `versionCode` is not a build detail in this app: it is the value
+ * `DeviceInfo.getBuildNumber()` returns, which is what the client sends in
+ * the `X-Casanova-Build` header, which is what the server compares against
+ * `platform_settings.mobile_min_build`. The kill switch and the forced
+ * update both gate on it.
+ *
+ * That is why it is an integer and why it is set here rather than derived
+ * from `versionName`: a semver string cannot be compared reliably in SQL,
+ * and an administrator raising the minimum build has to be able to write a
+ * number they are certain about.
+ *
+ * Bump `versionCode` on EVERY release that must be distinguishable, even
+ * when `versionName` does not change.
+ */
+def appVersionCode = 1
+def appVersionName = "1.0.0"
+
+/* ── Release signing ────────────────────────────────────────
+ *
+ * Read from `android/keystore.properties` when it exists. That file is
+ * git-ignored; the credentials never live in this script and never live in
+ * the repository. When it is absent the release build falls back to the
+ * debug key so that `./gradlew assembleRelease` still produces something
+ * installable during development — a release signed with a debug key is
+ * rejected by the Play Store, which is the correct outcome for a build
+ * nobody configured.
+ */
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+def hasReleaseKeystore = keystorePropertiesFile.exists()
+if (hasReleaseKeystore) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
+react {
+    /* Required. This is what tells the Gradle plugin to fold the autolinked
+     * libraries resolved in settings.gradle into this application module.
+     * Omitting it produces a build that succeeds and an app in which every
+     * autolinked native module is undefined — so `NativeModules.ScreenShield`
+     * would be null not because the shield is broken but because nothing was
+     * ever linked, and `probeIntegrity()` would answer ATTESTATION_FAILED on a
+     * perfectly healthy phone. */
+    autolinkLibrariesWithApp()
+}
+
+android {
+    ndkVersion rootProject.ext.ndkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdk rootProject.ext.compileSdkVersion
+
+    namespace "com.casanova.reader"
+
+    defaultConfig {
+        applicationId "com.casanova.reader"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode appVersionCode
+        versionName appVersionName
+
+        /* Only the ABIs declared in gradle.properties, so a universal APK
+         * stays small enough to matter for a store whose catalogue is one
+         * PDF. */
+        ndk {
+            debugSymbolLevel 'none'
+        }
+    }
+
+    signingConfigs {
+        /* The well-known React Native debug key, committed at
+         * android/app/debug.keystore. Its password is public and a build
+         * signed with it cannot be uploaded to the Play Store, so keeping it in
+         * the repository costs nothing and saves every developer from
+         * generating one before their first run. */
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        if (hasReleaseKeystore) {
+            release {
+                /* Resolved against `android/`, the directory that holds
+                 * keystore.properties, so the path in that file means the
+                 * same thing wherever the build is run from. */
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+            applicationIdSuffix ".debug"
+            /* The debug suffix is deliberate. It lets a debug build sit
+             * beside a production install, which is the only way to test
+             * device-session limits against the real database without
+             * signing out of a customer's account. */
+        }
+        release {
+            signingConfig hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
+
+            /* Off, with the reason recorded rather than left implicit.
+             *
+             * Enabling R8 would obfuscate the native module and make the
+             * vault path harder to find by inspection, which is a genuine
+             * improvement for a DRM client. It also breaks any library that
+             * reaches its classes by reflection, and this app has four of
+             * them (react-native-pdf, blob-util, keychain, device-info).
+             * Turning it on without being able to run the resulting build on
+             * a device would ship an app that fails at exactly the moment it
+             * matters — opening a book.
+             *
+             * To enable: set both flags true, then verify on a real device
+             * that login, grant redemption, PDF render, offline expiry and
+             * keychain round-trip all still work. `proguard-rules.pro`
+             * already carries the keep rules those four need. */
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+
+    packaging {
+        jniLibs {
+            /* react-native-pdf bundles pdfium, which links the shared C++
+             * runtime, and so does React Native itself. Two copies of
+             * libc++_shared.so in one APK is a hard merge failure without
+             * this. Which copy wins does not matter: they are built from the
+             * same NDK. */
+            pickFirsts += ['lib/*/libc++_shared.so']
+        }
+        resources {
+            excludes += [
+                'META-INF/DEPENDENCIES',
+                'META-INF/LICENSE',
+                'META-INF/LICENSE.txt',
+                'META-INF/license.txt',
+                'META-INF/NOTICE',
+                'META-INF/NOTICE.txt',
+                'META-INF/notice.txt',
+                'META-INF/ASL2.0',
+                'META-INF/*.kotlin_module',
+            ]
+        }
+    }
+
+    bundle {
+        language {
+            /* Every string this app shows a customer is Hebrew. Language
+             * splitting would strip `values-he` from the bundle served to a
+             * device whose locale is not Hebrew, and a Hebrew-speaking
+             * customer travelling with an English phone would get English
+             * fallback text from the Android framework instead. */
+            enableSplit = false
+        }
+        density { enableSplit = true }
+        abi { enableSplit = true }
+    }
+}
+
+dependencies {
+    implementation("com.facebook.react:react-android")
+
+    if (hermesEnabled.toBoolean()) {
+        implementation("com.facebook.react:hermes-android")
+    } else {
+        /* Only reached if `hermesEnabled=false` in gradle.properties. Not a
+         * supported configuration for this app: the JSC build path is far less
+         * exercised, and a DRM reader should not be the thing that discovers a
+         * regression in it. */
+        implementation("io.github.react-native-community:jsc-android:2026004.+")
+    }
+}

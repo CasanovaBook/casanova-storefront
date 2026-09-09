@@ -1,0 +1,283 @@
+@import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;500;600;700;800;900&family=Heebo:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-background:          #0B0D16;
+  --color-foreground:          #F5F3EC;
+  --color-card:                #131624;
+  --color-card-foreground:     #F5F3EC;
+  --color-primary:             #E3AE3C;
+  --color-primary-foreground:  #0B0D16;
+  --color-secondary:           #1A1E30;
+  --color-secondary-foreground:#D5D8E6;
+  --color-muted:               #232840;
+  --color-muted-foreground:    #9AA1B8;
+  --color-accent:              #E3AE3C;
+  --color-accent-foreground:   #0B0D16;
+  --color-border:              #2B3048;
+  --color-ring:                #E3AE3C;
+  --color-success:             #22C55E;
+  --color-danger:              #EF4444;
+
+  --font-display: 'Frank Ruhl Libre', 'Heebo', serif;
+  --font-body:    'Heebo', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+
+  --radius: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+/* ── Light mode: overrides every theme variable ───────────── */
+:root[data-theme='light'] {
+  --color-background:          #F7F5F0;
+  --color-foreground:          #22242F;
+  --color-card:                #FFFFFF;
+  --color-card-foreground:     #22242F;
+  --color-primary:             #B8862A;
+  --color-primary-foreground:  #0B0D16;
+  --color-secondary:           #EFEBE0;
+  --color-secondary-foreground:#3C4152;
+  --color-muted:               #E5E1D3;
+  --color-muted-foreground:    #6A7086;
+  --color-accent:              #B8862A;
+  --color-accent-foreground:   #0B0D16;
+  --color-border:              #DCD7C8;
+  --color-ring:                #B8862A;
+  --color-success:             #15803D;
+  --color-danger:              #DC2626;
+  --scroll-thumb:              #C6C0AE;
+}
+
+:root {
+  --scroll-thumb: #3A4160;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 2px; }
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display { font-family: var(--font-display); }
+.font-mono    { font-family: var(--font-mono); }
+
+/* Thin gold underline used as a decorative separator */
+.gold-rule {
+  display: block;
+  width: 48px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-primary), transparent);
+  border-radius: 999px;
+}
+
+/* Primary gradient button */
+.btn-gradient {
+  background: linear-gradient(135deg, #E7B94C 0%, #D4A030 55%, #B8862A 100%);
+  color: var(--color-primary-foreground);
+  box-shadow: 0 8px 24px rgba(212, 160, 48, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.btn-gradient:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 12px 32px rgba(212, 160, 48, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+.btn-gradient:active { transform: translateY(0) scale(0.98); }
+
+/* Standard elevated card */
+.card-glow {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-background) 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card-glow:hover {
+  border-color: rgba(227, 174, 60, 0.45);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(227, 174, 60, 0.1);
+}
+
+/* Frosted glass panel */
+.glass {
+  background: rgba(19, 22, 36, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 160, 48, 0.12);
+}
+
+/* ── Light-mode adjustments for shared components ─────────── */
+:root[data-theme='light'] .glass {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(184, 134, 42, 0.25);
+}
+:root[data-theme='light'] .card-glow {
+  box-shadow: 0 4px 24px rgba(120, 100, 50, 0.1);
+}
+/* Tailwind utilities below are inside @layer, so these win in light mode */
+:root[data-theme='light'] .hover\:bg-white\/5:hover {
+  background-color: rgba(34, 36, 47, 0.05);
+}
+:root[data-theme='light'] .hover\:border-white\/30:hover {
+  border-color: rgba(34, 36, 47, 0.35);
+}
+
+/* Smooth page transitions */
+.page-enter {
+  animation: fadeUp 0.4s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Gentle floating motion for hero visuals */
+.float-slow { animation: floaty 5s ease-in-out infinite; }
+.float-slower { animation: floaty 7s ease-in-out infinite reverse; }
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+/* Soft pulsing glow halo */
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.12; transform: scale(1); }
+  50%      { opacity: 0.22; transform: scale(1.08); }
+}
+.glow-pulse { animation: glowPulse 6s ease-in-out infinite; }
+
+/* ─────────────────────────────────────────────────────────────
+ * Touch & small-screen support
+ *
+ * Everything below is driven by capability queries rather than by
+ * width alone: a laptop with a touchscreen gets the larger targets too,
+ * and a narrow desktop window keeps its precise hover affordances.
+ * ───────────────────────────────────────────────────────────── */
+
+/* Apple/Android notch and home-indicator insets. Zero on desktop. */
+.safe-top    { padding-top: env(safe-area-inset-top, 0px); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-x      {
+  padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
+}
+
+/* Minimum comfortable hit area. 44px is the Apple HIG floor; 48dp is
+ * Android's. Applied to controls that a thumb has to find by feel. */
+.tap-target { min-height: 44px; min-width: 44px; }
+
+/*
+ * Stops the browser from claiming a vertical drag for pull-to-refresh or
+ * rubber-band scrolling while the reader is handling the gesture.
+ */
+.reader-shell {
+  overscroll-behavior: contain;
+  -webkit-tap-highlight-color: transparent;
+  /* `dvh` tracks the visible viewport, so the mobile URL bar collapsing
+   * does not push the bottom navigation off-screen. */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/*
+ * Edge gesture strips in the reader. They sit above the page but beside
+ * the embedded document, so swiping the edges turns pages while the
+ * centre still scrolls and zooms the content normally. Kept invisible on
+ * precise pointers and hinted on touch, where there is no hover to
+ * reveal them.
+ */
+.swipe-zone {
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.swipe-zone .swipe-hint { opacity: 0; transition: opacity 0.2s ease; }
+.swipe-zone:active .swipe-hint { opacity: 0.9; }
+
+@media (hover: none) and (pointer: coarse) {
+  .swipe-zone .swipe-hint { opacity: 0.28; }
+  .swipe-zone:active .swipe-hint { opacity: 0.95; }
+  /* Hover-only styling is unreachable on touch; give the same cue on press. */
+  .hover\:opacity-70:active { opacity: 0.7; }
+  .hover\:bg-white\/5:active { background-color: rgba(255, 255, 255, 0.06); }
+}
+
+/* ── Copy-protection watermark ─────────────────────────────
+ * Drawn over protected content so any photograph or capture of the
+ * reader carries the identity of the account it came from. Must never
+ * intercept input, or the reader underneath becomes unusable.
+ */
+.drm-watermark {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.drm-watermark span {
+  white-space: nowrap;
+  font-variant-ligatures: none;
+}
+
+/* Off-canvas navigation scrim used by the dashboard and admin shells. */
+.drawer-scrim {
+  background: rgba(4, 5, 12, 0.62);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.18s ease both;
+}
+:root[data-theme='light'] .drawer-scrim { background: rgba(30, 28, 22, 0.4); }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/*
+ * Off-canvas navigation.
+ *
+ * Written with physical transforms rather than Tailwind's translate
+ * utilities: both shells anchor the panel to the right edge (RTL), and
+ * a physical `translateX` is the only form guaranteed not to be
+ * reinterpreted by the document direction. Below `lg` the panel starts
+ * off-screen and slides in when `data-open` is set; at `lg` and above it
+ * is permanently in place, which is what the content's right margin
+ * assumes.
+ */
+.drawer-panel {
+  transform: translateX(100%);
+  transition: transform 0.24s cubic-bezier(0.32, 0.72, 0.35, 1);
+  will-change: transform;
+}
+.drawer-panel[data-open='true'] {
+  transform: translateX(0);
+}
+@media (min-width: 1024px) {
+  .drawer-panel,
+  .drawer-panel[data-open='false'] {
+    transform: translateX(0);
+  }
+}
+
+/* Respect the OS-level preference instead of animating for everyone. */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter, .drawer-scrim, .float-slow, .float-slower, .glow-pulse { animation: none; }
+  .drawer-panel { transition: none; }
+}

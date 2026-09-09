@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31) splash configuration.
+
+  From API 31 the system always shows a launch splash drawn from the theme,
+  whether or not the app asks for one. Two things follow:
+
+   - The splash background must be the app background, or every cold start
+     flashes a colour that is not in the palette.
+
+   - `MainActivity.onCreate` sets FLAG_SECURE before calling super, which is
+     early enough to cover the activity window, but the very first splash
+     frames are drawn by the system compositor before any app code runs.
+     Those frames contain only this colour and the launcher icon, never
+     content, which is the property that matters: there is no launch frame in
+     which a page of a book could appear.
+-->
+<resources>
+    <style name="AppTheme" parent="AppTheme.Base">
+        <item name="android:windowSplashScreenBackground">@color/app_background</item>
+        <!-- The icon is left to the system default, which is the launcher
+             icon. Supplying `windowSplashScreenAnimatedIcon` would need a
+             drawable designed for the 240dp splash circle rather than the
+             108dp adaptive-icon canvas, and reusing the launcher foreground
+             here renders visibly small. -->
+    </style>
+</resources>

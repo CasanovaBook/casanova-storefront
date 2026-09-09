@@ -1,0 +1,53 @@
+# Native build artefacts
+node_modules/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/.kotlin/
+ios/build/
+ios/Pods/
+ios/DerivedData/
+*.xcworkspace
+*.xcuserdatad
+ios/Podfile.lock
+
+# Metro / watchman
+.metro-health-check*
+metro-cache/
+
+# Secrets and environment
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.mobileprovision
+GoogleService-Info.plist
+
+# Release signing material. Nothing in this list may ever be committed: the
+# key that signs the published app is the only thing standing between an
+# attacker and shipping a modified build under the same identity.
+android/keystore.properties
+android/release.keystore
+
+# ...with one exception. `debug.keystore` is the well-known React Native debug
+# key: its password is published in the template, its certificate is not a
+# secret, and a debug build signed with it cannot be uploaded anywhere. It is
+# committed so a fresh clone builds, exactly as the upstream template does.
+!android/app/debug.keystore
+
+# Never commit the vault: it holds decrypted protected PDFs during a
+# debug run on a simulator, and a stray copy in git history is exactly
+# the leak this app exists to prevent.
+vault/
+*.pdf
+
+# OS noise
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-error.log

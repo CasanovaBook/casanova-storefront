@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pre-adaptive launcher icon, used on API 24 and 25 only.
+
+  Self-contained: it draws its own background because an `<adaptive-icon>`
+  cannot be inflated below API 26 and there is no way to reference the
+  foreground drawable and get the background for free.
+
+  This is a vector rather than the usual set of PNGs in mipmap-mdpi …
+  mipmap-xxxhdpi. `VectorDrawable` is a framework class from API 21, so a
+  launcher on API 24 inflates it in its own process without support-library
+  help, and one file replaces five bitmaps. When real brand artwork exists,
+  generate the PNG buckets with Android Studio's Image Asset tool and delete
+  this file — the adaptive pair in mipmap-anydpi-v26 stays either way.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#0B0D16"
+        android:pathData="M0,0 L108,0 L108,108 L0,108 Z" />
+
+    <path
+        android:fillColor="#E3AE3C"
+        android:pathData="M52,38 C46,34 38,32 30,34 L30,72 C38,70 46,72 52,76 Z" />
+
+    <path
+        android:fillColor="#E3AE3C"
+        android:pathData="M56,38 C62,34 70,32 78,34 L78,72 C70,70 62,72 56,76 Z" />
+</vector>

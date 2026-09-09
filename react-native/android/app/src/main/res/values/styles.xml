@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Application theme.
+
+  `Theme.AppCompat.NoActionBar`, not `Theme.AppCompat.DayNight.NoActionBar`.
+  The React Native template uses DayNight, which follows the system dark-mode
+  setting and would paint a white `windowBackground` on a device in light
+  mode. The app itself is dark-only (see `src/theme.ts`), so the native frame
+  has to be dark-only too, otherwise the window behind the first React frame
+  is white — and a screen recording that starts at launch captures a white
+  flash exactly where the reader will be.
+
+  `android:editTextBackground` is deliberately not overridden. The React
+  Native template sets it to `@drawable/rn_edit_text_material`, a copy of a
+  private AppCompat resource, to work around a disappearing underline on some
+  API levels. Referencing private resources is what breaks the build when
+  AppCompat is upgraded; if the underline does go missing on a device, fix it
+  in `src/components/ui.tsx` with a border style instead, where it is visible
+  to the type checker.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="AppTheme.Base" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/app_background</item>
+        <item name="android:statusBarColor">@color/app_background</item>
+        <item name="android:navigationBarColor">@color/app_background</item>
+        <!-- Dark bars with light icons, matching `barStyle="light-content"`
+             in App.tsx. Leaving this at its light-mode default would render
+             dark icons on a dark bar, which is invisible rather than merely
+             ugly. -->
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- API 27+. Below that the navigation bar icons are always light,
+             which is already what we want, so the attribute is simply not
+             read rather than needing a second values bucket. -->
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="android:textColorHint">#9AA1B8</item>
+    </style>
+
+    <style name="AppTheme" parent="AppTheme.Base" />
+</resources>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive-icon foreground: an open book, drawn as vectors rather than
+  shipped as PNG artwork.
+
+  The whole mark is kept inside x 30..78 / y 32..76 of the 108dp canvas.
+  Adaptive icons are masked to a 66dp circle by the launcher, so anything
+  outside the centre 66dp is cut away on some devices and shown on others;
+  staying inside it means the icon looks the same on every launcher rather
+  than only on the ones that were tested.
+
+  A vector here is a deliberate trade. It cannot carry the brand's real
+  artwork, and when that exists it should replace this file with generated
+  PNGs in mipmap-mdpi through mipmap-xxxhdpi. Until it does, a vector is
+  better than a placeholder bitmap because it is resolution-independent and
+  adds nothing to the APK size.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Left page -->
+    <path
+        android:fillColor="#E3AE3C"
+        android:pathData="M52,38 C46,34 38,32 30,34 L30,72 C38,70 46,72 52,76 Z" />
+
+    <!-- Right page. Mirrored rather than reusing the left one with a scale
+         transform: a mirrored group would also mirror the anti-aliasing
+         direction and the two halves can render at visibly different weights
+         at small sizes. -->
+    <path
+        android:fillColor="#E3AE3C"
+        android:pathData="M56,38 C62,34 70,32 78,34 L78,72 C70,70 62,72 56,76 Z" />
+</vector>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only overlay. Merged on top of src/main/AndroidManifest.xml.
+
+  The single change is cleartext traffic, and it is scoped to debug because
+  the Metro bundler serves the JavaScript over plain HTTP on localhost. A
+  release build has no reason to speak HTTP to anything: the API is HTTPS and
+  the PDF grant URLs are HTTPS, so leaving cleartext off in release is what
+  makes `trustAllCerts={false}` on the PDF view mean something.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:usesCleartextTraffic="true" />
+</manifest>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data extraction rules, read on API 31+.
+
+  `android:allowBackup="false"` in the manifest already disables Auto Backup,
+  and on API 31+ it also disables the newer extraction path. This file exists
+  because relying on one attribute for the most important data-loss guarantee
+  in the app is not enough: a future edit that flips `allowBackup` to true —
+  which happens constantly, usually to silence a lint warning — would then be
+  caught here instead of silently shipping a vault that backs up.
+
+  `<device-transfer>` is the part people miss. Android 12 added
+  device-to-device transfer, which copies app data straight from an old phone
+  to a new one during setup and is NOT governed by allowBackup on every OEM
+  build. Without excluding it, a customer upgrading phones would arrive on the
+  new device with offline copies of books that the new device's session was
+  never authorised to hold, and with no server record that they are there.
+
+  Everything is excluded. There is nothing in this app worth carrying over:
+  the session token is in the Android Keystore and does not move anyway, the
+  vault must not move, and the reading position lives in the shared database
+  and is re-fetched on first login.
+-->
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+
+    <!-- `device_*` rather than the plain domain names: the transfer block
+         addresses the same storage through a different set of identifiers,
+         and the plain ones are not valid here. -->
+    <device-transfer>
+        <exclude domain="device_root" path="." />
+        <exclude domain="device_file" path="." />
+        <exclude domain="device_database" path="." />
+        <exclude domain="device_sharedpref" path="." />
+        <exclude domain="device_external" path="." />
+    </device-transfer>
+</data-extraction-rules>

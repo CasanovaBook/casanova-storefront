@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The default resource bucket is Hebrew rather than English, because this app
+  has exactly one language and the framework strings that fall through to it
+  (the launcher label, the recent-apps title, the "app not responding" dialog)
+  should match what the customer sees inside the app.
+
+  There is deliberately no values-en bucket: adding one would mean maintaining
+  two sets of wording for a product that ships in one, and half-translated
+  Hebrew RTL text next to English LTR system strings is worse than either.
+-->
+<resources>
+    <string name="app_name">קזנובה</string>
+</resources>

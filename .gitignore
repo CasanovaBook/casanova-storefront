@@ -1,0 +1,96 @@
+# ── Dependencies & build output ────────────────────────────────
+node_modules/
+dist/
+build/
+.cache/
+.vite/
+vite.config.*.timestamp-*
+*.tsbuildinfo
+.eslintcache
+coverage/
+
+# ── Secrets & logs ─────────────────────────────────────────────
+# Environment files are local-only. Browser-exposed VITE_ values still belong
+# in .env.local rather than source control; server-side credentials must never
+# use the VITE_ prefix.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+logs/
+*.log
+*-debug.log*
+.claude-replay.*
+.tmp-*
+tmp/
+
+# ── Sellable content ───────────────────────────────────────────
+# The whole point of this platform is that the book a customer paid for is
+# hard to copy. Committing the asset itself would defeat that in one click:
+# a public repo hands out the file for free, and Git LFS is no better, since
+# LFS objects are fetchable by URL with no authentication at all. History is
+# also forever — removing it later means rewriting every commit.
+#
+# So the content stays off the repository and is deployed separately, the way
+# any real storefront keeps its stock out of its source tree.
+#
+# To ship a title in production, upload the PDF through the CMS: it goes to
+# the private Supabase Storage bucket `books` and the reader loads it via a
+# short-lived signed URL (see supabase/functions). public/books/ is kept only
+# for local test fixtures and the legacy content_url fallback. The .gitkeep
+# below keeps that directory in a fresh clone, so the path exists and only the
+# file is missing.
+/public/books/*
+!/public/books/.gitkeep
+
+# docs/ held a second, byte-identical copy of the same 48 MB title. Nothing
+# reads it: the only reference in the codebase is vite.config.ts, which lists
+# docs/** as a watch-ignore because watching the file crashed the dev server.
+/docs/*
+!/docs/ARCHITECTURE.md
+!/docs/PRODUCT_BRIEF.md
+
+# ── Verification screenshots ───────────────────────────────────
+# Browser-automation runs drop these into the repo root while checking a page.
+# Root-anchored on purpose: the real image assets under images/ and
+# src/imports/ must stay tracked.
+/smoke_*.png
+/step*.png
+/verify_*.png
+/qa_*.png
+/exp_*.png
+/screenshot_*.png
+/inspection_*.png
+
+# ── Platform-managed agent state ───────────────────────────────
+# Not project source. In the client-initiated single-repo workspace layout
+# (make's `Path: "."` spec) the repo root IS the workspace root, so these land
+# inside this repo rather than beside it.
+/.plugins/
+/.opencode-skills/
+
+# ── Supabase CLI local state ───────────────────────────────────
+# The CLI writes linked-project temp files and branch state here; they are
+# machine-local and must not be committed. supabase/functions and
+# supabase/config.toml ARE source and stay tracked.
+/supabase/.temp/
+/supabase/.branches/
+
+# ── Editors & operating systems ────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

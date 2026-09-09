@@ -1,0 +1,77 @@
+# Podfile — iOS dependency resolution.
+#
+# Kept as close to the React Native 0.79 template as possible. Every deviation
+# is commented with the reason, because a Podfile that has been "improved"
+# without a note is a Podfile nobody dares upgrade.
+
+# Resolve react_native_pods.rb with node to allow for hoisting.
+#
+# This matters more here than in a normal project: this app lives inside the
+# repository of a Vite web app, so `__dir__` is `<repo>/react-native/ios` and
+# the node resolution has to find `react-native` in `<repo>/react-native/node_modules`,
+# not walk up into the web project's. `require.resolve` with `paths: [__dir__]`
+# does exactly that.
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+# 15.1 for React Native 0.79. Not raised: nothing here needs a newer iOS, and
+# raising the floor is a decision about who can read a book.
+platform :ios, min_ios_version_supported
+
+prepare_react_native_project!
+
+# `use_frameworks!` is deliberately NOT enabled.
+#
+# React Native's own pods are built as static libraries, and switching the whole
+# workspace to dynamic frameworks is the single most common cause of a
+# "worked yesterday, will not link today" iOS React Native build. It is left
+# behind the template's environment-variable escape hatch so that if a future
+# dependency genuinely requires frameworks, the supported invocation is:
+#
+#   USE_FRAMEWORKS=static bundle exec pod install
+#
+# which gives static frameworks — the variant that coexists with React Native —
+# rather than dynamic ones.
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'CasanovaReader' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  post_install do |installer|
+    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+    )
+
+    # Pin every pod's deployment target to the platform declared above.
+    #
+    # CocoaPods otherwise infers a target per pod from its podspec, and several
+    # of the pods here declare nothing, so they fall back to a value below the
+    # platform line. That produces a wall of "The iOS deployment target is set
+    # to X, but the range of supported versions is Y" warnings on every install,
+    # and — worse — it means the app and its dependencies are compiled against
+    # different availability assumptions. `restrictDocumentInteraction()` in
+    # ScreenShield.swift walks PDFKit's view hierarchy with `responds(to:)`
+    # guards that only make sense if every module agrees on the floor.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_configuration|
+        build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = min_ios_version_supported
+      end
+    end
+  end
+end

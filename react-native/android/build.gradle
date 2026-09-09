@@ -1,0 +1,37 @@
+/* Root Gradle build.
+ *
+ * Version pins live here rather than in `app/build.gradle` so that a
+ * dependency needing a newer `compileSdk` can be seen next to the SDK
+ * decision instead of buried in a module.
+ */
+buildscript {
+    ext {
+        buildToolsVersion = "35.0.0"
+        /* 24 is the React Native 0.79 floor. Raising it would let the
+         * launcher icon be adaptive-only and would guarantee hardware-backed
+         * keystore for react-native-keychain; it is not raised here because
+         * that is a product decision about who can buy a book, not a
+         * build decision. */
+        minSdkVersion = 24
+        compileSdkVersion = 35
+        /* 35, matching the React Native 0.79 template. Android 15 behaviour
+         * changes are opted into at this level, and the one that matters here
+         * is edge-to-edge enforcement — which is why the screens lay out
+         * through SafeAreaProvider rather than assuming the status bar is
+         * somebody else's problem. */
+        targetSdkVersion = 35
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.0.21"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"

@@ -1,0 +1,57 @@
+# Line endings and binary handling.
+#
+# This replaces an auto-generated file that sent every binary type to Git LFS.
+# LFS was dropped deliberately: the largest asset actually tracked here is a
+# 221 KB JPEG, which is three orders of magnitude below GitHub's 100 MB
+# per-file limit, and LFS would have cost every clone a separate download
+# against a 1 GB/month free bandwidth allowance. See .gitignore for where the
+# genuinely large binaries went instead.
+
+# Store text as LF in the repository, check out with the platform default.
+* text=auto
+
+# The Figma Make helpers are extension-less bash scripts, so the `* text=auto`
+# rule above cannot tell them apart from binaries by content alone on every
+# platform. Pinned to LF explicitly: a CRLF after the shebang makes
+# `#!/usr/bin/env bash\r` an interpreter that does not exist, and the script
+# dies with "bad interpreter" on Linux and macOS.
+.figma/make/analyze-routes text eol=lf
+.figma/make/deploy         text eol=lf
+.figma/make/deploy-preview text eol=lf
+.figma/make/dev            text eol=lf
+.figma/make/format         text eol=lf
+.figma/make/install        text eol=lf
+.figma/make/langserver     text eol=lf
+
+# Source and config. eol=lf rather than the platform default so a file edited
+# on Windows and then on macOS does not show up as wholly rewritten, and so
+# oxfmt has one consistent input.
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.json  text eol=lf
+*.js    text eol=lf
+*.md    text eol=lf
+*.sql   text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.toml  text eol=lf
+*.sh    text eol=lf
+
+# Binary. Marked so Git never attempts newline conversion on them — a single
+# rewritten byte destroys an image or a PDF — and so diffs stay out of them.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.pdf   binary
+*.woff  binary
+*.woff2 binary
+
+# The lockfile has to round-trip byte-for-byte. If Git normalises it, pnpm can
+# decide the lockfile no longer matches package.json and resolve the whole
+# dependency tree again, which is how a reproducible build stops being one.
+pnpm-lock.yaml -text

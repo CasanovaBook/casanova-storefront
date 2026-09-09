@@ -1,0 +1,49 @@
+{
+  "name": "casanova-reader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Casanova native reader. Hebrew RTL, DRM-hardened: no screenshots, no screen recording, no download or export of the protected PDF. Shares one database with the web storefront through the same REST contract.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "start": "react-native start",
+    "pods": "cd ios && pod install",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "clean:android": "cd android && ./gradlew clean",
+    "clean:metro": "react-native start --reset-cache"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-navigation/bottom-tabs": "7.3.10",
+    "@react-navigation/native": "7.1.6",
+    "@react-navigation/native-stack": "7.3.10",
+    "react": "19.0.0",
+    "react-native": "0.79.2",
+    "react-native-blob-util": "0.21.2",
+    "react-native-device-info": "14.0.4",
+    "react-native-keychain": "9.2.2",
+    "react-native-pdf": "6.7.7",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "4.10.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.3",
+    "@babel/runtime": "^7.25.0",
+    "@react-native-community/cli": "18.0.0",
+    "@react-native-community/cli-platform-android": "18.0.0",
+    "@react-native-community/cli-platform-ios": "18.0.0",
+    "@react-native/babel-preset": "0.79.2",
+    "@react-native/eslint-config": "0.79.2",
+    "@react-native/metro-config": "0.79.2",
+    "@react-native/typescript-config": "0.79.2",
+    "@types/react": "^19.0.0",
+    "eslint": "^8.57.1",
+    "typescript": "5.7.3"
+  }
+}

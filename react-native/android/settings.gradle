@@ -1,0 +1,26 @@
+/* Settings for the Android build.
+ *
+ * The React Native Gradle plugin is included from `../node_modules`, which
+ * is this project's own node_modules — not the web project's one level up.
+ * That matters because this React Native app lives inside the repository of
+ * a Vite web app: if Gradle ever resolved the plugin from the wrong
+ * node_modules the autolinked library list would be wrong, and a missing
+ * autolink shows up at runtime as "ScreenShield is null" rather than as a
+ * build error.
+ */
+pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+
+plugins { id("com.facebook.react.settings") }
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+    /* Reads `react-native.config.js` and every dependency's own config to
+     * decide what to link. ScreenShield is not autolinked — it lives in this
+     * module's source tree and is registered by hand in MainApplication. */
+    ex.autolinkLibrariesFromCommand()
+}
+
+rootProject.name = 'CasanovaReader'
+
+include ':app'
+
+includeBuild('../node_modules/@react-native/gradle-plugin')
