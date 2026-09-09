@@ -257,19 +257,11 @@ export default function SetupPage() {
                               : "password"
                             : type
                       }
-                      dir={
-                        (key === "password" && showPassword) ||
-                        (key === "confirm" && showConfirmPassword)
-                          ? "ltr"
-                          : "rtl"
-                      }
+                      dir="ltr"
                       className={
                         inputClass +
                         " pl-10 " +
-                        ((key === "password" && showPassword) ||
-                        (key === "confirm" && showConfirmPassword)
-                          ? "text-left"
-                          : "text-right")
+                        "text-left"
                       }
                       style={inputStyle}
                       value={form[key]}
