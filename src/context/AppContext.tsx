@@ -189,11 +189,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (input: RegisterInput): Promise<AuthOutcome> => {
-      const result = await registerCustomer(input)
+      const result = await registerCustomer(input, {
+        upgradeUserId: sessionId,
+      })
       if (result.ok) beginSession(result.data)
       return toOutcome(result)
     },
-    [beginSession],
+    [beginSession, sessionId],
   )
 
   const setupAdmin = useCallback(
