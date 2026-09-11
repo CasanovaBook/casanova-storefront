@@ -129,17 +129,19 @@ export default function CheckoutPage() {
     if (!form.last_name.trim()) newErrors.last_name = "שדה חובה"
     if (!form.email.trim() || /[^\x20-\x7E]/.test(form.email))
       newErrors.email = "כתובת המייל חייבת להיות באנגלית בלבד"
+    else if (!form.email.includes("@"))
+      newErrors.email = "כתובת המייל חייבת להכיל את הסימן @"
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       newErrors.email = "נדרשת כתובת מייל תקינה"
     // Email confirmation: must match exactly so receipts/access never go to the wrong address
     if (!confirmEmail.trim()) {
       setConfirmEmailError("יש לאמת את כתובת המייל")
-    } else if (
-      confirmEmail.trim().toLowerCase() !== form.email.trim().toLowerCase()
-    ) {
+    } else if (confirmEmail.trim().toLowerCase() !== form.email.trim().toLowerCase()) {
       setConfirmEmailError(
         "כתובות המייל אינן תואמות — יש להקליד שוב את אותה כתובת",
       )
+    } else if (!confirmEmail.includes("@")) {
+      setConfirmEmailError("כתובת המייל חייבת להכיל את הסימן @")
     } else {
       setConfirmEmailError("")
     }

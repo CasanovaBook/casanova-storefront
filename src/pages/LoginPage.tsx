@@ -69,6 +69,12 @@ export default function LoginPage() {
       return
     }
 
+    // Validate email contains @ symbol
+    if (!email.includes("@")) {
+      setError("כתובת האימייל חייבת להכיל את הסימן @")
+      return
+    }
+
     if (mode === "register") {
       const problem = passwordProblem(password)
       if (problem) {
