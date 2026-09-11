@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import type { CheckoutFormData, Product } from "../types"
@@ -578,8 +578,16 @@ export default function CheckoutPage() {
                         className="text-sm leading-relaxed"
                         style={{ color: "var(--color-foreground)" }}
                       >
-                        אני מאשר שאני בן <strong>18 ומעלה</strong> ושאני רשאי
-                        לצפות ולרכוש תוכן למבוגרים.
+                        אני מאשר כי אני בן 18 ומעלה וכי אני רשאי על פי דין
+                        לצפות ולרכוש תוכן המיועד למבוגרים. קראתי את{" "}
+                        <Link
+                          to="/terms-and-conditions"
+                          className="underline font-medium transition-opacity hover:opacity-70"
+                          style={{ color: "var(--color-primary)" }}
+                        >
+                          תנאי השימוש
+                        </Link>{" "}
+                        ואני מסכים להם.
                       </span>
                     </label>
                     {ageError && (

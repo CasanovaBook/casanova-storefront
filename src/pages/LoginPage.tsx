@@ -332,6 +332,24 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Terms and Conditions link - only shown in register mode */}
+          {mode === "register" && (
+            <p
+              className="text-xs text-center mt-4"
+              style={{ color: "var(--color-muted-foreground)" }}
+            >
+              על ידי יצירת חשבון, אתה מסכים ל{" "}
+              <Link
+                to="/terms-and-conditions"
+                className="underline transition-opacity hover:opacity-70"
+                style={{ color: "var(--color-primary)" }}
+              >
+                תנאי השימוש
+              </Link>{" "}
+              שלנו.
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={isLoading}
