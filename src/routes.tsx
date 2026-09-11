@@ -81,6 +81,10 @@ const CheckoutSuccessPage = lazyPage(
 
 const SalesLandingPage = lazyPage(() => import("./pages/SalesLandingPage"))
 
+const TermsPage = lazyPage(() => import("./pages/TermsPage"))
+
+const CancellationPolicyPage = lazyPage(() => import("./pages/CancellationPolicyPage"))
+
 const StorePage = lazyPage(() => import("./pages/StorePage"))
 
 const DashboardPage = lazyPage(() => import("./pages/DashboardPage"))
@@ -167,6 +171,10 @@ export const router = createBrowserRouter([
       { path: "checkout/success", Component: CheckoutSuccessPage },
 
       { path: "support", Component: SupportPage },
+
+      { path: "terms-and-conditions", Component: TermsPage },
+
+      { path: "cancellation-and-refund-policy", Component: CancellationPolicyPage },
 
       { path: "setup-password", Component: SetupPasswordPage },
 
