@@ -50,15 +50,18 @@ export default function CheckoutPage() {
       const cleaned = user.phone.replace(/\D/g, "")
       if (cleaned.length >= 10 && cleaned.startsWith("972")) {
         // Format: 972501234567 -> prefix: 050, number: 1234567
+        // After removing country code "972", we have "501234567" (9 digits)
+        // Prefix is "050" (add back the leading 0), number is "1234567"
         const withoutCountry = cleaned.slice(3)
-        const prefix = withoutCountry.slice(0, 3)
-        const number = withoutCountry.slice(3)
+        const prefix = "0" + withoutCountry.slice(0, 2)
+        const number = withoutCountry.slice(2)
         setPhonePrefix(prefix)
         setPhoneNumber(number)
-      } else if (cleaned.length >= 9 && cleaned.startsWith("0")) {
+      } else if (cleaned.length >= 10 && cleaned.startsWith("0")) {
         // Format: 0501234567 -> prefix: 050, number: 1234567
-        const prefix = cleaned.slice(1, 4)
-        const number = cleaned.slice(4)
+        // Prefix is first 3 chars "050", number is remaining 7 chars "1234567"
+        const prefix = cleaned.slice(0, 3)
+        const number = cleaned.slice(3)
         setPhonePrefix(prefix)
         setPhoneNumber(number)
       }
@@ -67,8 +70,11 @@ export default function CheckoutPage() {
 
   // Update form.phone whenever prefix or number changes
   useEffect(() => {
+    // phonePrefix already includes the leading "0" (e.g., "050")
+    // phoneNumber is 7 digits (e.g., "1234567")
+    // Full phone: "050" + "1234567" = "0501234567" (10 digits)
     const fullPhone =
-      phonePrefix && phoneNumber ? `0${phonePrefix}${phoneNumber}` : ""
+      phonePrefix && phoneNumber ? `${phonePrefix}${phoneNumber}` : ""
     setForm((prev) => ({ ...prev, phone: fullPhone }))
   }, [phonePrefix, phoneNumber])
   const [errors, setErrors] = useState<Partial<CheckoutFormData>>({})
