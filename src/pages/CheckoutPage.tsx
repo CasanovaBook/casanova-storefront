@@ -601,56 +601,6 @@ export default function CheckoutPage() {
                       </p>
                     )}
                   </div>
-
-                  <div>
-                    <label
-                      className="block text-xs font-bold mb-1.5"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      קוד קופון (אופציונלי)
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        dir="ltr"
-                        className={`${inputClass} flex-1 text-left`}
-                        style={inputStyle}
-                        value={form.coupon_code}
-                        onChange={(e) =>
-                          setForm({ ...form, coupon_code: e.target.value })
-                        }
-                        placeholder="WELCOME20"
-                        disabled={couponApplied}
-                      />
-                      <button
-                        onClick={applyCoupon}
-                        disabled={couponApplied || !form.coupon_code.trim()}
-                        className="px-5 py-2.5 rounded-xl text-sm font-bold border transition-colors hover:bg-white/5 disabled:opacity-40"
-                        style={{
-                          borderColor: "var(--color-border)",
-                          color: "var(--color-foreground)",
-                        }}
-                      >
-                        הפעלה
-                      </button>
-                    </div>
-                    {couponApplied && (
-                      <p
-                        className="text-xs mt-1 flex items-center gap-1"
-                        style={{ color: "var(--color-success)" }}
-                      >
-                        <Icon name="checkCircle" size={13} /> הקופון הופעל —
-                        הנחה של ₪{couponDiscount.toLocaleString()}
-                      </p>
-                    )}
-                    {couponError && (
-                      <p
-                        className="text-xs mt-1"
-                        style={{ color: "var(--color-danger)" }}
-                      >
-                        {couponError}
-                      </p>
-                    )}
-                  </div>
                 </div>
 
                 {submitError && (
