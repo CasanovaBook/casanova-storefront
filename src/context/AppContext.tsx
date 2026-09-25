@@ -54,6 +54,15 @@ import {
   type CheckoutInput,
   type CheckoutOutcome,
 } from "../lib/api-orders"
+import { supabase, isSupabaseConfigured } from "../lib/supabase"
+import {
+  signInWithEmail,
+  signUpWithEmail,
+  signOutUser,
+  resendVerification,
+  fetchProfile,
+  buildAppUser,
+} from "../lib/supabase-auth"
 
 const THEME_KEY = "casanova_theme"
 
@@ -61,6 +70,8 @@ export interface AuthOutcome {
   ok: boolean
   error?: string
   user?: User
+  needsEmailConfirmation?: boolean
+  isUnconfirmed?: boolean
 }
 
 interface AppContextValue {
@@ -79,6 +90,7 @@ interface AppContextValue {
   /* ── Auth ── */
   login: (email: string, password: string) => Promise<AuthOutcome>
   register: (input: RegisterInput) => Promise<AuthOutcome>
+  resendConfirmation: (email: string) => Promise<{ ok: boolean; error?: string }>
   setupAdmin: (input: BootstrapInput) => Promise<AuthOutcome>
   logout: () => void
 
@@ -137,21 +149,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   /* ── Session ──────────────────────────────────────────── */
+  const [supabaseUser, setSupabaseUser] = useState<User | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(() =>
     readSessionUserId(),
   )
 
-  // Resolved from the store on every change, so an admin editing this
-  // account (suspension, role change) is reflected without a re-login.
+  // Listen to Supabase Auth state changes and initial session
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return
+
+    let isMounted = true
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id)
+        if (isMounted) setSupabaseUser(buildAppUser(session.user, profile))
+      } else {
+        if (isMounted) setSupabaseUser(null)
+      }
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!isMounted) return
+        if (session?.user) {
+          const profile = await fetchProfile(session.user.id)
+          if (isMounted) setSupabaseUser(buildAppUser(session.user, profile))
+        } else {
+          if (isMounted) setSupabaseUser(null)
+        }
+      },
+    )
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  // In Supabase mode, supabaseUser is the source of truth.
+  // In fallback mode, resolve from db.users using sessionId.
   const user = useMemo<User | null>(() => {
+    if (isSupabaseConfigured) return supabaseUser
     if (!sessionId) return null
     const stored = db.users.find((u) => u.user_id === sessionId)
     return stored ? toPublicUser(stored) : null
-  }, [db.users, sessionId])
+  }, [db.users, sessionId, supabaseUser])
 
   // A dropped or deactivated account ends the session immediately.
   useEffect(() => {
-    if (sessionId && !user) {
+    if (!isSupabaseConfigured && sessionId && !user) {
       writeSessionUserId(null)
       setSessionId(null)
     }
@@ -180,6 +228,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string): Promise<AuthOutcome> => {
+      if (isSupabaseConfigured) {
+        const res = await signInWithEmail(email, password)
+        if (!res.ok) {
+          return {
+            ok: false,
+            error: res.error,
+            isUnconfirmed: res.isUnconfirmed,
+          }
+        }
+        setSupabaseUser(res.data)
+        return { ok: true, user: res.data }
+      }
       const result = await loginRequest(email, password)
       if (result.ok) beginSession(result.data)
       return toOutcome(result)
@@ -189,6 +249,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (input: RegisterInput): Promise<AuthOutcome> => {
+      if (isSupabaseConfigured) {
+        if (!input.password) {
+          return { ok: false, error: "נדרשת סיסמה לצורך הרשמה." }
+        }
+        const res = await signUpWithEmail({
+          first_name: input.first_name,
+          last_name: input.last_name,
+          email: input.email,
+          password: input.password,
+          phone: input.phone,
+        })
+        if (!res.ok) {
+          return { ok: false, error: res.error }
+        }
+        if (res.data.user && !res.data.needsEmailConfirmation) {
+          setSupabaseUser(res.data.user)
+        }
+        return {
+          ok: true,
+          user: res.data.user || undefined,
+          needsEmailConfirmation: res.data.needsEmailConfirmation,
+        }
+      }
       const result = await registerCustomer(input, {
         upgradeUserId: sessionId,
       })
@@ -197,6 +280,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [beginSession, sessionId],
   )
+
+  const resendConfirmation = useCallback(async (email: string) => {
+    const res = await resendVerification(email)
+    return { ok: res.ok, error: !res.ok ? res.error : undefined }
+  }, [])
 
   const setupAdmin = useCallback(
     async (input: BootstrapInput): Promise<AuthOutcome> => {
@@ -212,7 +300,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [lastOrderId, setLastOrderId] = useState<string | null>(null)
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    if (isSupabaseConfigured) {
+      await signOutUser()
+      setSupabaseUser(null)
+    }
     writeSessionUserId(null)
     setSessionId(null)
     setCart([])
@@ -337,11 +429,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isAuthenticated: Boolean(user),
         isAdmin: user?.role === "ADMIN",
         adminRole: user?.admin_role,
-        bootstrapRequired: isBootstrapRequired(),
+        bootstrapRequired: isSupabaseConfigured ? false : isBootstrapRequired(),
         theme,
         toggleTheme,
         login,
         register,
+        resendConfirmation,
         setupAdmin,
         logout,
         cart,

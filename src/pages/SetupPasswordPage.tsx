@@ -10,6 +10,8 @@
 import { useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router"
 import { resetPasswordWithToken } from "../lib/api"
+import { isSupabaseConfigured } from "../lib/supabase"
+import { updatePassword as updateSupabasePassword } from "../lib/supabase-auth"
 import { passwordProblem } from "../lib/auth"
 import Icon from "../components/icons"
 import ThemeToggle from "../components/ThemeToggle"
@@ -57,6 +59,19 @@ export default function SetupPasswordPage() {
       return
     }
     setBusy(true)
+
+    if (isSupabaseConfigured) {
+      const result = await updateSupabasePassword(password)
+      setBusy(false)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setDone(true)
+      setTimeout(() => navigate("/login"), 2000)
+      return
+    }
+
     const result = await resetPasswordWithToken(token, password)
     setBusy(false)
     if (!result.ok) {

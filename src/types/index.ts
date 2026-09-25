@@ -35,7 +35,8 @@ export interface User {
   /** Sub-role for admin accounts; only meaningful when role is ADMIN. */
   admin_role?: AdminRole
   account_status: AccountStatus
-  must_change_password: boolean
+  must_change_password?: boolean
+  email_confirmed_at?: string | null
   created_at: string
   updated_at: string
   last_login_at?: string

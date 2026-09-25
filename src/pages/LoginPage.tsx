@@ -11,7 +11,7 @@ function hasHebrewChars(text: string): boolean {
 }
 
 export default function LoginPage() {
-  const { login, register, bootstrapRequired } = useApp()
+  const { login, register, resendConfirmation, bootstrapRequired } = useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const mode = location.pathname === "/register" ? "register" : "login"
@@ -26,8 +26,39 @@ export default function LoginPage() {
   const [emailHebrewWarning, setEmailHebrewWarning] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
+  // Email verification UX state
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
+  const [resendMessage, setResendMessage] = useState<string | null>(null)
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setInterval(() => {
+      setCooldown((c) => c - 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
+
+  const handleResend = async (targetEmail: string) => {
+    if (cooldown > 0 || resending) return
+    setResending(true)
+    setResendMessage(null)
+    const res = await resendConfirmation(targetEmail)
+    setResending(false)
+    if (res.ok) {
+      setResendMessage("קישור אימות חדש נשלח בהצלחה לתיבת הדואר שלך!")
+      setCooldown(60)
+    } else {
+      setResendMessage(res.error || "שליחת האימייל נכשלה. אנא נסה שוב מאוחר יותר.")
+    }
+  }
+
   useEffect(() => {
     setError("")
+    setUnconfirmedEmail(null)
+    setResendMessage(null)
   }, [mode])
 
   // Check for Hebrew characters in email
@@ -60,6 +91,8 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setUnconfirmedEmail(null)
+    setResendMessage(null)
 
     // Disallow Hebrew in email
     if (hasHebrewChars(email)) {
@@ -94,13 +127,104 @@ export default function LoginPage() {
           })
     setIsLoading(false)
     if (result.ok) {
-      // Navigate based on the freshly-authenticated user (state hasn't re-rendered yet)
+      if (mode === "register" && result.needsEmailConfirmation) {
+        setRegisteredEmail(email.trim())
+        return
+      }
       navigate(result.user?.role === "ADMIN" ? "/admin" : "/dashboard", {
         replace: true,
       })
     } else {
+      if (mode === "login" && result.isUnconfirmed) {
+        setUnconfirmedEmail(email.trim())
+      }
       setError(result.error ?? "הפעולה נכשלה.")
     }
+  }
+
+  if (registeredEmail) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden"
+        style={{ background: "var(--color-background)" }}
+      >
+        <div className="w-full max-w-sm page-enter text-center">
+          <div
+            className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 glow-pulse"
+            style={{
+              background: "rgba(212,160,48,0.12)",
+              border: "1px solid rgba(212,160,48,0.35)",
+              color: "var(--color-primary)",
+            }}
+          >
+            <Icon name="mail" size={40} />
+          </div>
+          <h1 className="font-display text-2xl font-semibold mb-2">
+            בדקו את תיבת הדואר שלכם!
+          </h1>
+          <p
+            className="text-sm mb-4"
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
+            שלחנו קישור אימות לכתובת:
+            <br />
+            <strong className="text-foreground mt-1 inline-block" dir="ltr">
+              {registeredEmail}
+            </strong>
+          </p>
+          <p
+            className="text-xs mb-6"
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
+            יש ללחוץ על הקישור במייל כדי להפעיל את החשבון ולהתחבר.
+          </p>
+
+          {resendMessage && (
+            <div
+              className="p-3 rounded-lg text-xs mb-4 text-center"
+              style={{
+                background: "rgba(212,160,48,0.08)",
+                border: "1px solid rgba(212,160,48,0.25)",
+                color: "var(--color-primary)",
+              }}
+            >
+              {resendMessage}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              disabled={cooldown > 0 || resending}
+              onClick={() => handleResend(registeredEmail)}
+              className="w-full py-2.5 rounded-lg border text-sm font-medium transition-all disabled:opacity-50"
+              style={{
+                borderColor: "var(--color-border)",
+                color: "var(--color-foreground)",
+              }}
+            >
+              {resending
+                ? "שולח..."
+                : cooldown > 0
+                ? `שליחה חוזרת בעוד ${cooldown} שניות`
+                : "לא קיבלתם? שלחו שוב אימייל אימות"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setRegisteredEmail(null)
+                navigate("/login")
+              }}
+              className="w-full py-2.5 rounded-lg text-sm transition-opacity hover:opacity-80"
+              style={{ color: "var(--color-primary)" }}
+            >
+              חזרה למסך ההתחברות
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const inputClass =
@@ -326,15 +450,48 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div
-              className="px-4 py-3 rounded-lg border text-sm"
-              style={{
-                background: "rgba(239,68,68,0.08)",
-                borderColor: "rgba(239,68,68,0.3)",
-                color: "var(--color-danger)",
-              }}
-            >
-              {error}
+            <div className="space-y-2">
+              <div
+                className="px-4 py-3 rounded-lg border text-sm"
+                style={{
+                  background: "rgba(239,68,68,0.08)",
+                  borderColor: "rgba(239,68,68,0.3)",
+                  color: "var(--color-danger)",
+                }}
+              >
+                {error}
+              </div>
+              {unconfirmedEmail && (
+                <button
+                  type="button"
+                  disabled={cooldown > 0 || resending}
+                  onClick={() => handleResend(unconfirmedEmail)}
+                  className="w-full py-2.5 rounded-lg border text-xs font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  style={{
+                    borderColor: "var(--color-border)",
+                    color: "var(--color-primary)",
+                  }}
+                >
+                  <Icon name="mail" size={14} />
+                  {resending
+                    ? "שולח אימייל אימות..."
+                    : cooldown > 0
+                    ? `שליחה חוזרת בעוד ${cooldown} שניות`
+                    : "שלח לי שוב אימייל אימות"}
+                </button>
+              )}
+              {resendMessage && (
+                <div
+                  className="p-2.5 rounded-lg text-xs text-center"
+                  style={{
+                    background: "rgba(212,160,48,0.08)",
+                    border: "1px solid rgba(212,160,48,0.25)",
+                    color: "var(--color-primary)",
+                  }}
+                >
+                  {resendMessage}
+                </div>
+              )}
             </div>
           )}
 

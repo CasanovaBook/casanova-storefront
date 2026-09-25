@@ -130,8 +130,56 @@ Deno.serve(async (req: Request) => {
   if (!productId)
     return jsonResponse({ error: "A valid product_id is required" }, 400, cors)
 
+  // Enforce caller authentication
+  const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization")
+  const token = authHeader?.replace(/^Bearer\s+/i, "")
+
+  if (!token) {
+    return jsonResponse({ error: "יש להתחבר כדי לגשת לתוכן המוגן" }, 401, cors)
+  }
+
   try {
     const admin = adminClient()
+
+    const { data: { user: authUser }, error: authError } = await admin.auth.getUser(token)
+    if (authError || !authUser) {
+      return jsonResponse({ error: "אימות המשתמש נכשל או שפג תוקף החיבור" }, 401, cors)
+    }
+
+    // Admins bypass entitlement check; customers must hold an ACTIVE entitlement
+    const { data: profile } = await admin
+      .from("users")
+      .select("role")
+      .eq("user_id", authUser.id)
+      .maybeSingle()
+
+    const isAdmin = profile?.role === "ADMIN"
+
+    if (!isAdmin) {
+      const { data: entitlement, error: entError } = await admin
+        .from("user_products")
+        .select("user_product_id, access_status, expires_at")
+        .eq("user_id", authUser.id)
+        .eq("product_id", productId)
+        .eq("access_status", "ACTIVE")
+        .maybeSingle()
+
+      if (entError || !entitlement) {
+        return jsonResponse(
+          { error: "לא נמצאה הרשאת קריאה פעילה עבור מוצר זה בחשבונך." },
+          403,
+          cors,
+        )
+      }
+
+      if (entitlement.expires_at && new Date(entitlement.expires_at) <= new Date()) {
+        return jsonResponse(
+          { error: "תוקף הגישה לתוכן זה פג." },
+          403,
+          cors,
+        )
+      }
+    }
 
     const folder = `product-${productId}`
 

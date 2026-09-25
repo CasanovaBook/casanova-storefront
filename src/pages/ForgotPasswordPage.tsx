@@ -11,6 +11,8 @@
 import { useState } from "react"
 import { Link } from "react-router"
 import { getSettings, requestPasswordReset } from "../lib/api"
+import { isSupabaseConfigured } from "../lib/supabase"
+import { requestPasswordReset as requestSupabaseReset } from "../lib/supabase-auth"
 import Icon from "../components/icons"
 import ThemeToggle from "../components/ThemeToggle"
 import logoImg from "../../images/main_photo.jpg"
@@ -28,6 +30,19 @@ export default function ForgotPasswordPage() {
     e.preventDefault()
     setError("")
     setBusy(true)
+
+    if (isSupabaseConfigured) {
+      const result = await requestSupabaseReset(email.trim())
+      setBusy(false)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setDelivered(true)
+      setSubmitted(true)
+      return
+    }
+
     const result = await requestPasswordReset(email.trim())
     setBusy(false)
     if (!result.ok) {
