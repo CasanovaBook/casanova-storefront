@@ -131,7 +131,9 @@ export default function LoginPage() {
         setRegisteredEmail(email.trim())
         return
       }
-      navigate(result.user?.role === "ADMIN" ? "/admin" : "/dashboard", {
+      const searchParams = new URLSearchParams(location.search)
+      const redirect = searchParams.get("redirect")
+      navigate(redirect || (result.user?.role === "ADMIN" ? "/admin" : "/dashboard"), {
         replace: true,
       })
     } else {

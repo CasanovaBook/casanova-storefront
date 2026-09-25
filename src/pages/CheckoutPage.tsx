@@ -29,10 +29,34 @@ function BookCoverMini({ product }: { product: Product }) {
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
-  const { selectedProduct, placeOrder, user } = useApp()
+  const { selectedProduct, placeOrder, user, resendConfirmation } = useApp()
   const cms = useCms()
 
   const product = selectedProduct
+
+  const [resending, setResending] = useState(false)
+  const [resendMessage, setResendMessage] = useState<string | null>(null)
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setInterval(() => setCooldown((c) => c - 1), 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
+
+  const handleResend = async (emailToResend: string) => {
+    if (cooldown > 0 || resending) return
+    setResending(true)
+    setResendMessage(null)
+    const res = await resendConfirmation(emailToResend)
+    setResending(false)
+    if (res.ok) {
+      setResendMessage("קישור אימות חדש נשלח בהצלחה לתיבת הדואר שלך!")
+      setCooldown(60)
+    } else {
+      setResendMessage(res.error || "שליחת האימייל נכשלה.")
+    }
+  }
 
   const [form, setForm] = useState<CheckoutFormData>({
     first_name: user?.first_name ?? "",
@@ -41,6 +65,19 @@ export default function CheckoutPage() {
     phone: user?.phone ?? "",
     coupon_code: "",
   })
+
+  // Synchronize form with logged-in user
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        first_name: prev.first_name || user.first_name || "",
+        last_name: prev.last_name || user.last_name || "",
+        email: prev.email || user.email || "",
+      }))
+      setConfirmEmail((prev) => prev || user.email || "")
+    }
+  }, [user])
   const [phonePrefix, setPhonePrefix] = useState("050")
   const [phoneNumber, setPhoneNumber] = useState("")
 
@@ -197,6 +234,14 @@ export default function CheckoutPage() {
   }
 
   const handleDetailsNext = () => {
+    if (!user) {
+      setSubmitError("יש להתחבר או להירשם לחשבון כדי להמשיך לרכישה.")
+      return
+    }
+    if (!user.email_confirmed_at) {
+      setSubmitError("יש לאמת את כתובת האימייל שלך לפני ביצוע רכישה.")
+      return
+    }
     if (validate()) {
       setSubmitError("")
       setStep("review")
@@ -365,6 +410,105 @@ export default function CheckoutPage() {
                 >
                   משמשים ליצירת החשבון ולשליחת הקבלה.
                 </p>
+
+                {/* Verified-User Gate Banner */}
+                {!user ? (
+                  <div
+                    className="p-5 rounded-2xl mb-8 border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                    style={{
+                      background: "rgba(212,160,48,0.06)",
+                      borderColor: "rgba(212,160,48,0.3)",
+                    }}
+                  >
+                    <div className="space-y-1">
+                      <h3
+                        className="font-semibold text-sm"
+                        style={{ color: "var(--color-primary)" }}
+                      >
+                        חשבון משתמש נדרש לרכישה
+                      </h3>
+                      <p
+                        className="text-xs"
+                        style={{ color: "var(--color-muted-foreground)" }}
+                      >
+                        כדי להעניק לך גישה מיידית לספר בספרייה הדיגיטלית, יש להתחבר או להירשם.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => navigate("/login?redirect=/checkout")}
+                        className="px-4 py-2 rounded-lg text-xs font-semibold border transition-all"
+                        style={{
+                          borderColor: "var(--color-primary)",
+                          color: "var(--color-primary)",
+                        }}
+                      >
+                        התחברות
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/register?redirect=/checkout")}
+                        className="btn-gradient px-4 py-2 rounded-lg text-xs font-semibold"
+                      >
+                        יצירת חשבון
+                      </button>
+                    </div>
+                  </div>
+                ) : !user.email_confirmed_at ? (
+                  <div
+                    className="p-5 rounded-2xl mb-8 border space-y-3"
+                    style={{
+                      background: "rgba(239,68,68,0.06)",
+                      borderColor: "rgba(239,68,68,0.3)",
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Icon
+                        name="alertTriangle"
+                        size={18}
+                        className="shrink-0 text-red-500 mt-0.5"
+                      />
+                      <div>
+                        <h3 className="font-semibold text-sm text-red-500">
+                          נדרש אימות כתובת אימייל
+                        </h3>
+                        <p
+                          className="text-xs mt-0.5"
+                          style={{ color: "var(--color-muted-foreground)" }}
+                        >
+                          החשבון שלך ({user.email}) טרם אומת. יש ללחוץ על קישור האימות שנשלח לתיבת המייל שלך לפני שתוכל לבצע רכישה.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={cooldown > 0 || resending}
+                        onClick={() => handleResend(user.email)}
+                        className="px-3.5 py-1.5 rounded-lg border text-xs font-medium transition-all disabled:opacity-50"
+                        style={{
+                          borderColor: "var(--color-border)",
+                          color: "var(--color-foreground)",
+                        }}
+                      >
+                        {resending
+                          ? "שולח..."
+                          : cooldown > 0
+                          ? `שליחה חוזרת בעוד ${cooldown} שניות`
+                          : "שלח שוב אימייל אימות"}
+                      </button>
+                      {resendMessage && (
+                        <span
+                          className="text-xs"
+                          style={{ color: "var(--color-primary)" }}
+                        >
+                          {resendMessage}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
