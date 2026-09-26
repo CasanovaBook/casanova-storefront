@@ -1,16 +1,19 @@
 /* ─────────────────────────────────────────────────────────────
- * One-time password setup.
+ * One-time password setup / Password Reset.
  *
- * Reached from a reset link minted by the CMS (`?token=…&email=…`).
- * The token is validated against its stored hash and burned on use —
- * without a valid, unexpired token this screen offers nothing to set,
- * so it never pretends a password was changed.
+ * Reached either from:
+ *   1. Supabase Auth recovery link:
+ *      The user clicks the reset link in the email, Supabase sets
+ *      an active recovery session (via URL hash fragments or token exchange)
+ *      and triggers PASSWORD_RECOVERY or an active session.
+ *   2. CMS / local link (`?token=…&email=…`):
+ *      The token is validated against its stored hash and burned on use.
  * ───────────────────────────────────────────────────────────── */
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router"
 import { resetPasswordWithToken } from "../lib/api"
-import { isSupabaseConfigured } from "../lib/supabase"
+import { supabase, isSupabaseConfigured } from "../lib/supabase"
 import { updatePassword as updateSupabasePassword } from "../lib/supabase-auth"
 import { passwordProblem } from "../lib/auth"
 import Icon from "../components/icons"
@@ -21,7 +24,21 @@ export default function SetupPasswordPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const token = params.get("token") ?? ""
-  const email = params.get("email") ?? ""
+  const queryEmail = params.get("email") ?? ""
+
+  // When Supabase handles the recovery session
+  const [hasValidSession, setHasValidSession] = useState<boolean>(() => {
+    if (!isSupabaseConfigured) return false
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash
+      if (hash && (hash.includes("access_token=") || hash.includes("type=recovery"))) {
+        return true
+      }
+    }
+    return false
+  })
+  const [checkingSession, setCheckingSession] = useState<boolean>(isSupabaseConfigured && !token)
+  const [userEmail, setUserEmail] = useState<string>(queryEmail)
 
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
@@ -30,6 +47,45 @@ export default function SetupPasswordPage() {
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Listen to Supabase Auth state and check active recovery session
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setCheckingSession(false)
+      return
+    }
+
+    let isMounted = true
+
+    // Check if there is already an active session from token verification
+    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
+      if (!isMounted) return
+      if (session?.user && !sessionError) {
+        setHasValidSession(true)
+        if (session.user.email) {
+          setUserEmail(session.user.email)
+        }
+      }
+      setCheckingSession(false)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return
+      if (event === "PASSWORD_RECOVERY" || (session?.user && event === "SIGNED_IN")) {
+        setHasValidSession(true)
+        if (session?.user?.email) {
+          setUserEmail(session.user.email)
+        }
+      }
+    })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const strength = (): { label: string, color: string, width: string } => {
     const len = password.length
@@ -108,7 +164,7 @@ export default function SetupPasswordPage() {
             <Icon name="checkCircle" size={36} />
           </div>
           <h2 className="font-display text-2xl font-semibold mb-2">
-            הסיסמה הוגדרה!
+            הסיסמה עודכנה בהצלחה!
           </h2>
           <p style={{ color: "var(--color-muted-foreground)" }}>
             מעביר אותך למסך ההתחברות...
@@ -118,8 +174,29 @@ export default function SetupPasswordPage() {
     )
   }
 
-  /* No token in the URL means there is nothing this screen can do. */
-  if (!token) {
+  // Loading indicator while verifying Supabase recovery session
+  if (checkingSession) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-6 gap-3"
+        style={{ background: "var(--color-background)", color: "var(--color-muted-foreground)" }}
+      >
+        <span
+          className="w-8 h-8 rounded-full border-2 animate-spin"
+          style={{
+            borderColor: "var(--color-border)",
+            borderTopColor: "var(--color-primary)",
+          }}
+        />
+        <span className="text-sm">מאמת קישור איפוס...</span>
+      </div>
+    )
+  }
+
+  /* No valid token and no active Supabase recovery session */
+  const isAuthorized = isSupabaseConfigured ? hasValidSession : Boolean(token)
+
+  if (!isAuthorized) {
     return (
       <div
         className="min-h-screen flex items-center justify-center px-6"
@@ -137,14 +214,13 @@ export default function SetupPasswordPage() {
             <Icon name="lock" size={28} />
           </div>
           <h1 className="font-display text-2xl font-semibold mb-2">
-            הקישור אינו תקין
+            הקישור אינו תקין או שפג תוקפו
           </h1>
           <p
             className="text-sm mb-6"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            לפתיחה זו לא צורף טוקן איפוס. בקש קישור חדש — הקישורים תקפים לשעה
-            אחת בלבד ונמחקים לאחר השימוש.
+            קישור איפוס הסיסמה אינו תקף או שכבר נעשה בו שימוש. קישורי איפוס תקפים לזמן מוגבל בלבד.
           </p>
           <div className="flex gap-3 justify-center">
             <Link
@@ -215,14 +291,18 @@ export default function SetupPasswordPage() {
             <Icon name="lock" size={28} />
           </div>
           <h1 className="font-display text-3xl font-semibold mb-2">
-            הגדר סיסמה
+            הגדר סיסמה חדשה
           </h1>
           <p
             className="text-sm"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            {email ? `הקישור נפתח עבור ${email}. ` : ""}בחר סיסמה חזקה כדי להגן
-            על החשבון שלך.
+            {userEmail ? (
+              <>
+                מאפס סיסמה עבור <strong dir="ltr">{userEmail}</strong>.{" "}
+              </>
+            ) : null}
+            בחר סיסמה חדשה וחזקה כדי להגן על החשבון שלך.
           </p>
         </div>
 
@@ -244,6 +324,7 @@ export default function SetupPasswordPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 autoComplete="new-password"
+                required
               />
               <button
                 type="button"
@@ -293,11 +374,13 @@ export default function SetupPasswordPage() {
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 className="w-full px-4 py-3 pl-10 rounded-lg border text-sm outline-none"
+                dir="ltr"
                 style={inputStyle}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 placeholder="••••••••"
                 autoComplete="new-password"
+                required
               />
               <button
                 type="button"
@@ -333,9 +416,9 @@ export default function SetupPasswordPage() {
           <button
             type="submit"
             disabled={busy}
-            className="btn-gradient w-full py-3 rounded-full font-semibold text-sm mt-2 disabled:opacity-40"
+            className="btn-gradient w-full py-3 rounded-full font-semibold text-sm mt-2 disabled:opacity-40 cursor-pointer"
           >
-            {busy ? "שומר…" : "הגדרת סיסמה"}
+            {busy ? "מעדכן סיסמה…" : "עדכון סיסמה"}
           </button>
         </form>
       </div>
