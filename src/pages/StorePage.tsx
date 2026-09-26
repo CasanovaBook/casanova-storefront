@@ -5,6 +5,7 @@ import { useCms } from "../context/CmsContext"
 import type { Product, ProductType } from "../types"
 import { effectivePrice, isOnSale } from "../types"
 import Icon from "../components/icons"
+import CmsHint from "../components/CmsHint"
 
 const TYPE_LABEL: Record<ProductType, string> = {
   EBOOK: "ספר דיגיטלי",
@@ -173,7 +174,8 @@ function BookCard({ product }: { product: Product }) {
 }
 
 export default function StorePage() {
-  const { publishedProducts, categories } = useCms()
+  const { publishedProducts, storefrontCategories, catalogLoading, catalogSource } =
+    useCms()
   const [query, setQuery] = useState("")
   const [categoryId, setCategoryId] = useState("ALL")
   const [typeFilter, setTypeFilter] = useState<ProductType | "ALL">("ALL")
@@ -252,7 +254,7 @@ export default function StorePage() {
           style={controlStyle}
         >
           <option value="ALL">כל הקטגוריות</option>
-          {categories.map((c) => (
+          {storefrontCategories.map((c) => (
             <option key={c.category_id} value={c.category_id}>
               {c.name}
             </option>
@@ -273,7 +275,34 @@ export default function StorePage() {
         </select>
       </div>
 
-      {publishedProducts.length === 0 ? (
+      {/* While the hosted catalogue is in flight, "no products have been
+       * published" is not yet a fact worth stating — the read may be about to
+       * fill the grid. */}
+      {catalogLoading ? (
+        <div
+          className="rounded-2xl border p-12 flex flex-col items-center gap-3"
+          style={{
+            background: "var(--color-card)",
+            borderColor: "var(--color-border)",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            className="w-6 h-6 rounded-full border-2 animate-spin"
+            style={{
+              borderColor: "var(--color-border)",
+              borderTopColor: "var(--color-primary)",
+            }}
+          />
+          <span
+            className="text-xs"
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
+            טוען…
+          </span>
+        </div>
+      ) : publishedProducts.length === 0 ? (
         <div
           className="rounded-2xl border p-12 text-center"
           style={{
@@ -300,6 +329,14 @@ export default function StorePage() {
             אין כרגע מוצרים שפורסמו בחנות. לאחר שיוגדרו מוצרים ב־CMS הם יופיעו
             כאן אוטומטית.
           </p>
+          {/* An empty storefront has two very different causes, and only
+           * an administrator can act on either. Say which one it is
+           * instead of leaving the page to be misread as a bug. */}
+          {catalogSource === "supabase" ? (
+            <div className="mt-4">
+              <CmsHint what="הקטלוג נקרא כעת מ־Supabase ואין בו מוצרים מפורסמים. מוצר שנוצר בממשק הניהול נשמר עדיין במסמך המקומי, ולכן אינו מופיע כאן עד להשלמת מעבר כתיבת הקטלוג." />
+            </div>
+          ) : null}
         </div>
       ) : filtered.length === 0 ? (
         <div

@@ -206,7 +206,7 @@ export default function LandingPage() {
           },
         ]
       : []),
-    { value: String(cms.categories.length), label: "קטגוריות", star: false },
+    { value: String(cms.storefrontCategories.length), label: "קטגוריות", star: false },
   ]
 
   /* Site copy comes from settings and from CMS blocks; nothing below has a
