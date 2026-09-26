@@ -147,6 +147,21 @@ export const router = createBrowserRouter([
   },
 
   {
+    // Alias for the same sales letter. The page's own documentation, the
+    // CMS slot names and the bundled product folder in Storage all refer
+    // to it as /hi-kodem, so the URL an editor writes down has to resolve
+    // to the page rather than to the storefront's not-found screen. `/`
+    // stays the canonical address; this is the same component, not a
+    // second page, which is why it carries the SalesLandingPage chunk.
+
+    path: "/hi-kodem",
+
+    Component: SalesLandingPage,
+
+    errorElement: <RouteError />,
+  },
+
+  {
     path: "/",
 
     Component: PublicRoot,
