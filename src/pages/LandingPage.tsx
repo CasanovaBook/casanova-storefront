@@ -659,9 +659,12 @@ export default function LandingPage() {
             hint="תוכן חסר: כותרת אזור הקטלוג — הוסיפו אותה ב״הגדרות מערכת ← תוכן האתר״."
           />
 
-          <div className="grid md:grid-cols-2 gap-6">
+          {/* Three columns on a display-scale viewport: at `3xl`+ the shell
+              is wide enough that a 2-up grid would stretch each catalogue
+              card past the width it was designed for. */}
+          <div className="grid md:grid-cols-2 3xl:grid-cols-3 gap-6">
             {ebookProducts.length === 0 && (
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 3xl:col-span-3">
                 <CmsHint what="אין מוצרים מסוג ספר דיגיטלי — הוסיפו מוצר בניהול המוצרים ופרסמו אותו, והוא יופיע כאן." />
               </div>
             )}
@@ -797,7 +800,11 @@ export default function LandingPage() {
               hint="תוכן חסר: כותרת בלוק החבילות — הוסיפו אותה ב״הגדרות מערכת ← תוכן האתר״."
             />
 
-            <div className="grid md:grid-cols-2 gap-6">
+            {/* Two pricing cards, so the column count must stay at two —
+                instead the pair is capped at `4xl` on a display-scale
+                viewport so the cards keep the width they were designed
+                for rather than stretching to fill the widened shell. */}
+            <div className="grid md:grid-cols-2 3xl:max-w-4xl 3xl:mx-auto gap-6">
               {/* Bundle */}
               <div
                 className="p-8 rounded-2xl border relative overflow-hidden"

@@ -354,7 +354,9 @@ function HeroSection({ product }: { product: Product }) {
         <div className="hidden md:flex justify-center items-center relative">
           <div className="relative">
             <div className="relative z-10 float-slow">
-              <div className="w-56 h-80 rounded-xl flex-shrink-0 relative overflow-hidden shadow-2xl">
+              {/* The cover is the hero's visual anchor, so it grows with the
+                  display instead of shrinking relative to a widened shell. */}
+              <div className="w-56 h-80 3xl:w-64 3xl:h-[22rem] 4xl:w-72 4xl:h-[26rem] rounded-xl flex-shrink-0 relative overflow-hidden shadow-2xl">
                 {product.image_url ? (
                   <img
                     src={product.image_url}
