@@ -23,22 +23,60 @@
   --font-body:    'Heebo', sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 
-  /* Radii are expressed in `rem` rather than `px` so that the corner
-   * treatment scales with the rest of the design on a large display
-   * (see "Ultra-wide & high-resolution scaling" below). At the browser's
-   * default 16px root these resolve to exactly the same 8/12/16px they
-   * always have, so nothing changes on a normal laptop. */
+  /* In `rem` by convention only — the root font size is never changed,
+   * so these resolve to 8/12/16px exactly as they always have. */
   --radius: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
 
-  /* Ultra-wide breakpoints. Tailwind's own ladder stops at `2xl`
-   * (1536px), which leaves a 4K/5K monitor or a zoomed-out viewport
-   * with no variant left to opt into. Declaring these here makes `3xl:`
-   * and `4xl:` available while leaving every existing breakpoint at the
-   * viewport width it has always had. */
+  /* Tailwind's breakpoint ladder stops at `2xl` (1536px), which left the
+   * display-scale layouts with no variant to opt into. These two add
+   * `3xl:` and `4xl:` without moving any existing breakpoint. */
   --breakpoint-3xl: 1920px;
   --breakpoint-4xl: 2560px;
+
+  /* ── Fluid shell width ────────────────────────────────────────
+   * `max-w-6xl` is the shared shell of the header, hero, catalogue,
+   * testimonial grid and footer, so this one token decides how much of
+   * a large display the layout actually uses.
+   *
+   * `clamp()` keeps the laptop value exact: 75vw only clears 72rem at a
+   * 1536px viewport, so every width up to and including 1536px resolves
+   * to the same 1152px it always has. Above that the shell tracks the
+   * viewport until it hits a 1536px ceiling, reached at a 2048px
+   * viewport.
+   *
+   * The ceiling is the important half. Leaving the shell uncapped would
+   * hand a 5120px monitor 3840px of prose. Capping sends the spare
+   * width where it belongs instead: to the full-bleed bands that carry
+   * the backgrounds, and to the grids, which add columns rather than
+   * stretching their cards.
+   *
+   * The `vw` term is measured against the viewport, not the root font
+   * size, so a reader who raises their browser's default font size
+   * still gets a proportionally wider shell — the lower bound wins.
+   */
+  --container-6xl: clamp(72rem, 75vw, 96rem);
+  --container-7xl: clamp(72rem, 75vw, 96rem);
+
+  /* ── Fluid display type ───────────────────────────────────────
+   * Only the display sizes scale, because they are what reads as "too
+   * small" when a layout is dropped onto a large screen. Each clamp is
+   * a no-op at or below a 1536px viewport — the lower bound and the
+   * `vw` term meet exactly there — and tops out near 1.3x the laptop
+   * size, so a headline never turns into a billboard.
+   *
+   * Body copy is deliberately left alone. Growing body text with the
+   * viewport fights the reader's own zoom level and OS text-size
+   * setting, which is a different problem from a layout that fails to
+   * use the display it is on.
+   *
+   * Every `text-5xl`/`6xl`/`7xl` call site sets its own `leading-*`, so
+   * the paired line-height tokens are not involved.
+   */
+  --text-5xl: clamp(3rem, 3.125vw, 4rem);
+  --text-6xl: clamp(3.75rem, 3.906vw, 5rem);
+  --text-7xl: clamp(4.5rem, 4.6875vw, 6rem);
 }
 
 /* ── Light mode: overrides every theme variable ───────────── */
@@ -91,81 +129,62 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────────
- * Ultra-wide & high-resolution scaling
+ * The layout system, stated once
  *
- * The whole layout — type, spacing, radii and every rem-based
- * container width — is authored in `rem`, so raising the root font
- * size scales the page as a single piece. Without this, a 4K/5K
- * monitor (or a browser zoomed out to 33%) renders the desktop
- * layout at its 1280px appearance: a small, unreadable column
- * marooned in the middle of an enormous empty viewport.
+ * Every page in this product is built from the same three layers.
+ * The ultra-wide / zoomed-out failure this file now guards against
+ * came from collapsing the first two of them into the third:
  *
- * Two things deliberately do NOT participate:
+ *   band      A full-bleed section. Owns the background, gradient,
+ *             border or rule, and spans the viewport. Written as a
+ *             plain `<section>`, which is block level and therefore
+ *             already 100% wide.
  *
- *   • The breakpoints. They are declared in `px` (see `@theme`), so
- *     the layout still switches column counts at exactly the same
- *     viewport widths as before — only the scale changes. If they
- *     were `rem`-based, raising the root would silently move every
- *     breakpoint and a 4K screen would get the mobile layout.
+ *   wrapper   The centred shell. Carries the gutter and the
+ *             `max-w-6xl` ceiling, which is fluid (see `@theme`)
+ *             rather than a fixed pixel value.
  *
- *   • The reading columns (`max-w-3xl` and below: long-form sales
- *     copy, FAQ answers, legal pages). Those are widened only by the
- *     root ladder, because past roughly 90 characters a line text
- *     stops being comfortable to read however large the display is.
+ *   measure   The readable constraint nested inside the wrapper —
+ *             `max-w-3xl` for prose, `max-w-4xl`/`5xl` for video and
+ *             card rows. This is the one place a hard `rem` cap is
+ *             still right, because line length is a property of
+ *             typography, not of the screen.
  *
- * The ladder is stepped rather than a continuous `vw` value: text
- * that grows with every pixel of viewport width reads as unstable,
- * and a smooth formula would render a 1921px monitor differently
- * from a 1920px one. Each step adds about one eighth to the design
- * scale, which keeps the jump imperceptible.
+ * A `max-width` is therefore never itself the defect. What failed was
+ * a section whose *only* container was the measure, so the entire
+ * band — background included — shrank together with the text.
+ *
+ * Section rhythm (`py-20 md:py-28`) is deliberately NOT viewport
+ * scaled: vertical breathing room belongs to the content, and tying
+ * it to `vw` is how a page ends up with 300px gaps on a 4K display.
  * ───────────────────────────────────────────────────────────── */
 
-@media (min-width: 1536px) { :root { font-size: 17px; } }
-@media (min-width: 1920px) { :root { font-size: 18.5px; } }
-@media (min-width: 2560px) { :root { font-size: 20px; } }
-@media (min-width: 3200px) { :root { font-size: 22px; } }
-@media (min-width: 3840px) { :root { font-size: 24px; } }
-
 /*
- * Container widening, for the display-scale layouts only.
+ * Viewport-height heroes, without the void.
  *
- * Scaling the root alone keeps every proportion intact, which is
- * already the difference between "broken" and "correct". These steps
- * go further and let the *shell* columns (header, hero, catalogue,
- * testimonial grid, footer — everything on `max-w-6xl`) actually use
- * a 3XL/5K display, instead of filling it with a correctly-scaled
- * 1152px column.
+ * `min-h-screen` makes a hero exactly as tall as the window. That is
+ * right on a laptop and wrong everywhere else: on a tall display a
+ * short hero is padded out with hundreds of pixels of empty gradient
+ * — the "narrow card floating inside a huge screen" symptom — and on
+ * mobile `100vh` includes the collapsing URL bar, so the hero
+ * overshoots the visible area and pushes its own content below the
+ * fold.
  *
- * Only the `6xl`/`7xl` tokens are touched. That is what keeps this
- * safe: every reading column in the product uses `3xl`/`4xl`/`5xl`,
- * so widening the shell can never stretch a paragraph past a
- * comfortable line length. And because the header, hero and every
- * section read the *same* token, they stay aligned with each other —
- * widening one column on its own would visibly misalign the page.
+ * `100svh` is the small-viewport unit, which excludes the URL bar and
+ * therefore never overshoots. The 50rem ceiling is what removes the
+ * void: a 1440px- or 2160px-tall display now gets an 800px hero and
+ * sees the next band, instead of a mostly empty screen. On a laptop
+ * and on a phone the ceiling is inert — the viewport is already
+ * shorter than 800px — so those layouts are unchanged.
  *
- * Declared outside `@layer`, so it wins against the layered `@theme`
- * block Tailwind emits — the utilities then resolve to these values.
+ * No `100vh` fallback is written, deliberately. `svh` is
+ * baseline-widely-available, this project sets no custom
+ * `build.target`, and adding a fallback only demonstrates the point:
+ * the CSS minifier discards it as unreachable for the declared
+ * targets, so it would be decorative rather than protective.
  */
-
-@media (min-width: 1920px) {
-  :root {
-    --container-6xl: 76rem;
-    --container-7xl: 84rem;
-  }
-}
-
-@media (min-width: 2560px) {
-  :root {
-    --container-6xl: 84rem;
-    --container-7xl: 92rem;
-  }
-}
-
-@media (min-width: 3200px) {
-  :root {
-    --container-6xl: 96rem;
-    --container-7xl: 104rem;
-  }
+.hero-shell {
+  min-height: min(100svh, 50rem);
 }
 
 .font-display { font-family: var(--font-display); }

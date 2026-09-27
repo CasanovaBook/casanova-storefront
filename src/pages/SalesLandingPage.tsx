@@ -252,7 +252,7 @@ function HeroSection({ product }: { product: Product }) {
 
   return (
     <section
-      className="relative min-h-screen flex items-center overflow-hidden"
+      className="hero-shell relative flex items-center overflow-hidden"
       style={{
         background:
           "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(227,174,60,0.14), transparent), linear-gradient(135deg, #0B0D16 0%, #1A0E14 50%, #0B0D16 100%)",

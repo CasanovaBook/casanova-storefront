@@ -435,7 +435,7 @@ export default function LandingPage() {
     <div style={{ color: "var(--color-foreground)" }}>
       {/* ── HERO ───────────────────────────────────────────────── */}
       <section
-        className="relative min-h-screen flex items-center overflow-hidden"
+        className="hero-shell relative flex items-center overflow-hidden"
         style={{
           background:
             "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(227,174,60,0.16), transparent), linear-gradient(135deg, var(--color-background) 0%, var(--color-card) 50%, var(--color-background) 100%)",
