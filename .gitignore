@@ -52,6 +52,12 @@ tmp/
 /docs/*
 !/docs/ARCHITECTURE.md
 !/docs/PRODUCT_BRIEF.md
+# Supabase Auth renders its e-mails from templates stored in the dashboard, not
+# from this repo (see `supabase/config.toml`). These files are the versioned,
+# reviewable copy of those templates plus how to apply them, so they are
+# un-ignored deliberately. The directory itself has to be negated, because git
+# cannot re-include a file whose parent directory is ignored.
+!/docs/email-templates/
 
 # ── Verification screenshots ───────────────────────────────────
 # Browser-automation runs drop these into the repo root while checking a page.
