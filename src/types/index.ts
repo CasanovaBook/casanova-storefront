@@ -497,9 +497,11 @@ export const FREEFORM_SECTION_TYPES: SectionType[] = [
  * Which page a CMS section publishes to.
  *
  * HOME sections render on the storefront landing (`/`). SALES sections
- * render on the dedicated sales landing (`/hi-kodem`). The flag is
- * optional so legacy rows (written before the sales page existed) keep
- * publishing to home without a data migration.
+ * render on the main page, which is also served at `/` — `/` and the
+ * retired `/hi-kodem` alias were the same component, so both values
+ * publish to the same route today. The flag is optional so legacy rows
+ * (written before the sales page existed) keep publishing to home
+ * without a data migration.
  */
 export type CmsSectionPage = "HOME" | "SALES"
 
@@ -651,8 +653,8 @@ export interface PlatformSettings {
   /** Optional closing line in the footer, above the copyright. */
   footer_text?: string
 
-  /* ── Sales landing page (hi-kodem) ────────────────
-   * Conversion copy for the dedicated single-product sales page.
+  /* ── Main page ─────────────────────────────────────────
+   * Conversion copy for the main landing page.
    * Every field is optional and falls back to the bundled launch copy
    * in `src/lib/sales-content.ts`, so the page renders complete copy
    * for any visitor even when no administrator has written anything.

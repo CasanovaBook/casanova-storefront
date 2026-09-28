@@ -162,7 +162,7 @@ export default function LandingPage() {
    * ordered stream, which is how an editor composes the middle of the
    * page — how many blocks, in what order, with what wording — without
    * anybody touching code. SALES sections are excluded — they belong to
-   * the dedicated sales landing at /hi-kodem. */
+   * the main page, which is served at `/`. */
   const homeSections = cms.activeSections.filter((s) => s.page !== "SALES")
   const heroSection = homeSections.find((s) => s.type === "HERO")
   const testimonialsSection = homeSections.find(
