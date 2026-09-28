@@ -158,8 +158,9 @@ export async function fetchProfile(authUserId: string): Promise<User | null> {
  * directly, with no client-side re-sort that could disagree with it.
  *
  * Returns an empty array when Supabase is unconfigured or the read is
- * refused (see `users_read_staff` in migrations/0005_admin_user_list.sql
- * for the RLS policy that gates it). Callers must treat that as "no
+ * refused. The read is gated by the live RLS policies on `public.users`
+ * — "Users can view own profile" / "Admins have full access to users",
+ * both keyed on `is_admin()`. Callers must treat an empty result as "no
  * remote data", never as "there are no users" — an empty table and a
  * denied query look identical, so the caller falls back to the local
  * store rather than blanking the screen.

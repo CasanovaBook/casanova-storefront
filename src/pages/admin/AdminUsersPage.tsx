@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useAdmin } from "../../context/AdminContext"
 import { useCms } from "../../context/CmsContext"
+import { formatIsraelDateTime } from "../../lib/datetime"
 import { can } from "../../lib/permissions"
 import { SECURITY_NOTE } from "../../lib/sensitive"
 import type { ProductSnapshot, User } from "../../types"
@@ -318,9 +319,7 @@ function UserDetailModal({
                 },
                 {
                   label: "התחברות אחרונה",
-                  value: live.last_login_at
-                    ? new Date(live.last_login_at).toLocaleDateString("he-IL")
-                    : "מעולם",
+                  value: formatIsraelDateTime(live.last_login_at) || "מעולם",
                 },
                 {
                   label: "מספר הזמנות",
@@ -842,7 +841,7 @@ function UserDetailModal({
                     className="text-xs flex-shrink-0"
                     style={{ color: "var(--color-muted-foreground)" }}
                   >
-                    {new Date(ev.at).toLocaleDateString("he-IL")}
+                    {formatIsraelDateTime(ev.at)}
                   </span>
                 </div>
               ))
@@ -1109,9 +1108,7 @@ export default function AdminUsersPage() {
                     className="px-5 py-3 text-xs"
                     style={{ color: "var(--color-muted-foreground)" }}
                   >
-                    {user.last_login_at
-                      ? new Date(user.last_login_at).toLocaleDateString("he-IL")
-                      : "מעולם"}
+                    {formatIsraelDateTime(user.last_login_at) || "מעולם"}
                   </td>
                   <td className="px-5 py-3">
                     <button

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router"
 import { useAdmin } from "../../context/AdminContext"
+import { formatIsraelDateTime } from "../../lib/datetime"
 import { can } from "../../lib/permissions"
 import { RANGE_LABEL, type RangePreset } from "../../lib/analytics"
 import type { SystemAlert } from "../../types"
@@ -643,6 +644,13 @@ export default function AdminDashboardPage() {
                         style={{ color: "var(--color-muted-foreground)" }}
                       >
                         {u.email}
+                      </p>
+                      <p
+                        className="text-xs truncate"
+                        style={{ color: "var(--color-muted-foreground)" }}
+                      >
+                        התחברות אחרונה:{" "}
+                        {formatIsraelDateTime(u.last_login_at) || "מעולם"}
                       </p>
                     </div>
                     <span
