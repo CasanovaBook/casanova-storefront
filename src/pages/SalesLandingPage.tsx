@@ -33,9 +33,7 @@ import Icon from "../components/icons"
 
 import ThemeToggle from "../components/ThemeToggle"
 
-import { PreviewBanner } from "../components/PreviewBanner"
-
-import { previewEnabled, loadContent } from "../content/store"
+import { loadContent } from "../content/store"
 
 import logoImg from "../../images/main_photo.jpg"
 
@@ -1150,7 +1148,6 @@ function ExitPopup({ product, c }: { product: Product, c: ReturnType<typeof useC
 export default function SalesLandingPage() {
   const product = useSalesProduct()
   const c = useContent()
-  const inPreview = previewEnabled()
 
   // The sales page is a standalone route (NOT nested under PublicRoot),
   // so it must load content from the database on its own.
@@ -1171,9 +1168,8 @@ export default function SalesLandingPage() {
         color: "var(--color-foreground)",
       }}
     >
-      <PreviewBanner />
       <header
-        className={`fixed left-0 right-0 z-30 glass border-b ${inPreview ? "top-10" : "top-0"}`}
+        className="fixed left-0 right-0 z-30 glass border-b top-0"
         style={{ borderColor: "rgba(30,30,46,0.8)" }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -1209,7 +1205,7 @@ export default function SalesLandingPage() {
         </div>
       </header>
 
-      <main className={`pt-14 ${inPreview ? "mt-10" : ""}`}>
+      <main className="pt-14">
         <HeroSection product={product} c={c} />
         <ProofStrip c={c} />
         <AgitationSection c={c} />

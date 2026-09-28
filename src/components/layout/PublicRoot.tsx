@@ -5,8 +5,7 @@ import { useCms } from "../../context/CmsContext"
 import { useContent } from "../../content/useContent"
 import Icon from "../icons"
 import ThemeToggle from "../ThemeToggle"
-import { PreviewBanner } from "../PreviewBanner"
-import { previewEnabled, loadContent } from "../../content/store"
+import { loadContent } from "../../content/store"
 import useFavicon from "../useFavicon"
 import logoImg from "../../../images/main_photo.jpg"
 
@@ -113,7 +112,6 @@ export default function PublicRoot() {
     </>
   )
 
-  const inPreview = previewEnabled()
 
   // Editable footer text
   const footerTagline = c("global.footerTagline") || "כל הספרים שלכם, במקום אחד."
@@ -124,9 +122,8 @@ export default function PublicRoot() {
       className="min-h-full flex flex-col"
       style={{ background: "var(--color-background)" }}
     >
-      <PreviewBanner />
       <header
-        className={`safe-top fixed left-0 right-0 z-50 glass border-b transition-all ${inPreview ? "top-10" : "top-0"}`}
+        className="safe-top fixed left-0 right-0 z-50 glass border-b transition-all top-0"
         style={{ borderColor: "rgba(30,30,46,0.8)" }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
@@ -239,7 +236,7 @@ export default function PublicRoot() {
         )}
       </header>
 
-      <main className={`flex-1 ${inPreview ? "pt-26" : "pt-16"}`}>
+      <main className="flex-1 pt-16">
         <Outlet />
       </main>
 
