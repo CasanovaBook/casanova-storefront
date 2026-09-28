@@ -1,39 +1,30 @@
 -- ============================================================
--- 0005 — let staff read the user list
+-- 0005 — let staff read the user list   [SUPERSEDED — DO NOT APPLY]
 --
--- WHY THIS IS NEEDED
+-- ⚠ THIS MIGRATION IS NOT NEEDED. The live database already has
+--   policies that do this job, and better. It was written from
+--   migration 0004 alone, which describes only part of the real
+--   schema. Read the live policies before applying anything here:
 --
--- 0004 enabled RLS on public.users with exactly one SELECT policy:
+--   "Admins have full access to users"  ALL     USING (is_admin())
+--   "Users can view own profile"        SELECT  USING (auth.uid() = user_id OR is_admin())
+--   "Users can update own profile"      UPDATE  USING (auth.uid() = user_id)
+--   users_claim_greeting                UPDATE  USING (user_id = auth.uid())
+--   users_read_own                      SELECT  USING (user_id = auth.uid())
 --
---   users_read_own  USING (user_id = auth.uid()::uuid)
+-- `is_admin()` already exists and already grants staff SELECT on the
+-- whole table, which is why the admin list renders every user today.
+-- Applying this file would add a redundant `users_read_staff` policy
+-- and a second `is_staff()` function that does the same job under a
+-- different name. Two functions, two policies, one behaviour — more
+-- surface to keep in sync, for no gain.
 --
--- That is correct for a customer, who may read their own row and
--- nothing else. It is also the reason the admin dashboard could not
--- show registered users: `SELECT * FROM public.users` returned the
--- signed-in admin's own row and silently dropped every customer,
--- because a row that fails the policy is not an error — it is simply
--- absent from the result set. The dashboard then read the browser's
--- local store instead, which only ever contains accounts created by
--- that same browser, so a customer who registered anywhere else was
--- invisible.
+-- It is kept in the repo as a record of the original diagnosis, which
+-- was correct: the admin list really did read localStorage only, and
+-- really did need a Supabase read (see src/context/AdminContext.tsx).
+-- The read was the fix; the RLS half turned out to be unnecessary.
 --
--- This migration opens exactly one door: a signed-in member of staff
--- may read the whole user list. It adds NO write access. A customer
--- still cannot read anybody but themselves, and the narrow
--- `users_claim_greeting` write from 0004 is left exactly as it was.
---
--- WHY A HELPER FUNCTION INSTEAD OF A SUBQUERY
---
--- The obvious policy is
---
---   USING (EXISTS (SELECT 1 FROM public.users u
---                   WHERE u.user_id = auth.uid() AND u.role <> 'CUSTOMER'))
---
--- and it fails: a policy on `users` that reads `users` makes Postgres
--- re-enter the same policies while deciding the inner row, which
--- Postgres detects and rejects as infinite recursion. The predicate
--- is therefore evaluated in a SECURITY DEFINER function, which runs
--- as its owner and so is not itself subject to RLS.
+-- ── Original content follows, for reference only ─────────────
 -- ============================================================
 
 BEGIN;
