@@ -183,6 +183,74 @@ export async function fetchAllProfiles(): Promise<User[]> {
 }
 
 /**
+ * Admin-only: sets `account_status` on a `public.users` row — the write half
+ * of the admin user list.
+ *
+ * `fetchAllProfiles` above was moved onto Supabase because `db.users` only
+ * ever holds records this browser created. The admin *actions* were left
+ * behind on the local store, so suspending a real customer resolved that
+ * customer locally and failed with "המשתמש לא נמצא." for every account that
+ * had actually registered — no matter that the same row was rendering in the
+ * list right behind the dialog.
+ *
+ * This calls the `admin_set_account_status` RPC rather than PATCHing the
+ * table. The `authenticated` role holds UPDATE on `greeted_at` only
+ * (migration 0004), so a direct write of `account_status` is refused with
+ * 42501 before RLS is consulted; and granting the column instead would let a
+ * suspended customer reactivate their own row, because RLS is row-level and
+ * cannot restrict which column is written. See migrations/0011.
+ *
+ * Failure codes are mapped rather than passed through, so a refused write is
+ * never reported as a missing user. Removing exactly that confusion is what
+ * this change is for.
+ */
+export async function updateAccountStatus(
+  userId: string,
+  status: AccountStatus,
+): Promise<AuthResult<User>> {
+  if (!isSupabaseConfigured) return authFail("שרת Supabase אינו מוגדר.")
+
+  const client = requireSupabase()
+
+  const { error } = await client.rpc("admin_set_account_status", {
+    p_user_id: userId,
+    p_status: status,
+  })
+
+  if (error) {
+    if (error.code === "42501") {
+      return authFail(
+        "אין הרשאה לעדכן את המשתמש. נדרשת הרשאת מנהל.",
+        "FORBIDDEN",
+      )
+    }
+
+    if (error.code === "P0002") {
+      return authFail("המשתמש לא נמצא.", "NOT_FOUND")
+    }
+
+    /* Surfaced verbatim on purpose: this is where "function
+     * admin_set_account_status does not exist" appears when migrations/0011
+     * has not been applied yet, and masking that would hide the one clue
+     * that explains why the button still fails. */
+    return authFail(error.message, error.code)
+  }
+
+  /* Read the row back so the caller renders what is actually stored rather
+   * than the status it asked for. `is_admin()` grants this SELECT, same as
+   * the list read. */
+  const { data } = await client
+    .from("users")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  return data
+    ? authOk(toUserRow(data as UserRow))
+    : authFail("המשתמש לא נמצא.", "NOT_FOUND")
+}
+
+/**
  * Merges the local user store with the Supabase-backed list.
  *
  * `public.users` wins for any `user_id` present in both, because it is

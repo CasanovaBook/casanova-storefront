@@ -59,6 +59,7 @@ import {
   deleteTask,
   dismissAlert,
   listAudit,
+  ok,
   reinstateAlert,
   resendEmail,
   saveLead,
@@ -102,7 +103,11 @@ import {
   type CustomerProfile,
 } from "../lib/api-support"
 
+import { isSupabaseConfigured } from "../lib/supabase"
+
 import { fetchAllProfiles, mergeUserSources } from "../lib/supabase-auth"
+
+import { createAdminPasswordResetLink } from "../lib/supabase-admin"
 
 import { useApp } from "./AppContext"
 
@@ -197,15 +202,19 @@ interface AdminContextValue {
   setUserStatus: (
     userId: string,
     status: User["account_status"],
-  ) => Result<User>
+  ) => Promise<Result<User>>
 
   setUserAdminRole: (userId: string, adminRole: AdminRole) => Result<User>
 
   customerProfile: (userId: string) => Result<CustomerProfile>
 
+  /* Yields a ready-to-use URL rather than a raw token, because the two
+   * backends mint links in different shapes: the local driver issues a token
+   * that this app consumes, while Supabase issues a complete action link.
+   * Callers render a single field either way. */
   createPasswordResetLink: (
     userId: string,
-  ) => Promise<Result<{ token: string, expires_at: string }>>
+  ) => Promise<Result<{ link: string, expires_at: string }>>
 
   /* Access management */
 
@@ -460,15 +469,54 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       updateUser: (userId, patch, auditAction, auditCategory) =>
         updateUser(actor, userId, patch, auditAction, auditCategory),
 
-      setUserStatus: (userId, status) => setUserStatus(actor, userId, status),
+      setUserStatus: async (userId, status) => {
+        const result = await setUserStatus(actor, userId, status)
+
+        /* The remote list is a read-through cache, so a write that lands in
+         * Supabase has to be followed by a re-read. Without this the row keeps
+         * rendering its old status until the next focus refetch. */
+        if (result.ok && isSupabaseConfigured) await refreshUsers()
+
+        return result
+      },
 
       setUserAdminRole: (userId, adminRole) =>
         setUserAdminRole(actor, userId, adminRole),
 
       customerProfile: (userId) => getCustomerProfile(actor, userId),
 
-      createPasswordResetLink: (userId) =>
-        createPasswordResetForUser(actor, userId),
+      createPasswordResetLink: async (userId) => {
+        /* Supabase owns the credentials, so a locally-minted reset token is
+         * meaningless there. The reset has to be a real Supabase recovery
+         * link, which only the service_role can produce — hence the Edge
+         * Function, and hence the authoritative permission check living in it
+         * rather than in the service layer's `guard`. */
+        if (isSupabaseConfigured) {
+          const remote = await createAdminPasswordResetLink(userId)
+
+          return remote.ok
+            ? ok({
+                link: remote.data.link,
+                expires_at: remote.data.expires_at,
+              })
+            : remote
+        }
+
+        const local = await createPasswordResetForUser(actor, userId)
+
+        if (!local.ok) return local
+
+        /* The local driver's token is redeemed by this app's own
+         * /setup-password page, so the URL is assembled here. Normalising
+         * both backends to `{ link, expires_at }` spares the dialog from
+         * having to know which one answered. */
+        const email = users.find((u) => u.user_id === userId)?.email ?? ""
+
+        return ok({
+          link: `${window.location.origin}/setup-password?token=${local.data.token}&email=${encodeURIComponent(email)}`,
+          expires_at: local.data.expires_at,
+        })
+      },
 
       grantAccess: (userId, productId, sourceOrderId) =>
         grantAccess(actor, userId, productId, sourceOrderId),

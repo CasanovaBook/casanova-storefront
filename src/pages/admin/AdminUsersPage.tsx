@@ -131,7 +131,7 @@ function UserDetailModal({
   const [grantProductId, setGrantProductId] = useState("")
   const [actionError, setActionError] = useState("")
   const [resetLink, setResetLink] = useState<{
-    token: string
+    link: string
     expires_at: string
   } | null>(null)
 
@@ -889,7 +889,7 @@ function UserDetailModal({
                 })}
               </p>
               <p className="break-all font-mono" dir="ltr">
-                {`${window.location.origin}/setup-password?token=${resetLink.token}&email=${encodeURIComponent(live.email)}`}
+                {resetLink.link}
               </p>
               <p
                 className="mt-1.5"
@@ -913,8 +913,8 @@ function UserDetailModal({
             </button>
             {canBlock && (
               <button
-                onClick={() => {
-                  const result = setUserStatus(
+                onClick={async () => {
+                  const result = await setUserStatus(
                     user.user_id,
                     live.account_status === "ACTIVE" ? "SUSPENDED" : "ACTIVE",
                   )

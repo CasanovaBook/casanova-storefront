@@ -25,6 +25,10 @@ import { toPublicUser, isEmail, normalizeEmail } from "./auth"
 
 import { revokeGrantsForEntitlement } from "./api-security"
 
+import { isSupabaseConfigured } from "./supabase"
+
+import { updateAccountStatus } from "./supabase-auth"
+
 import {
   dispatchEmail,
   fail,
@@ -549,14 +553,58 @@ export function updateUser(
   return ok(toPublicUser(updated))
 }
 
-export function setUserStatus(
+/** Audit wording for a status change, shared by the local and the Supabase
+ * write paths so the log reads identically whichever store served it. */
+function statusActionLabel(status: User["account_status"]): string {
+  if (status === "ACTIVE") return "הפעלת חשבון"
+
+  if (status === "SUSPENDED") return "השעיית חשבון"
+
+  return "סגירת חשבון"
+}
+
+export async function setUserStatus(
   actor: Actor | null,
+
   userId: string,
+
   status: User["account_status"],
-): Result<User> {
+): Promise<Result<User>> {
   const denied = guard(actor, "block_user")
 
   if (denied) return denied
+
+  /* Supabase owns authenticated accounts; `db.users` only ever holds records
+   * this browser created. Resolving the customer locally is what made every
+   * ban report "המשתמש לא נמצא." for an account that had in fact registered —
+   * the same read/write split that once hid those users from the admin list.
+   */
+  if (isSupabaseConfigured) {
+    const remote = await updateAccountStatus(userId, status)
+
+    if (!remote.ok) {
+      return fail(
+        remote.code === "FORBIDDEN" ? "FORBIDDEN" : "NOT_FOUND",
+        remote.error,
+      )
+    }
+
+    writeAudit(actor, {
+      category: "USER_BLOCK",
+
+      action: statusActionLabel(status),
+
+      target_type: "USER",
+
+      target_id: userId,
+
+      target_label: `${remote.data.first_name} ${remote.data.last_name}`,
+
+      details: status,
+    })
+
+    return ok(remote.data)
+  }
 
   const existing = getDb().users.find((u) => u.user_id === userId)
 
@@ -575,12 +623,7 @@ export function setUserStatus(
   writeAudit(actor, {
     category: "USER_BLOCK",
 
-    action:
-      status === "ACTIVE"
-        ? "הפעלת חשבון"
-        : status === "SUSPENDED"
-          ? "השעיית חשבון"
-          : "סגירת חשבון",
+    action: statusActionLabel(status),
 
     target_type: "USER",
 

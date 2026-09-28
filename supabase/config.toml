@@ -12,3 +12,10 @@ verify_jwt = false
 
 [functions.create-upload-url]
 verify_jwt = false
+
+# Same arrangement as the two above: the JWT is verified inside the function
+# so the caller's identity can be checked against public.users.role before
+# anything privileged happens. This one mints a recovery link, so it is the
+# most sensitive of the three — it must never be reachable by a customer.
+[functions.admin-password-reset]
+verify_jwt = false
