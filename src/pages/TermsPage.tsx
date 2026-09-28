@@ -1,26 +1,37 @@
 import { Link } from "react-router"
 import { useCms } from "../context/CmsContext"
+import { useContent } from "../content/useContent"
+import { Md } from "../content/render"
 import Icon from "../components/icons"
 
 /**
  * Terms and Conditions page.
  *
- * Displays the website's terms and conditions content.
- * Accessible via the /terms-and-conditions route.
+ * Content is fully editable through Maestro CMS. The registry defines
+ * terms.eyebrow, terms.title and terms.sections (a list of heading+text).
+ * When no sections have been saved, the registry defaults render.
  */
 export default function TermsPage() {
   const { settings } = useCms()
+  const c = useContent()
+
+  const eyebrow = c("terms.eyebrow") || "TERMS OF USE"
+  const title = c("terms.title") || "תנאי שימוש"
+  const sections = c.list<{ heading: string; text: string }>("terms.sections")
 
   return (
     <div className="min-h-full py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-10">
+          <p className="text-xs font-bold tracking-wide mb-2" style={{ color: "var(--color-primary)" }}>
+            {eyebrow}
+          </p>
           <h1
             className="text-3xl font-bold mb-4"
             style={{ color: "var(--color-foreground)" }}
           >
-            תנאי שימוש
+            {title}
           </h1>
           <div
             className="w-16 h-1 mx-auto rounded-full"
@@ -42,41 +53,32 @@ export default function TermsPage() {
               className="text-lg font-semibold mb-1"
               style={{ color: "var(--color-foreground)" }}
             >
-              © 2026 CASANOVA BOOKS
+              © {new Date().getFullYear()} {settings.brand_name?.toUpperCase() ?? "CASANOVA BOOKS"}
             </p>
             <p
               className="text-sm"
               style={{ color: "var(--color-muted-foreground)" }}
             >
-              מאת קזנובה | מהדורה ראשונה
+              מאת {settings.brand_name ?? "קזנובה"} | מהדורה ראשונה
             </p>
           </div>
 
-          {/* Terms Content */}
+          {/* Terms Content — rendered from the CMS sections list */}
           <div
             className="space-y-6 text-sm leading-relaxed"
             style={{ color: "var(--color-foreground)" }}
             dir="rtl"
           >
-            <p>
-              <strong>כל הזכויות שמורות.</strong> אין להעתיק, לצלם, לשכפל, לתרגם, להפיץ, להעביר או לפרסם חלק מספר זה, בכל אמצעי ובכל פורמט, ללא אישור מראש ובכתב מבעל הזכויות, למעט שימוש המותר על פי דין. רכישת הספר מקנה לרוכש זכות שימוש אישית בלבד ואינה מקנה זכות להעבירו או להפיצו לאחרים.
-            </p>
-
-            <p>
-              הספר מיועד לבגירים ולבגירות מעל גיל 18 בלבד. תוכנו נועד להעניק ידע כללי בתחום המיניות ואינו מהווה תחליף לייעוץ רפואי, טיפולי או מקצועי אישי.
-            </p>
-
-            <p>
-              כל מגע מיני חייב להתקיים מתוך הסכמה חופשית, ברורה ומתמשכת של כל המעורבים. ניתן לשנות דעה או להפסיק בכל שלב. במקרה של כאב, פציעה, דימום, גירוי , חשש לזיהום או אי־נוחות חריגה, יש לעצור ולפנות לאיש מקצוע רפואי מתאים.
-            </p>
-
-            <p>
-              כל גוף מגיב באופן שונה. אין טכניקה שמבטיחה אורגזמה, השפרצה או תגובה מסוימת. מטרת הספר אינה להציב מבחן ביצועים, אלא ללמד הקשבה, תקשורת והתאמה בזמן אמת.
-            </p>
-
-            <p>
-              האחריות לבחירת הפעולות וליישומן באופן בטוח, מכבד ובהסכמה מוטלת על הקוראים בלבד.
-            </p>
+            {sections.length > 0 ? (
+              sections.map((s, i) => (
+                <div key={i}>
+                  <h2 className="text-base font-bold mb-2">{s.heading}</h2>
+                  <Md text={s.text} className="text-sm leading-relaxed" />
+                </div>
+              ))
+            ) : (
+              <p>תוכן התקנון טרם הוגדר.</p>
+            )}
           </div>
         </div>
 
@@ -88,7 +90,7 @@ export default function TermsPage() {
             style={{ color: "var(--color-primary)" }}
           >
             <Icon name="arrowRight" size={16} />
-            חזרה לדף הבית
+            {c("ui.common.back") || "חזרה"}
           </Link>
         </div>
       </div>

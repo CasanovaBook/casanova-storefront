@@ -17,7 +17,9 @@ export type AdminPermission = /* Pages / nav */
 
 "dashboard" | "products" | "cms" | "users" | "access" | "orders" | "finance" | "emails" | "alerts" | "audit" | "crm" | "support" | "settings" | "security" | /* Sensitive actions */
 
-"refund" | "execute_refund" | "mark_paid" | "edit_order" | "grant_access" | "edit_price" | "edit_content" | "delete_product" | "block_user" | "resend_email" | "manage_roles" | "manage_support" | "manage_drm"
+"refund" | "execute_refund" | "mark_paid" | "edit_order" | "grant_access" | "edit_price" | "edit_content" | "delete_product" | "block_user" | "resend_email" | "manage_roles" | "manage_support" | "manage_drm" | /* Maestro CMS */
+
+"cms:edit_live"
 
 export const ADMIN_ROLES: AdminRole[] = [
   "SUPER_ADMIN",
@@ -105,6 +107,8 @@ const SUPER: AdminPermission[] = [
   "manage_support",
 
   "manage_drm",
+
+  "cms:edit_live",
 ]
 
 export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
@@ -134,6 +138,8 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     "block_user",
 
     "resend_email",
+
+    "cms:edit_live",
   ],
 
   FINANCE: [
@@ -156,9 +162,11 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     "edit_order",
 
     "edit_price",
+
+    "cms:edit_live",
   ],
 
-  CONTENT: ["dashboard", "products", "cms", "edit_price", "edit_content"],
+  CONTENT: ["dashboard", "products", "cms", "edit_price", "edit_content", "cms:edit_live"],
 
   MARKETING: [
     "dashboard",
@@ -168,6 +176,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     "emails",
     "resend_email",
     "support",
+    "cms:edit_live",
   ],
 }
 

@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router"
 import Icon, { type IconName } from "../icons"
 
 import logoImg from "../../../images/main_photo.jpg"
+import { useContent } from "../../content/useContent"
 
 /**
  * Shared side navigation for the signed-in shells.
@@ -123,11 +124,15 @@ export default function SideNav({
     )
   }
 
+  const c = useContent()
+  const brandName = c("global.brand") || "Casanova"
+  const logoSrc = c("global.logo") || logoImg
+
   const brand = (
     <Link to="/" className="flex items-center gap-2.5">
       <img
-        src={logoImg}
-        alt="Casanova"
+        src={logoSrc}
+        alt={brandName}
         className="w-8 h-8 rounded-lg object-cover"
       />
       <span
@@ -135,7 +140,7 @@ export default function SideNav({
         className="font-display text-lg font-bold tracking-wide"
         style={{ color: "var(--color-primary)" }}
       >
-        Casanova
+        {brandName}
       </span>
     </Link>
   )

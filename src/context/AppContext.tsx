@@ -55,6 +55,7 @@ import {
   type CheckoutOutcome,
 } from "../lib/api-orders"
 import { supabase, isSupabaseConfigured } from "../lib/supabase"
+import { maestro } from "../maestro"
 import {
   signInWithEmail,
   signUpWithEmail,
@@ -160,8 +161,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     let isMounted = true
 
+    /** Bridge the Casanova Supabase session into Maestro so CMS inherits staff access. */
+    const bridge = (session: { access_token: string; user: { id: string; email?: string } } | null) => {
+      if (session?.access_token) {
+        maestro.bridgeSession({
+          accessToken: session.access_token,
+          userId: session.user.id,
+          email: session.user.email ?? "",
+        })
+      } else {
+        maestro.bridgeSession(null)
+      }
+    }
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!isMounted) return
+      bridge(session)
       if (session?.user) {
         const profile = await fetchProfile(session.user.id)
         if (isMounted) setSupabaseUser(buildAppUser(session.user, profile))
@@ -173,6 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (!isMounted) return
+        bridge(session)
         if (session?.user) {
           const profile = await fetchProfile(session.user.id)
           if (isMounted) setSupabaseUser(buildAppUser(session.user, profile))

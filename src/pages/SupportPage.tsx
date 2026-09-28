@@ -20,6 +20,9 @@ import {
   INQUIRY_TOPIC_LABEL,
 } from "../lib/api-support"
 
+import { useContent } from "../content/useContent"
+import { Rich } from "../content/render"
+
 import type { Inquiry, InquiryTopic } from "../types"
 
 import Icon from "../components/icons"
@@ -53,6 +56,7 @@ function StatusPill({ inquiry }: { inquiry: Inquiry }) {
 
 export default function SupportPage() {
   const { user, actor, orders } = useApp()
+  const c = useContent()
 
   const [form, setForm] = useState({
     customer_name: user ? `${user.first_name} ${user.last_name}` : "",
@@ -120,14 +124,13 @@ export default function SupportPage() {
     <div className="max-w-5xl mx-auto px-6 py-16 page-enter">
       <div className="text-center mb-10">
         <h1 className="font-display text-4xl font-semibold mb-3">
-          פנייה לשירות הלקוחות
+          <Rich text={c("support.hero.title") || "פנייה לשירות הלקוחות"} />
         </h1>
         <p
           className="max-w-xl mx-auto"
           style={{ color: "var(--color-muted-foreground)" }}
         >
-          כל פנייה מקבלת מספר מעקב ונשמרת במערכת, כך שצוות התמיכה יכול לטפל בה
-          ולשייך אותה להזמנה הרלוונטית.
+          {c("support.hero.lede") || "כל פנייה מקבלת מספר מעקב ונשמרת במערכת, כך שצוות התמיכה יכול לטפל בה ולשייך אותה להזמנה הרלוונטית."}
         </p>
       </div>
 

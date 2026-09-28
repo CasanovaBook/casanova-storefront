@@ -110,6 +110,21 @@ export default function AdminLayout() {
             : undefined,
     }))
 
+  /* Add Maestro CMS link prominently for users with cms:edit_live permission. */
+  if (can(adminRole, "cms:edit_live")) {
+    const cmsIndex = visibleNav.findIndex((item) => item.path === "/admin/cms");
+    const maestroItem: SideNavItem = { path: "/HOWAMANTREATSYOU", label: "Maestro CMS", icon: "sparkles" };
+    if (cmsIndex >= 0) {
+      visibleNav.splice(cmsIndex + 1, 0, maestroItem);
+    } else {
+      visibleNav.push(maestroItem);
+    }
+  }
+
+  const secondaryItems: SideNavItem[] = [
+    { path: "/dashboard", label: "לתצוגת לקוח", icon: "arrowRight" },
+  ]
+
   const handleLogout = () => {
     logout()
     navigate("/")
@@ -122,9 +137,7 @@ export default function AdminLayout() {
     >
       <SideNav
         items={visibleNav}
-        secondaryItems={[
-          { path: "/dashboard", label: "לתצוגת לקוח", icon: "arrowRight" },
-        ]}
+        secondaryItems={secondaryItems}
         chip={
           <span
             className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full"
