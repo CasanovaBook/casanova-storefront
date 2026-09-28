@@ -65,6 +65,34 @@ import {
   buildAppUser,
 } from "../lib/supabase-auth"
 
+/**
+ * Resolves a stored session to an app user, refusing a blocked account.
+ *
+ * The suspension status lives in public.users and is not part of the JWT, so
+ * it is re-read on every restore — otherwise suspending a customer would
+ * leave them working until their token happened to expire. The session is
+ * torn down rather than merely hidden, so they do not keep a valid token for
+ * a blocked account.
+ */
+type RestoredAuthUser = Parameters<typeof buildAppUser>[0]
+
+async function resolveRestoredUser(
+  session: { user: RestoredAuthUser } | null,
+): Promise<User | null> {
+  if (!session?.user) return null
+
+  const profile = await fetchProfile(session.user.id)
+
+  if (profile && profile.account_status !== "ACTIVE") {
+    await signOutUser()
+
+    return null
+  }
+
+  return buildAppUser(session.user, profile)
+}
+
+
 const THEME_KEY = "casanova_theme"
 
 export interface AuthOutcome {
@@ -193,8 +221,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!isMounted) return
       bridge(session)
       if (session?.user) {
-        const profile = await fetchProfile(session.user.id)
-        if (isMounted) setSupabaseUser(buildAppUser(session.user, profile))
+        const restored = await resolveRestoredUser(session)
+
+        if (isMounted) setSupabaseUser(restored)
       } else {
         if (isMounted) setSupabaseUser(null)
       }
@@ -208,8 +237,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return
         bridge(session)
         if (session?.user) {
-          const profile = await fetchProfile(session.user.id)
-          if (isMounted) setSupabaseUser(buildAppUser(session.user, profile))
+          const restored = await resolveRestoredUser(session)
+
+          if (isMounted) setSupabaseUser(restored)
         } else {
           if (isMounted) setSupabaseUser(null)
         }

@@ -38,6 +38,22 @@ export function authFail(error: string, code?: string, isUnconfirmed = false): A
   return { ok: false, error, code, isUnconfirmed }
 }
 
+/**
+ * What a customer is told when their account is not ACTIVE.
+ *
+ * Shared deliberately: a blocked account can be met on the way in (a fresh
+ * sign-in) and on the way back (an existing session being restored), and both
+ * paths must say the same thing. The wording invites the customer to contact
+ * support, because a suspension may well be a mistake.
+ */
+export function accountBlockedMessage(status: AccountStatus): string {
+  if (status === "DEACTIVATED") {
+    return "החשבון שלך סגור. אם לדעתך נפלה טעות, אנא צור קשר עם התמיכה."
+  }
+
+  return "החשבון שלך מושהה ואינו יכול להתחבר. אם לדעתך נפלה טעות, אנא צור קשר עם התמיכה."
+}
+
 /** Translates Supabase error messages into friendly Hebrew messages. */
 export function translateAuthError(err: { message?: string; status?: number; code?: string }): {
   message: string
@@ -65,6 +81,13 @@ export function translateAuthError(err: { message?: string; status?: number; cod
       message: "כבר קיים חשבון עם כתובת אימייל זו.",
       isUnconfirmed: false,
     }
+  }
+
+  /* GoTrue's own ban refusal, raised when `auth.users.banned_until` is in the
+   * future. It answers with a bare English "User is banned", which would
+   * otherwise reach the customer verbatim. */
+  if (lower.includes("banned")) {
+    return { message: accountBlockedMessage("SUSPENDED"), isUnconfirmed: false }
   }
 
   if (lower.includes("rate limit") || lower.includes("too many requests") || err.status === 429) {
@@ -319,6 +342,26 @@ export async function signInWithEmail(
   }
 
   const profile = await fetchProfile(data.user.id)
+
+  /* A suspended account must not get in.
+   *
+   * `account_status` is this app's own record and GoTrue knows nothing about
+   * it, so nothing upstream refuses the password. Without this check the
+   * admin's status change was decoration: the customer signed in exactly as
+   * before. The session is torn down rather than merely ignored, so they do
+   * not walk away holding a valid token for a blocked account.
+   *
+   * A missing profile row is allowed through — an account can exist without
+   * one, and only an explicit status should ever bar the door. */
+  if (profile && profile.account_status !== "ACTIVE") {
+    await client.auth.signOut()
+
+    return authFail(
+      accountBlockedMessage(profile.account_status),
+      "ACCOUNT_BLOCKED",
+    )
+  }
+
   return authOk(buildAppUser(data.user, profile))
 }
 
