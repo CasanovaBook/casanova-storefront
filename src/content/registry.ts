@@ -43,11 +43,14 @@ export interface GroupDef {
 }
 
 export const GROUPS: GroupDef[] = [
-  { id: "home", label: "עמוד הבית", path: "/", section: "pages" },
+  // `/` is served by SalesLandingPage, so the "sales" group IS the main
+  // page. The id is load-bearing: SalesLandingPage reads its copy through
+  // `c("sales.hero.title")` and 49 fields are saved under that prefix in
+  // site_content. Renaming the id to "home" would orphan every one of
+  // them, so only the label and the path change here.
+  { id: "sales", label: "עמוד הבית", path: "/", section: "pages" },
   { id: "store", label: "חנות הספרים", path: "/store", section: "pages" },
-  { id: "sales", label: "עמוד נחיתה (Hi-Kodem)", path: "/hi-kodem", section: "pages" },
   { id: "library", label: "הספרייה שלי", path: "/library", section: "pages" },
-  { id: "reader", label: "קורא", path: "/reader", section: "pages" },
   { id: "support", label: "תמיכה", path: "/support", section: "pages" },
   { id: "terms", label: "תנאי שימוש", path: "/terms", section: "legal" },
   { id: "privacy", label: "מדיניות פרטיות", path: "/privacy", section: "legal" },
@@ -56,6 +59,13 @@ export const GROUPS: GroupDef[] = [
   { id: "system", label: "הודעות מערכת", section: "global" },
   { id: "lists", label: "רשימות בחירה", section: "lists" },
 ];
+
+/**
+ * The group a super administrator lands on when opening the content
+ * editor. Everything else stays reachable in the sidebar, but the
+ * landing page is what a storefront owner actually comes here to change.
+ */
+export const DEFAULT_CONTENT_GROUP = "sales";
 
 export const FIELDS: FieldDef[] = [];
 

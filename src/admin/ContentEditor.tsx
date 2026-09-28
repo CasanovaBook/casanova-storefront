@@ -20,7 +20,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GROUPS, FIELDS, FIELD_MAP, fieldsOfGroup, type FieldDef } from "@/content/registry";
+import { GROUPS, FIELDS, FIELD_MAP, fieldsOfGroup, DEFAULT_CONTENT_GROUP, type FieldDef } from "@/content/registry";
 import { getDraft, setDraft, getSaved, getRaw, applySaved, loadContent, hasDraft, previewEnabled } from "@/content/store";
 import { maestro } from "@/maestro";
 import { useApp } from "@/context/AppContext";
@@ -243,7 +243,7 @@ function SeoPreview({ groupId }: { groupId: string }) {
 export function ContentEditor() {
   const { adminRole } = useApp();
   const canPublish = can(adminRole, "cms:edit_live");
-  const [activeGroup, setActiveGroup] = useState(GROUPS[0]?.id ?? "");
+  const [activeGroup, setActiveGroup] = useState(DEFAULT_CONTENT_GROUP);
   const [draft, setDraftState] = useState<Record<string, unknown>>(() => getDraft());
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
