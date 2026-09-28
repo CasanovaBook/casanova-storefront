@@ -21,7 +21,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GROUPS, FIELDS, FIELD_MAP, fieldsOfGroup, DEFAULT_CONTENT_GROUP, type FieldDef } from "@/content/registry";
-import { getDraft, setDraft, getSaved, getRaw, applySaved, loadContent, hasDraft, previewEnabled } from "@/content/store";
+import { getDraft, setDraft, getSaved, getRaw, applySaved, loadContent, hasDraft, previewEnabled, PREVIEW_KEY } from "@/content/store";
 import { maestro } from "@/maestro";
 import { useApp } from "@/context/AppContext";
 import { can } from "@/lib/permissions";
@@ -339,6 +339,16 @@ export function ContentEditor() {
   const handlePreview = useCallback(() => {
     const url = new URL(previewPath, window.location.origin);
     url.searchParams.set("maestro-preview", "1");
+    /* A tab opened with window.open inherits a copy of the opener's
+     * sessionStorage, so the preview flag follows the new tab everywhere
+     * the admin goes and the banner turns up on the storefront itself.
+     * Clearing it here, before the tab is created, keeps the preview
+     * scoped to the preview URL that sets it deliberately. */
+    try {
+      window.sessionStorage.removeItem(PREVIEW_KEY);
+    } catch {
+      /* storage blocked: the query flag still drives the preview itself */
+    }
     window.open(url.toString(), "_blank");
   }, [previewPath]);
 

@@ -7,12 +7,18 @@
  */
 
 import { useState } from "react";
-import { previewEnabled } from "@/content/store";
+import { previewEnabled, hasDraft } from "@/content/store";
 
 export function PreviewBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   if (!previewEnabled() || dismissed) return null;
+
+  /* Saying "unpublished changes" while the draft is empty is a false
+     claim — after a publish the tab is still in preview mode but there is
+     nothing left to preview, and the banner would keep asserting
+     otherwise. */
+  const pending = hasDraft();
 
   return (
     <div
@@ -25,8 +31,12 @@ export function PreviewBanner() {
     >
       <div className="flex items-center gap-3">
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-          תצוגה מקדימה — שינויים טרם פורסמו
+          <span
+            className={`w-2 h-2 rounded-full bg-white ${pending ? "animate-pulse" : ""}`}
+          />
+          {pending
+            ? "תצוגה מקדימה — שינויים טרם פורסמו"
+            : "תצוגה מקדימה — אין שינויים שלא פורסמו"}
         </span>
         <a
           href="/HOWAMANTREATSYOU/content"
@@ -36,8 +46,12 @@ export function PreviewBanner() {
         </a>
       </div>
       <div className="flex items-center gap-2">
+        {/* Must carry maestro-preview=0. The flag lives in sessionStorage,
+            not in the URL, so linking to the bare pathname reloads the page
+            with the flag still set and the banner comes straight back —
+            this button used to do nothing at all. */}
         <a
-          href={window.location.pathname}
+          href={`${window.location.pathname}?maestro-preview=0`}
           className="text-xs px-2.5 py-1 rounded-full border border-white/30 hover:bg-white/10 transition-colors"
         >
           מצב רגיל
