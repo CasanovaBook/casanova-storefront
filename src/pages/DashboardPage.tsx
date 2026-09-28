@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useStore } from "../lib/store"
+import { claimFirstLogin } from "../lib/first-login"
 import {
   deviceFingerprint,
   endDeviceSession,
@@ -305,6 +306,34 @@ export default function DashboardPage() {
   const { user, userProducts, readingProgress } = useApp()
   const navigate = useNavigate()
 
+  /* The claim is a network round-trip, so it cannot be read during
+   * render. Start at the value the profile already carries — a profile
+   * with greeted_at set can only be a returning customer, and showing
+   * "ברוך הבא" to them for the duration of the request would be a
+   * visible flicker of the wrong wording. `null` means "not yet
+   * resolved", not "first login". */
+  const [isFirstLogin, setIsFirstLogin] = useState<boolean | null>(
+    user?.greeted_at == null ? null : false,
+  )
+
+  useEffect(() => {
+    if (!user?.user_id) return
+    /* Already known from the profile — no claim needed, and claiming
+     * would be wrong: it would consume the greeting for an account
+     * that has already had it. */
+    if (user.greeted_at) {
+      setIsFirstLogin(false)
+      return
+    }
+    let cancelled = false
+    claimFirstLogin(user.user_id).then((first) => {
+      if (!cancelled) setIsFirstLogin(first)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user?.user_id, user?.greeted_at])
+
   const currentlyReading = userProducts
     .filter((up) => up.access_status === "ACTIVE")
     .map((up) => ({
@@ -342,7 +371,10 @@ export default function DashboardPage() {
           className="text-sm mb-1"
           style={{ color: "var(--color-muted-foreground)" }}
         >
-          ברוך שובך,
+          {/* `null` = the claim is still in flight. Show the returning
+              greeting rather than flashing "ברוך הבא" and correcting it
+              a moment later. */}
+          {isFirstLogin ? "ברוך הבא," : "ברוך שובך,"}
         </p>
         <h1 className="font-display text-4xl font-semibold">
           {user?.first_name} {user?.last_name}

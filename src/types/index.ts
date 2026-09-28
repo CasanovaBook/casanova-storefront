@@ -41,6 +41,14 @@ export interface User {
   updated_at: string
   last_login_at?: string
   last_activity_at?: string
+  /**
+   * Set once, on the first dashboard view after sign-in, and never
+   * cleared. NULL means the account has not been greeted yet, which
+   * is the only state in which the dashboard says "ברוך הבא".
+   * Per-account, so a second device never re-greets a returning
+   * customer. See migrations/0004_first_login_greeting.sql.
+   */
+  greeted_at?: string | null
 }
 
 /**

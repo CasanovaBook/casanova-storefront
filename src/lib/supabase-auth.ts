@@ -112,6 +112,7 @@ export async function fetchProfile(authUserId: string): Promise<User | null> {
     updated_at: data.updated_at,
     last_login_at: data.last_login_at || undefined,
     last_activity_at: data.last_activity_at || undefined,
+    greeted_at: data.greeted_at ?? null,
   }
 }
 
@@ -132,6 +133,7 @@ export function buildAppUser(authUser: SupabaseAuthUser, profile: User | null): 
     created_at: profile?.created_at || authUser.created_at,
     updated_at: profile?.updated_at || authUser.updated_at || authUser.created_at,
     last_login_at: authUser.last_sign_in_at || profile?.last_login_at,
+    greeted_at: profile?.greeted_at ?? null,
   }
 }
 
