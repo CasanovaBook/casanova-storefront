@@ -1,6 +1,6 @@
 import { Suspense, lazy, type ComponentType } from "react"
 
-import { createBrowserRouter, redirect } from "react-router"
+import { createBrowserRouter } from "react-router"
 
 import PublicRoot from "./components/layout/PublicRoot"
 
@@ -155,22 +155,6 @@ export const router = createBrowserRouter([
     errorElement: <RouteError />,
   },
 
-  {
-    // Previously aliased the main page as /hi-kodem, which the CMS listed as
-    // a separate "עמוד נחיתה" group. It was never a second page: `/` and
-    // `/hi-kodem` both rendered this exact component, so the CMS showed a
-    // group that looked like its own landing page alongside a "main page"
-    // that was not mounted anywhere. There is one main page, it is `/`, and
-    // the CMS group that edits it is now labelled "עמוד הבית".
-    //
-    // Kept as a permanent redirect rather than deleted: the URL appears in
-    // product copy and saved bookmarks, and a 404 on a published link is
-    // worse than a redirect. Nothing generates new links to it - the CMS
-    // preview and "open page" both use "/".
-    path: "/hi-kodem",
-    loader: () => redirect("/"),
-    errorElement: <RouteError />,
-  },
 
   {
 

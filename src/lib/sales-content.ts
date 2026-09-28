@@ -2,8 +2,8 @@
  * Bundled launch copy for the "היא קודם" sales landing page.
  *
  * This module is the single source of truth for every word a visitor
- * reads on `/hi-kodem` when no administrator has written anything in
- * the CMS. It exists because the platform's persistence layer is
+ * reads on the main page (`/`) when no administrator has written anything
+ * in the CMS. It exists because the platform's persistence layer is
  * localStorage — every visitor arrives with an empty database, and a
  * CMS-only page would therefore render blank for them.
  *
