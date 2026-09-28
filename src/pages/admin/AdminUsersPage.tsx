@@ -51,6 +51,25 @@ const INQUIRY_STATUS_LABEL: Record<string, string> = {
   CLOSED: "סגורה",
 }
 
+/**
+ * Avatar initial for a user row.
+ *
+ * A Supabase-backed account can legitimately have no first name — an
+ * OAuth signup carries none, and a row written by an older app version
+ * may have an empty one. Falling back to the email keeps the avatar
+ * legible instead of rendering an empty circle, and the name line below
+ * it collapses to the email rather than showing a stray space.
+ */
+function initialOf(u: { first_name: string, email: string }): string {
+  return u.first_name.charAt(0) || u.email.charAt(0) || "?"
+}
+
+/** Display name, never blank: a nameless account falls back to its email. */
+function nameOf(u: { first_name: string, last_name: string, email: string }): string {
+  const full = `${u.first_name} ${u.last_name}`.trim()
+  return full || u.email
+}
+
 const FALLBACK_COVER: [string, string] = ["#1A1A2E", "#2A2A3E"]
 
 /** Cover from the entitlement snapshot — survives product edits or removal. */
@@ -219,12 +238,10 @@ function UserDetailModal({
               border: "1px solid rgba(212,160,48,0.3)",
             }}
           >
-            {live.first_name.charAt(0)}
+            {initialOf(live)}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold">
-              {live.first_name} {live.last_name}
-            </h3>
+            <h3 className="font-semibold">{nameOf(live)}</h3>
             <p
               className="text-sm"
               dir="ltr"
@@ -1040,12 +1057,10 @@ export default function AdminUsersPage() {
                           color: "var(--color-primary)",
                         }}
                       >
-                        {user.first_name.charAt(0)}
+                        {initialOf(user)}
                       </div>
                       <div>
-                        <p className="font-medium">
-                          {user.first_name} {user.last_name}
-                        </p>
+                        <p className="font-medium">{nameOf(user)}</p>
                         <p
                           className="text-xs"
                           dir="ltr"

@@ -12,7 +12,7 @@
  * to render, never what is allowed.
  * ───────────────────────────────────────────────────────────── */
 
-import { createContext, useContext, useMemo, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 
 import type {
   AdminRole,
@@ -102,7 +102,7 @@ import {
   type CustomerProfile,
 } from "../lib/api-support"
 
-import { toPublicUser } from "../lib/auth"
+import { fetchAllProfiles, mergeUserSources } from "../lib/supabase-auth"
 
 import { useApp } from "./AppContext"
 
@@ -113,7 +113,18 @@ interface AdminContextValue {
 
   /* Collections, live from the store */
 
+  /**
+   * Every known account: the local store merged with `public.users`,
+   * which wins on any `user_id` present in both. Shared by the dashboard
+   * and /admin/users so the two can never disagree.
+   */
   users: User[]
+
+  /** True while the Supabase user list is being (re)read. */
+  usersLoading: boolean
+
+  /** Re-reads `public.users` now. Safe to call repeatedly. */
+  refreshUsers: () => Promise<void>
 
   orders: Order[]
 
@@ -316,6 +327,68 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const { actor, user } = useApp()
 
+  /* ── Users ────────────────────────────────────────────────
+   *
+   * The admin user list is the one collection that cannot be served from
+   * the local store alone. `db.users` only ever holds records this browser
+   * created, so an account registered through Supabase Auth — by any other
+   * visitor, on any other device — was invisible in the admin dashboard
+   * until it was rebuilt by hand.
+   *
+   * `public.users` is the source of truth for authenticated accounts, so it
+   * is read here and merged over the local rows by `user_id`. Both the
+   * dashboard's "משתמשים אחרונים" panel and /admin/users read the single
+   * `users` array produced below, which is what keeps the two screens
+   * consistent by construction rather than by convention.
+   *
+   * Nothing is written back: this is a read-through cache, so the browser
+   * never becomes a second source of truth and no user is ever duplicated.
+   */
+  const [remoteUsers, setRemoteUsers] = useState<User[]>([])
+
+  const [usersLoading, setUsersLoading] = useState(false)
+
+  const refreshUsers = useMemo(
+    () => async () => {
+      setUsersLoading(true)
+      try {
+        setRemoteUsers(await fetchAllProfiles())
+      } finally {
+        setUsersLoading(false)
+      }
+    },
+    [],
+  )
+
+  /* Fetch once an admin session exists, and again whenever the signed-in
+   * user changes — the read is RLS-gated on that identity, so running it
+   * while signed out would only ever return an empty list. */
+  useEffect(() => {
+    if (!user) return
+    void refreshUsers()
+  }, [user?.user_id, refreshUsers])
+
+  /* Re-read when the admin returns to the tab. This is what makes a user
+   * who registered while the dashboard sat open in another window appear
+   * without a manual reload. */
+  useEffect(() => {
+    if (!user) return
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void refreshUsers()
+    }
+    document.addEventListener("visibilitychange", onFocus)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      document.removeEventListener("visibilitychange", onFocus)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [user?.user_id, refreshUsers])
+
+  const users = useMemo(
+    () => mergeUserSources(db.users, remoteUsers),
+    [db.users, remoteUsers],
+  )
+
   const value = useMemo<AdminContextValue>(() => {
     const alerts = computeAlerts(db)
 
@@ -326,7 +399,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       adminRole: user?.admin_role,
 
-      users: db.users.map(toPublicUser),
+      users,
+
+      usersLoading,
+
+      refreshUsers,
 
       orders: db.orders,
 
@@ -459,7 +536,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       updateSettings: (patch) => updateSettings(actor, patch),
     }
-  }, [db, actor, user])
+  }, [db, actor, user, users, usersLoading, refreshUsers])
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>
 }

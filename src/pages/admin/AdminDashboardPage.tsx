@@ -150,6 +150,23 @@ const ORDER_STATUS_LABEL: Record<string, string> = {
   CANCELLED: "בוטל",
 }
 
+/**
+ * Avatar initial / display name for a user row.
+ *
+ * Mirrors the helpers in AdminUsersPage, and for the same reason: a
+ * Supabase-backed account may carry no first name, and `charAt` on an
+ * empty string would leave the avatar blank. Both pages must render a
+ * user identically, so the fallback is not cosmetic.
+ */
+function initialOf(u: { first_name: string, email: string }): string {
+  return u.first_name.charAt(0) || u.email.charAt(0) || "?"
+}
+
+function nameOf(u: { first_name: string, last_name: string, email: string }): string {
+  const full = `${u.first_name} ${u.last_name}`.trim()
+  return full || u.email
+}
+
 const RANGE_OPTIONS: RangePreset[] = [
   "TODAY",
   "WEEK",
@@ -614,11 +631,11 @@ export default function AdminDashboardPage() {
                         color: "var(--color-primary)",
                       }}
                     >
-                      {u.first_name.charAt(0)}
+                      {initialOf(u)}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">
-                        {u.first_name} {u.last_name}
+                        {nameOf(u)}
                       </p>
                       <p
                         className="text-xs truncate"

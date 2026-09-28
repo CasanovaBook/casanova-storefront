@@ -13,7 +13,8 @@
 
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js"
 import { requireSupabase, isSupabaseConfigured } from "./supabase"
-import type { User, Role, AdminRole, AccountStatus } from "../types"
+import { toPublicUser } from "./auth"
+import type { StoredUser, User, Role, AdminRole, AccountStatus } from "../types"
 
 export interface AuthSuccess<T = undefined> {
   ok: true
@@ -86,6 +87,52 @@ export function translateAuthError(err: { message?: string; status?: number; cod
   }
 }
 
+/** The `public.users` columns this app reads, as they arrive over the wire. */
+interface UserRow {
+  user_id: string
+  first_name?: string | null
+  last_name?: string | null
+  email: string
+  phone?: string | null
+  role?: string | null
+  admin_role?: string | null
+  account_status?: string | null
+  must_change_password?: boolean | null
+  created_at: string
+  updated_at: string
+  last_login_at?: string | null
+  last_activity_at?: string | null
+  greeted_at?: string | null
+}
+
+/**
+ * Maps a `public.users` row onto the app's `User` shape.
+ *
+ * The dashboard and the users page need exactly the same projection, so
+ * it lives here rather than being re-written at each call site. Empty
+ * names are tolerated: a row created by a purchase, or by an older app
+ * version, may carry none, and the UI falls back to the email for the
+ * avatar initial.
+ */
+function toUserRow(row: UserRow): User {
+  return {
+    user_id: row.user_id,
+    first_name: row.first_name || "",
+    last_name: row.last_name || "",
+    email: row.email,
+    phone: row.phone || undefined,
+    role: (row.role || "CUSTOMER") as Role,
+    admin_role: (row.admin_role || undefined) as AdminRole | undefined,
+    account_status: (row.account_status || "ACTIVE") as AccountStatus,
+    must_change_password: Boolean(row.must_change_password),
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    last_login_at: row.last_login_at || undefined,
+    last_activity_at: row.last_activity_at || undefined,
+    greeted_at: row.greeted_at ?? null,
+  }
+}
+
 /** Fetches the public.users profile row for an authenticated user. */
 export async function fetchProfile(authUserId: string): Promise<User | null> {
   if (!isSupabaseConfigured) return null
@@ -99,21 +146,62 @@ export async function fetchProfile(authUserId: string): Promise<User | null> {
 
   if (error || !data) return null
 
-  return {
-    user_id: data.user_id,
-    first_name: data.first_name || "",
-    last_name: data.last_name || "",
-    email: data.email,
-    phone: data.phone || undefined,
-    role: (data.role || "CUSTOMER") as Role,
-    admin_role: (data.admin_role || undefined) as AdminRole | undefined,
-    account_status: (data.account_status || "ACTIVE") as AccountStatus,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
-    last_login_at: data.last_login_at || undefined,
-    last_activity_at: data.last_activity_at || undefined,
-    greeted_at: data.greeted_at ?? null,
+  return toUserRow(data as UserRow)
+}
+
+/**
+ * Fetches every row in `public.users` — the source of truth for
+ * authenticated accounts.
+ *
+ * Ordered newest-first by `created_at` so both the dashboard's
+ * "משתמשים אחרונים" panel and the users table can render this list
+ * directly, with no client-side re-sort that could disagree with it.
+ *
+ * Returns an empty array when Supabase is unconfigured or the read is
+ * refused (see `users_read_staff` in migrations/0005_admin_user_list.sql
+ * for the RLS policy that gates it). Callers must treat that as "no
+ * remote data", never as "there are no users" — an empty table and a
+ * denied query look identical, so the caller falls back to the local
+ * store rather than blanking the screen.
+ */
+export async function fetchAllProfiles(): Promise<User[]> {
+  if (!isSupabaseConfigured) return []
+  const client = requireSupabase()
+
+  const { data, error } = await client
+    .from("users")
+    .select("*")
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.warn("[supabase-auth] users list refused:", error.message)
+    return []
   }
+
+  return ((data ?? []) as UserRow[]).map(toUserRow)
+}
+
+/**
+ * Merges the local user store with the Supabase-backed list.
+ *
+ * `public.users` wins for any `user_id` present in both, because it is
+ * the source of truth for authenticated accounts. Local-only rows are
+ * kept so an install that predates Supabase — or a browser holding
+ * records the remote table does not have — does not suddenly lose data.
+ * Deduplication is by `user_id`, so no user can appear twice.
+ */
+export function mergeUserSources(local: StoredUser[], remote: User[]): User[] {
+  const localUsers = local.map(toPublicUser)
+  if (remote.length === 0) return localUsers
+
+  const byId = new Map<string, User>()
+  for (const u of localUsers) byId.set(u.user_id, u)
+  for (const u of remote) byId.set(u.user_id, u)
+
+  return [...byId.values()].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  )
 }
 
 /** Combines auth.users metadata and public.users row into a unified User. */
