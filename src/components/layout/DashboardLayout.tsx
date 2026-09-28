@@ -17,19 +17,21 @@ const navItems = [
 ]
 
 export default function DashboardLayout() {
-  const { isAuthenticated, user, logout } = useApp()
+  const { isAuthenticated, authReady, user, logout } = useApp()
   const navigate = useNavigate()
 
+  /* `authReady` gates the check. Redirecting while the first session lookup
+   * is still in flight bounced a just-verified user straight to /login. */
   useEffect(() => {
-    if (!isAuthenticated) navigate("/login", { replace: true })
-  }, [isAuthenticated, navigate])
+    if (authReady && !isAuthenticated) navigate("/login", { replace: true })
+  }, [authReady, isAuthenticated, navigate])
 
   // Load fresh content from the database for logged-in users.
   useEffect(() => {
     loadContent().catch(() => {})
   }, [])
 
-  if (!isAuthenticated) return null
+  if (!authReady || !isAuthenticated) return null
 
   const handleLogout = () => {
     logout()

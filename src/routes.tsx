@@ -71,6 +71,11 @@ const SetupPasswordPage = lazyPage(() => import("./pages/SetupPasswordPage"))
 
 const ForgotPasswordPage = lazyPage(() => import("./pages/ForgotPasswordPage"))
 
+/* Where a signup verification link lands. It renders its own states
+ * (checking / confirmed / expired / no-session) and only then hands
+ * over to the dashboard, so the confirmation is never skipped. */
+const VerifyEmailPage = lazyPage(() => import("./pages/VerifyEmailPage"))
+
 const SupportPage = lazyPage(() => import("./pages/SupportPage"))
 
 const CheckoutPage = lazyPage(() => import("./pages/CheckoutPage"))
@@ -161,6 +166,38 @@ export const router = createBrowserRouter([
     path: "/hi-kodem",
 
     Component: SalesLandingPage,
+
+    errorElement: <RouteError />,
+  },
+
+  {
+
+    // Standalone, like the landing page above: a verification link must
+
+    // never render inside the storefront chrome, and it must not sit under
+
+    // a layout whose guard could redirect it before the session has been
+
+    // restored. The page resolves its own state and picks its own next step.
+
+    path: "/verify-email",
+
+    Component: VerifyEmailPage,
+
+    errorElement: <RouteError />,
+  },
+
+  {
+
+    // Previous redirect target, kept resolving so verification links that
+
+    // are already sitting in real inboxes still land on the confirmation
+
+    // screen rather than the not-found page.
+
+    path: "/email-confirmed",
+
+    Component: VerifyEmailPage,
 
     errorElement: <RouteError />,
   },

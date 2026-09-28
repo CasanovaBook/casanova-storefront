@@ -60,16 +60,17 @@ function AccessDenied() {
 }
 
 export function AdminAuthGate({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, adminRole, logout } = useApp();
+  const { user, isAuthenticated, authReady, adminRole, logout } = useApp();
   const navigate = useNavigate();
 
+  /* Wait for the first session lookup; see the note on `authReady`. */
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (authReady && !isAuthenticated) {
       navigate("/login", { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [authReady, isAuthenticated, navigate]);
 
-  if (!isAuthenticated) {
+  if (!authReady || !isAuthenticated) {
     return null;
   }
 

@@ -68,7 +68,7 @@ const OPEN_INQUIRY_STATUSES = [
 ] as const
 
 export default function AdminLayout() {
-  const { isAuthenticated, isAdmin, user, logout, bootstrapRequired } = useApp()
+  const { isAuthenticated, isAdmin, user, logout, bootstrapRequired, authReady } = useApp()
   const { adminRole, openAlerts, inquiries } = useAdmin()
   const navigate = useNavigate()
 
@@ -77,6 +77,8 @@ export default function AdminLayout() {
       navigate("/setup", { replace: true })
       return
     }
+    /* Wait for the first session lookup; see the note on `authReady`. */
+    if (!authReady) return
     if (!isAuthenticated) {
       navigate("/login", { replace: true })
       return
@@ -84,9 +86,9 @@ export default function AdminLayout() {
     if (!isAdmin) {
       navigate("/dashboard", { replace: true })
     }
-  }, [bootstrapRequired, isAuthenticated, isAdmin, navigate])
+  }, [bootstrapRequired, authReady, isAuthenticated, isAdmin, navigate])
 
-  if (bootstrapRequired || !isAuthenticated || !isAdmin) return null
+  if (bootstrapRequired || !authReady || !isAuthenticated || !isAdmin) return null
 
   const openInquiries = inquiries.filter((i) =>
     (OPEN_INQUIRY_STATUSES as readonly string[]).includes(i.status),

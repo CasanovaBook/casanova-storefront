@@ -183,7 +183,10 @@ export async function signUpWithEmail(input: SignUpData): Promise<AuthResult<Sig
   }
 
   const client = requireSupabase()
-  const redirectUrl = `${window.location.origin}/dashboard/library`
+  /* The confirmation screen, not the library: the user must be told the
+   * address is verified before being moved on, and the library's own
+   * guard would otherwise redirect a still-restoring session to /login. */
+  const redirectUrl = `${window.location.origin}/verify-email`
 
   const { data, error } = await client.auth.signUp({
     email: input.email.trim().toLowerCase(),
@@ -225,7 +228,9 @@ export async function resendVerification(email: string): Promise<AuthResult<void
   }
 
   const client = requireSupabase()
-  const redirectUrl = `${window.location.origin}/dashboard/library`
+  /* Must match the signup redirect exactly, or the resend lands the user
+   * somewhere other than the confirmation screen. */
+  const redirectUrl = `${window.location.origin}/verify-email`
 
   const { error } = await client.auth.resend({
     type: "signup",

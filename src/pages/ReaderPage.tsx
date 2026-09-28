@@ -72,6 +72,7 @@ export default function ReaderPage() {
   const navigate = useNavigate()
   const {
     isAuthenticated,
+    authReady,
     hasAccess,
     getProgress,
     updateProgress,
@@ -282,7 +283,11 @@ export default function ReaderPage() {
   const [zoom, setZoom] = useState<number>(ZOOM_FIT)
 
   // Access guard — entitlements, not the catalogue, decide who may read.
+  /* `authReady` must gate this: arriving from a verification link, the
+   * session is still being restored, and without the gate the reader was
+   * redirected to /login before the entitlement lookup had a chance. */
   useEffect(() => {
+    if (!authReady) return
     if (!isAuthenticated) {
       navigate("/login", { replace: true })
       return
@@ -290,7 +295,7 @@ export default function ReaderPage() {
     if (!productId || !hasAccess(productId)) {
       navigate("/dashboard/library", { replace: true })
     }
-  }, [isAuthenticated, productId, hasAccess, navigate])
+  }, [authReady, isAuthenticated, productId, hasAccess, navigate])
 
   /* Saves when the reader actually turns a page. The guard is a ref holding
    * what was last written rather than the effect's own dependency list:
@@ -398,7 +403,7 @@ export default function ReaderPage() {
     [currentPage, goTo],
   )
 
-  if (!isAuthenticated || !productId || !hasAccess(productId)) return null
+  if (!authReady || !isAuthenticated || !productId || !hasAccess(productId)) return null
 
   const progressPercent = totalPages > 0 ? (currentPage / totalPages) * 100 : 0
 

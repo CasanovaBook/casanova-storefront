@@ -82,6 +82,18 @@ interface AppContextValue {
   isAuthenticated: boolean
   isAdmin: boolean
   adminRole: AdminRole | undefined
+  /**
+   * False until the very first Supabase session lookup has finished.
+   *
+   * Every route guard MUST wait for this. The Supabase client restores a
+   * session asynchronously, so on a cold load `isAuthenticated` is `false`
+   * for a moment even when a valid session exists. A guard that reads
+   * `isAuthenticated` without also reading `authReady` therefore sees
+   * "logged out" during that window and redirects away — which is exactly
+   * what happened to the user who followed a verification link: Supabase
+   * had signed them in, but the dashboard guard had not yet heard about it.
+   */
+  authReady: boolean
   /** True while no administrator exists yet; gates the first-run setup screen. */
   bootstrapRequired: boolean
 
@@ -154,6 +166,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sessionId, setSessionId] = useState<string | null>(() =>
     readSessionUserId(),
   )
+  /* Latches true once the first session lookup settles. Without it every
+   * guard below treats the loading window as "signed out". */
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured)
 
   // Listen to Supabase Auth state changes and initial session
   useEffect(() => {
@@ -183,6 +198,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else {
         if (isMounted) setSupabaseUser(null)
       }
+      /* Latched last, so any guard that starts waiting is released only
+       * after the user is already in state. */
+      if (isMounted) setAuthReady(true)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -195,6 +213,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } else {
           if (isMounted) setSupabaseUser(null)
         }
+        if (isMounted) setAuthReady(true)
       },
     )
 
@@ -445,6 +464,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isAuthenticated: Boolean(user),
         isAdmin: user?.role === "ADMIN",
         adminRole: user?.admin_role,
+        authReady,
         bootstrapRequired: isSupabaseConfigured ? false : isBootstrapRequired(),
         theme,
         toggleTheme,
