@@ -2,6 +2,8 @@ import { useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
+import { useContent } from "../content/useContent"
+import { Rich, SmartLink } from "../content/render"
 import type { CmsSection, Product } from "../types"
 import { effectivePrice, FREEFORM_SECTION_TYPES, isOnSale } from "../types"
 import { toEmbedUrl } from "../lib/media"
@@ -145,6 +147,7 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const { setSelectedProduct, hasAccess, isAuthenticated, isAdmin } = useApp()
   const cms = useCms()
+  const c = useContent()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   const products = cms.publishedProducts
@@ -223,10 +226,22 @@ export default function LandingPage() {
     .map((b) => b.trim())
     .filter(Boolean)
 
+  /* Maestro content store values: when set they override the CMS section
+   * values, giving the admin a second editing surface that supports live
+   * preview (?maestro-preview=1). */
+  const contentEyebrow = c("home.hero.eyebrow")
+  const contentTitle = c("home.hero.title")
+  const contentLede = c("home.hero.lede")
+  const contentCta1 = c("home.hero.cta1")
+  const contentCta1Link = c("home.hero.cta1Link")
+  const contentCta2 = c("home.hero.cta2")
+  const contentCta2Link = c("home.hero.cta2Link")
+  const contentTrust = c.strings("home.trust")
+
   /* The editor owns the whole headline. Line one is set plain and any further
    * lines pick up the gold gradient, so a two-line title reads the way the old
    * hardcoded one did — without half of it being written in code. */
-  const heroLines = (heroSection?.title ?? "")
+  const heroLines = (contentTitle || heroSection?.title || "")
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean)
@@ -463,7 +478,7 @@ export default function LandingPage() {
 
         <div className="relative max-w-6xl mx-auto px-6 py-32 grid md:grid-cols-2 gap-16 items-center">
           <div className="page-enter">
-            {settings.tagline?.trim() ? (
+            {settings.tagline?.trim() || contentEyebrow ? (
               <div
                 className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full border text-xs font-bold"
                 style={{
@@ -473,7 +488,7 @@ export default function LandingPage() {
                 }}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                {settings.tagline.trim()}
+                {contentEyebrow || settings.tagline?.trim()}
               </div>
             ) : (
               <CmsHint what="תוכן חסר: סיסמת המותג — הוסיפו אותה ב״הגדרות מערכת ← תוכן האתר״." />
@@ -502,12 +517,12 @@ export default function LandingPage() {
               <CmsHint what="תוכן חסר: כותרת ראשית — הפעילו בלוק HERO ב־CMS וכתבו אותה שם, שורה לכל שורה." />
             )}
 
-            {heroSection?.content && (
+            {(contentLede || heroSection?.content) && (
               <p
                 className="text-lg leading-relaxed mb-8 max-w-md whitespace-pre-line"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
-                {heroSection.content}
+                {contentLede || heroSection?.content}
               </p>
             )}
 
@@ -517,34 +532,34 @@ export default function LandingPage() {
             {(featuredBook || ebookProducts.length > 0) && (
               <div className="flex flex-wrap items-center gap-4 mb-10">
                 {featuredBook && (
-                  <button
-                    onClick={() => handleBuy(featuredBook)}
+                  <SmartLink
+                    to={contentCta1Link || "/checkout"}
                     className="btn-gradient px-8 py-3.5 rounded-full font-bold text-sm"
                   >
-                    התחילו לקרוא — {formatPrice(effectivePrice(featuredBook))}
-                  </button>
+                    {contentCta1 || `התחילו לקרוא — ${formatPrice(effectivePrice(featuredBook))}`}
+                  </SmartLink>
                 )}
                 {ebookProducts.length > 0 && (
-                  <a
-                    href="#catalog"
+                  <SmartLink
+                    to={contentCta2Link || "#catalog"}
                     className="px-8 py-3.5 rounded-full font-bold text-sm border transition-all hover:bg-white/5 hover:border-white/30"
                     style={{
                       borderColor: "var(--color-border)",
                       color: "var(--color-foreground)",
                     }}
                   >
-                    עיינו בקטלוג
-                  </a>
+                    {contentCta2 || "עיינו בקטלוג"}
+                  </SmartLink>
                 )}
               </div>
             )}
 
-            {trustBadges.length > 0 && (
+            {(contentTrust.length > 0 || trustBadges.length > 0) && (
               <div
                 className="flex flex-wrap items-center gap-6 text-sm"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
-                {trustBadges.map((item) => (
+                {(contentTrust.length > 0 ? contentTrust : trustBadges).map((item) => (
                   <div key={item} className="flex items-center gap-2">
                     <Icon
                       name="checkCircle"

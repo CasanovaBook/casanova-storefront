@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
+import { useContent } from "../content/useContent"
 import type { ProductSnapshot } from "../types"
 import Icon from "../components/icons"
 
@@ -73,6 +74,7 @@ function AccessBadge({ status }: { status: string }) {
 export default function LibraryPage() {
   const { userProducts, readingProgress } = useApp()
   const cms = useCms()
+  const c = useContent()
   const navigate = useNavigate()
 
   const getProgress = (productId: string) =>
@@ -82,7 +84,7 @@ export default function LibraryPage() {
     <div className="max-w-3xl mx-auto page-enter">
       <div className="mb-8">
         <h1 className="font-display text-4xl font-semibold mb-2">
-          הספרייה שלי
+          {c("library.title") || "הספרייה שלי"}
         </h1>
         <p style={{ color: "var(--color-muted-foreground)" }}>
           {userProducts.length} ספרים באוסף שלך.
@@ -98,19 +100,19 @@ export default function LibraryPage() {
             <Icon name="library" size={40} />
           </div>
           <h2 className="font-display text-xl font-semibold mb-2">
-            הספרייה שלך ריקה
+            {c("library.empty.title") || "הספרייה שלך ריקה"}
           </h2>
           <p
             className="text-sm mb-6"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            רכוש ספר כדי להוסיף אותו לספרייה שלך.
+            {c("library.empty.text") || "רכוש ספר כדי להוסיף אותו לספרייה שלך."}
           </p>
           <button
             onClick={() => navigate("/dashboard/store")}
             className="btn-gradient px-6 py-2.5 rounded-full font-semibold text-sm"
           >
-            לחנות הספרים
+            {c("library.empty.cta") || "לחנות הספרים"}
           </button>
         </div>
       ) : (

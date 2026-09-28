@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import Icon from "../icons"
 import ThemeToggle from "../ThemeToggle"
 import SideNav from "./SideNav"
+import { loadContent } from "../../content/store"
 
 const navItems = [
   { path: "/dashboard", label: "סקירה כללית", icon: "home" as const },
@@ -22,6 +23,11 @@ export default function DashboardLayout() {
   useEffect(() => {
     if (!isAuthenticated) navigate("/login", { replace: true })
   }, [isAuthenticated, navigate])
+
+  // Load fresh content from the database for logged-in users.
+  useEffect(() => {
+    loadContent().catch(() => {})
+  }, [])
 
   if (!isAuthenticated) return null
 

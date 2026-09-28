@@ -2,6 +2,8 @@ import { useMemo, useState } from "react"
 import { useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
+import { useContent } from "../content/useContent"
+import { Rich } from "../content/render"
 import type { Product, ProductType } from "../types"
 import { effectivePrice, isOnSale } from "../types"
 import Icon from "../components/icons"
@@ -176,6 +178,7 @@ function BookCard({ product }: { product: Product }) {
 export default function StorePage() {
   const { publishedProducts, storefrontCategories, catalogLoading, catalogSource } =
     useCms()
+  const c = useContent()
   const [query, setQuery] = useState("")
   const [categoryId, setCategoryId] = useState("ALL")
   const [typeFilter, setTypeFilter] = useState<ProductType | "ALL">("ALL")
@@ -223,9 +226,11 @@ export default function StorePage() {
      * public layout gives it none, the dashboard layout already does. */
     <div className="max-w-4xl mx-auto px-6 py-10 md:py-12 page-enter">
       <div className="mb-8">
-        <h1 className="font-display text-4xl font-semibold mb-2">החנות</h1>
+        <h1 className="font-display text-4xl font-semibold mb-2">
+          <Rich text={c("store.hero.title") || "חנות הספרים"} />
+        </h1>
         <p style={{ color: "var(--color-muted-foreground)" }}>
-          כל הכותרים שפורסמו ב־CMS מוצגים כאן אוטומטית.
+          {c("store.hero.lede") || "כל הכותרים שפורסמו ב־CMS מוצגים כאן אוטומטית."}
         </p>
       </div>
 
@@ -320,14 +325,13 @@ export default function StorePage() {
             <Icon name="box" size={24} />
           </span>
           <h2 className="font-display text-xl font-bold mb-2">
-            טרם נוצרו מוצרים
+            {c("store.empty.title") || "טרם נוצרו מוצרים"}
           </h2>
           <p
             className="text-sm"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            אין כרגע מוצרים שפורסמו בחנות. לאחר שיוגדרו מוצרים ב־CMS הם יופיעו
-            כאן אוטומטית.
+            {c("store.empty.text") || "אין כרגע מוצרים שפורסמו בחנות. לאחר שיוגדרו מוצרים ב־CMS הם יופיעו כאן אוטומטית."}
           </p>
           {/* An empty storefront has two very different causes, and only
            * an administrator can act on either. Say which one it is

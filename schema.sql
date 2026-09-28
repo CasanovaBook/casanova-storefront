@@ -1938,3 +1938,114 @@ INSERT INTO drm_policies (
   3, 120, TRUE
 )
 ON CONFLICT (policy_name) DO NOTHING;
+
+-- ============================================================
+-- MAESTRO CMS — content management tables
+-- ============================================================
+-- These three tables power the Maestro CMS editor. They live alongside
+-- the Casanova CRM tables and are accessed through the Supabase
+-- connector when VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY are set.
+-- See migrations/0002_maestro_cms.sql for the standalone migration.
+-- ============================================================
+
+-- SITE_CONTENT — key/value store for all editable site text.
+-- Each row is one content field. The `id` is the stable key from the
+-- registry (e.g. "global.brand", "ui.auth.loginTitle"). The `value`
+-- is JSONB so it holds strings, arrays, or any shape the registry defines.
+-- When no row exists for a key, the site falls back to the registry default.
+CREATE TABLE IF NOT EXISTS site_content (
+  id          VARCHAR(255) PRIMARY KEY,
+  value       JSONB        NOT NULL DEFAULT '{}'::JSONB,
+  updated_by  VARCHAR(255),
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_site_content_updated
+  ON site_content (updated_at DESC);
+
+-- MAESTRO_AUDIT_LOG — change trail for CMS operations.
+-- Separate from the Casanova audit_logs (which tracks CRM admin operations).
+-- Records every content save, reset, media upload and settings change
+-- made through the Maestro CMS editor.
+CREATE TABLE IF NOT EXISTS maestro_audit_log (
+  id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id    VARCHAR(255) NOT NULL DEFAULT '',
+  actor_email VARCHAR(255) NOT NULL DEFAULT '',
+  action      VARCHAR(50)  NOT NULL DEFAULT '',
+  entity      VARCHAR(100) NOT NULL DEFAULT '',
+  entity_id   VARCHAR(255) NOT NULL DEFAULT '',
+  detail      TEXT,
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_maestro_audit_entity
+  ON maestro_audit_log (entity, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_maestro_audit_created
+  ON maestro_audit_log (created_at DESC);
+
+-- MEDIA — uploaded images and files managed through the Maestro CMS.
+-- Separate from content_assets (which holds DRM-protected book files).
+-- This holds editorial media: hero images, blog photos, etc.
+CREATE TABLE IF NOT EXISTS media (
+  id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        VARCHAR(255) NOT NULL DEFAULT '',
+  url         TEXT         NOT NULL DEFAULT '',
+  size        INTEGER      NOT NULL DEFAULT 0,
+  width       INTEGER,
+  height      INTEGER,
+  alt         TEXT         NOT NULL DEFAULT '',
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_created
+  ON media (created_at DESC);
+
+-- ============================================================
+-- CMS_CATEGORIES — grouping for custom pages (Maestro CMS)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS cms_categories (
+  id            VARCHAR(255) PRIMARY KEY,
+  name          VARCHAR(255) NOT NULL,
+  slug          VARCHAR(255) UNIQUE NOT NULL,
+  description   TEXT         NOT NULL DEFAULT '',
+  display_order INTEGER      NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cms_categories_order
+  ON cms_categories (display_order, name);
+
+-- ============================================================
+-- CMS_PAGES — custom content pages created from Maestro CMS
+-- ============================================================
+-- Each page has a slug that becomes its public URL (/pages/<slug>).
+-- Content is stored as Markdown. Staff can create, edit and categorise
+-- pages from the Maestro admin panel at /HOWAMANTREATSYOU/pages.
+CREATE TABLE IF NOT EXISTS cms_pages (
+  id              VARCHAR(255) PRIMARY KEY,
+  title           VARCHAR(255) NOT NULL,
+  slug            VARCHAR(255) UNIQUE NOT NULL,
+  content         TEXT         NOT NULL DEFAULT '',
+  excerpt         TEXT         NOT NULL DEFAULT '',
+  category_id     VARCHAR(255) REFERENCES cms_categories (id) ON DELETE SET NULL,
+  cover_image     TEXT         NOT NULL DEFAULT '',
+  seo_title       VARCHAR(180),
+  seo_description VARCHAR(320),
+  status          VARCHAR(50)  NOT NULL DEFAULT 'DRAFT'
+                    CHECK (status IN ('ACTIVE', 'INACTIVE', 'DRAFT', 'ARCHIVED')),
+  visibility      VARCHAR(20)  NOT NULL DEFAULT 'PUBLIC'
+                    CHECK (visibility IN ('PUBLIC', 'UNLISTED', 'HIDDEN')),
+  display_order   INTEGER      NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cms_pages_status   ON cms_pages (status);
+CREATE INDEX IF NOT EXISTS idx_cms_pages_category ON cms_pages (category_id);
+CREATE INDEX IF NOT EXISTS idx_cms_pages_order    ON cms_pages (display_order, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cms_pages_storefront ON cms_pages (status, visibility)
+  WHERE status = 'ACTIVE' AND visibility = 'PUBLIC';

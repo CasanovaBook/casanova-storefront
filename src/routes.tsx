@@ -129,9 +129,13 @@ const AdminSettingsPage = lazyPage(
   () => import("./pages/admin/AdminSettingsPage"),
 )
 
+const DynamicCmsPage = lazyPage(() => import("./pages/DynamicCmsPage"))
+
 const AdminSecurityPage = lazyPage(
   () => import("./pages/admin/AdminSecurityPage"),
 )
+
+const MaestroAdminApp = lazyPage(() => import("./admin/AdminApp").then(m => ({ default: m.AdminApp })))
 
 export const router = createBrowserRouter([
   {
@@ -194,6 +198,14 @@ export const router = createBrowserRouter([
       { path: "setup-password", Component: SetupPasswordPage },
 
       { path: "forgot-password", Component: ForgotPasswordPage },
+
+      {
+        // Dynamic CMS pages created from Maestro. Fetches from cms_pages
+        // by slug and renders Markdown content. Must be before the
+        // catch-all so it matches /pages/<slug> first.
+        path: "pages/:slug",
+        Component: DynamicCmsPage,
+      },
 
       /* Anything the table does not define, rendered inside the storefront
        * shell: a visitor who follows a stale link still gets the header, the
@@ -296,5 +308,14 @@ export const router = createBrowserRouter([
 
       { path: "settings", Component: AdminSettingsPage },
     ],
+  },
+
+  {
+    // Maestro CMS admin — accessible at /HOWAMANTREATSYOU
+    // Uses Casanova admin session (SSO). No separate login required.
+    // Any admin with cms:edit_live permission can access.
+    path: "/HOWAMANTREATSYOU/*",
+    Component: MaestroAdminApp,
+    errorElement: <RouteError />,
   },
 ])

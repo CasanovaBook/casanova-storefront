@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
+import { useContent } from "../content/useContent"
 import { passwordProblem } from "../lib/auth"
 import Icon from "../components/icons"
 import logoImg from "../../images/main_photo.jpg"
@@ -12,6 +13,7 @@ function hasHebrewChars(text: string): boolean {
 
 export default function LoginPage() {
   const { login, register, resendConfirmation, bootstrapRequired } = useApp()
+  const c = useContent()
   const navigate = useNavigate()
   const location = useLocation()
   const mode = location.pathname === "/register" ? "register" : "login"
@@ -279,15 +281,15 @@ export default function LoginPage() {
             </span>
           </Link>
           <h1 className="font-display text-3xl font-semibold mb-2">
-            {mode === "login" ? "התחברות" : "יצירת חשבון"}
+            {mode === "login" ? (c("ui.auth.loginTitle") || "התחברות") : (c("ui.auth.registerTitle") || "יצירת חשבון")}
           </h1>
           <p
             className="text-sm"
             style={{ color: "var(--color-muted-foreground)" }}
           >
             {mode === "login"
-              ? "גש לספרייה ולהתקדמות הקריאה שלך."
-              : "החשבון ישמש אותך לרכישה, לספרייה ולמעקב אחרי ההזמנות."}
+              ? (c("ui.auth.loginSubtitle") || "גש לספרייה ולהתקדמות הקריאה שלך.")
+              : (c("ui.auth.registerSubtitle") || "החשבון ישמש אותך לרכישה, לספרייה ולמעקב אחרי ההזמנות.")}
           </p>
         </div>
 
@@ -299,7 +301,7 @@ export default function LoginPage() {
                   className="block text-xs font-medium mb-1.5"
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
-                  שם פרטי
+                  {c("ui.auth.firstName") || "שם פרטי"}
                 </label>
                 <input
                   type="text"
@@ -316,7 +318,7 @@ export default function LoginPage() {
                   className="block text-xs font-medium mb-1.5"
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
-                  שם משפחה
+                  {c("ui.auth.lastName") || "שם משפחה"}
                 </label>
                 <input
                   type="text"
@@ -336,7 +338,7 @@ export default function LoginPage() {
               className="block text-xs font-medium mb-1.5"
               style={{ color: "var(--color-muted-foreground)" }}
             >
-              אימייל
+              {c("ui.auth.emailLabel") || "אימייל"}
             </label>
             <input
               type="email"
@@ -381,7 +383,7 @@ export default function LoginPage() {
                 className="text-xs font-medium"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
-                סיסמה
+                {c("ui.auth.passwordLabel") || "סיסמה"}
               </label>
               {mode === "login" && (
                 <Link
@@ -389,7 +391,7 @@ export default function LoginPage() {
                   className="text-xs transition-opacity hover:opacity-70"
                   style={{ color: "var(--color-primary)" }}
                 >
-                  שכחת סיסמה?
+                  {c("ui.auth.forgotPassword") || "שכחת סיסמה?"}
                 </Link>
               )}
             </div>
@@ -446,7 +448,7 @@ export default function LoginPage() {
                 className="text-[11px] mt-1.5"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
-                8 תווים לפחות, כולל אותיות וספרה אחת.
+                {c("ui.auth.passwordHint") || "8 תווים לפחות, כולל אותיות וספרה אחת."}
               </p>
             )}
           </div>
@@ -503,15 +505,15 @@ export default function LoginPage() {
               className="text-xs text-center mt-4"
               style={{ color: "var(--color-muted-foreground)" }}
             >
-              על ידי יצירת חשבון, אתה מסכים ל{" "}
+              {c("ui.auth.termsAgree") || "על ידי יצירת חשבון, אתה מסכים ל"}{" "}
               <Link
                 to="/terms-and-conditions"
                 className="underline transition-opacity hover:opacity-70"
                 style={{ color: "var(--color-primary)" }}
               >
-                תנאי השימוש
+                {c("ui.auth.termsLink") || "תנאי השימוש"}
               </Link>{" "}
-              שלנו.
+              {c("ui.auth.termsSuffix") || "שלנו."}
             </p>
           )}
 
@@ -523,12 +525,12 @@ export default function LoginPage() {
             {isLoading ? (
               <>
                 <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                {mode === "login" ? "מתחבר..." : "יוצר חשבון..."}
+                {mode === "login" ? (c("ui.auth.loggingIn") || "מתחבר...") : (c("ui.auth.creatingAccount") || "יוצר חשבון...")}
               </>
             ) : mode === "login" ? (
-              "התחברות"
+              (c("ui.auth.login") || "התחברות")
             ) : (
-              "יצירת חשבון"
+              (c("ui.auth.register") || "יצירת חשבון")
             )}
           </button>
         </form>
@@ -539,24 +541,24 @@ export default function LoginPage() {
         >
           {mode === "login" ? (
             <>
-              אין לכם חשבון?{" "}
+              {c("ui.auth.noAccount") || "אין לכם חשבון?"}{" "}
               <Link
                 to="/register"
                 className="font-medium transition-opacity hover:opacity-70"
                 style={{ color: "var(--color-primary)" }}
               >
-                צרו חשבון חדש
+                {c("ui.auth.noAccountLink") || "צרו חשבון חדש"}
               </Link>
             </>
           ) : (
             <>
-              כבר יש לכם חשבון?{" "}
+              {c("ui.auth.hasAccount") || "כבר יש לכם חשבון?"}{" "}
               <Link
                 to="/login"
                 className="font-medium transition-opacity hover:opacity-70"
                 style={{ color: "var(--color-primary)" }}
               >
-                התחברות
+                {c("ui.auth.haveAccountLink") || "התחברות"}
               </Link>
             </>
           )}
@@ -567,15 +569,15 @@ export default function LoginPage() {
           style={{ color: "var(--color-muted-foreground)" }}
         >
           <Icon name="bag" size={13} />
-          ניתן גם לרכוש ישירות מ־
+          {c("ui.auth.guestCheckout") || "ניתן גם לרכוש ישירות מ־"}
           <Link
             to="/store"
             className="transition-opacity hover:opacity-70"
             style={{ color: "var(--color-primary)" }}
           >
-            החנות
+            {c("ui.auth.guestCheckoutStore") || "החנות"}
           </Link>
-          — החשבון ייווצר אוטומטית.
+          {c("ui.auth.guestCheckoutSuffix") || "— החשבון ייווצר אוטומטית."}
         </p>
       </div>
     </div>
