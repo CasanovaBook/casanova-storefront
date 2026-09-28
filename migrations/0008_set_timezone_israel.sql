@@ -1,0 +1,95 @@
+-- ============================================================
+-- 0008 — display timestamps in Israel time
+--
+-- WHAT THIS ACTUALLY CHANGES (and what it does not)
+--
+-- Every timestamp column in this database is `timestamptz` (87 of them
+-- across schema.sql; the only bare "TIMESTAMP" in the repo is the
+-- constraint name chk_refund_processed_timestamp, not a column).
+-- A `timestamptz` stores an absolute instant — UTC seconds since the
+-- epoch — and carries NO timezone of its own. The `+00` you see in
+-- the dashboard is the session's TimeZone setting deciding how to
+-- RENDER that instant, not a property of the stored value.
+--
+-- So this migration changes presentation only. It does not convert,
+-- shift, or rewrite a single stored timestamp, and it cannot make any
+-- existing row's instant wrong. There is no data migration here
+-- because there is no data change: the same moment will simply be
+-- displayed as 17:23 instead of 14:23.
+--
+-- WHY Asia/Jerusalem AND NOT A FIXED '+03'
+--
+-- Israel observes daylight saving time. It is UTC+02 in winter (IST)
+-- and UTC+03 in summer (IDT), switching on the Friday before the last
+-- Sunday in March and the last Sunday in October.
+--
+-- Hardcoding `SET timezone = '+03'` would pin the database to summer
+-- time for the whole year. From late October to late March every
+-- timestamp would then be displayed one hour AHEAD of the correct
+-- Israel wall-clock time — and the error would be invisible, because
+-- the number would still look like a plausible evening time.
+--
+-- 'Asia/Jerusalem' is the correct value. It is a named zone in the
+-- IANA database that Postgres ships with, so the offset follows the
+-- actual DST calendar automatically, forever, with no reminder.
+--
+-- NOTE ON THE APPLICATION
+--
+-- The admin UI formats dates in the BROWSER, not the database:
+-- `new Date(iso).toLocaleDateString("he-IL")` (e.g.
+-- AdminUsersPage, AdminOrdersPage, AdminFinancePage). The browser
+-- applies the visitor's own timezone and ignores this setting
+-- entirely. So this migration changes what the Supabase dashboard
+-- table editor and SQL editor show — it does not change what the
+-- admin panel renders. If the panel ever looks wrong, the fix is on
+-- the client (pin an explicit `timeZone` option in the
+-- toLocaleDateString call), not here.
+--
+-- HOW TO APPLY
+--
+-- Run each statement on its own. `ALTER DATABASE ... SET` and
+-- `ALTER ROLE ... SET` take effect only for NEW connections, so
+-- reconnect (and re-run this file) to see the result. Safe to re-run.
+-- ============================================================
+
+-- 1. The database default — covers the SQL editor and psql.
+ALTER DATABASE postgres SET timezone = 'Asia/Jerusalem';
+
+-- 2. The roles that hold real traffic.
+--    PostgREST connects as `authenticator` and switches to
+--    `anon` / `authenticated` / `service_role` via SET ROLE, so the
+--    role-level setting is what actually governs what the app and the
+--    dashboard's data API return. Without this, a pooled PostgREST
+--    connection keeps the database default and step 1 alone would not
+--    be enough.
+ALTER ROLE postgres      SET timezone = 'Asia/Jerusalem';
+ALTER ROLE authenticator SET timezone = 'Asia/Jerusalem';
+ALTER ROLE anon          SET timezone = 'Asia/Jerusalem';
+ALTER ROLE authenticated SET timezone = 'Asia/Jerusalem';
+ALTER ROLE service_role  SET timezone = 'Asia/Jerusalem';
+
+-- ── VERIFY ───────────────────────────────────────────────────
+-- In a NEW session (reconnect first), all three should print
+-- Asia/Jerusalem, and the offset should flip between +02 and +03
+-- with the season:
+--
+--   SHOW timezone;                 -- Asia/Jerusalem
+--   SELECT now();                  -- rendered in Israel time
+--   SELECT current_setting('TimeZone');
+--
+-- Confirm the stored instants are untouched — this is the check that
+-- matters most. Pick a row and compare its UTC value with what the
+-- admin panel shows; they must describe the same moment:
+--
+--   SELECT created_at AT TIME ZONE 'UTC'          AS as_utc,
+--          created_at AT TIME ZONE 'Asia/Jerusalem' AS as_israel,
+--          created_at                              AS raw_timestamptz
+--   FROM public.users
+--   ORDER BY created_at DESC LIMIT 1;
+--
+-- `raw_timestamptz` will equal `as_utc` regardless of the session
+-- timezone — that is the proof no data moved.
+--
+-- If `SHOW timezone` still returns UTC, you are in a pooled or reused
+-- session: reconnect, or run the statements one at a time so each
+-- ALTER applies to a fresh connection.

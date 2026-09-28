@@ -1,18 +1,20 @@
 -- ============================================================
 -- 0007 — backfill auth accounts missing from public.users
+--        [OBSOLETE — SKIP IF YOU APPLY 0010]
 --
--- WHY
+-- ⚠ If you run 0010_delete_all_users_except_admin.sql (wiping every
+--   account except maorgacp@gmail.com), this file becomes pointless:
+--   it would re-insert two customers that 0010 is about to delete.
+--   The correct order in that case is 0010 alone — do not run both.
 --
--- Two accounts exist in auth.users with no matching public.users row:
+-- This file is kept for the case where you decide to KEEP your
+-- customers and only repair the two accounts that never landed.
+-- The choice is yours; just do not apply both.
 --
---   zvika0710@gmail.com    2026-09-25 16:10 UTC
---   maorgacp1@gmail.com    2026-09-25 15:08 UTC
---
--- Both were created through the register form on 2026-09-25 and both
--- carry first_name/last_name in raw_user_meta_data, so the signup form
--- did its job — the copy into public.users simply never happened for
--- them. Accounts created after that point are fine: the admin list
--- already renders them, and their rows are present.
+-- It repairs two accounts created through the register form on
+-- 2026-09-25 that carry first_name/last_name in
+-- raw_user_meta_data but never got a public.users row, so the admin
+-- list could not see them.
 --
 -- The most likely explanation is that the auth -> public copy did not
 -- exist yet on the 25th and was added later. This migration does not
