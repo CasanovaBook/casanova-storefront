@@ -14,7 +14,8 @@ type Values = Record<string, unknown>;
 
 const CACHE_KEY = "casanova.content.cache.v1";
 export const DRAFT_KEY = "casanova.content.draft.v1";
-const PREVIEW_KEY = "casanova.preview";
+/** Exported so the editor can clear the flag before opening a preview tab. */
+export const PREVIEW_KEY = "casanova.preview";
 
 const readJson = (storage: Storage | undefined, key: string): Values => {
   try {
