@@ -588,8 +588,11 @@ export async function setUserStatus(
        * be consulted as a fallback. */
       if (remote.code === "FORBIDDEN") return fail("FORBIDDEN", remote.error)
 
+      /* A refusal for a staff row keeps the RPC's own code all the way to the
+       * dialog, so it can be told apart from a validation error and shown in
+       * its own popup rather than the inline red line. */
       if (remote.code === "ADMIN_PROTECTED") {
-        return fail("VALIDATION", remote.error)
+        return fail("ADMIN_PROTECTED", remote.error)
       }
 
       return fail("NOT_FOUND", remote.error)

@@ -130,6 +130,10 @@ function UserDetailModal({
   const [tab, setTab] = useState<Tab>("overview")
   const [grantProductId, setGrantProductId] = useState("")
   const [actionError, setActionError] = useState("")
+  const [notice, setNotice] = useState<{
+    title: string
+    body: string
+  } | null>(null)
   const [resetLink, setResetLink] = useState<{
     link: string
     expires_at: string
@@ -914,11 +918,29 @@ function UserDetailModal({
             {canBlock && live.role !== "ADMIN" && (
               <button
                 onClick={async () => {
+                  setActionError("")
+
                   const result = await setUserStatus(
                     user.user_id,
                     live.account_status === "ACTIVE" ? "SUSPENDED" : "ACTIVE",
                   )
-                  setActionError(result.ok ? "" : result.error)
+
+                  if (result.ok) return
+
+                  /* A refusal for a staff row is explained in its own popup
+                   * rather than the inline error line, because it is not a
+                   * failure of the request — the request itself is forbidden
+                   * by design. */
+                  if (result.code === "ADMIN_PROTECTED") {
+                    setNotice({
+                      title: "לא ניתן להשהות חשבון מנהל",
+                      body: "חשבונות מנהל מוגנים מפני השהיה או סגירה דרך המסך הזה. כדי לשנות את הסטטוס של חשבון מנהל, יש לעדכן אותו ישירות במסד הנתונים.",
+                    })
+
+                    return
+                  }
+
+                  setActionError(result.error)
                 }}
                 className="flex-1 py-2 rounded-full text-sm font-medium border transition-colors hover:bg-red-500/10"
                 style={{
@@ -940,6 +962,36 @@ function UserDetailModal({
           </div>
         </div>
       </div>
+      {notice && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => setNotice(null)}
+        >
+          <div
+            className="card-glow w-full max-w-sm p-6 text-center"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="font-semibold text-base mb-3">{notice.title}</h3>
+            <p
+              className="text-sm mb-5 leading-6"
+              style={{ color: "var(--color-muted-foreground)" }}
+            >
+              {notice.body}
+            </p>
+            <button
+              onClick={() => setNotice(null)}
+              className="w-full py-2 rounded-full text-sm font-medium border transition-colors hover:bg-white/5"
+              style={{
+                borderColor: "var(--color-border)",
+                color: "var(--color-foreground)",
+              }}
+            >
+              הבנתי
+            </button>
+          </div>
+        </div>
+      )}
     </div>,
     document.body,
   )

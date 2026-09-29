@@ -56,7 +56,7 @@ import {
 
 /* ── Result plumbing ──────────────────────────────────── */
 
-export type ErrorCode = "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION" | "CONFLICT" | "PROVIDER_NOT_CONFIGURED" | "STORAGE"
+export type ErrorCode = "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION" | "CONFLICT" | "PROVIDER_NOT_CONFIGURED" | "STORAGE" | "ADMIN_PROTECTED"
 
 export type Result<T = undefined> = { ok: true, data: T } | Failure
 
