@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useNavigate } from "react-router"
 import { prefetchPdfRuntime } from "../components/PdfCanvas"
 import { useApp } from "../context/AppContext"
@@ -9,6 +10,27 @@ import Icon from "../components/icons"
 /* Hover/focus/touch on "המשך קריאה" starts fetching the PDF runtime chunk
  * before the click lands, so the first open skips most of its lazy-load
  * latency. A no-op once loaded; it never fetches content — only code. */
+
+/** The chunk download also starts on mount: a reader who arrived here to
+ *  read is going to click within seconds, and the ~430 kB parser chunk is
+ *  the single largest fixed cost of the first open. Pure code fetch — no
+ *  content, no auth, nothing that could serve the book to anyone. */
+function usePrefetchPdfRuntimeOnMount(): void {
+  useEffect(() => {
+    const idle =
+      typeof requestIdleCallback === "function"
+        ? (cb: () => void) => requestIdleCallback(cb, { timeout: 2000 })
+        : (cb: () => void) => window.setTimeout(cb, 300)
+    const handle = idle(prefetchPdfRuntime)
+    return () => {
+      if (typeof cancelIdleCallback === "function" && typeof handle === "number") {
+        cancelIdleCallback(handle)
+      } else if (typeof handle === "number") {
+        clearTimeout(handle)
+      }
+    }
+  }, [])
+}
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: "פעיל",
@@ -81,6 +103,8 @@ export default function LibraryPage() {
   const cms = useCms()
   const c = useContent()
   const navigate = useNavigate()
+
+  usePrefetchPdfRuntimeOnMount()
 
   const getProgress = (productId: string) =>
     readingProgress.find((rp) => rp.product_id === productId)
