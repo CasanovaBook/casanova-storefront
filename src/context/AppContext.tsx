@@ -47,7 +47,7 @@ import {
   type RegisterInput,
   type Result,
 } from "../lib/api"
-import { saveReadingProgress } from "../lib/api-support"
+import { mirrorRemoteEntitlements, saveReadingProgress } from "../lib/api-support"
 import {
   checkout,
   listOrdersForUser,
@@ -64,6 +64,7 @@ import {
   fetchProfile,
   buildAppUser,
 } from "../lib/supabase-auth"
+import { fetchMyEntitlements } from "../lib/supabase-entitlements"
 
 /**
  * Resolves a stored session to an app user, refusing a blocked account.
@@ -261,6 +262,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const stored = db.users.find((u) => u.user_id === sessionId)
     return stored ? toPublicUser(stored) : null
   }, [db.users, sessionId, supabaseUser])
+
+  /* ── Entitlements ───────────────────────────────────────
+   *
+   * A purchase approved by a payment provider, or a book an admin granted
+   * by hand, is recorded in Supabase — but the library and the reader read
+   * the local store, so the signed-in account's own rows are cached there.
+   * Without this a paying customer saw an empty library no matter what the
+   * server held.
+   *
+   * Keyed on the account id rather than the `user` object: a profile
+   * rewrite (a `last_activity_at` stamp is enough) hands back a fresh
+   * object and would otherwise re-run this on every store write. Only the
+   * signed-in user's own rows are fetched, and the cache is merged, never
+   * replaced — a local purchase must survive. */
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return
+
+    let cancelled = false
+
+    const sync = async () => {
+      const rows = await fetchMyEntitlements(user.user_id)
+
+      if (!cancelled) mirrorRemoteEntitlements(rows)
+    }
+
+    void sync()
+
+    /* Also on return to the tab, so access granted while the reader was
+     * elsewhere shows up without a full reload. */
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void sync()
+    }
+
+    window.addEventListener("focus", onFocus)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [user?.user_id])
 
   // A dropped or deactivated account ends the session immediately.
   useEffect(() => {

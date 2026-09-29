@@ -12,7 +12,7 @@
  * to render, never what is allowed.
  * ───────────────────────────────────────────────────────────── */
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 
 import type {
   AdminRole,
@@ -106,6 +106,8 @@ import {
 import { isSupabaseConfigured } from "../lib/supabase"
 
 import { fetchAllProfiles, mergeUserSources } from "../lib/supabase-auth"
+
+import { fetchAllEntitlements } from "../lib/supabase-entitlements"
 
 import { createAdminPasswordResetLink } from "../lib/supabase-admin"
 
@@ -222,17 +224,17 @@ interface AdminContextValue {
     userId: string,
     productId: string,
     sourceOrderId?: string,
-  ) => Result<UserProduct>
+  ) => Promise<Result<UserProduct>>
 
   setAccessStatus: (
     userProductId: string,
     status: UserProduct["access_status"],
     actionLabel?: string,
-  ) => Result
+  ) => Promise<Result>
 
-  extendAccess: (userProductId: string, expiresAt: string) => Result
+  extendAccess: (userProductId: string, expiresAt: string) => Promise<Result>
 
-  removeAccess: (userProductId: string) => Result
+  removeAccess: (userProductId: string) => Promise<Result>
 
   /* Orders & payments */
 
@@ -398,6 +400,68 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     [db.users, remoteUsers],
   )
 
+  /* ── Entitlements ─────────────────────────────────────────
+   *
+   * The same split the users list had: a purchase or a grant made
+   * elsewhere lives in Supabase, while `db.user_products` only ever holds
+   * rows this browser wrote. Reading the hosted rows here is what lets
+   * /admin/access and /admin/users show the real entitlements — including
+   * one just created by an admin — instead of an empty local list.
+   *
+   * Read-through cache, merged by the entitlement's identity
+   * (`user_id` + `product_id`, which is what the table itself is unique
+   * on). Nothing is written back to Supabase from this state.
+   */
+  const [remoteEntitlements, setRemoteEntitlements] = useState<UserProduct[]>([])
+
+  /** Merges rows returned by an admin action into the cache immediately, so
+   *  the list updates even before (or without) the next full read. */
+  const upsertRemoteEntitlement = useCallback((row: UserProduct) => {
+    setRemoteEntitlements((prev) => {
+      const key = (up: UserProduct) => `${up.user_id}:${up.product_id}`
+      const byKey = new Map(prev.map((up) => [key(up), up]))
+      byKey.set(key(row), row)
+      return [...byKey.values()]
+    })
+  }, [])
+
+  const refreshEntitlements = useMemo(
+    () => async () => {
+      const rows = await fetchAllEntitlements()
+      if (rows.length > 0) setRemoteEntitlements(rows)
+    },
+    [],
+  )
+
+  /* Read once an admin session exists (the read is RLS-gated on that
+   * identity), and again whenever the signed-in user changes. */
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured) return
+    void refreshEntitlements()
+  }, [user?.user_id, refreshEntitlements])
+
+  /* And on return to the tab, so a purchase approved while the panel sat
+   * open appears without a manual reload. */
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured) return
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void refreshEntitlements()
+    }
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [user?.user_id, refreshEntitlements])
+
+  const userProducts = useMemo(() => {
+    if (remoteEntitlements.length === 0) return db.user_products
+
+    const key = (up: UserProduct) => `${up.user_id}:${up.product_id}`
+    const byKey = new Map(db.user_products.map((up) => [key(up), up]))
+    /* Supabase wins on any pair present in both, exactly as `public.users`
+     * wins over `db.users` in `mergeUserSources`. */
+    remoteEntitlements.forEach((up) => byKey.set(key(up), up))
+    return [...byKey.values()]
+  }, [db.user_products, remoteEntitlements])
+
   const value = useMemo<AdminContextValue>(() => {
     const alerts = computeAlerts(db)
 
@@ -424,7 +488,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       subscriptions: db.subscriptions,
 
-      userProducts: db.user_products,
+      userProducts,
 
       readingProgress: db.reading_progress,
 
@@ -518,16 +582,55 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         })
       },
 
-      grantAccess: (userId, productId, sourceOrderId) =>
-        grantAccess(actor, userId, productId, sourceOrderId),
+      /* Entitlement writes are async when they land in Supabase. The
+       * service layer decides per target — a uuid id is a hosted row, a
+       * legacy local id stays local — so the dialog does not have to know
+       * which backend owns the row. After a hosted write the cache is
+       * refreshed so the list reflects what the server stored. */
+      grantAccess: async (userId, productId, sourceOrderId) => {
+        const result = await grantAccess(actor, userId, productId, sourceOrderId)
 
-      setAccessStatus: (userProductId, status, actionLabel) =>
-        setAccessStatus(actor, userProductId, status, actionLabel),
+        if (result.ok) {
+          upsertRemoteEntitlement(result.data)
+          if (isSupabaseConfigured) void refreshEntitlements()
+        }
 
-      extendAccess: (userProductId, expiresAt) =>
-        extendAccess(actor, userProductId, expiresAt),
+        return result
+      },
 
-      removeAccess: (userProductId) => removeAccess(actor, userProductId),
+      setAccessStatus: async (userProductId, status, actionLabel) => {
+        const result = await setAccessStatus(
+          actor,
+          userProductId,
+          status,
+          actionLabel,
+        )
+
+        if (result.ok && isSupabaseConfigured) void refreshEntitlements()
+
+        return result
+      },
+
+      extendAccess: async (userProductId, expiresAt) => {
+        const result = await extendAccess(actor, userProductId, expiresAt)
+
+        if (result.ok && isSupabaseConfigured) void refreshEntitlements()
+
+        return result
+      },
+
+      removeAccess: async (userProductId) => {
+        const result = await removeAccess(actor, userProductId)
+
+        if (result.ok) {
+          setRemoteEntitlements((prev) =>
+            prev.filter((up) => up.user_product_id !== userProductId),
+          )
+          if (isSupabaseConfigured) void refreshEntitlements()
+        }
+
+        return result
+      },
 
       markOrderPaid: (orderId, input) => markOrderPaid(actor, orderId, input),
 
@@ -584,7 +687,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       updateSettings: (patch) => updateSettings(actor, patch),
     }
-  }, [db, actor, user, users, usersLoading, refreshUsers])
+  }, [
+    db,
+    actor,
+    user,
+    users,
+    userProducts,
+    usersLoading,
+    refreshUsers,
+    refreshEntitlements,
+    upsertRemoteEntitlement,
+  ])
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>
 }

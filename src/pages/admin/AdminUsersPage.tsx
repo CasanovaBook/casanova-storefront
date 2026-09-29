@@ -139,7 +139,16 @@ function UserDetailModal({
     customerProfile,
     createPasswordResetLink,
   } = useAdmin()
-  const { products } = useCms()
+  const {
+    products: localProducts,
+    publishedProducts,
+    catalogSource,
+  } = useCms()
+  /* Grants reference a real catalogue row; when the storefront is served
+   * from Supabase those are the rows that exist, so they are the ones an
+   * entitlement can be created for. */
+  const products =
+    catalogSource === "supabase" ? publishedProducts : localProducts
   const live = users.find((u) => u.user_id === user.user_id) ?? user
   const [tab, setTab] = useState<Tab>("overview")
   const [grantProductId, setGrantProductId] = useState("")
@@ -501,9 +510,14 @@ function UserDetailModal({
                   ))}
                 </select>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (!grantProductId) return
-                    const result = grantAccess(user.user_id, grantProductId)
+                    /* Hosted grants are written server-side, so this is a
+                     * round trip. */
+                    const result = await grantAccess(
+                      user.user_id,
+                      grantProductId,
+                    )
                     if (!result.ok) {
                       setActionError(result.error)
                       return
@@ -578,7 +592,7 @@ function UserDetailModal({
                           {up.access_status !== "ACTIVE" && (
                             <button
                               onClick={() =>
-                                setAccessStatus(
+                                void setAccessStatus(
                                   up.user_product_id,
                                   "ACTIVE",
                                   "הפעלת גישה מחדש",
@@ -596,7 +610,7 @@ function UserDetailModal({
                           {up.access_status === "ACTIVE" && (
                             <button
                               onClick={() =>
-                                setAccessStatus(
+                                void setAccessStatus(
                                   up.user_product_id,
                                   "SUSPENDED",
                                   "חסימת גישה",
@@ -615,7 +629,10 @@ function UserDetailModal({
                             onClick={() => {
                               const d = new Date(up.expires_at ?? Date.now())
                               d.setDate(d.getDate() + 30)
-                              extendAccess(up.user_product_id, d.toISOString())
+                              void extendAccess(
+                                up.user_product_id,
+                                d.toISOString(),
+                              )
                             }}
                             className="text-xs px-2.5 py-1 rounded-full border"
                             style={{
@@ -627,7 +644,7 @@ function UserDetailModal({
                           </button>
                           <button
                             onClick={() =>
-                              setAccessStatus(
+                              void setAccessStatus(
                                 up.user_product_id,
                                 "REVOKED",
                                 "שלילת גישה",
@@ -642,7 +659,9 @@ function UserDetailModal({
                             שלילה
                           </button>
                           <button
-                            onClick={() => removeAccess(up.user_product_id)}
+                            onClick={() =>
+                              void removeAccess(up.user_product_id)
+                            }
                             className="text-xs px-2.5 py-1 rounded-full border"
                             style={{
                               borderColor: "rgba(239,68,68,0.3)",

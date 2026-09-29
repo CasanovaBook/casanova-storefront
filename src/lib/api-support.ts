@@ -30,6 +30,14 @@ import { isSupabaseConfigured } from "./supabase"
 import { updateAccountStatus } from "./supabase-auth"
 
 import {
+  adminExtendAccess,
+  adminGrantAccess,
+  adminRemoveAccess,
+  adminSetAccessStatus,
+  isUuid,
+} from "./supabase-entitlements"
+
+import {
   dispatchEmail,
   fail,
   guard,
@@ -676,6 +684,43 @@ export function listUserProducts(): UserProduct[] {
   return getDb().user_products
 }
 
+/**
+ * Caches the signed-in account's own Supabase entitlements in the local
+ * document.
+ *
+ * The reader and the library read entitlements from the store, so a book
+ * bought or granted on the server has to be visible there before it can
+ * be opened. Callers pass only the signed-in user's own rows — this is a
+ * cache of one account's access, never a copy of anyone else's.
+ *
+ * Merge is by `user_id` + `product_id`, and nothing is deleted: a local
+ * (non-Supabase) purchase stays, and a no-op write is skipped so a focus
+ * refetch cannot spin the store.
+ */
+export function mirrorRemoteEntitlements(remote: UserProduct[]): void {
+  if (remote.length === 0) return
+
+  const keyOf = (up: UserProduct) => `${up.user_id}:${up.product_id}`
+
+  const current = new Map(getDb().user_products.map((up) => [keyOf(up), up]))
+
+  const changed = remote.some((row) => {
+    const existing = current.get(keyOf(row))
+
+    return !existing || JSON.stringify(existing) !== JSON.stringify(row)
+  })
+
+  if (!changed) return
+
+  mutate((db) => {
+    const byKey = new Map(db.user_products.map((up) => [keyOf(up), up]))
+
+    remote.forEach((row) => byKey.set(keyOf(row), row))
+
+    db.user_products = [...byKey.values()]
+  })
+}
+
 export function listReadingProgress(): ReadingProgress[] {
   return getDb().reading_progress
 }
@@ -745,7 +790,18 @@ export function grantAccessForOrder(order: Order, products: Product[]): void {
   })
 }
 
-export function grantAccess(
+/**
+ * Grants one account access to one product.
+ *
+ * Supabase owns authenticated accounts and the entitlement table, so for
+ * a real account (`public.users.user_id`, a uuid) the write goes through
+ * the admin-guarded `admin_grant_access` function. Resolving the customer
+ * in `db.users` first is what made every manual grant to a registered
+ * user fail with "המשתמש לא נמצא." — the same read/write split already
+ * repaired for `setUserStatus`. Only the local, non-Supabase install
+ * still resolves and writes locally, where the id is genuinely local.
+ */
+export async function grantAccess(
   actor: Actor | null,
 
   userId: string,
@@ -753,10 +809,48 @@ export function grantAccess(
   productId: string,
 
   sourceOrderId?: string,
-): Result<UserProduct> {
+): Promise<Result<UserProduct>> {
   const denied = guard(actor, "grant_access")
 
   if (denied) return denied
+
+  /* A uuid target can only be a Supabase account: the admin list sourced
+   * it from `public.users`. The entitlement is created server-side, where
+   * the snapshot is captured from the catalogue and `is_admin()` is the
+   * real gate. */
+  if (isSupabaseConfigured && isUuid(userId)) {
+    /* The entitlement's FK points at a real catalogue row, so a product id
+     * that is not a uuid cannot be one. Reported clearly rather than
+     * letting Postgres fail the cast with an opaque message. */
+    if (!isUuid(productId)) {
+      return fail(
+        "VALIDATION",
+        "המוצר שנבחר אינו קיים בקטלוג השרת. יש לרענן את הקטלוג ולנסות שוב.",
+      )
+    }
+
+    const remote = await adminGrantAccess(userId, productId, sourceOrderId)
+
+    if (!remote.ok) return remote
+
+    writeAudit(actor, {
+      category: "ACCESS_CHANGE",
+
+      action: "פתיחת גישה למוצר",
+
+      target_type: "ACCESS",
+
+      target_id: productId,
+
+      target_label: remote.data.product_snapshot.name || productId,
+
+      details: sourceOrderId
+        ? `הוענק מתוך הזמנה ${sourceOrderId}`
+        : "הוענק ידנית על ידי מנהל",
+    })
+
+    return remote
+  }
 
   const db = getDb()
 
@@ -831,7 +925,15 @@ export function grantAccess(
   return ok(grant)
 }
 
-export function setAccessStatus(
+/**
+ * Changes the status of an existing entitlement.
+ *
+ * A uuid entitlement id belongs to Supabase; the write goes through
+ * `admin_set_access_status`, which also cascades the change to every
+ * content grant already minted for the row. A local row keeps the local
+ * behaviour below.
+ */
+export async function setAccessStatus(
   actor: Actor | null,
 
   userProductId: string,
@@ -839,10 +941,32 @@ export function setAccessStatus(
   status: UserProduct["access_status"],
 
   actionLabel?: string,
-): Result {
+): Promise<Result> {
   const denied = guard(actor, "grant_access")
 
   if (denied) return denied
+
+  if (isSupabaseConfigured && isUuid(userProductId)) {
+    const remote = await adminSetAccessStatus(userProductId, status)
+
+    if (!remote.ok) return remote
+
+    writeAudit(actor, {
+      category: "ACCESS_CHANGE",
+
+      action: actionLabel ?? "שינוי הרשאת גישה",
+
+      target_type: "ACCESS",
+
+      target_id: userProductId,
+
+      target_label: remote.data.product_snapshot.name || remote.data.user_id,
+
+      details: status,
+    })
+
+    return ok(undefined)
+  }
 
   const db = getDb()
 
@@ -893,14 +1017,37 @@ export function setAccessStatus(
   return ok(undefined)
 }
 
-export function extendAccess(
+/** Extends an entitlement's expiry; Supabase rows go through the admin RPC. */
+export async function extendAccess(
   actor: Actor | null,
   userProductId: string,
   expiresAt: string,
-): Result {
+): Promise<Result> {
   const denied = guard(actor, "grant_access")
 
   if (denied) return denied
+
+  if (isSupabaseConfigured && isUuid(userProductId)) {
+    const remote = await adminExtendAccess(userProductId, expiresAt)
+
+    if (!remote.ok) return remote
+
+    writeAudit(actor, {
+      category: "ACCESS_CHANGE",
+
+      action: "הארכת גישה",
+
+      target_type: "ACCESS",
+
+      target_id: userProductId,
+
+      target_label: remote.data.product_snapshot.name || remote.data.user_id,
+
+      details: `תוקף חדש עד ${new Date(expiresAt).toLocaleDateString("he-IL")}`,
+    })
+
+    return ok(undefined)
+  }
 
   const db = getDb()
 
@@ -939,13 +1086,36 @@ export function extendAccess(
   return ok(undefined)
 }
 
-export function removeAccess(
+/** Removes an entitlement outright; Supabase rows go through the admin RPC. */
+export async function removeAccess(
   actor: Actor | null,
   userProductId: string,
-): Result {
+): Promise<Result> {
   const denied = guard(actor, "grant_access")
 
   if (denied) return denied
+
+  if (isSupabaseConfigured && isUuid(userProductId)) {
+    const remote = await adminRemoveAccess(userProductId)
+
+    if (!remote.ok) return remote
+
+    writeAudit(actor, {
+      category: "ACCESS_CHANGE",
+
+      action: "הסרת גישה לצמיתות",
+
+      target_type: "ACCESS",
+
+      target_id: userProductId,
+
+      target_label: userProductId,
+
+      details: "הרשאת הגישה נמחקה לחלוטין",
+    })
+
+    return ok(undefined)
+  }
 
   const db = getDb()
 

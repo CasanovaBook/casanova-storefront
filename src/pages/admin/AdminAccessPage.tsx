@@ -74,7 +74,19 @@ export default function AdminAccessPage() {
     removeAccess,
   } = useAdmin()
 
-  const { products } = useCms()
+  const {
+    products: localProducts,
+    publishedProducts,
+    catalogSource,
+  } = useCms()
+
+  /* The product an entitlement can be created for is one that exists in
+   * the catalogue the storefront sells from. When that catalogue is
+   * served from Supabase, its rows are the ones with real product ids;
+   * the local document is only the source when Supabase is unconfigured
+   * or unreachable. */
+  const products =
+    catalogSource === "supabase" ? publishedProducts : localProducts
 
   const [search, setSearch] = useState("")
 
@@ -131,10 +143,15 @@ export default function AdminAccessPage() {
     (o) => o.user_id === grantUser && o.payment_status === "PAID",
   )
 
-  const handleGrant = () => {
+  const handleGrant = async () => {
     if (!grantUser || !grantProduct) return
 
-    const result = grantAccess(grantUser, grantProduct, grantOrder || undefined)
+    /* Hosted grants are written server-side, so this is a round trip. */
+    const result = await grantAccess(
+      grantUser,
+      grantProduct,
+      grantOrder || undefined,
+    )
 
     if (!result.ok) {
       setGrantError(result.error)
@@ -220,7 +237,7 @@ export default function AdminAccessPage() {
               ))}
             </select>
             <button
-              onClick={handleGrant}
+              onClick={() => void handleGrant()}
               disabled={!grantUser || !grantProduct}
               className="px-4 py-2.5 rounded-lg text-sm font-medium disabled:opacity-40"
               style={{
@@ -388,7 +405,7 @@ export default function AdminAccessPage() {
                   {up.access_status !== "ACTIVE" && (
                     <button
                       onClick={() =>
-                        setAccessStatus(
+                        void setAccessStatus(
                           up.user_product_id,
                           "ACTIVE",
                           "פתיחת גישה מחדש",
@@ -406,7 +423,7 @@ export default function AdminAccessPage() {
                   {up.access_status === "ACTIVE" && (
                     <button
                       onClick={() =>
-                        setAccessStatus(
+                        void setAccessStatus(
                           up.user_product_id,
                           "SUSPENDED",
                           "חסימת גישה זמנית",
@@ -427,7 +444,7 @@ export default function AdminAccessPage() {
 
                       d.setDate(d.getDate() + 30)
 
-                      extendAccess(up.user_product_id, d.toISOString())
+                      void extendAccess(up.user_product_id, d.toISOString())
                     }}
                     className="text-xs px-3 py-1.5 rounded-full border"
                     style={{
@@ -439,7 +456,7 @@ export default function AdminAccessPage() {
                   </button>
                   <button
                     onClick={() =>
-                      setAccessStatus(
+                      void setAccessStatus(
                         up.user_product_id,
                         "REVOKED",
                         "שלילת גישה",
@@ -454,7 +471,7 @@ export default function AdminAccessPage() {
                     שלילה
                   </button>
                   <button
-                    onClick={() => removeAccess(up.user_product_id)}
+                    onClick={() => void removeAccess(up.user_product_id)}
                     className="text-xs px-3 py-1.5 rounded-full border"
                     style={{
                       borderColor: "rgba(239,68,68,0.3)",

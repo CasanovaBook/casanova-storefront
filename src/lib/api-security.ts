@@ -56,6 +56,8 @@ import {
 
 import { fetchSignedContentUrl } from "./content-storage"
 
+import { isSupabaseConfigured } from "./supabase"
+
 /* ── Policy resolution ────────────────────────────────── */
 
 /**
@@ -1096,13 +1098,23 @@ export async function issueContentGrant(
   /* A Supabase-hosted file has no permanent address on the product; it is
    * identified by its storage path and resolved to a signed URL below. A
    * legacy/local file still carries its own content_url. Either is enough;
-   * neither means nothing was ever attached. */
+   * neither means nothing was ever attached.
+   *
+   * When Supabase is configured the catalogue the storefront sells from
+   * lives there, so the local document frequently does not hold the row at
+   * all — a purchased book would be declared "no file attached" before the
+   * server was even asked. The product id is all `get-content-url` needs
+   * (it derives the object key server-side), so a hosted deployment asks
+   * for a signed URL whenever there is no legacy address to fall back on. */
 
   const storagePath = product?.storage_path?.trim()
 
   const legacyUrl = product?.content_url?.trim()
 
-  if (!storagePath && !legacyUrl) {
+  const hosted =
+    Boolean(storagePath) || (isSupabaseConfigured && !legacyUrl)
+
+  if (!storagePath && !legacyUrl && !isSupabaseConfigured) {
     return fail("NOT_FOUND", "לתוכן הזה לא הוצמד קובץ. יש לפנות לתמיכה.")
   }
 
@@ -1179,7 +1191,7 @@ export async function issueContentGrant(
 
   let contentUrl = legacyUrl ?? ""
 
-  if (storagePath) {
+  if (hosted) {
     const signed = await fetchSignedContentUrl(input.productId)
 
     if (!signed.ok) return fail(signed.code, signed.error)
