@@ -139,16 +139,10 @@ function UserDetailModal({
     customerProfile,
     createPasswordResetLink,
   } = useAdmin()
-  const {
-    products: localProducts,
-    publishedProducts,
-    catalogSource,
-  } = useCms()
-  /* Grants reference a real catalogue row; when the storefront is served
-   * from Supabase those are the rows that exist, so they are the ones an
-   * entitlement can be created for. */
-  const products =
-    catalogSource === "supabase" ? publishedProducts : localProducts
+  /* The whole hosted catalogue (or the local document when Supabase is
+   * unconfigured) — a grant must reference a product an entitlement can
+   * point at, including a private/draft title. */
+  const { adminProducts: products } = useCms()
   const live = users.find((u) => u.user_id === user.user_id) ?? user
   const [tab, setTab] = useState<Tab>("overview")
   const [grantProductId, setGrantProductId] = useState("")

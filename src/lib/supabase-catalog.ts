@@ -39,6 +39,20 @@ export interface DbRelationRow {
   relation_type: "BUNDLE_ITEM" | "RELATED" | "UPSELL" | "CROSS_SELL"
 }
 
+/**
+ * The columns and joins every product read shares.
+ *
+ * Kept in one place so the public catalogue, the slug lookup and the admin
+ * read cannot drift: a field added for the storefront must also reach the
+ * admin screens, which map through the same `mapDbProductToEntity`.
+ */
+const PRODUCT_SELECT = `
+      *,
+      book:books(*),
+      categories:product_categories(category_id),
+      relations:product_relations!product_relations_source_product_id_fkey(target_product_id, relation_type)
+    `
+
 export interface DbProductRow {
   product_id: string
   name: string
@@ -210,12 +224,7 @@ export async function fetchPublicProductsFromDb(): Promise<Result<Product[]>> {
 
   const { data, error } = await supabase
     .from("products")
-    .select(`
-      *,
-      book:books(*),
-      categories:product_categories(category_id),
-      relations:product_relations!product_relations_source_product_id_fkey(target_product_id, relation_type)
-    `)
+    .select(PRODUCT_SELECT)
     .eq("status", "ACTIVE")
     .eq("visibility", "PUBLIC")
     .order("position", { ascending: true })
@@ -243,12 +252,7 @@ export async function fetchProductBySlugFromDb(
 
   const { data, error } = await supabase
     .from("products")
-    .select(`
-      *,
-      book:books(*),
-      categories:product_categories(category_id),
-      relations:product_relations!product_relations_source_product_id_fkey(target_product_id, relation_type)
-    `)
+    .select(PRODUCT_SELECT)
     .eq("slug", slug)
     .eq("status", "ACTIVE")
     .eq("visibility", "PUBLIC")
@@ -263,4 +267,38 @@ export async function fetchProductBySlugFromDb(
   }
 
   return ok(mapDbProductToEntity(data as unknown as DbProductRow))
+}
+
+/**
+ * Admin-only: the whole catalogue, without the storefront's ACTIVE + PUBLIC
+ * filter.
+ *
+ * The public list is deliberately narrowed to what a visitor may buy. An
+ * administrator granting access works against the entire catalogue instead,
+ * because a title can be DRAFT, INACTIVE, UNLISTED or HIDDEN and still be
+ * exactly the book an entitlement has to point at — and because the hosted
+ * store's books are private by default, reading only the public rows left
+ * the grant picker empty.
+ *
+ * A refused read returns the error so the caller can fall back to the local
+ * document rather than presenting an empty catalogue as fact.
+ */
+export async function fetchAllProductsFromDb(): Promise<Result<Product[]>> {
+  if (!isSupabaseConfigured || !supabase) {
+    return fail("PROVIDER_NOT_CONFIGURED", "Supabase is not configured.")
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    return fail("STORAGE", error.message)
+  }
+
+  return ok(
+    ((data as unknown as DbProductRow[]) || []).map(mapDbProductToEntity),
+  )
 }

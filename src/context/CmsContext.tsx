@@ -44,6 +44,7 @@ import { useStore } from "../lib/store"
 import { isSupabaseConfigured } from "../lib/supabase"
 
 import {
+  fetchAllProductsFromDb,
   fetchCategoriesFromDb,
   fetchPublicProductsFromDb,
 } from "../lib/supabase-catalog"
@@ -99,6 +100,14 @@ interface CmsContextValue {
   categories: Category[]
 
   products: Product[]
+
+  /**
+   * Every hosted product, for the access screens. The storefront lists above
+   * are narrowed to ACTIVE + PUBLIC; this one is not, because an entitlement
+   * can point at a draft, unlisted or hidden title. Falls back to the local
+   * document when Supabase is unconfigured or the read is refused.
+   */
+  adminProducts: Product[]
 
   sections: CmsSection[]
 
@@ -307,6 +316,38 @@ export function CmsProvider({ children }: { children: ReactNode }) {
     }
   }, [catalogNonce])
 
+  /* ── Admin catalogue ─────────────────────────────────────
+   *
+   * The storefront list is narrowed to ACTIVE + PUBLIC. The access screens
+   * need the opposite: every product an entitlement could point at. Read
+   * only for an administrator, so a customer's browser never asks for the
+   * whole catalogue. */
+  const [remoteAdminProducts, setRemoteAdminProducts] = useState<Product[] | null>(
+    null,
+  )
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || actor?.role !== "ADMIN") {
+      setRemoteAdminProducts(null)
+
+      return
+    }
+
+    let cancelled = false
+
+    void (async () => {
+      const result = await fetchAllProductsFromDb()
+
+      if (cancelled) return
+
+      setRemoteAdminProducts(result.ok ? result.data : null)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [actor?.role, catalogNonce])
+
   const byId = useMemo(
     () => new Map(db.products.map((p) => [p.product_id, p])),
     [db.products],
@@ -340,6 +381,14 @@ export function CmsProvider({ children }: { children: ReactNode }) {
 
   /** The products a visitor sees: the hosted catalogue once it has answered. */
   const catalogProducts = remoteCatalog ? remoteCatalog.products : published
+
+  /* Never emptier than before: a hosted catalogue that answered with nothing
+   * (or refused) falls back to the local rows rather than showing an empty
+   * grant picker, which is what made "פתיחת גישה" unusable. */
+  const adminProducts =
+    remoteAdminProducts && remoteAdminProducts.length > 0
+      ? remoteAdminProducts
+      : db.products
 
   const catalogCategories = remoteCatalog ? remoteCatalog.categories : categories
 
@@ -377,6 +426,8 @@ export function CmsProvider({ children }: { children: ReactNode }) {
       categories,
 
       products: db.products,
+
+      adminProducts,
 
       sections,
 
@@ -482,6 +533,7 @@ export function CmsProvider({ children }: { children: ReactNode }) {
     catalogSource,
     catalogLoading,
     catalogError,
+    adminProducts,
     refreshCatalog,
   ])
 

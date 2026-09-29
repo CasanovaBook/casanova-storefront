@@ -74,19 +74,11 @@ export default function AdminAccessPage() {
     removeAccess,
   } = useAdmin()
 
-  const {
-    products: localProducts,
-    publishedProducts,
-    catalogSource,
-  } = useCms()
-
-  /* The product an entitlement can be created for is one that exists in
-   * the catalogue the storefront sells from. When that catalogue is
-   * served from Supabase, its rows are the ones with real product ids;
-   * the local document is only the source when Supabase is unconfigured
-   * or unreachable. */
-  const products =
-    catalogSource === "supabase" ? publishedProducts : localProducts
+  /* Every product an entitlement can point at: the whole hosted catalogue
+   * for an admin, or the local document when Supabase is unconfigured. The
+   * storefront's ACTIVE + PUBLIC list is the wrong source here — a private
+   * book is not publicly listed, so the picker came up empty. */
+  const { adminProducts: products } = useCms()
 
   const [search, setSearch] = useState("")
 
