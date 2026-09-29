@@ -19,6 +19,20 @@ const STATUS_LABEL: Record<string, string> = {
   SUSPENDED: "מושעה",
 }
 
+/**
+ * What the customer dialog answers when an admin tries to suspend an account
+ * whose תפקיד is מנהל.
+ *
+ * A popup rather than the inline red line because the request did not fail:
+ * it is refused by design, and the reason is worth more room than one line of
+ * error text. Kept at module level so the click guard here and the refusal
+ * coming back from the RPC both read from the same wording.
+ */
+const ADMIN_PROTECTED_NOTICE = {
+  title: "לא ניתן להשהות חשבון מנהל",
+  body: "חשבונות שבתפקיד מנהל מוגנים מפני השהיה או סגירה, כדי שמנהל לא יוכל לנעול את עצמו או עמיתו מחוץ למערכת. כדי לשנות סטטוס של חשבון מנהל יש לעדכן אותו ישירות במסד הנתונים.",
+}
+
 const ACCESS_LABEL: Record<string, { text: string, color: string }> = {
   ACTIVE: { text: "פעיל", color: "var(--color-success)" },
   EXPIRED: { text: "פג תוקף", color: "#F59E0B" },
@@ -915,27 +929,39 @@ function UserDetailModal({
             >
               יצירת קישור איפוס סיסמה
             </button>
-            {canBlock && live.role !== "ADMIN" && (
+            {canBlock && (
               <button
                 onClick={async () => {
                   setActionError("")
 
+                  const nextStatus =
+                    live.account_status === "ACTIVE" ? "SUSPENDED" : "ACTIVE"
+
+                  /* The role is already rendered two rows above, so the rule is
+                   * answered here instead of after a round trip: clicking this
+                   * button on a מנהל account always produces the popup, whether
+                   * or not the RPC behind it has migration 0012 applied. The
+                   * button stays visible on purpose — a control that vanishes
+                   * reads as a bug, while a refusal that explains itself does
+                   * not. */
+                  if (live.role === "ADMIN" && nextStatus !== "ACTIVE") {
+                    setNotice(ADMIN_PROTECTED_NOTICE)
+
+                    return
+                  }
+
                   const result = await setUserStatus(
                     user.user_id,
-                    live.account_status === "ACTIVE" ? "SUSPENDED" : "ACTIVE",
+                    nextStatus,
                   )
 
                   if (result.ok) return
 
-                  /* A refusal for a staff row is explained in its own popup
-                   * rather than the inline error line, because it is not a
-                   * failure of the request — the request itself is forbidden
-                   * by design. */
+                  /* Same popup for the refusal coming back from the database:
+                   * the row can have been promoted to מנהל in another session
+                   * after this list was last read. */
                   if (result.code === "ADMIN_PROTECTED") {
-                    setNotice({
-                      title: "לא ניתן להשהות חשבון מנהל",
-                      body: "חשבונות מנהל מוגנים מפני השהיה או סגירה דרך המסך הזה. כדי לשנות את הסטטוס של חשבון מנהל, יש לעדכן אותו ישירות במסד הנתונים.",
-                    })
+                    setNotice(ADMIN_PROTECTED_NOTICE)
 
                     return
                   }
@@ -964,6 +990,9 @@ function UserDetailModal({
       </div>
       {notice && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={notice.title}
           className="fixed inset-0 z-[200] flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.7)" }}
           onClick={() => setNotice(null)}
@@ -972,6 +1001,16 @@ function UserDetailModal({
             className="card-glow w-full max-w-sm p-6 text-center"
             onClick={(event) => event.stopPropagation()}
           >
+            <div
+              className="mx-auto mb-4 w-11 h-11 rounded-full flex items-center justify-center"
+              style={{
+                background: "rgba(212,160,48,0.12)",
+                border: "1px solid rgba(212,160,48,0.3)",
+                color: "var(--color-primary)",
+              }}
+            >
+              <Icon name="shield" size={20} />
+            </div>
             <h3 className="font-semibold text-base mb-3">{notice.title}</h3>
             <p
               className="text-sm mb-5 leading-6"

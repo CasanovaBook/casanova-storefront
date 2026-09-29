@@ -583,19 +583,21 @@ export async function setUserStatus(
     const remote = await updateAccountStatus(userId, status)
 
     if (!remote.ok) {
-      /* A refusal for a staff account is never a "missing user": the RPC
-       * raises a distinct code for that case, and the local store must not
-       * be consulted as a fallback. */
-      if (remote.code === "FORBIDDEN") return fail("FORBIDDEN", remote.error)
-
-      /* A refusal for a staff row keeps the RPC's own code all the way to the
-       * dialog, so it can be told apart from a validation error and shown in
-       * its own popup rather than the inline red line. */
+      /* Each refusal keeps its own code all the way to the dialog. Flattening
+       * them into NOT_FOUND is what turned a deliberate refusal into a
+       * "missing user" message, and the dialog needs ADMIN_PROTECTED to know
+       * it must answer with an explanation popup instead of the red line. */
       if (remote.code === "ADMIN_PROTECTED") {
         return fail("ADMIN_PROTECTED", remote.error)
       }
 
-      return fail("NOT_FOUND", remote.error)
+      if (remote.code === "FORBIDDEN") return fail("FORBIDDEN", remote.error)
+
+      if (remote.code === "NOT_FOUND") return fail("NOT_FOUND", remote.error)
+
+      /* Anything else — an unmapped migration token included — is a refusal
+       * from the server, never a claim that the account is absent. */
+      return fail("VALIDATION", remote.error)
     }
 
     writeAudit(actor, {
@@ -621,9 +623,10 @@ export async function setUserStatus(
 
   /* The local store mirrors the Supabase rule: staff rows are never a valid
    * target for suspension. Without Supabase in play this is an offline-only
-   * browser, but the same click must have the same meaning everywhere. */
+   * browser, but the same click must carry the same code so the dialog answers
+   * with the same popup everywhere. */
   if (existing.role === "ADMIN" && status !== "ACTIVE") {
-    return fail("VALIDATION", "לא ניתן להשהות או לסגור חשבון מנהל.")
+    return fail("ADMIN_PROTECTED", "לא ניתן להשהות או לסגור חשבון מנהל.")
   }
 
   const updated = mutate((db) => {

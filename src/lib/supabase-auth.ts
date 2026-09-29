@@ -206,6 +206,63 @@ export async function fetchAllProfiles(): Promise<User[]> {
 }
 
 /**
+ * Refusals raised by the `admin_set_account_status` RPC.
+ *
+ * Every one of them is a bare `snake_case` token passed to `RAISE EXCEPTION`
+ * (migrations 0011 and 0012), not a sentence. Translating them here is what
+ * keeps a machine token off a Hebrew screen — reading only the SQLSTATE left
+ * `admin_protected` rendered verbatim in the customer dialog, and reading only
+ * the message text would break the moment PostgREST stops echoing it.
+ */
+const STATUS_REFUSALS: Record<string, { error: string; code: string }> = {
+  admin_required: {
+    error: "אין הרשאה לעדכן את המשתמש. נדרשת הרשאת מנהל.",
+    code: "FORBIDDEN",
+  },
+  admin_protected: {
+    error: "לא ניתן להשהות או לסגור חשבון מנהל.",
+    code: "ADMIN_PROTECTED",
+  },
+  user_not_found: {
+    error: "המשתמש לא נמצא.",
+    code: "NOT_FOUND",
+  },
+  invalid_status: {
+    error: "סטטוס החשבון המבוקש אינו תקין.",
+    code: "VALIDATION",
+  },
+}
+
+/** Resolves a refused status write to wording an admin can read, or `null`
+ * when the error is not one the RPC raises on purpose. */
+function describeStatusRefusal(
+  code: string,
+  message: string,
+): { error: string; code: string } | null {
+  for (const token of Object.keys(STATUS_REFUSALS)) {
+    if (message.includes(token)) return STATUS_REFUSALS[token]
+  }
+
+  if (code === "42501") return STATUS_REFUSALS.admin_required
+  if (code === "P0002") return STATUS_REFUSALS.user_not_found
+  if (code === "22023") return STATUS_REFUSALS.invalid_status
+
+  /* P0001 is the generic SQLSTATE of `RAISE EXCEPTION`. A token this file does
+   * not know about yet still must not be shown as-is, so it gets neutral
+   * wording while the real token stays visible in the console for diagnosis. */
+  if (code === "P0001") {
+    console.warn("[supabase-auth] unmapped RPC refusal:", message)
+    return {
+      error: "הפעולה נדחתה על ידי המערכת. יש לרענן את הרשימה ולנסות שוב.",
+      code: "VALIDATION",
+    }
+  }
+
+  return null
+}
+
+
+/**
  * Admin-only: sets `account_status` on a `public.users` row — the write half
  * of the admin user list.
  *
@@ -241,27 +298,9 @@ export async function updateAccountStatus(
   })
 
   if (error) {
-    if (error.code === "42501") {
-      return authFail(
-        "אין הרשאה לעדכן את המשתמש. נדרשת הרשאת מנהל.",
-        "FORBIDDEN",
-      )
-    }
+    const refused = describeStatusRefusal(error.code ?? "", error.message ?? "")
 
-    if (error.code === "P0002") {
-      return authFail("המשתמש לא נמצא.", "NOT_FOUND")
-    }
-
-    /* Distinct from the admin-permission refusal above: `role = 'ADMIN'`
-     * rows are rejected by the RPC itself so that one admin can never
-     * suspend another. The code is new to this project rather than one of
-     * Postgres' SQLSTATEs, so it is kept exactly as raised. */
-    if (error.message.includes("admin_protected")) {
-      return authFail(
-        "לא ניתן להשהות או לסגור חשבון מנהל.",
-        "ADMIN_PROTECTED",
-      )
-    }
+    if (refused) return authFail(refused.error, refused.code)
 
     /* Surfaced verbatim on purpose: this is where "function
      * admin_set_account_status does not exist" appears when migrations/0011
