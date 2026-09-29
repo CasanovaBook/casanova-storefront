@@ -69,6 +69,11 @@ const SetupPage = lazyPage(() => import("./pages/SetupPage"))
 
 const SetupPasswordPage = lazyPage(() => import("./pages/SetupPasswordPage"))
 
+/* Customer-facing entry of the admin reset flow: redeems a sealed id
+ * (no Supabase domain, no token in the URL) and hands the browser to the
+ * recovery session, which completes on /setup-password. */
+const ResetPasswordPage = lazyPage(() => import("./pages/ResetPasswordPage"))
+
 const ForgotPasswordPage = lazyPage(() => import("./pages/ForgotPasswordPage"))
 
 /* Where a signup verification link lands. It renders its own states
@@ -219,6 +224,8 @@ export const router = createBrowserRouter([
       { path: "cancellation-and-refund-policy", Component: CancellationPolicyPage },
 
       { path: "setup-password", Component: SetupPasswordPage },
+
+      { path: "reset-password", Component: ResetPasswordPage },
 
       { path: "forgot-password", Component: ForgotPasswordPage },
 
