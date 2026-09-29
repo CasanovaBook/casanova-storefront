@@ -1,7 +1,7 @@
 /**
  * Runtime content store.
  *
- * Resolution order for a key:  draft (staff preview) → value saved in Maestro → default from the registry.
+ * Resolution order for a key:  draft (staff preview) → Git content files (Decap) → value saved in Maestro → default from the registry.
  * The saved values are cached in localStorage so returning visitors render the edited content on the very
  * first paint (no flash of the defaults). The store is a tiny external store consumed with useSyncExternalStore.
  */
@@ -9,6 +9,40 @@
 import { useSyncExternalStore } from "react";
 import { maestro } from "@/maestro";
 import { FIELD_MAP } from "./registry";
+
+/* Git-first content (Decap CMS). content/sales.json and content/seo.json are
+ * version-controlled in this repository and edited through Decap; they are
+ * the source of truth for the landing-page copy. Flattening them into
+ * registry-style keys lets every existing `c("sales.…")` call site read them
+ * unchanged, while the Maestro DB keeps serving every other group (store,
+ * legal, UI microcopy, …) exactly as before. */
+import gitSales from "../../content/sales.json";
+import gitSeo from "../../content/seo.json";
+
+/** Flattens a nested JSON file into dotted registry keys. Arrays are stored
+ * whole (the registry's list/strings readers expect arrays, not objects). */
+function flatten(prefix: string, node: unknown, out: Values): void {
+  if (node == null) return;
+  if (Array.isArray(node)) {
+    out[prefix] = node;
+    return;
+  }
+  if (typeof node === "object") {
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      flatten(prefix ? `${prefix}.${k}` : k, v, out);
+    }
+    return;
+  }
+  out[prefix] = node;
+}
+
+const GIT_VALUES: Values = (() => {
+  const out: Values = {};
+  flatten("sales", gitSales, out);
+  flatten("sales", (gitSeo as { seo?: unknown }).seo, out);
+  flatten("global", (gitSeo as { locale?: unknown }).locale, out);
+  return out;
+})();
 
 type Values = Record<string, unknown>;
 
@@ -75,6 +109,7 @@ export function getSaved(): Values {
 /** Raw value for a key, honouring preview draft, saved override and registry default. */
 export function getRaw(key: string): unknown {
   if (previewEnabled() && key in draft) return draft[key];
+  if (key in GIT_VALUES) return GIT_VALUES[key];
   if (key in saved) return saved[key];
   const def = FIELD_MAP[key];
   if (!def && (import.meta.env as Record<string, unknown>).DEV) console.warn(`[content] unknown key: ${key}`);

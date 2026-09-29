@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- The CMS entry point is for staff only; keep it out of search engines. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Decap CMS — Casanova</title>
+  </head>
+  <body>
+    <!-- Decap CMS, pinned to the current stable release. Served statically at
+         /decap/ — outside the SPA router, so it cannot conflict with the
+         existing Maestro admin at /HOWAMANTREATSYOU or the admin panel at
+         /admin. Authentication flows through api/decap-auth.js. -->
+    <script src="https://unpkg.com/decap-cms@3.15.1/dist/decap-cms.js"></script>
+  </body>
+</html>
