@@ -940,7 +940,7 @@ function UserDetailModal({
                   /* The role is already rendered two rows above, so the rule is
                    * answered here instead of after a round trip: clicking this
                    * button on a מנהל account always produces the popup, whether
-                   * or not the RPC behind it has migration 0012 applied. The
+                   * or not the RPC behind it has migration 0013 applied. The
                    * button stays visible on purpose — a control that vanishes
                    * reads as a bug, while a refusal that explains itself does
                    * not. */

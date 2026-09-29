@@ -209,7 +209,7 @@ export async function fetchAllProfiles(): Promise<User[]> {
  * Refusals raised by the `admin_set_account_status` RPC.
  *
  * Every one of them is a bare `snake_case` token passed to `RAISE EXCEPTION`
- * (migrations 0011 and 0012), not a sentence. Translating them here is what
+ * (migrations 0011 and 0013), not a sentence. Translating them here is what
  * keeps a machine token off a Hebrew screen — reading only the SQLSTATE left
  * `admin_protected` rendered verbatim in the customer dialog, and reading only
  * the message text would break the moment PostgREST stops echoing it.
