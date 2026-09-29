@@ -100,3 +100,6 @@ $RECYCLE.BIN/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Decap migration: CMS content exports must never be committed
+backups/

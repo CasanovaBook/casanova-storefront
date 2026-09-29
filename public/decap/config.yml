@@ -1,0 +1,217 @@
+backend:
+  # Decap commits content edits as Git commits; Vercel deploys main automatically.
+  name: github
+  repo: CasanovaBook/casanova-storefront
+  branch: main
+  # Same-origin OAuth handshake served by api/decap-auth.js (Vercel function).
+  auth_endpoint: /api/decap-auth
+
+site_url: https://casanova-books.com
+locale: he
+
+# Images committed through Decap live in the repo; no external storage needed.
+media_folder: public/images/uploads
+public_folder: /images/uploads
+
+collections:
+  - name: landing
+    label: "עמוד הבית"
+    files:
+      - name: sales
+        label: "תוכן עמוד המכירה"
+        file: content/sales.json
+        editor:
+          preview: false
+        fields:
+          - label: "Hero"
+            name: hero
+            widget: object
+            collapsed: false
+            fields:
+              - { label: "תווית מותג", name: eyebrow, widget: string }
+              - { label: "כותרת (שורה שנייה = הדגשה זהובה)", name: title, widget: text }
+              - { label: "משפט משנה", name: lede, widget: text }
+              - { label: "כפתור ראשי", name: cta, widget: string }
+              - label: "תגי אמון"
+                name: trust
+                widget: list
+                field: { label: "טקסט", name: item, widget: string }
+              - { label: "תווית מחיר", name: priceLabel, widget: string }
+              - { label: "חץ גלילה", name: scroll, widget: string }
+
+          - label: "כותרת עליונה"
+            name: header
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "תגית ליד הלוגו", name: tagline, widget: string }
+              - { label: "כפתור התחברות", name: login, widget: string }
+
+          - label: "פס הוכחה"
+            name: proof
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              - { label: "משפט משנה", name: content, widget: text }
+              - label: "תגי הוכחה"
+                name: items
+                widget: list
+                fields:
+                  - { label: "טקסט", name: title, widget: string }
+
+          - label: "Agitation"
+            name: agitation
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              - { label: "תוכן (שורה ריקה = פסקה)", name: content, widget: text }
+
+          - label: "השיטה"
+            name: mechanism
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              - { label: "תוכן", name: content, widget: text }
+              - label: "שלבים"
+                name: steps
+                widget: list
+                fields:
+                  - { label: "כותרת", name: title, widget: string }
+                  - { label: "תיאור", name: content, widget: string }
+
+          - label: "פיצ'רים"
+            name: features
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              - label: "כרטיסים"
+                name: items
+                widget: list
+                fields:
+                  - { label: "כותרת", name: title, widget: string }
+                  - { label: "תיאור", name: content, widget: text }
+
+          - label: "קהל יעד"
+            name: audience
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              # Keys are quoted on purpose: bare yes/no parse as YAML booleans.
+              - label: "למי כן"
+                name: "yes"
+                widget: list
+                fields:
+                  - { label: "טקסט", name: title, widget: string }
+              - label: "למי לא"
+                name: "no"
+                widget: list
+                fields:
+                  - { label: "טקסט", name: title, widget: string }
+
+          - label: "מותג"
+            name: brand
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              - { label: "תוכן", name: content, widget: text }
+
+          - label: "המלצות"
+            name: social
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              - { label: "משפט משנה", name: content, widget: text }
+              - label: "ציטוטים"
+                name: testimonials
+                widget: list
+                fields:
+                  - { label: "ציטוט", name: quote, widget: text }
+                  - { label: "שם", name: name, widget: string }
+                  - { label: "תיאור", name: title, widget: string }
+
+          - label: "הצעה"
+            name: offer
+            widget: object
+            collapsed: false
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              - { label: "משפט משנה", name: content, widget: text }
+              - { label: "תווית מחיר", name: priceLabel, widget: string }
+              - { label: "כפתור", name: cta, widget: string }
+              - { label: "טקסט תחת הכפתור", name: subtext, widget: string }
+              - { label: "כותרת בונוסים", name: bonusesLabel, widget: string }
+              - label: "בונוסים"
+                name: bonuses
+                widget: list
+                fields:
+                  - { label: "כותרת", name: title, widget: string }
+                  - { label: "תיאור", name: content, widget: string }
+
+          - label: "שאלות נפוצות"
+            name: faq
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              - label: "שאלות"
+                name: items
+                widget: list
+                fields:
+                  - { label: "שאלה", name: question, widget: string }
+                  - { label: "תשובה", name: answer, widget: text }
+
+          - label: "CTA סופי"
+            name: final
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: text }
+              - { label: "טקסט", name: content, widget: text }
+              - { label: "כפתור", name: cta, widget: string }
+
+          - label: "פופאפ יציאה"
+            name: exit
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "כותרת", name: title, widget: string }
+              - { label: "טקסט", name: body, widget: text }
+              - { label: "כפתור", name: cta, widget: string }
+              - { label: "כפתור ביטול", name: dismiss, widget: string }
+
+          - label: "פוטר"
+            name: footer
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "זכויות יוצרים ({year} מוחלף אוטומטית)", name: copyright, widget: string }
+              - { label: "קרדיט", name: powered, widget: string }
+
+          - { label: "סרגל נייד — כפתור", name: stickyCta, widget: string }
+
+      - name: seo
+        label: "SEO עמוד הבית"
+        file: content/seo.json
+        editor:
+          preview: false
+        fields:
+          - label: "SEO"
+            name: seo
+            widget: object
+            fields:
+              - { label: "כותרת בגוגל (עד 60 תווים)", name: title, widget: string }
+              - { label: "תיאור בגוגל ובשיתוף (120–160 תווים)", name: description, widget: text }
+              - { label: "תמונת שיתוף (WhatsApp / פייסבוק)", name: image, widget: image, required: false }
+          - label: "מיתוג גלובלי"
+            name: locale
+            widget: object
+            collapsed: true
+            fields:
+              - { label: "שם המותג", name: brand, widget: string }
