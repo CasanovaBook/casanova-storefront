@@ -163,30 +163,38 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 4. Locate object in the private "books" bucket
-    const folder = `product-${productId}`
-    const path = `${folder}/book.pdf`
+    // 4. Sign the object in the private "books" bucket.
+    //
+    // The path is deterministic (`product-<id>/book.pdf`), so the old
+    // `.list()` pre-check was a second Storage round trip that only
+    // re-derived the same answer: signing a missing object fails anyway,
+    // with the same 404 mapped below. Dropping the list halves the
+    // Storage latency on the reader's critical path without touching
+    // authorization — every check above still runs first.
+    const path = `product-${productId}/book.pdf`
 
-    const { data: objects, error: listError } = await admin.storage
-      .from(BUCKET)
-      .list(folder, { search: "book.pdf", limit: 1 })
-
-    if (listError) return jsonResponse({ error: "Lookup failed" }, 500, cors)
-
-    if (!objects?.some((o: { name: string }) => o.name === "book.pdf")) {
-      return jsonResponse(
-        { error: "No content file is attached to this product" },
-        404,
-        cors,
-      )
-    }
-
-    // 5. Generate short-lived signed URL
     const { data: signed, error: signError } = await admin.storage
       .from(BUCKET)
       .createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
 
     if (signError || !signed?.signedUrl) {
+      // Storage reports a missing object as its own error; surface it as
+      // the same 404 the list-based lookup used to return, so the client
+      // message ("no file attached") is unchanged.
+      const missing =
+        signError &&
+        (signError.message?.includes("not found") ||
+          (signError as { statusCode?: string }).statusCode === "404" ||
+          (signError as { code?: string }).code === "NoSuchKey")
+
+      if (missing) {
+        return jsonResponse(
+          { error: "No content file is attached to this product" },
+          404,
+          cors,
+        )
+      }
+
       return jsonResponse(
         { error: "Could not sign the content URL" },
         500,

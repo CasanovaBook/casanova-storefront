@@ -3,7 +3,10 @@ import { useParams, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import { useStore } from "../lib/store"
-import { pdfEmbedUrl, useScreenProtection } from "../lib/useScreenProtection"
+import PdfCanvas, {
+  prefetchPdfRuntime,
+} from "../components/PdfCanvas"
+import { useScreenProtection } from "../lib/useScreenProtection"
 import {
   consumeContentGrant,
   issueContentGrant,
@@ -27,12 +30,13 @@ const HEARTBEAT_MS = 20_000
 const ACTIVITY_WINDOW_MS = 60_000
 
 /**
- * Text-size rungs, as a percentage of the PDF's own scale.
+ * Text-size rungs, as a percentage of the PDF's natural scale.
  *
- * Discrete rather than continuous because every change reloads the embedded
- * document — the browser's PDF viewer only reads its magnification from the
- * URL fragment on a full load, so there is no way to animate this. A slider
- * would fire a reload for every pixel of travel.
+ * Discrete rather than continuous because every change repaints the page
+ * through PdfCanvas at a new scale — a slider would fire a repaint for
+ * every pixel of travel. Repaints are cheap (one canvas draw from the
+ * already-parsed document), but rungs still read better than a twitchy
+ * continuous control.
  */
 const ZOOM_STEPS = [75, 100, 125, 150, 200, 250, 300, 400]
 /** Sentinel meaning "fit the page to the width", i.e. emit no zoom at all. */
@@ -62,10 +66,10 @@ const ZOOM_FIT = 0
  * swipes. The swipe strips sit at the sides so the centre of the page
  * still scrolls the embedded document normally.
  *
- * Text size is a separate control from navigation, and it works through the
- * URL fragment rather than through the document: the browser's PDF viewer is
- * an out-of-process plugin with an empty host DOM, so there is nothing in it
- * for this page to reach. See `pdfEmbedUrl`.
+ * Text size is a separate control from navigation, and it works by
+ * repainting the current page at a new scale through PdfCanvas — there
+ * is no browser PDF plugin involved anymore, so there is also no plugin
+ * toolbar and no download/print path to disable.
  */
 export default function ReaderPage() {
   const { productId } = useParams<{ productId: string }>()
@@ -90,7 +94,15 @@ export default function ReaderPage() {
   const snapshot = entitlement?.product_snapshot
 
   const title = product?.name ?? snapshot?.name ?? ""
-  const totalPages = product?.book?.total_pages ?? snapshot?.total_pages ?? 0
+  /* The CMS count is a hint only; the document itself is authoritative.
+   * A mistyped count used to break the progress bar (a 148-page PDF
+   * against "3" rendered 300%) and clamp navigation early. PdfCanvas
+   * reports the real total once the file is parsed. */
+  const [docTotalPages, setDocTotalPages] = useState<number | null>(null)
+  const totalPages = docTotalPages ??
+    product?.book?.total_pages ??
+    snapshot?.total_pages ??
+    0
 
   /* The address of the file is never read off the catalogue row. The reader
    * asks the service layer for a grant, which re-checks the entitlement and
@@ -103,6 +115,18 @@ export default function ReaderPage() {
   )
   const [grantError, setGrantError] = useState<string | null>(null)
   const isPdf = Boolean(contentUrl && /\.pdf(\?|#|$)/i.test(contentUrl))
+
+  /* A PDF renders through PdfCanvas, which parses the document once and
+   * paints pages onto a canvas the page owns — no browser PDF plugin, so
+   * no plugin toolbar with its one-click download / print buttons, and
+   * page turns cost a repaint instead of a full document reload. */
+
+  // Starting the parser fetch as soon as an entitled reader is looking at
+  // this page hides most of the lazy-chunk latency behind the grant round
+  // trip. Cheap no-op once already loaded.
+  useEffect(() => {
+    if (isPdf) prefetchPdfRuntime()
+  }, [isPdf])
 
   /* ── Protection policy, live from the store ────────────── */
   const policy = useMemo(
@@ -589,15 +613,30 @@ export default function ReaderPage() {
                 : "calc(100dvh - 8.5rem)",
             }}
           >
-            <iframe
-              key={`${contentUrl}#${currentPage}#${zoom}`}
-              src={
-                isPdf ? pdfEmbedUrl(contentUrl, currentPage, zoom) : contentUrl
-              }
-              title={title}
-              className="w-full h-full rounded-lg border"
+            {/* A scroll container rather than a replaced element: the canvas
+             * pages render at natural height and the reader scrolls inside
+             * the same shell, so the header, bar and watermark never move. */}
+            <div
+              className="h-full overflow-auto rounded-lg border"
               style={{ borderColor, background: "#fff" }}
-            />
+            >
+              {isPdf ? (
+                <PdfCanvas
+                  signedUrl={contentUrl}
+                  page={currentPage}
+                  zoom={zoom === ZOOM_FIT ? 1 : zoom / 100}
+                  watermark={policy.watermark_enabled ? watermark : undefined}
+                  onTotalPages={setDocTotalPages}
+                />
+              ) : (
+                <iframe
+                  src={contentUrl}
+                  title={title}
+                  className="h-full w-full"
+                  style={{ background: "#fff" }}
+                />
+              )}
+            </div>
 
             {canStep && (
               <>

@@ -290,9 +290,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void sync()
 
     /* Also on return to the tab, so access granted while the reader was
-     * elsewhere shows up without a full reload. */
+     * elsewhere shows up without a full reload — but no more than once a
+     * minute. The reader triggers focus/visibility events constantly
+     * (fullscreen switches, iframe interactions, device-session writes
+     * that touch the document), and each one used to re-fan into a
+     * Supabase round trip. Nothing here is a security check: the reader's
+     * grant mint re-verifies the entitlement server-side regardless, so
+     * throttling this cache refresh does not weaken authorization. */
+    const ENTITLEMENT_SYNC_MIN_MS = 60_000
+    let lastSyncAt = Date.now()
+
     const onFocus = () => {
-      if (document.visibilityState === "visible") void sync()
+      if (document.visibilityState !== "visible") return
+      if (Date.now() - lastSyncAt < ENTITLEMENT_SYNC_MIN_MS) return
+      lastSyncAt = Date.now()
+      void sync()
     }
 
     window.addEventListener("focus", onFocus)

@@ -1,9 +1,14 @@
 import { useNavigate } from "react-router"
+import { prefetchPdfRuntime } from "../components/PdfCanvas"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import { useContent } from "../content/useContent"
 import type { ProductSnapshot } from "../types"
 import Icon from "../components/icons"
+
+/* Hover/focus/touch on "המשך קריאה" starts fetching the PDF runtime chunk
+ * before the click lands, so the first open skips most of its lazy-load
+ * latency. A no-op once loaded; it never fetches content — only code. */
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: "פעיל",
@@ -210,6 +215,9 @@ export default function LibraryPage() {
                   <div className="flex items-center gap-3">
                     {isActive ? (
                       <button
+                        onMouseEnter={prefetchPdfRuntime}
+                        onFocus={prefetchPdfRuntime}
+                        onTouchStart={prefetchPdfRuntime}
                         onClick={() => navigate(`/read/${up.product_id}`)}
                         className="btn-gradient px-4 py-1.5 rounded-full text-sm font-semibold"
                       >
