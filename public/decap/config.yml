@@ -4,6 +4,11 @@ backend:
   repo: CasanovaBook/casanova-storefront
   branch: main
   # Same-origin OAuth handshake served by api/decap-auth.js (Vercel function).
+  # base_url is required: without it Decap falls back to Netlify's auth host
+  # (api.netlify.com) and the login popup dead-ends. Preview deployments of
+  # the CMS will open production's auth endpoint; editor testing happens on
+  # the production domain after merge.
+  base_url: https://casanova-books.com
   auth_endpoint: /api/decap-auth
 
 site_url: https://casanova-books.com
