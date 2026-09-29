@@ -911,7 +911,7 @@ function UserDetailModal({
             >
               יצירת קישור איפוס סיסמה
             </button>
-            {canBlock && (
+            {canBlock && live.role !== "ADMIN" && (
               <button
                 onClick={async () => {
                   const result = await setUserStatus(

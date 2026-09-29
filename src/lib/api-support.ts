@@ -583,10 +583,16 @@ export async function setUserStatus(
     const remote = await updateAccountStatus(userId, status)
 
     if (!remote.ok) {
-      return fail(
-        remote.code === "FORBIDDEN" ? "FORBIDDEN" : "NOT_FOUND",
-        remote.error,
-      )
+      /* A refusal for a staff account is never a "missing user": the RPC
+       * raises a distinct code for that case, and the local store must not
+       * be consulted as a fallback. */
+      if (remote.code === "FORBIDDEN") return fail("FORBIDDEN", remote.error)
+
+      if (remote.code === "ADMIN_PROTECTED") {
+        return fail("VALIDATION", remote.error)
+      }
+
+      return fail("NOT_FOUND", remote.error)
     }
 
     writeAudit(actor, {
@@ -609,6 +615,13 @@ export async function setUserStatus(
   const existing = getDb().users.find((u) => u.user_id === userId)
 
   if (!existing) return fail("NOT_FOUND", "המשתמש לא נמצא.")
+
+  /* The local store mirrors the Supabase rule: staff rows are never a valid
+   * target for suspension. Without Supabase in play this is an offline-only
+   * browser, but the same click must have the same meaning everywhere. */
+  if (existing.role === "ADMIN" && status !== "ACTIVE") {
+    return fail("VALIDATION", "לא ניתן להשהות או לסגור חשבון מנהל.")
+  }
 
   const updated = mutate((db) => {
     db.users = db.users.map((u) =>

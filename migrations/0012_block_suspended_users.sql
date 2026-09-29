@@ -42,6 +42,7 @@ DECLARE
   -- own user model, and a finite value avoids relying on any backend's
   -- treatment of the infinity sentinel.
   v_ban CONSTANT TIMESTAMPTZ := '9999-12-31T00:00:00Z';
+  v_role TEXT;
 BEGIN
   IF NOT is_admin() THEN
     RAISE EXCEPTION 'admin_required' USING ERRCODE = '42501';
@@ -51,14 +52,28 @@ BEGIN
     RAISE EXCEPTION 'invalid_status' USING ERRCODE = '22023';
   END IF;
 
-  UPDATE public.users
-     SET account_status = p_status,
-         updated_at     = now()
+  -- Staff rows are looked up before the write: one admin must never be able
+  -- to suspend or close another admin, since that is an irrevocable-looking
+  -- action no single console click should perform. Read here rather than in a
+  -- policy so the rule cannot be bypassed by collaring the status through a
+  -- different path. The frontend hides the button; this makes the hiding
+  -- true.
+  SELECT role INTO v_role
+    FROM public.users
    WHERE user_id = p_user_id;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'user_not_found' USING ERRCODE = 'P0002';
   END IF;
+
+  IF v_role = 'ADMIN' AND p_status <> 'ACTIVE' THEN
+    RAISE EXCEPTION 'admin_protected' USING ERRCODE = 'P0001';
+  END IF;
+
+  UPDATE public.users
+     SET account_status = p_status,
+         updated_at     = now()
+   WHERE user_id = p_user_id;
 
   UPDATE auth.users
      SET banned_until = CASE
@@ -90,7 +105,9 @@ COMMENT ON FUNCTION public.admin_set_account_status(uuid, text) IS
 --    Expect security_definer = true and a proconfig containing
 --    search_path=public, pg_temp.
 --
--- 2. After changing a test account to SUSPENDED, both columns agree:
+-- 2. After changing a test account to SUSPENDED, both columns agree, and a
+--    staff row can never be suspended through this function even by another
+--    admin:
 --
 --    SELECT p.user_id,
 --           p.account_status,

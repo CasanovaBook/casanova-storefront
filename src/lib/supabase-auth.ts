@@ -252,6 +252,17 @@ export async function updateAccountStatus(
       return authFail("המשתמש לא נמצא.", "NOT_FOUND")
     }
 
+    /* Distinct from the admin-permission refusal above: `role = 'ADMIN'`
+     * rows are rejected by the RPC itself so that one admin can never
+     * suspend another. The code is new to this project rather than one of
+     * Postgres' SQLSTATEs, so it is kept exactly as raised. */
+    if (error.message.includes("admin_protected")) {
+      return authFail(
+        "לא ניתן להשהות או לסגור חשבון מנהל.",
+        "ADMIN_PROTECTED",
+      )
+    }
+
     /* Surfaced verbatim on purpose: this is where "function
      * admin_set_account_status does not exist" appears when migrations/0011
      * has not been applied yet, and masking that would hide the one clue
