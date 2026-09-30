@@ -428,7 +428,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const refreshEntitlements = useMemo(
     () => async () => {
       const rows = await fetchAllEntitlements()
-      if (rows.length > 0) setRemoteEntitlements(rows)
+      /* Set unconditionally, including empty: the previous `length > 0`
+       * guard kept rows deleted from Supabase (הסרה מלאה, a lapsed test
+       * grant) on screen forever, and every action against such a ghost
+       * row came back "הרשאת הגישה לא נמצאה". A transient read failure
+       * also returns [], which drops back to the local document — the
+       * same fallback the page already renders when signed out. */
+      setRemoteEntitlements(rows)
     },
     [],
   )
@@ -607,6 +613,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         )
 
         if (result.ok && isSupabaseConfigured) void refreshEntitlements()
+        /* A NOT_FOUND means the row the list is showing no longer exists
+         * server-side — purge the ghost so the admin sees real rows. */
+        else if (!result.ok && isSupabaseConfigured && result.code === "NOT_FOUND")
+          void refreshEntitlements()
 
         return result
       },
@@ -615,6 +625,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         const result = await extendAccess(actor, userProductId, expiresAt)
 
         if (result.ok && isSupabaseConfigured) void refreshEntitlements()
+        else if (!result.ok && isSupabaseConfigured && result.code === "NOT_FOUND")
+          void refreshEntitlements()
 
         return result
       },
@@ -627,6 +639,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
             prev.filter((up) => up.user_product_id !== userProductId),
           )
           if (isSupabaseConfigured) void refreshEntitlements()
+        } else if (isSupabaseConfigured && result.code === "NOT_FOUND") {
+          /* Already gone server-side (double click, stale row): purge the
+           * ghost locally so the list stops offering a dead action. */
+          setRemoteEntitlements((prev) =>
+            prev.filter((up) => up.user_product_id !== userProductId),
+          )
+          void refreshEntitlements()
         }
 
         return result
