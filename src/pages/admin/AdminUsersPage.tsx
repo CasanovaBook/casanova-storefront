@@ -134,7 +134,6 @@ function UserDetailModal({
     adminRole,
     setUserStatus,
     setAccessStatus,
-    extendAccess,
     removeAccess,
     grantAccess,
     customerProfile,
@@ -166,7 +165,6 @@ function UserDetailModal({
     busyId: accessBusyId,
     success: accessSuccess,
     run: runAccessAction,
-    extendedExpiry,
     clearFeedback: clearAccessFeedback,
   } = useAccessActions()
 
@@ -636,27 +634,6 @@ function UserDetailModal({
                               חסימה זמנית
                             </button>
                           )}
-                          <button
-                            onClick={() =>
-                              void runAccessAction(
-                                up.user_product_id,
-                                () =>
-                                  extendAccess(
-                                    up.user_product_id,
-                                    extendedExpiry(up.expires_at),
-                                  ),
-                                { successMessage: "התוקף הוארך ב־30 ימים" },
-                              )
-                            }
-                            disabled={accessBusyId !== null}
-                            className="text-xs px-2.5 py-1 rounded-full border disabled:opacity-50"
-                            style={{
-                              borderColor: "var(--color-border)",
-                              color: "var(--color-foreground)",
-                            }}
-                          >
-                            הארכה ב־30 ימים
-                          </button>
                           <button
                             onClick={() =>
                               void runAccessAction(

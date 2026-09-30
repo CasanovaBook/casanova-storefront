@@ -90,7 +90,6 @@ import {
 
 import {
   addInquiryNote,
-  extendAccess,
   grantAccess,
   getCustomerProfile,
   linkInquiryToOrder,
@@ -231,8 +230,6 @@ interface AdminContextValue {
     status: UserProduct["access_status"],
     actionLabel?: string,
   ) => Promise<Result>
-
-  extendAccess: (userProductId: string, expiresAt: string) => Promise<Result>
 
   removeAccess: (userProductId: string) => Promise<Result>
 
@@ -458,14 +455,16 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, [user?.user_id, refreshEntitlements])
 
   const userProducts = useMemo(() => {
-    if (remoteEntitlements.length === 0) return db.user_products
+    /* Admin manages the source of truth, which is `public.user_products`.
+     * Merging the localStorage document in here resurrected rows that had
+     * been deleted server-side (the customer-side mirror never deletes),
+     * and every action against such a ghost failed with "הרשאת הגישה לא
+     * נמצאה". When Supabase is configured the admin list is exactly the
+     * server list; the local document is only a fallback for when it is
+     * not configured (or the admin read is refused, which yields []). */
+    if (isSupabaseConfigured) return remoteEntitlements
 
-    const key = (up: UserProduct) => `${up.user_id}:${up.product_id}`
-    const byKey = new Map(db.user_products.map((up) => [key(up), up]))
-    /* Supabase wins on any pair present in both, exactly as `public.users`
-     * wins over `db.users` in `mergeUserSources`. */
-    remoteEntitlements.forEach((up) => byKey.set(key(up), up))
-    return [...byKey.values()]
+    return db.user_products
   }, [db.user_products, remoteEntitlements])
 
   const value = useMemo<AdminContextValue>(() => {
@@ -615,16 +614,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         if (result.ok && isSupabaseConfigured) void refreshEntitlements()
         /* A NOT_FOUND means the row the list is showing no longer exists
          * server-side — purge the ghost so the admin sees real rows. */
-        else if (!result.ok && isSupabaseConfigured && result.code === "NOT_FOUND")
-          void refreshEntitlements()
-
-        return result
-      },
-
-      extendAccess: async (userProductId, expiresAt) => {
-        const result = await extendAccess(actor, userProductId, expiresAt)
-
-        if (result.ok && isSupabaseConfigured) void refreshEntitlements()
         else if (!result.ok && isSupabaseConfigured && result.code === "NOT_FOUND")
           void refreshEntitlements()
 

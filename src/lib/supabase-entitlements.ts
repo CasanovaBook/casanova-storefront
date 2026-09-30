@@ -322,23 +322,6 @@ export async function adminSetAccessStatus(
   return result.ok ? ok(toUserProduct(result.data)) : result
 }
 
-/** Admin-only: sets a new expiry on an existing entitlement. */
-export async function adminExtendAccess(
-  userProductId: string,
-  expiresAt: string,
-): Promise<Result<UserProduct>> {
-  if (!isSupabaseConfigured) {
-    return fail("PROVIDER_NOT_CONFIGURED", "שרת Supabase אינו מוגדר.")
-  }
-
-  const result = await callAccessRpc("admin_extend_access", {
-    p_user_product_id: userProductId,
-    p_expires_at: expiresAt,
-  })
-
-  return result.ok ? ok(toUserProduct(result.data)) : result
-}
-
 /** Admin-only: removes an entitlement outright. */
 export async function adminRemoveAccess(
   userProductId: string,

@@ -71,8 +71,6 @@ export default function AdminAccessPage() {
 
     setAccessStatus,
 
-    extendAccess,
-
     removeAccess,
   } = useAdmin()
 
@@ -100,7 +98,6 @@ export default function AdminAccessPage() {
     error: actionError,
     success: actionSuccess,
     run,
-    extendedExpiry,
     clearFeedback,
   } = useAccessActions()
 
@@ -179,7 +176,7 @@ export default function AdminAccessPage() {
           הרשאות גישה
         </h1>
         <p style={{ color: "var(--color-muted-foreground)" }}>
-          Access Management — פתיחה, חסימה, הארכה או הסרה של גישה למוצרים, כולל
+          Access Management — פתיחה, חסימה, שלילה או הסרה של גישה למוצרים, כולל
           מעקב אחר מקור ההרשאה.
         </p>
       </div>
@@ -483,27 +480,6 @@ export default function AdminAccessPage() {
                       חסימה
                     </button>
                   )}
-                  <button
-                    onClick={() =>
-                      void run(
-                        up.user_product_id,
-                        () =>
-                          extendAccess(
-                            up.user_product_id,
-                            extendedExpiry(up.expires_at),
-                          ),
-                        { successMessage: "התוקף הוארך ב־30 ימים" },
-                      )
-                    }
-                    disabled={busyId !== null}
-                    className="text-xs px-3 py-1.5 rounded-full border disabled:opacity-50"
-                    style={{
-                      borderColor: "var(--color-border)",
-                      color: "var(--color-foreground)",
-                    }}
-                  >
-                    הארכה ב־30 ימים
-                  </button>
                   <button
                     onClick={() =>
                       void run(

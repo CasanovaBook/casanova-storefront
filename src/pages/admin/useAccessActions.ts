@@ -71,24 +71,5 @@ export function useAccessActions() {
     [busyId],
   )
 
-  /**
-   * The new expiry for "הארכה ב־30 ימים".
-   *
-   * Semantics preserved from the original handler, with the bug fixed:
-   * a row that is still valid is extended from its current expiry (adding
-   * 30 days on top of the remaining time), while a row whose expiry is in
-   * the past — or that has no expiry at all — is extended from *now*.
-   * Extending from the past date left the row expired after "extension",
-   * which read as the button doing nothing.
-   */
-  const extendedExpiry = useCallback((expiresAt: string | undefined): string => {
-    const base =
-      expiresAt && new Date(expiresAt).getTime() > Date.now()
-        ? new Date(expiresAt)
-        : new Date()
-    base.setDate(base.getDate() + 30)
-    return base.toISOString()
-  }, [])
-
-  return { busyId, error, success, run, extendedExpiry, clearFeedback }
+  return { busyId, error, success, run, clearFeedback }
 }

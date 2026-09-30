@@ -30,7 +30,6 @@ import { isSupabaseConfigured } from "./supabase"
 import { updateAccountStatus } from "./supabase-auth"
 
 import {
-  adminExtendAccess,
   adminGrantAccess,
   adminRemoveAccess,
   adminSetAccessStatus,
@@ -1012,75 +1011,6 @@ export async function setAccessStatus(
     } · ${target.product_snapshot.name}`,
 
     details: `${target.access_status} → ${status}`,
-  })
-
-  return ok(undefined)
-}
-
-/** Extends an entitlement's expiry; Supabase rows go through the admin RPC. */
-export async function extendAccess(
-  actor: Actor | null,
-  userProductId: string,
-  expiresAt: string,
-): Promise<Result> {
-  const denied = guard(actor, "grant_access")
-
-  if (denied) return denied
-
-  if (isSupabaseConfigured && isUuid(userProductId)) {
-    const remote = await adminExtendAccess(userProductId, expiresAt)
-
-    if (!remote.ok) return remote
-
-    writeAudit(actor, {
-      category: "ACCESS_CHANGE",
-
-      action: "הארכת גישה",
-
-      target_type: "ACCESS",
-
-      target_id: userProductId,
-
-      target_label: remote.data.product_snapshot.name || remote.data.user_id,
-
-      details: `תוקף חדש עד ${new Date(expiresAt).toLocaleDateString("he-IL")}`,
-    })
-
-    return ok(undefined)
-  }
-
-  const db = getDb()
-
-  const target = db.user_products.find(
-    (up) => up.user_product_id === userProductId,
-  )
-
-  if (!target) return fail("NOT_FOUND", "הרשאת הגישה לא נמצאה.")
-
-  mutate((d) => {
-    d.user_products = d.user_products.map((up) =>
-      up.user_product_id === userProductId
-        ? { ...up, expires_at: expiresAt, access_status: "ACTIVE" }
-        : up,
-    )
-  })
-
-  const owner = db.users.find((u) => u.user_id === target.user_id)
-
-  writeAudit(actor, {
-    category: "ACCESS_CHANGE",
-
-    action: "הארכת גישה",
-
-    target_type: "ACCESS",
-
-    target_id: userProductId,
-
-    target_label: `${
-      owner ? `${owner.first_name} ${owner.last_name}` : target.user_id
-    } · ${target.product_snapshot.name}`,
-
-    details: `תוקף חדש עד ${new Date(expiresAt).toLocaleDateString("he-IL")}`,
   })
 
   return ok(undefined)
