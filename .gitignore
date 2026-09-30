@@ -23,6 +23,11 @@ coverage/
 logs/
 *.log
 *-debug.log*
+
+# ── CMS content exports ────────────────────────────────────────
+# JSON dumps produced by scripts/export-cms-content.mjs (maestro content
+# backups). Machine-generated, can be re-exported at any time.
+/backups/
 .claude-replay.*
 .tmp-*
 tmp/
