@@ -102,14 +102,18 @@ export function toUserProduct(row: UserProductRow): UserProduct {
  * paying customer's books were invisible. Scoped to one `user_id`, which
  * the RLS policy on `public.user_products` also enforces.
  *
- * Returns an empty array when Supabase is unconfigured or the read is
- * refused. Callers must treat that as "no remote data", never as "this
- * account owns nothing" — the local document is still merged in.
+ * Returns `null` when the read itself fails (network down, RLS refused,
+ * Supabase unconfigured) and `[]` only on a successful read that the
+ * server answered with no rows. The distinction matters for the mirror:
+ * an empty result prunes locally-cached entitlements the server no
+ * longer holds (הסרה מלאה must reach the customer's cache), while a
+ * failed read must leave the cache untouched — pruning on a dropped
+ * request would flash every book out of the library during a hiccup.
  */
 export async function fetchMyEntitlements(
   userId: string,
-): Promise<UserProduct[]> {
-  if (!isSupabaseConfigured) return []
+): Promise<UserProduct[] | null> {
+  if (!isSupabaseConfigured) return null
 
   try {
     const { data, error } = await requireSupabase()
@@ -122,13 +126,13 @@ export async function fetchMyEntitlements(
         "[supabase-entitlements] own entitlements refused:",
         error.message,
       )
-      return []
+      return null
     }
 
     return ((data ?? []) as UserProductRow[]).map(toUserProduct)
   } catch (err) {
     console.warn("[supabase-entitlements] own entitlements failed:", err)
-    return []
+    return null
   }
 }
 

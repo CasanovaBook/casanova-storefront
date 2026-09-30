@@ -692,31 +692,59 @@ export function listUserProducts(): UserProduct[] {
  * be opened. Callers pass only the signed-in user's own rows — this is a
  * cache of one account's access, never a copy of anyone else's.
  *
- * Merge is by `user_id` + `product_id`, and nothing is deleted: a local
- * (non-Supabase) purchase stays, and a no-op write is skipped so a focus
- * refetch cannot spin the store.
+ * Merge is by `user_id` + `product_id`. Rows that came from Supabase are
+ * replaced by what the server now holds and — crucially — rows the
+ * server no longer holds are REMOVED: otherwise הסרה מלאה deleted the
+ * row in Postgres while `hasAccess` went on reading a stale local copy
+ * forever, and the customer kept a book the database said they did not
+ * own. Pruning is safe precisely because the input is an authoritative
+ * RLS-scoped read of every row the account has.
+ *
+ * Local-only rows are preserved. They carry a local `up_…` id (Supabase
+ * rows always carry a uuid), which is also what keeps a non-Supabase
+ * install working: there `fetchMyEntitlements` resolves to null — as it
+ * does on any failed read — and null is treated as "no data, touch
+ * nothing", so the document is never wiped on a hiccup.
  */
-export function mirrorRemoteEntitlements(remote: UserProduct[]): void {
-  if (remote.length === 0) return
+export function mirrorRemoteEntitlements(remote: UserProduct[] | null): void {
+  /* null = the fetch itself failed (network/refused). Cache must not
+   * prune on absent data — only on a successful read that proves the
+   * rows are gone. */
+  if (remote === null) return
 
   const keyOf = (up: UserProduct) => `${up.user_id}:${up.product_id}`
+  const isLocalOnly = (up: UserProduct) => !isUuid(up.user_product_id)
 
-  const current = new Map(getDb().user_products.map((up) => [keyOf(up), up]))
+  const current = getDb().user_products
 
-  const changed = remote.some((row) => {
-    const existing = current.get(keyOf(row))
+  /* Which local rows would survive this mirror? Local-only rows always;
+   * remote-owned rows only if the server still lists them. */
+  const remoteKeys = new Set(remote.map(keyOf))
+  const survivors = current.filter(
+    (up) => isLocalOnly(up) || remoteKeys.has(keyOf(up)),
+  )
 
-    return !existing || JSON.stringify(existing) !== JSON.stringify(row)
-  })
+  const changed =
+    survivors.length !== current.length ||
+    remote.some((row) => {
+      const existing = current.find((up) => keyOf(up) === keyOf(row))
+
+      return !existing || JSON.stringify(existing) !== JSON.stringify(row)
+    })
 
   if (!changed) return
 
   mutate((db) => {
     const byKey = new Map(db.user_products.map((up) => [keyOf(up), up]))
 
+    /* Fresh server state wins where a row exists in both; local-only
+     * rows keep their place; remote-owned rows the server no longer
+     * lists are dropped by simply never being re-added. */
     remote.forEach((row) => byKey.set(keyOf(row), row))
 
-    db.user_products = [...byKey.values()]
+    db.user_products = db.user_products
+      .filter((up) => isLocalOnly(up) || remoteKeys.has(keyOf(up)))
+      .map((up) => byKey.get(keyOf(up)) ?? up)
   })
 }
 

@@ -293,7 +293,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const rows = await fetchMyEntitlements(uid)
 
-      mirrorRemoteEntitlements(rows)
+      /* null (failed read) leaves the cache untouched; a real empty
+       * result prunes rows the server has removed — הסרה מלאה must
+       * reach this browser, not just the database. */
+      if (rows !== null) mirrorRemoteEntitlements(rows)
     },
     [],
   )
@@ -316,7 +319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const sync = async () => {
       const rows = await fetchMyEntitlements(user.user_id)
 
-      if (!cancelled) mirrorRemoteEntitlements(rows)
+      if (!cancelled && rows !== null) mirrorRemoteEntitlements(rows)
     }
 
     void sync()
