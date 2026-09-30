@@ -155,6 +155,13 @@ interface AppContextValue {
   userProducts: UserProduct[]
   readingProgress: ReadingProgress[]
   orders: Order[]
+  /**
+   * Re-fetches the signed-in account's entitlements from Supabase now,
+   * bypassing the once-a-minute focus throttle. The Reader calls this on
+   * its revalidation beat so an access change made while the book is open
+   * lands in the mirror within seconds instead of whenever focus returns.
+   */
+  refreshEntitlements: () => Promise<void>
   hasAccess: (productId: string) => boolean
   getProgress: (productId: string) => ReadingProgress | undefined
   updateProgress: (productId: string, page: number, totalPages: number) => void
@@ -276,6 +283,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * object and would otherwise re-run this on every store write. Only the
    * signed-in user's own rows are fetched, and the cache is merged, never
    * replaced — a local purchase must survive. */
+  const refreshEntitlements = useCallback(
+    async (uid: string) => {
+      if (!isSupabaseConfigured) return
+
+      const rows = await fetchMyEntitlements(uid)
+
+      mirrorRemoteEntitlements(rows)
+    },
+    [],
+  )
+
+  /* Bound to the signed-in account and memoised on the id alone, so its
+   * identity survives the re-renders every store write causes. The
+   * reader's revalidation beat keys its interval on this function; a
+   * fresh identity per render would reset the timer before it could
+   * fire. */
+  const refreshMyEntitlements = useCallback(
+    () => (user ? refreshEntitlements(user.user_id) : Promise.resolve()),
+    [user?.user_id, refreshEntitlements],
+  )
+
   useEffect(() => {
     if (!isSupabaseConfigured || !user) return
 
@@ -313,7 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cancelled = true
       window.removeEventListener("focus", onFocus)
     }
-  }, [user?.user_id])
+  }, [user?.user_id, refreshEntitlements])
 
   // A dropped or deactivated account ends the session immediately.
   useEffect(() => {
@@ -569,6 +597,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         userProducts,
         readingProgress,
         orders,
+        refreshEntitlements: refreshMyEntitlements,
         hasAccess,
         getProgress,
         updateProgress,

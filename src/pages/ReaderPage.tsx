@@ -28,6 +28,19 @@ const TAP_DURATION = 500
 /** Heartbeat interval; the session is extended only after real activity. */
 const HEARTBEAT_MS = 20_000
 const ACTIVITY_WINDOW_MS = 60_000
+/**
+ * How often the reader re-verifies the entitlement server-side while the
+ * book is open.
+ *
+ * A grant minted once at open time is not authorization — it is a
+ * snapshot of authorization. `get-content-url` checks
+ * `access_status = 'ACTIVE'` only when it signs, and the signed URL it
+ * hands back cannot be un-signed, so the only way an already-open reader
+ * learns that an administrator pressed חסימה is to ask the server again.
+ * Thirty seconds bounds how long a suspended account can keep turning
+ * pages; each beat is one cheap entitlement read through RLS.
+ */
+const ACCESS_REVALIDATE_MS = 30_000
 
 /**
  * Text-size rungs, as a percentage of the PDF's natural scale.
@@ -83,6 +96,7 @@ export default function ReaderPage() {
     userProducts,
     user,
     actor,
+    refreshEntitlements,
   } = useApp()
   const { products } = useCms()
   const db = useStore()
@@ -251,6 +265,71 @@ export default function ReaderPage() {
       cancelled = true
     }
   }, [actor, productId, sessionId, hasAccess])
+
+  /* Live access revalidation.
+   *
+   * The grant mint above runs once per sitting: after it succeeds the
+   * reader holds a parsed PDF and a signed URL, and nothing would ever
+   * tell it that access died in the meantime — an administrator pressing
+   * חסימה (or שלילה) changed `user_products.access_status` on the server,
+   * but this tab went on rendering from memory. The mirror in AppContext
+   * only refreshed on focus, throttled to a minute, and even a refreshed
+   * mirror would not tear down an already-rendered PdfCanvas.
+   *
+   * Two layers fix that without touching authorization itself:
+   *
+   *  1. Every 30 s the entitlements are re-fetched from Supabase (through
+   *     RLS, the caller's own rows) and the guard below re-evaluates
+   *     `hasAccess` against the fresh mirror.
+   *  2. The guard — which already ran on open — now also runs on every
+   *     mirror change and tears the content down when access is gone:
+   *     the signed URL is dropped, the parsed document unmounts, and the
+   *     block screen replaces the page. From there the existing paths take
+   *     over: the Library hides the book, a reopen fails in
+   *     issueContentGrant, and get-content-url refuses to sign anything
+   *     new. This is an enforcement boundary, not cosmetics — without it
+   *     the only server-side checks in the system never fire again after
+   *     the first mint.
+   */
+  useEffect(() => {
+    if (!productId) return
+
+    const beat = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return
+      void refreshEntitlements()
+    }, ACCESS_REVALIDATE_MS)
+
+    const revalidate = () => {
+      if (document.visibilityState !== "visible") return
+      void refreshEntitlements()
+    }
+
+    window.addEventListener("focus", revalidate)
+    document.addEventListener("visibilitychange", revalidate)
+
+    return () => {
+      window.clearInterval(beat)
+      window.removeEventListener("focus", revalidate)
+      document.removeEventListener("visibilitychange", revalidate)
+    }
+  }, [productId, refreshEntitlements])
+
+  // Enforcement guard for the beat above — see the comment block there.
+  // Also covers the pre-existing cold-open path, so the original guard
+  // below it is superseded; both exist for now, this one runs later.
+  useEffect(() => {
+    if (!productId) return
+    if (!authReady) return
+    if (!isAuthenticated) {
+      navigate("/login", { replace: true })
+      return
+    }
+    if (!hasAccess(productId)) {
+      setContentUrl(undefined)
+      setGrantWatermark(undefined)
+      navigate("/dashboard/library", { replace: true })
+    }
+  }, [authReady, isAuthenticated, productId, hasAccess, userProducts])
 
   /* ── DRM deterrents ────────────────────────────────────── */
   const [shielded, setShielded] = useState(false)
