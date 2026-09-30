@@ -167,8 +167,8 @@ text("sales", "hero.cta", "Hero — כפתור ראשי", "כן. אני רוצה
 strings("sales", "hero.trust", "Hero — תגי אמון", ["גישה מיידית", "תשלום מאובטח"]);
 text("sales", "hero.priceLabel", "Hero — תווית מחיר", "מחיר השקה");
 text("sales", "hero.scroll", "Hero — חץ גלילה", "גללו למטה");
-text("sales", "audience.yes", "קהל יעד — כותרת חיובי", "למי כן");
-text("sales", "audience.no", "קהל יעד — כותרת שלילי", "למי לא");
+text("sales", "audience.yesTitle", "קהל יעד — כותרת חיובי", "למי כן");
+text("sales", "audience.noTitle", "קהל יעד — כותרת שלילי", "למי לא");
 text("sales", "offer.priceLabel", "הצעה — תווית מחיר", "מחיר השקה");
 text("sales", "offer.cta", "הצעה — כפתור", "לקחת את הספר עכשיו");
 text("sales", "offer.subtext", "הצעה — טקסט תחת הכפתור", "תשלום מאובטח · הורדה מיידית · אפשר לקרוא הערב");

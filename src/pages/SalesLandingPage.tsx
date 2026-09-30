@@ -623,7 +623,7 @@ function AudienceSection({ c }: { c: ReturnType<typeof useContent> }) {
               className="font-display text-lg font-bold mb-4 flex items-center gap-2"
               style={{ color: "var(--color-success)" }}
             >
-              <Icon name="checkCircle" size={18} /> {c("sales.audience.yes") || "למי כן"}
+              <Icon name="checkCircle" size={18} /> {c("sales.audience.yesTitle") || "למי כן"}
             </h3>
             <ul className="space-y-3">
               {yes.map((it) => (
@@ -650,7 +650,7 @@ function AudienceSection({ c }: { c: ReturnType<typeof useContent> }) {
               className="font-display text-lg font-bold mb-4 flex items-center gap-2"
               style={{ color: "var(--color-danger)" }}
             >
-              <Icon name="x" size={18} /> {c("sales.audience.no") || "למי לא"}
+              <Icon name="x" size={18} /> {c("sales.audience.noTitle") || "למי לא"}
             </h3>
             <ul className="space-y-3">
               {no.map((it) => (
