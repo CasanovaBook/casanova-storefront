@@ -29,7 +29,6 @@ const navItems: {
     icon: "box",
     perm: "products",
   },
-  { path: "/admin/cms/content-editor", label: "CMS — עריכת תוכן", icon: "layers", perm: "cms" },
   { path: "/admin/emails", label: "מיילים", icon: "mail", perm: "emails" },
   {
     path: "/admin/alerts",
@@ -112,15 +111,10 @@ export default function AdminLayout() {
             : undefined,
     }))
 
-  /* Add Maestro CMS link prominently for users with cms:edit_live permission. */
+  /* Maestro CMS is the single navigation entry to the content editor,
+   * shown prominently for users with cms:edit_live permission. */
   if (can(adminRole, "cms:edit_live")) {
-    const cmsIndex = visibleNav.findIndex((item) => item.path === "/admin/cms/content-editor");
-    const maestroItem: SideNavItem = { path: "/admin/cms/content-editor", label: "Maestro CMS", icon: "sparkles" };
-    if (cmsIndex >= 0) {
-      visibleNav.splice(cmsIndex + 1, 0, maestroItem);
-    } else {
-      visibleNav.push(maestroItem);
-    }
+    visibleNav.push({ path: "/admin/cms/content-editor", label: "Maestro CMS", icon: "sparkles" });
   }
 
   const secondaryItems: SideNavItem[] = [

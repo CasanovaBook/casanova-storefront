@@ -254,12 +254,6 @@ export default function AdminDashboardPage() {
       href: "/admin/support",
       perm: "support",
     },
-    {
-      icon: "layers",
-      label: "CMS — עריכת תוכן",
-      href: "/admin/cms/content-editor",
-      perm: "cms",
-    },
   ] as {
     icon: IconName
     label: string
