@@ -100,6 +100,12 @@ async function resolveRestoredUser(
 
 const THEME_KEY = "casanova_theme"
 
+/** How often the signed-in account's entitlements are re-fetched as a
+ * safety net under the Realtime push. Realtime covers INSERT/UPDATE
+ * instantly; DELETE cannot pass RLS filtering, so removals surface on
+ * this beat. */
+const ENTITLEMENT_REVALIDATE_MS = 30_000
+
 export interface AuthOutcome {
   ok: boolean
   error?: string
@@ -400,6 +406,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return () => {
       void client.removeChannel(channel)
+    }
+  }, [user?.user_id, refreshEntitlements])
+
+  /* ── Entitlement revalidation beat ──────────────────────
+   *
+   * The Realtime subscription above cannot deliver DELETE events
+   * reliably: RLS is not applied to deletes (there is no row left to
+   * check the policy against) and a column filter is evaluated against
+   * the old record, which on an RLS-protected table carries only the
+   * primary key — so הסרה מלאה produced no event the subscription could
+   * match, and the removed book sat in the customer's Library until a
+   * manual refresh. INSERT and UPDATE (grant, חסימה, שלילה) are
+   * unaffected: they carry the full row and arrive instantly.
+   *
+   * A short polling beat therefore backs the push for every screen —
+   * not just the Reader, whose own 30 s beat covers only the reader
+   * route. Thirty seconds bounds how long a removed book lingers in the
+   * Library; each beat is one cheap RLS-scoped SELECT of the account's
+   * own rows, and the mirror skips the write entirely when nothing
+   * changed. Still a UX-latency mechanism only: authorization stays
+   * server-side in get-content-url.
+   */
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return
+
+    const beat = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return
+      void refreshEntitlements(user.user_id)
+    }, ENTITLEMENT_REVALIDATE_MS)
+
+    return () => {
+      window.clearInterval(beat)
     }
   }, [user?.user_id, refreshEntitlements])
 
