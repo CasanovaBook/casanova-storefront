@@ -10,7 +10,7 @@
  * The CMS can override any slot: when an editor creates an active
  * SALES section of the same type, the page renders the CMS version
  * instead of the bundled one. Clearing the CMS slot reverts to the
- * bundled copy. This keeps the page fully editable from /admin/cms
+ * bundled copy. This keeps the page fully editable from /admin/cms/content-editor
  * while still working for any visitor out of the box.
  *
  * The product below is also a fallback: if the catalogue has no

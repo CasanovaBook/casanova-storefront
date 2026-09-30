@@ -7,7 +7,7 @@
  * bundled launch copy in `src/lib/sales-content.ts` when the CMS
  * has nothing for that slot — so the page renders complete copy
  * for any visitor even on a fresh install, and an administrator
- * can override any slot from /admin/cms.
+ * can override any slot from /admin/cms/content-editor.
  *
  * The sticky mobile CTA bar and the exit-intent popup are
  * conversion chrome: they live in code because they are UI

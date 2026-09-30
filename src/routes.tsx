@@ -119,8 +119,6 @@ const AdminOrdersPage = lazyPage(() => import("./pages/admin/AdminOrdersPage"))
 
 const AdminCrmPage = lazyPage(() => import("./pages/admin/AdminCrmPage"))
 
-const AdminCmsPage = lazyPage(() => import("./pages/admin/AdminCmsPage"))
-
 const AdminAccessPage = lazyPage(() => import("./pages/admin/AdminAccessPage"))
 
 const AdminFinancePage = lazyPage(
@@ -332,7 +330,11 @@ export const router = createBrowserRouter([
 
       { path: "crm", Component: AdminCrmPage },
 
-      { path: "cms", Component: AdminCmsPage },
+      /* The legacy CMS sections page is gone; the canonical editor is the
+       * Maestro app, which carries its own route-level authorization. A
+       * redirect (not a 404) keeps bookmarks and old links working, and
+       * cannot bypass the gate: it lands inside the gated subtree. */
+      { path: "cms", element: <Navigate to="/admin/cms/content-editor" replace /> },
 
       { path: "support", Component: AdminSupportPage },
 

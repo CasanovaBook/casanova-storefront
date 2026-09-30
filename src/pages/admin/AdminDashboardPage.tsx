@@ -256,8 +256,8 @@ export default function AdminDashboardPage() {
     },
     {
       icon: "layers",
-      label: "CMS — סקטורים ותוכן",
-      href: "/admin/cms",
+      label: "CMS — עריכת תוכן",
+      href: "/admin/cms/content-editor",
       perm: "cms",
     },
   ] as {
