@@ -835,7 +835,7 @@ export function ContentEditor() {
         )}
       </div>
       <button
-        onClick={() => navigate("/HOWAMANTREATSYOU/content")}
+        onClick={() => navigate("/admin/cms/content-editor/content")}
         className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-70"
         style={{ color: "var(--color-muted-foreground)" }}
       >

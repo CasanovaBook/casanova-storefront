@@ -107,7 +107,7 @@ export function AdminDashboard() {
           </div>
         </div>
         <button
-          onClick={() => navigate("/HOWAMANTREATSYOU/content")}
+          onClick={() => navigate("/admin/cms/content-editor/content")}
           className="rounded-xl px-5 py-2.5 text-sm font-bold transition-all hover:opacity-90"
           style={{ background: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
         >
@@ -190,7 +190,7 @@ export function AdminDashboard() {
             return (
               <button
                 key={g.id}
-                onClick={() => navigate(`/HOWAMANTREATSYOU/content`, { state: { group: g.id } })}
+                onClick={() => navigate(`/admin/cms/content-editor/content`, { state: { group: g.id } })}
                 className="p-4 text-right transition-all hover:scale-[1.01] hover:shadow-lg"
                 style={{ ...cardStyle, cursor: "pointer" }}
               >
@@ -232,12 +232,12 @@ export function AdminDashboard() {
           </h2>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { href: "/HOWAMANTREATSYOU/content", label: "עריכת תוכן", icon: "layers" as const, desc: "שנה טקסטים ותמונות" },
-              { href: "/HOWAMANTREATSYOU/products", label: "ניהול מוצרים", icon: "target" as const, desc: "מוצרים ומחירים" },
-              { href: "/HOWAMANTREATSYOU/pages", label: "עמודים", icon: "bookOpen" as const, desc: "עמודים וקטגוריות" },
-              { href: "/HOWAMANTREATSYOU/backup", label: "גיבוי", icon: "box" as const, desc: "ייצוא וייבוא" },
-              { href: "/HOWAMANTREATSYOU/audit", label: "יומן שינויים", icon: "list" as const, desc: "היסטוריית עריכות" },
-              { href: "/HOWAMANTREATSYOU/media", label: "ספריית מדיה", icon: "inbox" as const, desc: "תמונות וקבצים" },
+              { href: "/admin/cms/content-editor/content", label: "עריכת תוכן", icon: "layers" as const, desc: "שנה טקסטים ותמונות" },
+              { href: "/admin/cms/content-editor/products", label: "ניהול מוצרים", icon: "target" as const, desc: "מוצרים ומחירים" },
+              { href: "/admin/cms/content-editor/pages", label: "עמודים", icon: "bookOpen" as const, desc: "עמודים וקטגוריות" },
+              { href: "/admin/cms/content-editor/backup", label: "גיבוי", icon: "box" as const, desc: "ייצוא וייבוא" },
+              { href: "/admin/cms/content-editor/audit", label: "יומן שינויים", icon: "list" as const, desc: "היסטוריית עריכות" },
+              { href: "/admin/cms/content-editor/media", label: "ספריית מדיה", icon: "inbox" as const, desc: "תמונות וקבצים" },
             ].map((link) => (
               <a
                 key={link.href}

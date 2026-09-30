@@ -16,14 +16,14 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { Toaster } from "./toast";
 
 const NAV_ITEMS: SideNavItem[] = [
-  { path: "/HOWAMANTREATSYOU", label: "לוח בקרה", icon: "grid" },
-  { path: "/HOWAMANTREATSYOU/content", label: "עריכת תוכן", icon: "layers" },
-  { path: "/HOWAMANTREATSYOU/pages", label: "עמודים וקטגוריות", icon: "bookOpen" },
-  { path: "/HOWAMANTREATSYOU/backup", label: "גיבוי ושחזור", icon: "box" },
-  { path: "/HOWAMANTREATSYOU/audit", label: "יומן שינויים", icon: "list" },
-  { path: "/HOWAMANTREATSYOU/products", label: "מוצרים", icon: "target" },
-  { path: "/HOWAMANTREATSYOU/media", label: "מדיה", icon: "inbox" },
-  { path: "/HOWAMANTREATSYOU/settings", label: "הגדרות", icon: "settings" },
+  { path: "/admin/cms/content-editor", label: "לוח בקרה", icon: "grid" },
+  { path: "/admin/cms/content-editor/content", label: "עריכת תוכן", icon: "layers" },
+  { path: "/admin/cms/content-editor/pages", label: "עמודים וקטגוריות", icon: "bookOpen" },
+  { path: "/admin/cms/content-editor/backup", label: "גיבוי ושחזור", icon: "box" },
+  { path: "/admin/cms/content-editor/audit", label: "יומן שינויים", icon: "list" },
+  { path: "/admin/cms/content-editor/products", label: "מוצרים", icon: "target" },
+  { path: "/admin/cms/content-editor/media", label: "מדיה", icon: "inbox" },
+  { path: "/admin/cms/content-editor/settings", label: "הגדרות", icon: "settings" },
 ];
 
 export function AdminShell() {

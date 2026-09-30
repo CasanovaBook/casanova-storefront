@@ -115,7 +115,7 @@ export default function AdminLayout() {
   /* Add Maestro CMS link prominently for users with cms:edit_live permission. */
   if (can(adminRole, "cms:edit_live")) {
     const cmsIndex = visibleNav.findIndex((item) => item.path === "/admin/cms");
-    const maestroItem: SideNavItem = { path: "/HOWAMANTREATSYOU", label: "Maestro CMS", icon: "sparkles" };
+    const maestroItem: SideNavItem = { path: "/admin/cms/content-editor", label: "Maestro CMS", icon: "sparkles" };
     if (cmsIndex >= 0) {
       visibleNav.splice(cmsIndex + 1, 0, maestroItem);
     } else {

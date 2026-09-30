@@ -1,8 +1,10 @@
 import { Suspense, lazy, type ComponentType } from "react"
 
-import { createBrowserRouter } from "react-router"
+import { createBrowserRouter, Navigate, useLocation } from "react-router"
 
 import PublicRoot from "./components/layout/PublicRoot"
+import { useApp } from "./context/AppContext"
+import { can } from "./lib/permissions"
 
 import DashboardLayout from "./components/layout/DashboardLayout"
 
@@ -341,11 +343,31 @@ export const router = createBrowserRouter([
   },
 
   {
-    // Maestro CMS admin — accessible at /HOWAMANTREATSYOU
-    // Uses Casanova admin session (SSO). No separate login required.
-    // Any admin with cms:edit_live permission can access.
-    path: "/HOWAMANTREATSYOU/*",
-    Component: MaestroAdminApp,
+    /* Route-level authorization for the Maestro CMS editor. Runs before the
+     * editor chunk even loads, so direct URL entry, refresh, new-tab and
+     * hand-typed navigation are all refused here — the AdminAuthGate inside
+     * the app re-checks the same rules as a second layer, it is not the
+     * only one. A visitor is admitted only when ALL hold:
+     *   - a restored, authenticated Casanova session
+     *   - platform role ADMIN (admin sub-roles ride on it via admin_role)
+     *   - the cms:edit_live permission for that sub-role
+     * Everyone else lands on login or their own dashboard; nobody reaches
+     * a rendered editor shell they should not see. */
+    path: "/admin/cms/content-editor/*",
+    Component: CmsAuthorizationGate,
     errorElement: <RouteError />,
   },
 ])
+
+/** Route-level authorization wrapper for the CMS editor; see the route
+ * comment above for the rule set. Renders the lazy admin app only after
+ * every check passes. */
+function CmsAuthorizationGate() {
+  const { isAuthenticated, authReady, isAdmin, adminRole } = useApp()
+  const location = useLocation()
+
+  if (!authReady) return null
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (!isAdmin || !can(adminRole, "cms:edit_live")) return <Navigate to="/dashboard" replace />
+  return <MaestroAdminApp />
+}

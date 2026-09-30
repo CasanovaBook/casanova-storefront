@@ -60,7 +60,7 @@ function AccessDenied() {
 }
 
 export function AdminAuthGate({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated, authReady, adminRole, logout } = useApp();
+  const { user, isAuthenticated, authReady, isAdmin, adminRole, logout } = useApp();
   const navigate = useNavigate();
 
   /* Wait for the first session lookup; see the note on `authReady`. */
@@ -74,7 +74,11 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
     return null;
   }
 
-  const hasAccess = can(adminRole, "cms:edit_live");
+  /* Second authorization layer: the router gate already refused entry
+   * before this component loaded (platform ADMIN role + cms:edit_live).
+   * Re-checking here keeps the editor safe even if someone renders it
+   * under a different route later. */
+  const hasAccess = isAdmin && user?.role === "ADMIN" && can(adminRole, "cms:edit_live");
   if (!hasAccess) {
     return <AccessDenied />;
   }
