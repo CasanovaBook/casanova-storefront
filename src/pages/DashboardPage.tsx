@@ -334,13 +334,22 @@ export default function DashboardPage() {
     }
   }, [user?.user_id, user?.greeted_at])
 
+  /* Every entitlement the account holds, not only the readable ones: a
+   * blocked or revoked book must stay visible with its status, or a
+   * customer would conclude the book — and their purchase — had
+   * vanished. Visibility and authorization are separate concerns; the
+   * open affordance is what carries the authorization boundary, and
+   * get-content-url re-checks the status server-side regardless. */
   const currentlyReading = userProducts
-    .filter((up) => up.access_status === "ACTIVE")
     .map((up) => ({
       up,
       progress: readingProgress.find((rp) => rp.product_id === up.product_id),
     }))
     .sort((a, b) => {
+      /* Readable books first, then by recency; a blocked book the user
+       * was just reading should not bury an active one. */
+      if (a.up.access_status === "ACTIVE" !== (b.up.access_status === "ACTIVE"))
+        return a.up.access_status === "ACTIVE" ? -1 : 1
       if (!a.progress && !b.progress) return 0
       if (!a.progress) return 1
       if (!b.progress) return -1
@@ -350,16 +359,22 @@ export default function DashboardPage() {
       )
     })
 
-  const totalBooks = userProducts.filter(
+  const readableBooks = userProducts.filter(
     (up) => up.access_status === "ACTIVE",
-  ).length
+  )
+  const totalBooks = userProducts.length
   const avgProgress =
-    currentlyReading.length > 0
+    readableBooks.length > 0
       ? Math.round(
-          currentlyReading.reduce(
-            (s, { progress }) => s + (progress?.progress_percent ?? 0),
+          readableBooks.reduce(
+            (s, up) => {
+              const progress = readingProgress.find(
+                (rp) => rp.product_id === up.product_id,
+              )
+              return s + (progress?.progress_percent ?? 0)
+            },
             0,
-          ) / currentlyReading.length,
+          ) / readableBooks.length,
         )
       : 0
 
@@ -466,17 +481,50 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {currentlyReading.slice(0, 2).map(({ up, progress }) => (
+            {currentlyReading.slice(0, 2).map(({ up, progress }) => {
+              const isActive = up.access_status === "ACTIVE"
+              return (
               <div
                 key={up.user_product_id}
-                className="card-glow flex items-center gap-5 p-4 cursor-pointer transition-all"
-                onClick={() => navigate(`/read/${up.product_id}`)}
+                /* A non-ACTIVE entitlement is displayed, not openable:
+                 * the card loses its pointer and click handler, and the
+                 * button becomes a status chip. Authorization itself is
+                 * enforced server-side — this only aligns the UI. */
+                className={`card-glow flex items-center gap-5 p-4 transition-all ${
+                  isActive ? "cursor-pointer" : "opacity-75"
+                }`}
+                onClick={() => {
+                  if (isActive) navigate(`/read/${up.product_id}`)
+                }}
               >
                 <MiniCover snapshot={up.product_snapshot} />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm mb-0.5 truncate">
-                    {up.product_snapshot.name}
-                  </p>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="font-semibold text-sm truncate">
+                      {up.product_snapshot.name}
+                    </p>
+                    {!isActive && (
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0"
+                        style={{
+                          background:
+                            up.access_status === "SUSPENDED"
+                              ? "rgba(245,158,11,0.12)"
+                              : "rgba(239,68,68,0.12)",
+                          color:
+                            up.access_status === "SUSPENDED"
+                              ? "#F59E0B"
+                              : "var(--color-danger)",
+                        }}
+                      >
+                        {up.access_status === "SUSPENDED"
+                          ? "חסימה"
+                          : up.access_status === "REVOKED"
+                            ? "שלילה"
+                            : "לא פעיל"}
+                      </span>
+                    )}
+                  </div>
                   <p
                     className="text-xs mb-2"
                     style={{ color: "var(--color-muted-foreground)" }}
@@ -514,17 +562,30 @@ export default function DashboardPage() {
                     </span>
                   </div>
                 )}
-                <button
-                  className="btn-gradient text-xs font-semibold px-4 py-2 rounded-full flex-shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigate(`/read/${up.product_id}`)
-                  }}
-                >
-                  {progress ? "המשך קריאה" : "התחילו לקרוא"}
-                </button>
+                {isActive ? (
+                  <button
+                    className="btn-gradient text-xs font-semibold px-4 py-2 rounded-full flex-shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/read/${up.product_id}`)
+                    }}
+                  >
+                    {progress ? "המשך קריאה" : "התחילו לקרוא"}
+                  </button>
+                ) : (
+                  <span
+                    className="text-xs font-semibold px-4 py-2 rounded-full flex-shrink-0 border"
+                    style={{
+                      borderColor: "var(--color-border)",
+                      color: "var(--color-muted-foreground)",
+                    }}
+                  >
+                    אין גישה
+                  </span>
+                )}
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
