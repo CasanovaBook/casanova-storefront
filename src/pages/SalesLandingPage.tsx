@@ -1157,26 +1157,6 @@ export default function SalesLandingPage() {
     loadContent().catch(() => {})
   }, [])
 
-  // Git-first SEO (content/seo.json, edited through Decap): keep the tab
-  // title and the meta description in sync with the CMS file. The page is
-  // standalone (not under PublicRoot), so nothing else maintains these —
-  // before this effect the static index.html title was always shown.
-  useEffect(() => {
-    const title = c("sales.seo.title")
-    if (title) document.title = title
-
-    const description = c("sales.seo.description")
-    if (description) {
-      let meta = document.querySelector('meta[name="description"]')
-      if (!meta) {
-        meta = document.createElement("meta")
-        meta.setAttribute("name", "description")
-        document.head.appendChild(meta)
-      }
-      meta.setAttribute("content", description)
-    }
-  }, [c])
-
   const brand = c("global.brand") || "Casanova"
   const logoSrc = c("global.logo") || logoImg
 
