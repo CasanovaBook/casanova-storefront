@@ -735,16 +735,24 @@ export function mirrorRemoteEntitlements(remote: UserProduct[] | null): void {
   if (!changed) return
 
   mutate((db) => {
-    const byKey = new Map(db.user_products.map((up) => [keyOf(up), up]))
+    /* Build the next document from the union, not by mapping over the
+     * existing rows: a row the server added (החזרת הרשאה after הסרה
+     * מלאה) has no existing counterpart, and mapping over what is
+     * already here would drop it — the mirror could then never re-add
+     * an entitlement the admin had removed and re-granted. */
+    const next = new Map<string, UserProduct>()
+
+    db.user_products.forEach((up) => {
+      if (isLocalOnly(up) || remoteKeys.has(keyOf(up)))
+        next.set(keyOf(up), up)
+    })
 
     /* Fresh server state wins where a row exists in both; local-only
      * rows keep their place; remote-owned rows the server no longer
-     * lists are dropped by simply never being re-added. */
-    remote.forEach((row) => byKey.set(keyOf(row), row))
+     * lists were never copied into `next`, which is the prune. */
+    remote.forEach((row) => next.set(keyOf(row), row))
 
-    db.user_products = db.user_products
-      .filter((up) => isLocalOnly(up) || remoteKeys.has(keyOf(up)))
-      .map((up) => byKey.get(keyOf(up)) ?? up)
+    db.user_products = [...next.values()]
   })
 }
 
