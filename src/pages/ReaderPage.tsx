@@ -376,6 +376,12 @@ export default function ReaderPage() {
     const saved = savedProgress?.current_page ?? 1
     return totalPages > 0 ? Math.min(Math.max(saved, 1), totalPages) : 1
   })
+  /* True once the reader has navigated in this sitting. The very first
+   * page render is not a reading event: it must never write progress,
+   * or a mount that raced the CMS load (total unknown, initialiser fell
+   * back to 1) would overwrite the stored position — the mechanism
+   * behind "blocking reset my page". */
+  const navigated = useRef(false)
   const [darkMode, setDarkMode] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   /* Session-scoped, not persisted with the reading progress. Zoom is a
@@ -409,6 +415,11 @@ export default function ReaderPage() {
    * belt to that brace. */
   const savedProgressKey = useRef<string | null>(null)
   useEffect(() => {
+    /* No navigation, no write. Opening the book is not progress; saving
+     * on mount is what let a page-1 default (a mount that rendered
+     * before the document total was known) replace the stored position
+     * of page 12. */
+    if (!navigated.current) return
     if (!productId || !contentUrl) return
     const key = `${productId}:${currentPage}:${totalPages}`
     if (savedProgressKey.current === key) return
@@ -416,9 +427,28 @@ export default function ReaderPage() {
     updateProgress(productId, currentPage, totalPages)
   }, [currentPage, productId, contentUrl, totalPages, updateProgress])
 
+  /* Late resume. The mount initialiser could only clamp the saved page
+   * against the total it had at that instant — often zero, before the
+   * CMS catalogue and the parsed document have reported. Once a real
+   * total arrives, if the reader has not navigated yet, jump to the
+   * stored position; this is the same clamp the initialiser wanted to
+   * do, just with the data it was missing. */
+  useEffect(() => {
+    if (navigated.current) return
+    if (!totalPages) return
+    const saved = savedProgress?.current_page
+    if (!saved || saved === currentPage) return
+    setCurrentPage(Math.min(Math.max(saved, 1), totalPages))
+    /* currentPage is read, not tracked: this effect responds to the
+     * total and the stored position becoming known, and re-running on
+     * every page turn is exactly what navigated.current already gates. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPages, savedProgress?.current_page])
+
   const goTo = useCallback(
     (page: number) => {
       markActivity()
+      navigated.current = true
       setCurrentPage(
         totalPages > 0
           ? Math.min(Math.max(page, 1), totalPages)
