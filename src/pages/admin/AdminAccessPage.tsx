@@ -12,6 +12,8 @@ import AccessDenied from "../../components/AccessDenied"
 
 import Icon from "../../components/icons"
 
+import { useAccessActions } from "./useAccessActions"
+
 const ACCESS_LABEL: Record<string, { text: string, color: string }> = {
   ACTIVE: { text: "פעיל", color: "var(--color-success)" },
 
@@ -91,6 +93,16 @@ export default function AdminAccessPage() {
   const [grantOrder, setGrantOrder] = useState("")
 
   const [grantError, setGrantError] = useState("")
+
+  /* Loading / confirmation / error surfacing for the four row actions. */
+  const {
+    busyId,
+    error: actionError,
+    success: actionSuccess,
+    run,
+    extendedExpiry,
+    clearFeedback,
+  } = useAccessActions()
 
   if (!can(adminRole, "access")) return <AccessDenied page="הרשאות גישה" />
 
@@ -307,6 +319,35 @@ export default function AdminAccessPage() {
         </div>
       </div>
 
+      {/* Action feedback — the RPC refusals and failures surfaced here,
+          so a failed action is never a silent dead click. */}
+      {(actionError || actionSuccess) && (
+        <div
+          role={actionError ? "alert" : "status"}
+          className="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 mb-4 text-sm"
+          style={{
+            background: actionError
+              ? "rgba(239,68,68,0.08)"
+              : "rgba(34,197,94,0.08)",
+            border: `1px solid ${
+              actionError ? "rgba(239,68,68,0.3)" : "rgba(34,197,94,0.3)"
+            }`,
+            color: actionError
+              ? "var(--color-danger)"
+              : "var(--color-success)",
+          }}
+        >
+          <span>{actionError || actionSuccess}</span>
+          <button
+            onClick={clearFeedback}
+            className="text-xs opacity-70 hover:opacity-100 flex-shrink-0"
+            aria-label="סגירת הודעה"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Access records */}
       <div className="space-y-3">
         {rows.length === 0 && (
@@ -393,17 +434,23 @@ export default function AdminAccessPage() {
               </div>
 
               {canGrant && (
-                <div className="flex gap-2 mt-3 flex-wrap">
+                <div className="flex gap-2 mt-3 flex-wrap items-center">
                   {up.access_status !== "ACTIVE" && (
                     <button
                       onClick={() =>
-                        void setAccessStatus(
+                        void run(
                           up.user_product_id,
-                          "ACTIVE",
-                          "פתיחת גישה מחדש",
+                          () =>
+                            setAccessStatus(
+                              up.user_product_id,
+                              "ACTIVE",
+                              "פתיחת גישה מחדש",
+                            ),
+                          { successMessage: "הגישה נפתחה מחדש" },
                         )
                       }
-                      className="text-xs px-3 py-1.5 rounded-full border"
+                      disabled={busyId !== null}
+                      className="text-xs px-3 py-1.5 rounded-full border disabled:opacity-50"
                       style={{
                         borderColor: "rgba(34,197,94,0.3)",
                         color: "var(--color-success)",
@@ -415,13 +462,19 @@ export default function AdminAccessPage() {
                   {up.access_status === "ACTIVE" && (
                     <button
                       onClick={() =>
-                        void setAccessStatus(
+                        void run(
                           up.user_product_id,
-                          "SUSPENDED",
-                          "חסימת גישה זמנית",
+                          () =>
+                            setAccessStatus(
+                              up.user_product_id,
+                              "SUSPENDED",
+                              "חסימת גישה זמנית",
+                            ),
+                          { successMessage: "הגישה נחסמה" },
                         )
                       }
-                      className="text-xs px-3 py-1.5 rounded-full border"
+                      disabled={busyId !== null}
+                      className="text-xs px-3 py-1.5 rounded-full border disabled:opacity-50"
                       style={{
                         borderColor: "rgba(245,158,11,0.3)",
                         color: "#F59E0B",
@@ -431,14 +484,19 @@ export default function AdminAccessPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => {
-                      const d = new Date(up.expires_at ?? Date.now())
-
-                      d.setDate(d.getDate() + 30)
-
-                      void extendAccess(up.user_product_id, d.toISOString())
-                    }}
-                    className="text-xs px-3 py-1.5 rounded-full border"
+                    onClick={() =>
+                      void run(
+                        up.user_product_id,
+                        () =>
+                          extendAccess(
+                            up.user_product_id,
+                            extendedExpiry(up.expires_at),
+                          ),
+                        { successMessage: "התוקף הוארך ב־30 ימים" },
+                      )
+                    }
+                    disabled={busyId !== null}
+                    className="text-xs px-3 py-1.5 rounded-full border disabled:opacity-50"
                     style={{
                       borderColor: "var(--color-border)",
                       color: "var(--color-foreground)",
@@ -448,13 +506,23 @@ export default function AdminAccessPage() {
                   </button>
                   <button
                     onClick={() =>
-                      void setAccessStatus(
+                      void run(
                         up.user_product_id,
-                        "REVOKED",
-                        "שלילת גישה",
+                        () =>
+                          setAccessStatus(
+                            up.user_product_id,
+                            "REVOKED",
+                            "שלילת גישה",
+                          ),
+                        {
+                          confirm:
+                            "לשלול את הגישה של הלקוח למוצר זה? ניתן לשחזר דרך כפתור הפתיחה.",
+                          successMessage: "הגישה נשללה",
+                        },
                       )
                     }
-                    className="text-xs px-3 py-1.5 rounded-full border"
+                    disabled={busyId !== null}
+                    className="text-xs px-3 py-1.5 rounded-full border disabled:opacity-50"
                     style={{
                       borderColor: "rgba(239,68,68,0.3)",
                       color: "var(--color-danger)",
@@ -463,15 +531,37 @@ export default function AdminAccessPage() {
                     שלילה
                   </button>
                   <button
-                    onClick={() => void removeAccess(up.user_product_id)}
-                    className="text-xs px-3 py-1.5 rounded-full border"
+                    onClick={() =>
+                      void run(
+                        up.user_product_id,
+                        () => removeAccess(up.user_product_id),
+                        {
+                          confirm:
+                            "להסיר את הרשאת הגישה לחלוטין? הפעולה אינה הפיכה והרשאה תימחק מהמערכת.",
+                          successMessage: "ההרשאה הוסרה לחלוטין",
+                        },
+                      )
+                    }
+                    disabled={busyId !== null}
+                    className="text-xs px-3 py-1.5 rounded-full border disabled:opacity-50"
                     style={{
                       borderColor: "rgba(239,68,68,0.3)",
                       color: "var(--color-danger)",
                     }}
                   >
-                    הסרה מלאה
+                    {busyId === up.user_product_id ? "מבצע…" : "הסרה מלאה"}
                   </button>
+                  {busyId === up.user_product_id && (
+                    <span
+                      className="w-3.5 h-3.5 rounded-full border-2 animate-spin"
+                      style={{
+                        borderColor: "var(--color-border)",
+                        borderTopColor: "var(--color-primary)",
+                      }}
+                      role="status"
+                      aria-label="מבצע פעולה"
+                    />
+                  )}
                 </div>
               )}
             </div>

@@ -8,6 +8,7 @@ import { SECURITY_NOTE } from "../../lib/sensitive"
 import type { ProductSnapshot, User } from "../../types"
 import AccessDenied from "../../components/AccessDenied"
 import Icon from "../../components/icons"
+import { useAccessActions } from "./useAccessActions"
 
 const ROLE_LABEL_USER: Record<string, string> = {
   ADMIN: "מנהל",
@@ -158,6 +159,16 @@ function UserDetailModal({
 
   const canGrant = can(adminRole, "grant_access")
   const canBlock = can(adminRole, "block_user")
+
+  /* Loading / confirmation / error surfacing for the entitlement action
+   * buttons in the access tab (same behaviour as /admin/access). */
+  const {
+    busyId: accessBusyId,
+    success: accessSuccess,
+    run: runAccessAction,
+    extendedExpiry,
+    clearFeedback: clearAccessFeedback,
+  } = useAccessActions()
 
   // Every figure below is derived from the customer's own records.
   const profileResult = customerProfile(user.user_id)
@@ -604,13 +615,19 @@ function UserDetailModal({
                           {up.access_status === "ACTIVE" && (
                             <button
                               onClick={() =>
-                                void setAccessStatus(
+                                void runAccessAction(
                                   up.user_product_id,
-                                  "SUSPENDED",
-                                  "חסימת גישה",
+                                  () =>
+                                    setAccessStatus(
+                                      up.user_product_id,
+                                      "SUSPENDED",
+                                      "חסימת גישה",
+                                    ),
+                                  { successMessage: "הגישה נחסמה" },
                                 )
                               }
-                              className="text-xs px-2.5 py-1 rounded-full border"
+                              disabled={accessBusyId !== null}
+                              className="text-xs px-2.5 py-1 rounded-full border disabled:opacity-50"
                               style={{
                                 borderColor: "rgba(245,158,11,0.3)",
                                 color: "#F59E0B",
@@ -620,15 +637,19 @@ function UserDetailModal({
                             </button>
                           )}
                           <button
-                            onClick={() => {
-                              const d = new Date(up.expires_at ?? Date.now())
-                              d.setDate(d.getDate() + 30)
-                              void extendAccess(
+                            onClick={() =>
+                              void runAccessAction(
                                 up.user_product_id,
-                                d.toISOString(),
+                                () =>
+                                  extendAccess(
+                                    up.user_product_id,
+                                    extendedExpiry(up.expires_at),
+                                  ),
+                                { successMessage: "התוקף הוארך ב־30 ימים" },
                               )
-                            }}
-                            className="text-xs px-2.5 py-1 rounded-full border"
+                            }
+                            disabled={accessBusyId !== null}
+                            className="text-xs px-2.5 py-1 rounded-full border disabled:opacity-50"
                             style={{
                               borderColor: "var(--color-border)",
                               color: "var(--color-foreground)",
@@ -638,13 +659,23 @@ function UserDetailModal({
                           </button>
                           <button
                             onClick={() =>
-                              void setAccessStatus(
+                              void runAccessAction(
                                 up.user_product_id,
-                                "REVOKED",
-                                "שלילת גישה",
+                                () =>
+                                  setAccessStatus(
+                                    up.user_product_id,
+                                    "REVOKED",
+                                    "שלילת גישה",
+                                  ),
+                                {
+                                  confirm:
+                                    "לשלול את הגישה של הלקוח למוצר זה? ניתן לשחזר דרך כפתור ההפעלה.",
+                                  successMessage: "הגישה נשללה",
+                                },
                               )
                             }
-                            className="text-xs px-2.5 py-1 rounded-full border"
+                            disabled={accessBusyId !== null}
+                            className="text-xs px-2.5 py-1 rounded-full border disabled:opacity-50"
                             style={{
                               borderColor: "rgba(239,68,68,0.3)",
                               color: "var(--color-danger)",
@@ -654,9 +685,18 @@ function UserDetailModal({
                           </button>
                           <button
                             onClick={() =>
-                              void removeAccess(up.user_product_id)
+                              void runAccessAction(
+                                up.user_product_id,
+                                () => removeAccess(up.user_product_id),
+                                {
+                                  confirm:
+                                    "להסיר את הרשאת הגישה לחלוטין? הפעולה אינה הפיכה והרשאה תימחק מהמערכת.",
+                                  successMessage: "ההרשאה הוסרה לחלוטין",
+                                },
+                              )
                             }
-                            className="text-xs px-2.5 py-1 rounded-full border"
+                            disabled={accessBusyId !== null}
+                            className="text-xs px-2.5 py-1 rounded-full border disabled:opacity-50"
                             style={{
                               borderColor: "rgba(239,68,68,0.3)",
                               color: "var(--color-danger)",
