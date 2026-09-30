@@ -46,7 +46,9 @@ export default function DashboardLayout() {
       <SideNav
         items={navItems}
         secondaryItems={[
-          { path: "/support", label: "תמיכה ופניות", icon: "message" },
+          /* Dashboard-scoped so navigation stays inside this layout —
+           * /support (public) unmounts the sidebar along with it. */
+          { path: "/dashboard/support", label: "תמיכה ופניות", icon: "message" },
         ]}
         footer={
           <>

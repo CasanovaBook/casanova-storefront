@@ -291,6 +291,13 @@ export const router = createBrowserRouter([
       { path: "library", Component: LibraryPage },
 
       { path: "store", Component: StorePage },
+
+      /* Support inside the account shell: the dashboard sidebar's
+       * "תמיכה ופניות" item links here so navigating keeps the sidebar
+       * mounted — the public /support route swaps in PublicRoot and the
+       * customer lost their navigation entirely. Same component, now
+       * rendered under DashboardLayout. */
+      { path: "support", Component: SupportPage },
     ],
   },
 
