@@ -54,7 +54,11 @@ import {
   type CheckoutInput,
   type CheckoutOutcome,
 } from "../lib/api-orders"
-import { supabase, isSupabaseConfigured } from "../lib/supabase"
+import {
+  supabase,
+  isSupabaseConfigured,
+  requireSupabase,
+} from "../lib/supabase"
 import { maestro } from "../maestro"
 import {
   signInWithEmail,
@@ -340,6 +344,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
       window.removeEventListener("focus", onFocus)
+    }
+  }, [user?.user_id, refreshEntitlements])
+
+  /* ── Realtime entitlement push ──────────────────────────
+   *
+   * The fetch paths above all share one weakness: something must
+   * trigger them. While a customer sits on the Reader with the tab
+   * visible, neither focus nor the throttled refetch fires, and the
+   * 30 s revalidation beat in the Reader is a poll, not a push — an
+   * access change landed up to 30 s late, and a Library customer saw
+   * it only on the next focus.
+   *
+   * This subscription closes that gap: Supabase Realtime delivers
+   * postgres_changes events for public.user_products, filtered by the
+   * table's RLS to the signed-in account's own rows (migration 0017
+   * added the table to the supabase_realtime publication). On every
+   * event the client refetches its rows and mirrors them — the event
+   * itself is treated as a hint, not as data, so the payload's shape
+   * can never inject state; only a fresh RLS-scoped SELECT writes to
+   * the mirror.
+   *
+   * This is a UX-latency mechanism, never an authorization one. Even
+   * if the socket is down or an event is dropped, get-content-url
+   * re-checks access_status = 'ACTIVE' server-side on every signing,
+   * and the Reader's 30 s beat remains the polling fallback.
+   */
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return
+
+    const client = requireSupabase()
+
+    /* One channel per signed-in account, filtered server-side by RLS
+     * and client-side by the filter option (belt and brace: the filter
+     * keeps unrelated traffic off the wire even for a staff account
+     * whose RLS scope is wider). */
+    const channel = client
+      .channel(`user-products-${user.user_id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_products",
+          filter: `user_id=eq.${user.user_id}`,
+        },
+        () => {
+          void refreshEntitlements(user.user_id)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void client.removeChannel(channel)
     }
   }, [user?.user_id, refreshEntitlements])
 
