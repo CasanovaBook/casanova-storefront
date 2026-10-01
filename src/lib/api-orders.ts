@@ -403,10 +403,13 @@ export interface ConfirmPaymentInput {
 }
 
 /**
- * Flips an existing order to PAID, captures its pending payment and issues an
- * invoice draft. Shared by the admin `markOrderPaid` action and by checkout's
- * auto-approval path; callers add the audit trail and email with the right
- * actor and template.
+ * Flips an existing order to PAID and captures its pending payment. Shared by
+ * the admin `markOrderPaid` action and by checkout's auto-approval path;
+ * callers add the audit trail and email with the right actor and template.
+ *
+ * Deliberately does NOT issue an invoice. An invoice row is only ever created
+ * by an explicit action — an admin today, the payment provider reporting a
+ * real invoice later — so an order never claims to have one it does not.
  */
 
 function applyPaidState(order: Order, patch: Partial<Order> = {}): Order {
@@ -440,9 +443,6 @@ function applyPaidState(order: Order, patch: Partial<Order> = {}): Order {
           }
         : p,
     )
-
-    if (!d.invoices.some((inv) => inv.order_id === order.order_id))
-      issueInvoiceDraft(d, next)
 
     return next
   })
