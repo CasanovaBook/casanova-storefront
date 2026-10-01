@@ -30,6 +30,7 @@ import type {
   UserProduct,
 } from "../types"
 import { effectivePrice } from "../types"
+import { getDb } from "../lib/db"
 import { ensureCrossTabSync, useStore } from "../lib/store"
 import {
   readSessionUserId,
@@ -51,6 +52,7 @@ import {
   mirrorRemoteEntitlements,
   mirrorRemoteInquiries,
   saveReadingProgress,
+  upsertRemoteInquiryNotes,
 } from "../lib/api-support"
 import {
   checkout,
@@ -73,7 +75,7 @@ import {
   buildAppUser,
 } from "../lib/supabase-auth"
 import { fetchMyEntitlements } from "../lib/supabase-entitlements"
-import { fetchMyInquiries } from "../lib/supabase-inquiries"
+import { fetchMyInquiries, fetchMyInquiryNotes } from "../lib/supabase-inquiries"
 
 /**
  * Resolves a stored session to an app user, refusing a blocked account.
@@ -450,17 +452,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
    *
    * The same split the entitlements had: a ticket created or answered on
    * another device lives in Supabase, while `db.inquiries` only ever held
-   * rows this browser wrote. The signed-in account's own tickets are
-   * mirrored into the store so the support page shows them, and so an
-   * admin's status change reaches an open page within seconds of the
-   * click — the channel's event is treated as a hint and answered with a
-   * fresh RLS-scoped read, never with the payload itself.
+   * rows this browser wrote. The signed-in account's own tickets — and the
+   * customer-visible half of their conversations — are mirrored into the
+   * store so the support page can show them, and so an admin's reply or
+   * status change reaches an open page within seconds of the click. The
+   * channel's event is treated as a hint and answered with a fresh
+   * RLS-scoped read, never with the payload itself.
+   *
+   * One read drives both: the ticket list supplies the ids, and the notes
+   * read is scoped to exactly those ids and to `internal = FALSE`, so a
+   * staff annotation never reaches a customer's store — the database's
+   * policies are the guarantee, this is the shape of the request.
    */
   const refreshMyInquiries = useCallback(
     async (uid: string) => {
       if (!isSupabaseConfigured) return
 
-      mirrorRemoteInquiries(await fetchMyInquiries(uid), uid)
+      const rows = await fetchMyInquiries(uid)
+
+      mirrorRemoteInquiries(rows, uid)
+
+      /* A failed ticket read leaves the mirror untouched, so the ids come
+       * from the store instead — a transient error must not blank out a
+       * conversation that is already on screen. */
+      const ids = (
+        rows ?? getDb().inquiries.filter((i) => i.user_id === uid)
+      ).map((i) => i.inquiry_id)
+
+      upsertRemoteInquiryNotes((await fetchMyInquiryNotes(ids)) ?? [])
     },
     [],
   )
@@ -468,30 +487,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isSupabaseConfigured || !user) return
 
-    let cancelled = false
-
-    const sync = async () => {
-      const rows = await fetchMyInquiries(user.user_id)
-
-      if (!cancelled) mirrorRemoteInquiries(rows, user.user_id)
-    }
-
-    void sync()
+    void refreshMyInquiries(user.user_id)
 
     const onFocus = () => {
       if (document.visibilityState !== "visible") return
 
-      void sync()
+      void refreshMyInquiries(user.user_id)
     }
 
     window.addEventListener("focus", onFocus)
 
     return () => {
-      cancelled = true
-
       window.removeEventListener("focus", onFocus)
     }
-  }, [user?.user_id])
+  }, [user?.user_id, refreshMyInquiries])
 
   useEffect(() => {
     if (!isSupabaseConfigured || !user) return
@@ -514,8 +523,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       )
       .subscribe()
 
+    /* The conversation channel carries no filter on purpose: RLS decides
+     * what a customer may see, so an admin's reply arrives while an internal
+     * annotation never does, and neither does a note on another account's
+     * ticket. The event is again only a hint to re-read. */
+    const notesChannel = client
+      .channel(`inquiry-notes-${user.user_id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inquiry_notes" },
+        () => {
+          void refreshMyInquiries(user.user_id)
+        },
+      )
+      .subscribe()
+
     return () => {
       void client.removeChannel(channel)
+
+      void client.removeChannel(notesChannel)
     }
   }, [user?.user_id, refreshMyInquiries])
 

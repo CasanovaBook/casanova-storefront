@@ -16,6 +16,7 @@ import { useApp } from "../context/AppContext"
 import {
   createInquiry,
   listMyInquiries,
+  replyToInquiry,
   INQUIRY_STATUS_LABEL,
   INQUIRY_TOPIC_LABEL,
 } from "../lib/api-support"
@@ -23,9 +24,13 @@ import {
 import { useContent } from "../content/useContent"
 import { Rich } from "../content/render"
 
-import type { Inquiry, InquiryTopic } from "../types"
+import { useStore } from "../lib/store"
+
+import type { Inquiry, InquiryNote, InquiryTopic } from "../types"
 
 import Icon from "../components/icons"
+
+import Modal from "../components/Modal"
 
 const inputStyle = {
   background: "var(--color-secondary)",
@@ -54,8 +59,265 @@ function StatusPill({ inquiry }: { inquiry: Inquiry }) {
   )
 }
 
+/* ── Conversation ────────────────────────────────────── */
+
+function whenLabel(iso: string): string {
+  return new Date(iso).toLocaleString("he-IL", {
+    day: "numeric",
+
+    month: "short",
+
+    hour: "2-digit",
+
+    minute: "2-digit",
+  })
+}
+
+/**
+ * One message of the thread.
+ *
+ * The customer's own messages sit on the right (the reading side in RTL)
+ * with the gold accent, support's on the left in the neutral surface — so
+ * the direction of the conversation is readable at a glance, and each
+ * message carries its author and timestamp.
+ */
+function MessageBubble({
+  mine,
+
+  author,
+
+  content,
+
+  timestamp,
+}: {
+  mine: boolean
+
+  author: string
+
+  content: string
+
+  timestamp: string
+}) {
+  return (
+    <div className={`flex ${mine ? "justify-start" : "justify-end"}`}>
+      <div
+        className="max-w-[85%] p-3 rounded-lg border"
+        style={
+          mine
+            ? {
+                background: "rgba(212,160,48,0.07)",
+
+                borderColor: "rgba(212,160,48,0.28)",
+              }
+            : {
+                background: "var(--color-secondary)",
+
+                borderColor: "var(--color-border)",
+              }
+        }
+      >
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span
+            className="text-xs font-semibold"
+            style={{
+              color: mine
+                ? "var(--color-primary)"
+                : "var(--color-foreground)",
+            }}
+          >
+            {author}
+          </span>
+          <span
+            className="text-[11px]"
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
+            {whenLabel(timestamp)}
+          </span>
+        </div>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+          {content}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The customer's side of one ticket: everything they wrote, every reply the
+ * support team sent, and a box to answer back.
+ *
+ * Rendered through the shared Modal, so it is portalled to the body (the
+ * page root carries `page-enter`) and its overlay scrolls from the top — a
+ * long conversation stays fully readable and the composer stays reachable
+ * on any window height.
+ */
+function ConversationModal({
+  inquiry,
+
+  notes,
+
+  onClose,
+}: {
+  inquiry: Inquiry
+
+  notes: InquiryNote[]
+
+  onClose: () => void
+}) {
+  const { user, actor } = useApp()
+
+  const [draft, setDraft] = useState("")
+
+  const [error, setError] = useState("")
+
+  const [sending, setSending] = useState(false)
+
+  /* Only the customer-visible half of the conversation belongs here. The
+   * read path already excludes internal annotations and RLS forbids them
+   * outright; this filter is the third, purely local guard so a private
+   * staff note can never be rendered in the customer panel. */
+  const thread = notes
+    .filter((n) => n.inquiry_id === inquiry.inquiry_id && !n.internal)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+
+  const closed = inquiry.status === "RESOLVED" || inquiry.status === "CLOSED"
+
+  const submit = async () => {
+    if (!draft.trim() || sending) return
+
+    setSending(true)
+
+    setError("")
+
+    const result = await replyToInquiry(actor, inquiry.inquiry_id, draft)
+
+    setSending(false)
+
+    if (!result.ok) {
+      setError(result.error)
+
+      return
+    }
+
+    setDraft("")
+  }
+
+  return (
+    <Modal
+      size="2xl"
+      title={inquiry.subject}
+      titleClassName="truncate"
+      ariaLabel={`שיחה בפנייה ${inquiry.ticket_number}`}
+      onClose={onClose}
+      subtitle={
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <span
+            dir="ltr"
+            className="font-mono text-xs"
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
+            {inquiry.ticket_number}
+          </span>
+          <StatusPill inquiry={inquiry} />
+        </div>
+      }
+    >
+      <div
+        className="flex items-center gap-2 text-xs mb-4 flex-wrap"
+        style={{ color: "var(--color-muted-foreground)" }}
+      >
+        <span>{INQUIRY_TOPIC_LABEL[inquiry.topic]}</span>
+        <span>·</span>
+        <span>
+          נפתחה ב־
+          {new Date(inquiry.created_at).toLocaleDateString("he-IL", {
+            day: "numeric",
+
+            month: "long",
+
+            year: "numeric",
+          })}
+        </span>
+      </div>
+
+      <div className="space-y-3 mb-5">
+        <MessageBubble
+          mine
+          author="ההודעה ששלחת"
+          content={inquiry.message}
+          timestamp={inquiry.created_at}
+        />
+        {thread.map((note) => {
+          const mine = note.author_id === user?.user_id
+
+          return (
+            <MessageBubble
+              key={note.note_id}
+              mine={mine}
+              author={mine ? "את/ה" : "צוות התמיכה"}
+              content={note.content}
+              timestamp={note.created_at}
+            />
+          )
+        })}
+      </div>
+
+      {error && (
+        <p
+          className="text-xs px-3 py-2 rounded-lg mb-3"
+          style={{
+            background: "rgba(239,68,68,0.1)",
+
+            color: "var(--color-danger)",
+          }}
+        >
+          {error}
+        </p>
+      )}
+
+      {closed && (
+        <p
+          className="text-xs mb-3"
+          style={{ color: "var(--color-muted-foreground)" }}
+        >
+          הפנייה סומנה כנפתרה. אפשר לכתוב כאן בכל זאת — ההודעה תתווסף לשיחה
+          והצוות יראה אותה.
+        </p>
+      )}
+
+      <div className="flex items-start gap-2 flex-wrap">
+        <textarea
+          className={`flex-1 min-w-56 ${inputClass} min-h-20 resize-y`}
+          style={inputStyle}
+          placeholder="כתיבת תגובה לצוות התמיכה..."
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) void submit()
+          }}
+        />
+        <button
+          onClick={submit}
+          disabled={sending || !draft.trim()}
+          className="btn-gradient px-5 py-2.5 rounded-full text-sm font-semibold disabled:opacity-40"
+        >
+          {sending ? "שולח…" : "שליחת הודעה"}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 export default function SupportPage() {
   const { user, actor, orders } = useApp()
+
+  /* The conversation is part of the shared document, so subscribing here
+   * keeps an open ticket up to date: a reply that arrives over realtime is
+   * mirrored into the store and re-renders the modal and the list counts. */
+  const db = useStore()
+
+  const [openId, setOpenId] = useState<string | null>(null)
+
   const c = useContent()
 
   const [form, setForm] = useState({
@@ -81,6 +343,12 @@ export default function SupportPage() {
   const [sending, setSending] = useState(false)
 
   const myInquiries = listMyInquiries(actor)
+
+  /* The ticket the conversation dialog shows. Looked up from the freshly
+   * mirrored list rather than held as a snapshot, so a status the admin
+   * changed — or a reply that just arrived — is reflected in the open
+   * dialog instead of a stale copy. */
+  const opened = myInquiries.find((i) => i.inquiry_id === openId) ?? null
 
   /* Identity fields are display-only for a signed-in customer: the values
    * come straight from the authenticated profile, and the service layer
@@ -412,40 +680,83 @@ export default function SupportPage() {
               </p>
             ) : (
               <ul className="space-y-3">
-                {myInquiries.map((i) => (
-                  <li
-                    key={i.inquiry_id}
-                    className="p-3 rounded-lg border"
-                    style={{
-                      borderColor: "var(--color-border)",
-                      background: "var(--color-background)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span
-                        dir="ltr"
-                        className="font-mono text-xs"
-                        style={{ color: "var(--color-muted-foreground)" }}
+                {myInquiries.map((i) => {
+                  /* Counted from the store so the list re-renders when a reply
+                   * is mirrored in, and so the customer can see that a ticket
+                   * already holds an answer from the team. */
+                  const messages = db.inquiry_notes.filter(
+                    (n) => n.inquiry_id === i.inquiry_id && !n.internal,
+                  )
+
+                  const staffReply = messages.some(
+                    (n) => n.author_id !== user?.user_id,
+                  )
+
+                  return (
+                    <li key={i.inquiry_id}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(i.inquiry_id)}
+                        className="w-full text-start p-3 rounded-lg border transition-colors"
+                        style={{
+                          borderColor: "var(--color-border)",
+
+                          background: "var(--color-background)",
+                        }}
                       >
-                        {i.ticket_number}
-                      </span>
-                      <StatusPill inquiry={i} />
-                    </div>
-                    <p className="text-sm font-medium mb-0.5">{i.subject}</p>
-                    <p
-                      className="text-xs"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      {new Date(i.created_at).toLocaleDateString("he-IL", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                      {" · "}
-                      {INQUIRY_TOPIC_LABEL[i.topic]}
-                    </p>
-                  </li>
-                ))}
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span
+                            dir="ltr"
+                            className="font-mono text-xs"
+                            style={{ color: "var(--color-muted-foreground)" }}
+                          >
+                            {i.ticket_number}
+                          </span>
+                          <StatusPill inquiry={i} />
+                        </div>
+                        <p className="text-sm font-medium mb-0.5">
+                          {i.subject}
+                        </p>
+                        <p
+                          className="text-xs"
+                          style={{ color: "var(--color-muted-foreground)" }}
+                        >
+                          {new Date(i.created_at).toLocaleDateString("he-IL", {
+                            day: "numeric",
+
+                            month: "short",
+
+                            year: "numeric",
+                          })}
+                          {" · "}
+                          {INQUIRY_TOPIC_LABEL[i.topic]}
+                        </p>
+                        <div className="flex items-center justify-between gap-2 mt-2.5 flex-wrap">
+                          <span
+                            className="inline-flex items-center gap-1.5 text-xs"
+                            style={{
+                              color: staffReply
+                                ? "var(--color-primary)"
+                                : "var(--color-muted-foreground)",
+                            }}
+                          >
+                            <Icon name="message" size={12} />
+                            {staffReply
+                              ? "תגובת צוות התמיכה"
+                              : `${messages.length + 1} הודעות`}
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-1 text-xs font-medium"
+                            style={{ color: "var(--color-primary)" }}
+                          >
+                            צפייה בשיחה
+                            <Icon name="chevronLeft" size={12} />
+                          </span>
+                        </div>
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             )}
             {!user && (
@@ -504,6 +815,14 @@ export default function SupportPage() {
           </div>
         </div>
       </div>
+
+      {opened && (
+        <ConversationModal
+          inquiry={opened}
+          notes={db.inquiry_notes}
+          onClose={() => setOpenId(null)}
+        />
+      )}
     </div>
   )
 }

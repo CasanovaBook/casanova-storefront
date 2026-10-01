@@ -15,7 +15,7 @@
  * network error, and the app's `Result` shape already carries failure.
  * ───────────────────────────────────────────────────────────── */
 
-import type { Inquiry, InquiryStatus, InquiryTopic } from "../types"
+import type { Inquiry, InquiryNote, InquiryStatus, InquiryTopic } from "../types"
 
 import { fail, ok, type ErrorCode, type Result } from "./api"
 
@@ -45,6 +45,40 @@ interface InquiryRow {
   resolved_at?: string | null
 }
 
+/** Columns this app reads back from `public.inquiry_notes`. */
+const INQUIRY_NOTE_COLUMNS =
+  "note_id, inquiry_id, author_id, content, internal, created_at"
+
+/** The `public.inquiry_notes` row as it arrives over the wire. */
+interface InquiryNoteRow {
+  note_id: string
+  inquiry_id: string
+  author_id: string
+  content: string
+  internal?: boolean | null
+  created_at: string
+}
+
+/**
+ * Maps a `public.inquiry_notes` row onto the app's `InquiryNote`.
+ *
+ * The table stores the author by id only, so `author_name` is left empty
+ * and resolved by the caller: staff resolve it from their user list, and a
+ * customer is shown "support"/"you" — staff names are never sent to a
+ * customer with the conversation, and never need to be.
+ */
+export function toInquiryNote(row: InquiryNoteRow): InquiryNote {
+  return {
+    note_id: row.note_id,
+    inquiry_id: row.inquiry_id,
+    author_id: row.author_id,
+    author_name: "",
+    content: row.content,
+    internal: row.internal ?? false,
+    created_at: row.created_at,
+  }
+}
+
 /** Maps a `public.inquiries` row onto the app's `Inquiry`. */
 export function toInquiry(row: InquiryRow): Inquiry {
   return {
@@ -69,9 +103,9 @@ export function toInquiry(row: InquiryRow): Inquiry {
 
 /** Pulls a single row out of a PostgREST response, which may be an object
  *  or a one-element array depending on how the composite is serialised. */
-function firstRow(data: unknown): InquiryRow | null {
-  if (Array.isArray(data)) return (data[0] as InquiryRow) ?? null
-  if (data && typeof data === "object") return data as InquiryRow
+function firstRow<T>(data: unknown): T | null {
+  if (Array.isArray(data)) return (data[0] as T) ?? null
+  if (data && typeof data === "object") return data as T
   return null
 }
 
@@ -103,6 +137,19 @@ function describeInquiryRefusal(
     return {
       code: "VALIDATION",
       error: "ההודעה קצרה מדי — יש לתאר את הפנייה בפירוט.",
+    }
+
+  /* The note/reply refusals raised by migration 0019. */
+  if (message.includes("validation_content"))
+    return { code: "VALIDATION", error: "יש לכתוב הודעה." }
+
+  if (message.includes("inquiry_missing"))
+    return { code: "NOT_FOUND", error: "הפנייה לא נמצאה." }
+
+  if (message.includes("not_owner"))
+    return {
+      code: "FORBIDDEN",
+      error: "ניתן להשיב רק לפניות שנפתחו מהחשבון שלך.",
     }
 
   if (
@@ -240,7 +287,7 @@ export async function createMyInquiry(
       return fail("STORAGE", error.message)
     }
 
-    const row = firstRow(data)
+    const row = firstRow<InquiryRow>(data)
     if (!row) return fail("STORAGE", "שמירת הפנייה לא הושלמה בשרת.")
 
     return ok(toInquiry(row))
@@ -321,6 +368,184 @@ export async function updateInquiryRemote(
     if (!data) return fail("STORAGE", "העדכון לא הושלם בשרת.")
 
     return ok(toInquiry(data as InquiryRow))
+  } catch (err) {
+    return fail(
+      "STORAGE",
+      err instanceof Error ? err.message : "שגיאת רשת בלתי צפויה.",
+    )
+  }
+}
+
+/* ── Conversation (inquiry_notes) ─────────────────────── */
+
+/**
+ * Shared reader behind the two scoped reads below.
+ *
+ * `inquiryIds === null` reads the staff queue (RLS hands an admin the whole
+ * table); an array scopes the read to those tickets, and `publicOnly` asks
+ * for the customer-visible half of them. Both filters are re-applied
+ * client-side against the ids the caller asked for, so a read answered
+ * wider than one conversation can never be mirrored into a store.
+ *
+ * Returns `null` when the read fails, `[]` when there is simply nothing to
+ * read (or nothing was asked for).
+ */
+async function readInquiryNotes(
+  inquiryIds: string[] | null,
+  publicOnly: boolean,
+): Promise<InquiryNote[] | null> {
+  if (!isSupabaseConfigured) return null
+  if (inquiryIds !== null && inquiryIds.length === 0) return []
+
+  try {
+    let query = requireSupabase()
+      .from("inquiry_notes")
+      .select(INQUIRY_NOTE_COLUMNS)
+      .order("created_at", { ascending: true })
+
+    if (inquiryIds !== null) query = query.in("inquiry_id", inquiryIds)
+    if (publicOnly) query = query.eq("internal", false)
+
+    const { data, error } = await query
+
+    if (error) {
+      console.warn("[supabase-inquiries] notes read refused:", error.message)
+      return null
+    }
+
+    const asked = inquiryIds === null ? null : new Set(inquiryIds)
+
+    return ((data ?? []) as InquiryNoteRow[])
+      .map(toInquiryNote)
+      .filter((note) => asked === null || asked.has(note.inquiry_id))
+  } catch (err) {
+    console.warn(
+      "[supabase-inquiries] notes read failed:",
+      err instanceof Error ? err.message : err,
+    )
+    return null
+  }
+}
+
+/**
+ * Reads the customer-visible conversation of the given tickets.
+ *
+ * The tickets must be the signed-in account's own — scoped here and again
+ * by `inquiry_notes_select_own_public`, which also hides `internal = TRUE`
+ * annotations, so a customer can only ever receive their own public
+ * replies.
+ */
+export async function fetchMyInquiryNotes(
+  inquiryIds: string[],
+): Promise<InquiryNote[] | null> {
+  return readInquiryNotes(inquiryIds, true)
+}
+
+/**
+ * Reads the staff queue's conversations, internal annotations included.
+ * RLS does the scoping: for an admin that is every note, for any other
+ * signed-in account only its own public ones.
+ */
+export async function fetchAllInquiryNotes(): Promise<InquiryNote[] | null> {
+  return readInquiryNotes(null, false)
+}
+
+export interface CreateInquiryNoteInput {
+  inquiry_id: string
+  author_id: string
+  content: string
+  internal: boolean
+}
+
+/**
+ * Staff reply / internal annotation, written straight into Postgres so both
+ * sides of the conversation read the same row. The INSERT policy requires
+ * `is_admin()` AND `author_id = auth.uid()`, so neither a forged author nor
+ * a non-staff session can post here.
+ */
+export async function createInquiryNoteRemote(
+  input: CreateInquiryNoteInput,
+): Promise<Result<InquiryNote>> {
+  if (!isSupabaseConfigured) {
+    return fail("PROVIDER_NOT_CONFIGURED", "שרת Supabase אינו מוגדר.")
+  }
+
+  try {
+    const { data, error } = await requireSupabase()
+      .from("inquiry_notes")
+      .insert({
+        inquiry_id: input.inquiry_id,
+        author_id: input.author_id,
+        content: input.content,
+        internal: input.internal,
+      })
+      .select(INQUIRY_NOTE_COLUMNS)
+      .single()
+
+    if (error) {
+      const refused = describeInquiryRefusal(
+        error.code ?? "",
+        error.message ?? "",
+      )
+
+      if (refused) return fail(refused.code, refused.error)
+
+      /* Same reasoning as createMyInquiry: a raw transport message (a
+       * missing column, a policy naming mismatch) is the only clue that
+       * explains a refused reply, so it is surfaced verbatim. */
+      return fail("STORAGE", error.message)
+    }
+
+    if (!data) return fail("STORAGE", "שמירת ההודעה לא הושלמה בשרת.")
+
+    return ok(toInquiryNote(data as InquiryNoteRow))
+  } catch (err) {
+    return fail(
+      "STORAGE",
+      err instanceof Error ? err.message : "שגיאת רשת בלתי צפויה.",
+    )
+  }
+}
+
+/**
+ * Customer reply on one of their own tickets, through
+ * `reply_to_my_inquiry` (migration 0019).
+ *
+ * The customer has no INSERT policy on `inquiry_notes`, so this RPC is the
+ * only write path: it proves the ticket belongs to the caller, stamps the
+ * author from the JWT, forces `internal = FALSE` and moves a waiting ticket
+ * back to OPEN. A refusal comes back as a token, which
+ * `describeInquiryRefusal` turns into readable Hebrew.
+ */
+export async function replyToMyInquiry(
+  inquiryId: string,
+  content: string,
+): Promise<Result<InquiryNote>> {
+  if (!isSupabaseConfigured) {
+    return fail("PROVIDER_NOT_CONFIGURED", "שרת Supabase אינו מוגדר.")
+  }
+
+  try {
+    const { data, error } = await requireSupabase().rpc("reply_to_my_inquiry", {
+      p_inquiry_id: inquiryId,
+      p_content: content,
+    })
+
+    if (error) {
+      const refused = describeInquiryRefusal(
+        error.code ?? "",
+        error.message ?? "",
+      )
+
+      if (refused) return fail(refused.code, refused.error)
+
+      return fail("STORAGE", error.message)
+    }
+
+    const row = firstRow<InquiryNoteRow>(data)
+    if (!row) return fail("STORAGE", "שליחת ההודעה לא הושלמה בשרת.")
+
+    return ok(toInquiryNote(row))
   } catch (err) {
     return fail(
       "STORAGE",

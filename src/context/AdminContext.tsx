@@ -100,12 +100,16 @@ import {
   setUserStatus,
   updateInquiry,
   updateUser,
+  upsertRemoteInquiryNotes,
   type CustomerProfile,
 } from "../lib/api-support"
 
 import { isSupabaseConfigured, requireSupabase } from "../lib/supabase"
 
-import { fetchAllInquiries } from "../lib/supabase-inquiries"
+import {
+  fetchAllInquiries,
+  fetchAllInquiryNotes,
+} from "../lib/supabase-inquiries"
 
 import { fetchAllProfiles, mergeUserSources } from "../lib/supabase-auth"
 
@@ -470,9 +474,21 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const isStaff =
     user?.role === "ADMIN" || user?.role === "MODERATOR"
 
+  /* Tickets and their conversations come from the same authoritative read,
+   * in parallel: the customer's reply and the admin's own reply must both be
+   * visible in the queue, and the notes read is RLS-scoped like the tickets
+   * one — an admin sees every conversation, nobody else sees more than
+   * their own. */
   const refreshInquiries = useMemo(
     () => async () => {
-      mirrorRemoteInquiries(await fetchAllInquiries(), null)
+      const [tickets, notes] = await Promise.all([
+        fetchAllInquiries(),
+        fetchAllInquiryNotes(),
+      ])
+
+      mirrorRemoteInquiries(tickets, null)
+
+      upsertRemoteInquiryNotes(notes ?? [])
     },
     [],
   )
@@ -499,6 +515,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "inquiries" },
+        () => {
+          void refreshInquiries()
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inquiry_notes" },
         () => {
           void refreshInquiries()
         },
@@ -539,6 +562,23 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     })
   }, [db.inquiries, users])
 
+  /* Mirrored notes carry the author's id only (the table stores no name), so
+   * the display name is resolved here — the same treatment `assigned_to_name`
+   * gets above. A note whose author is no longer in the list keeps a neutral
+   * label rather than rendering an empty name. */
+  const inquiryNotes = useMemo(() => {
+    return db.inquiry_notes.map((n) => {
+      if (n.author_name) return n
+      const author = users.find((u) => u.user_id === n.author_id)
+      return {
+        ...n,
+        author_name: author
+          ? `${author.first_name} ${author.last_name}`.trim() || author.email
+          : "צוות התמיכה",
+      }
+    })
+  }, [db.inquiry_notes, users])
+
   const value = useMemo<AdminContextValue>(() => {
     const alerts = computeAlerts(db)
 
@@ -575,7 +615,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       inquiries,
 
-      inquiryNotes: db.inquiry_notes,
+      inquiryNotes,
 
       leads: db.crm_leads,
 

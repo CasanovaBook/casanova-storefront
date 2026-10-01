@@ -36,7 +36,13 @@ import {
   isUuid,
 } from "./supabase-entitlements"
 
-import { createMyInquiry, updateInquiryRemote } from "./supabase-inquiries"
+import {
+  createInquiryNoteRemote,
+  createMyInquiry,
+  fetchMyInquiries,
+  replyToMyInquiry,
+  updateInquiryRemote,
+} from "./supabase-inquiries"
 
 import {
   dispatchEmail,
@@ -477,6 +483,51 @@ export async function addInquiryNote(
 
   if (!inquiry) return fail("NOT_FOUND", "הפנייה לא נמצאה.")
 
+  const trimmed = content.trim()
+
+  /* A server-owned ticket keeps its whole conversation in Postgres: the
+   * reply has to land there or the customer will never see it, so a
+   * refused write is surfaced instead of being parked in this browser —
+   * which is exactly how a "תגובה ללקוח" used to disappear. */
+  if (isSupabaseConfigured && isUuid(inquiryId)) {
+    const authorId = actor?.user_id ?? ""
+
+    if (!isUuid(authorId))
+      return fail(
+        "VALIDATION",
+        "ניתן להוסיף הודעה לפנייה בשרת רק מחשבון הרשום בשרת.",
+      )
+
+    const remote = await createInquiryNoteRemote({
+      inquiry_id: inquiryId,
+
+      author_id: authorId,
+
+      content: trimmed,
+
+      internal,
+    })
+
+    if (!remote.ok) return remote
+
+    /* The freshness stamp and the NEW→OPEN transition belong to the ticket,
+     * not the note, so they are pushed too — otherwise the next sync would
+     * revert them. */
+    const bump = await updateInquiryRemote(inquiryId, {
+      status: inquiry.status === "NEW" ? "OPEN" : inquiry.status,
+    })
+
+    if (!bump.ok) {
+      console.warn("[support] ticket freshness bump failed:", bump.error)
+    } else {
+      upsertRemoteInquiries([bump.data])
+    }
+
+    upsertRemoteInquiryNotes([remote.data])
+
+    return remote
+  }
+
   const note = mutate((db) => {
     const created: InquiryNote = {
       note_id: uid("inote"),
@@ -487,7 +538,7 @@ export async function addInquiryNote(
 
       author_name: actor?.name ?? "מערכת",
 
-      content: content.trim(),
+      content: trimmed,
 
       internal,
 
@@ -509,21 +560,95 @@ export async function addInquiryNote(
     return created
   })
 
-  /* The note itself stays in this browser's document (as before), but the
-   * parent ticket may live in Postgres: the NEW→OPEN transition and the
-   * freshness stamp are part of the ticket, so they are pushed to the
-   * server for remote rows — otherwise the next sync would revert them. */
-  if (isSupabaseConfigured && isUuid(inquiryId)) {
-    const bump = await updateInquiryRemote(inquiryId, {
-      status: inquiry.status === "NEW" ? "OPEN" : inquiry.status,
-    })
+  /* Local-only ticket: the conversation stays in this browser's document,
+   * as it always has for the offline driver and for tickets logged from a
+   * phone call. */
+  return ok(note)
+}
 
-    if (!bump.ok) {
-      console.warn("[support] ticket freshness bump failed:", bump.error)
-    } else {
-      upsertRemoteInquiries([bump.data])
-    }
+/**
+ * Customer reply on one of their own tickets.
+ *
+ * Reads exactly like the admin's note path, but scoped to the customer's
+ * own side of the conversation: for a server-owned ticket it goes through
+ * `reply_to_my_inquiry`, whose DATABASE-side checks are what prove the
+ * caller owns the ticket and force the note to be customer-visible. There
+ * is no INSERT policy for customers on `inquiry_notes`, so a crafted
+ * request cannot post into somebody else's ticket nor write an internal
+ * annotation.
+ */
+export async function replyToInquiry(
+  actor: Actor | null,
+  inquiryId: string,
+  content: string,
+): Promise<Result<InquiryNote>> {
+  if (!actor) return fail("UNAUTHENTICATED", "יש להתחבר כדי להשיב לפנייה.")
+
+  const trimmed = content.trim()
+
+  if (!trimmed) return fail("VALIDATION", "יש לכתוב הודעה.")
+
+  const inquiry = getDb().inquiries.find((i) => i.inquiry_id === inquiryId)
+
+  if (!inquiry) return fail("NOT_FOUND", "הפנייה לא נמצאה.")
+
+  if (isSupabaseConfigured && isUuid(inquiryId)) {
+    const remote = await replyToMyInquiry(inquiryId, trimmed)
+
+    if (!remote.ok) return remote
+
+    upsertRemoteInquiryNotes([remote.data])
+
+    /* The reply can move a waiting ticket back to OPEN, so the ticket is
+     * re-read rather than patched locally: the status shown to the customer
+     * stays the backend's, never a guess. */
+    mirrorRemoteInquiries(await fetchMyInquiries(actor.user_id), actor.user_id)
+
+    return remote
   }
+
+  /* Local-only ticket (offline driver, or a ticket pre-dating Supabase): the
+   * same ownership rule the RPC enforces, applied to the local document. */
+  const account = getDb().users.find((u) => u.user_id === actor.user_id)
+
+  const mine =
+    inquiry.user_id === actor.user_id ||
+    (account !== undefined && inquiry.customer_email === account.email)
+
+  if (!mine)
+    return fail("FORBIDDEN", "ניתן להשיב רק לפניות שנפתחו מהחשבון שלך.")
+
+  const note = mutate((db) => {
+    const created: InquiryNote = {
+      note_id: uid("inote"),
+
+      inquiry_id: inquiryId,
+
+      author_id: actor.user_id,
+
+      author_name: actor.name,
+
+      content: trimmed,
+
+      internal: false,
+
+      created_at: nowIso(),
+    }
+
+    db.inquiry_notes = [...db.inquiry_notes, created]
+
+    db.inquiries = db.inquiries.map((i) =>
+      i.inquiry_id === inquiryId
+        ? {
+            ...i,
+            updated_at: created.created_at,
+            status: i.status === "NEW" ? "OPEN" : i.status,
+          }
+        : i,
+    )
+
+    return created
+  })
 
   return ok(note)
 }
@@ -599,6 +724,41 @@ export function mirrorRemoteInquiries(
     db.inquiries = [...byId.values()].sort((a, b) =>
       b.created_at.localeCompare(a.created_at),
     )
+  })
+}
+
+/**
+ * Merges server-held conversation messages into the local document.
+ *
+ * Append-only, and deliberately so: nothing in the product deletes a note
+ * (there is no DELETE policy anywhere), so a merge can never lose one.
+ * That also means a customer's browser, which only ever reads the public
+ * half of its own conversations, can never prune an internal annotation
+ * belonging to a staff session sharing the same document — each side keeps
+ * what it may read, and neither side loses what the other holds.
+ */
+export function upsertRemoteInquiryNotes(rows: InquiryNote[]): void {
+  if (rows.length === 0) return
+
+  const current = getDb().inquiry_notes
+
+  const changed = rows.some((row) => {
+    const existing = current.find((n) => n.note_id === row.note_id)
+
+    return (
+      !existing ||
+      existing.content !== row.content ||
+      existing.internal !== row.internal ||
+      existing.author_id !== row.author_id
+    )
+  })
+
+  if (!changed) return
+
+  mutate((db) => {
+    const byId = new Map(db.inquiry_notes.map((n) => [n.note_id, n]))
+    for (const row of rows) byId.set(row.note_id, row)
+    db.inquiry_notes = [...byId.values()]
   })
 }
 
