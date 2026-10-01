@@ -333,6 +333,12 @@ export async function updateInquiry(
 
   const nextStatus: InquiryStatus = patch.status ?? existing.status
 
+  /* The resolution moment. Against Supabase this value is only carried for
+   * the pre-0020 case and for the offline driver: migration 0020 stamps
+   * `resolved_at` from the server clock on the status transition and
+   * overrides whatever the browser sent, so the stored moment is the
+   * database's. Re-entering a resolved status reuses the stored value here
+   * (the server keeps the same rule), and leaving those statuses clears it. */
   const resolvedAt =
     nextStatus === "RESOLVED" || nextStatus === "CLOSED"
       ? (existing.resolved_at ?? nowIso())
@@ -567,6 +573,66 @@ export async function addInquiryNote(
 }
 
 /**
+ * How many messages a customer may send in a row before the support team
+ * answers. Kept next to the rule it describes so the wording and the check
+ * cannot drift apart; the database enforces the same number in
+ * `reply_to_my_inquiry` (migration 0021).
+ */
+export const CUSTOMER_CONSECUTIVE_REPLY_LIMIT = 2
+
+/**
+ * What the customer reads when they are out of turn. Worded here (and
+ * mirrored by the `reply_limit` token mapping in supabase-inquiries) so the
+ * explanation the composer shows and the one a refused request returns are
+ * the same sentence.
+ */
+export const CUSTOMER_REPLY_LIMIT_MESSAGE = `ניתן לשלוח עד ${CUSTOMER_CONSECUTIVE_REPLY_LIMIT} הודעות ברצף. לאחר תגובת האדמין ניתן לשלוח הודעה נוספת.`
+
+/**
+ * Whether the owner of this ticket may send another message yet.
+ *
+ * Mirrors the rule the database enforces (see the constant above) so the
+ * customer's composer can explain itself BEFORE a send is refused — but it is
+ * only a mirror: `reply_to_my_inquiry` re-derives the same thing server-side
+ * and refuses the write, so a disabled button is never what stops the third
+ * message.
+ *
+ * The count is read from the stored conversation, not from this browser
+ * session, and only customer-visible messages take part: an internal staff
+ * annotation is invisible to the customer, so it neither consumes their turn
+ * nor restarts it. Every author is backend data — the session's user id, or
+ * the ticket's owner as the database recorded it — so nothing here guesses
+ * who wrote what.
+ */
+export function customerReplyAllowed(
+  inquiry: Inquiry,
+  customerId?: string | null,
+): boolean {
+  /* The customer's own side of the thread: the signed-in account when the
+   * caller has one (the composer, a reply being sent), otherwise the ticket's
+   * recorded owner. The fallback matters for a ticket that reached this
+   * browser by email match rather than by `user_id`. */
+  const customer = customerId ?? inquiry.user_id
+
+  if (!customer) return true
+
+  const visible = getDb()
+    .inquiry_notes.filter(
+      (n) => n.inquiry_id === inquiry.inquiry_id && !n.internal,
+    )
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+
+  let consecutive = 0
+
+  for (let i = visible.length - 1; i >= 0; i -= 1) {
+    if (visible[i].author_id !== customer) break
+    consecutive += 1
+  }
+
+  return consecutive < CUSTOMER_CONSECUTIVE_REPLY_LIMIT
+}
+
+/**
  * Customer reply on one of their own tickets.
  *
  * Reads exactly like the admin's note path, but scoped to the customer's
@@ -591,6 +657,13 @@ export async function replyToInquiry(
   const inquiry = getDb().inquiries.find((i) => i.inquiry_id === inquiryId)
 
   if (!inquiry) return fail("NOT_FOUND", "הפנייה לא נמצאה.")
+
+  /* The same two-in-a-row ceiling the database enforces (migration 0021),
+   * checked here so the local driver behaves identically and so the caller
+   * gets the wording before a round trip. The server check is the one that
+   * cannot be bypassed. */
+  if (!customerReplyAllowed(inquiry, actor.user_id))
+    return fail("CONFLICT", CUSTOMER_REPLY_LIMIT_MESSAGE)
 
   if (isSupabaseConfigured && isUuid(inquiryId)) {
     const remote = await replyToMyInquiry(inquiryId, trimmed)

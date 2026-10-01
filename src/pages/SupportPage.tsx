@@ -17,6 +17,8 @@ import {
   createInquiry,
   listMyInquiries,
   replyToInquiry,
+  customerReplyAllowed,
+  CUSTOMER_REPLY_LIMIT_MESSAGE,
   INQUIRY_STATUS_LABEL,
   INQUIRY_TOPIC_LABEL,
 } from "../lib/api-support"
@@ -25,6 +27,8 @@ import { useContent } from "../content/useContent"
 import { Rich } from "../content/render"
 
 import { useStore } from "../lib/store"
+
+import { formatIsraelDateTime } from "../lib/datetime"
 
 import type { Inquiry, InquiryNote, InquiryTopic } from "../types"
 
@@ -182,8 +186,18 @@ function ConversationModal({
 
   const closed = inquiry.status === "RESOLVED" || inquiry.status === "CLOSED"
 
+  /* The stored resolution moment — the database's, not the visitor's clock —
+   * pinned to Israel time like every other timestamp in the product. An
+   * unresolved (or reopened) ticket has no value here, so nothing is shown. */
+  const resolvedLabel = formatIsraelDateTime(inquiry.resolved_at)
+
+  /* Read from the conversation in the store, so it flips back the moment a
+   * staff reply is mirrored in — including the realtime one. The database
+   * enforces the same limit; this only lets the composer explain itself. */
+  const canReply = customerReplyAllowed(inquiry, user?.user_id)
+
   const submit = async () => {
-    if (!draft.trim() || sending) return
+    if (!canReply || !draft.trim() || sending) return
 
     setSending(true)
 
@@ -238,6 +252,18 @@ function ConversationModal({
             year: "numeric",
           })}
         </span>
+        {resolvedLabel && (
+          <>
+            <span>·</span>
+            <span
+              className="inline-flex items-center gap-1"
+              style={{ color: "var(--color-success)" }}
+            >
+              <Icon name="checkCircle" size={12} />
+              נפתרה ב־{resolvedLabel}
+            </span>
+          </>
+        )}
       </div>
 
       <div className="space-y-3 mb-5">
@@ -254,7 +280,7 @@ function ConversationModal({
             <MessageBubble
               key={note.note_id}
               mine={mine}
-              author={mine ? "את/ה" : "צוות התמיכה"}
+              author={mine ? "אתה" : "צוות התמיכה"}
               content={note.content}
               timestamp={note.created_at}
             />
@@ -285,12 +311,30 @@ function ConversationModal({
         </p>
       )}
 
+      {!canReply && (
+        <p
+          className="text-xs px-3 py-2 rounded-lg mb-3"
+          style={{
+            background: "rgba(245,158,11,0.1)",
+
+            color: "#F59E0B",
+          }}
+        >
+          {CUSTOMER_REPLY_LIMIT_MESSAGE}
+        </p>
+      )}
+
       <div className="flex items-start gap-2 flex-wrap">
         <textarea
           className={`flex-1 min-w-56 ${inputClass} min-h-20 resize-y`}
-          style={inputStyle}
-          placeholder="כתיבת תגובה לצוות התמיכה..."
+          style={canReply ? inputStyle : { ...inputStyle, opacity: 0.55 }}
+          placeholder={
+            canReply
+              ? "כתיבת תגובה לצוות התמיכה..."
+              : "ניתן לשלוח הודעה נוספת לאחר תגובת הצוות"
+          }
           value={draft}
+          disabled={!canReply}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) void submit()
@@ -298,7 +342,7 @@ function ConversationModal({
         />
         <button
           onClick={submit}
-          disabled={sending || !draft.trim()}
+          disabled={!canReply || sending || !draft.trim()}
           className="btn-gradient px-5 py-2.5 rounded-full text-sm font-semibold disabled:opacity-40"
         >
           {sending ? "שולח…" : "שליחת הודעה"}
@@ -692,6 +736,11 @@ export default function SupportPage() {
                     (n) => n.author_id !== user?.user_id,
                   )
 
+                  /* Date + time of the resolution, from the stored
+                   * `resolved_at` (empty for a ticket that is not resolved,
+                   * so the line simply is not rendered). */
+                  const resolvedLabel = formatIsraelDateTime(i.resolved_at)
+
                   return (
                     <li key={i.inquiry_id}>
                       <button
@@ -731,6 +780,15 @@ export default function SupportPage() {
                           {" · "}
                           {INQUIRY_TOPIC_LABEL[i.topic]}
                         </p>
+                        {resolvedLabel && (
+                          <p
+                            className="inline-flex items-center gap-1 text-xs mt-0.5"
+                            style={{ color: "var(--color-success)" }}
+                          >
+                            <Icon name="checkCircle" size={11} />
+                            נפתרה ב־{resolvedLabel}
+                          </p>
+                        )}
                         <div className="flex items-center justify-between gap-2 mt-2.5 flex-wrap">
                           <span
                             className="inline-flex items-center gap-1.5 text-xs"

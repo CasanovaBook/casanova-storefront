@@ -146,6 +146,16 @@ function describeInquiryRefusal(
   if (message.includes("inquiry_missing"))
     return { code: "NOT_FOUND", error: "הפנייה לא נמצאה." }
 
+  /* The two-messages-in-a-row ceiling, enforced inside
+   * `reply_to_my_inquiry` (migration 0021). A CONFLICT rather than a
+   * validation failure: the message is fine, the moment is not. */
+  if (message.includes("reply_limit"))
+    return {
+      code: "CONFLICT",
+      error:
+        "ניתן לשלוח עד 2 הודעות ברצף. לאחר תגובת האדמין ניתן לשלוח הודעה נוספת.",
+    }
+
   if (message.includes("not_owner"))
     return {
       code: "FORBIDDEN",

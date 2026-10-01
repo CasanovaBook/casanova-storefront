@@ -16,6 +16,8 @@ import { useAdmin } from "../../context/AdminContext"
 
 import { can } from "../../lib/permissions"
 
+import { formatIsraelDateTime } from "../../lib/datetime"
+
 import {
   createInquiry,
   INQUIRY_STATUS_LABEL,
@@ -220,11 +222,13 @@ function InquiryModal({
     { label: "מטפל/ת", value: inquiry.assigned_to_name ?? "לא שויך" },
 
     {
+      /* Date AND time: `resolved_at` is a full timestamptz stamped by the
+       * database on the resolution transition (migration 0020), formatted
+       * with the shared Israel-pinned helper so the admin panel and the
+       * customer's ticket show the same moment. */
       label: "נפתרה בתאריך",
 
-      value: inquiry.resolved_at
-        ? new Date(inquiry.resolved_at).toLocaleDateString("he-IL")
-        : "—",
+      value: formatIsraelDateTime(inquiry.resolved_at) || "—",
     },
   ]
 
@@ -291,12 +295,35 @@ function InquiryModal({
           >
             ההודעה
           </p>
-          <p
-            className="text-sm leading-relaxed p-4 rounded-lg whitespace-pre-wrap"
-            style={{ background: "var(--color-secondary)" }}
+          {/* The ticket's opening message is the customer's first message, so
+              it carries the same sender label and tint as every later one. */}
+          <div
+            className="p-4 rounded-lg border"
+            style={{
+              background: "rgba(212,160,48,0.07)",
+
+              borderColor: "rgba(212,160,48,0.28)",
+            }}
           >
-            {inquiry.message}
-          </p>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span
+                className="inline-flex items-center gap-1 text-xs font-semibold"
+                style={{ color: "var(--color-primary)" }}
+              >
+                <Icon name="user" size={11} />
+                לקוח
+              </span>
+              <span
+                className="text-[11px]"
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                {inquiry.customer_name}
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+              {inquiry.message}
+            </p>
+          </div>
         </div>
 
         {canManage && (
@@ -422,53 +449,97 @@ function InquiryModal({
             </p>
           ) : (
             <div className="space-y-2 mb-4">
-              {notes.map((n) => (
-                <div
-                  key={n.note_id}
-                  className="p-3 rounded-md border"
-                  style={{
-                    borderColor: n.internal
-                      ? "rgba(245,158,11,0.3)"
-                      : "var(--color-border)",
+              {notes.map((n) => {
+                /* Who wrote a message is backend data — `author_id`, which the
+                 * database stamps from the JWT — compared with the ticket's
+                 * own `user_id`. Nothing here is inferred from content, and a
+                 * ticket with no owner (the public form while signed out, or a
+                 * ticket logged from a phone call) can only ever be written to
+                 * by staff, so every note there is the team's. */
+                const fromCustomer =
+                  inquiry.user_id !== undefined &&
+                  n.author_id === inquiry.user_id
 
-                    background: n.internal
-                      ? "rgba(245,158,11,0.05)"
-                      : "var(--color-background)",
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="text-xs font-medium">{n.author_name}</span>
-                    {n.internal && (
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded-full"
-                        style={{
-                          background: "rgba(245,158,11,0.15)",
-                          color: "#F59E0B",
-                        }}
-                      >
-                        פנימי
-                      </span>
-                    )}
-                    <span
-                      className="text-xs mr-auto"
-                      style={{ color: "var(--color-muted-foreground)" }}
+                return (
+                  <div
+                    key={n.note_id}
+                    className={`flex ${
+                      fromCustomer ? "justify-start" : "justify-end"
+                    }`}
+                  >
+                    <div
+                      className="max-w-[85%] min-w-0 p-3 rounded-lg border"
+                      style={{
+                        borderColor: n.internal
+                          ? "rgba(245,158,11,0.3)"
+                          : fromCustomer
+                            ? "rgba(212,160,48,0.28)"
+                            : "var(--color-border)",
+
+                        background: n.internal
+                          ? "rgba(245,158,11,0.05)"
+                          : fromCustomer
+                            ? "rgba(212,160,48,0.07)"
+                            : "var(--color-secondary)",
+                      }}
                     >
-                      {new Date(n.created_at).toLocaleString("he-IL", {
-                        day: "numeric",
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span
+                          className="inline-flex items-center gap-1 text-xs font-semibold"
+                          style={{
+                            color: fromCustomer
+                              ? "var(--color-primary)"
+                              : "var(--color-foreground)",
+                          }}
+                        >
+                          <Icon
+                            name={fromCustomer ? "user" : "shield"}
+                            size={11}
+                          />
+                          {fromCustomer ? "לקוח" : "צוות התמיכה"}
+                        </span>
+                        {n.author_name && (
+                          <span
+                            className="text-[11px]"
+                            style={{ color: "var(--color-muted-foreground)" }}
+                          >
+                            {n.author_name}
+                          </span>
+                        )}
+                        {n.internal && (
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded-full"
+                            style={{
+                              background: "rgba(245,158,11,0.15)",
 
-                        month: "short",
+                              color: "#F59E0B",
+                            }}
+                          >
+                            פנימי
+                          </span>
+                        )}
+                        <span
+                          className="text-xs mr-auto"
+                          style={{ color: "var(--color-muted-foreground)" }}
+                        >
+                          {new Date(n.created_at).toLocaleString("he-IL", {
+                            day: "numeric",
 
-                        hour: "2-digit",
+                            month: "short",
 
-                        minute: "2-digit",
-                      })}
-                    </span>
+                            hour: "2-digit",
+
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                        {n.content}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {n.content}
-                  </p>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
