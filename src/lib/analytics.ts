@@ -9,7 +9,7 @@
  * line at purchase time.
  * ───────────────────────────────────────────────────────────── */
 
-import type { Order, Product, Refund } from "../types"
+import type { Order, Refund } from "../types"
 
 export type RangePreset = "TODAY" | "WEEK" | "MONTH" | "QUARTER" | "YEAR" | "ALL" | "CUSTOM"
 
@@ -119,22 +119,6 @@ export function inRange(iso: string | undefined, range: DateRange): boolean {
   return true
 }
 
-export interface ProductRevenue {
-  product_id: string
-
-  name: string
-
-  product_type: Product["product_type"]
-
-  units: number
-
-  gross: number
-
-  net: number
-
-  orders: number
-}
-
 export interface DayRevenue {
   /** yyyy-mm-dd */
 
@@ -180,10 +164,6 @@ export interface RevenueSummary {
 
   refund_request_count: number
 
-  by_product: ProductRevenue[]
-
-  by_book: ProductRevenue[]
-
   by_day: DayRevenue[]
 
   has_data: boolean
@@ -216,10 +196,6 @@ const EMPTY_SUMMARY: RevenueSummary = {
 
   refund_request_count: 0,
 
-  by_product: [],
-
-  by_book: [],
-
   by_day: [],
 
   has_data: false,
@@ -245,8 +221,6 @@ export function computeRevenue(
   orders: Order[],
 
   refunds: Refund[],
-
-  products: Product[],
 
   range: DateRange,
 ): RevenueSummary {
@@ -278,53 +252,12 @@ export function computeRevenue(
     paid.map((o) => o.user_id || o.customer_email.toLowerCase()),
   )
 
-  const productType = new Map(
-    products.map((p) => [p.product_id, p.product_type]),
+  // Total units sold across all order lines in range.
+
+  const units = paid.reduce(
+    (sum, o) => sum + o.items.reduce((s, item) => s + item.quantity, 0),
+    0,
   )
-
-  const productName = new Map(products.map((p) => [p.product_id, p.name]))
-
-  const agg = new Map<string, ProductRevenue>()
-
-  let units = 0
-
-  paid.forEach((o) => {
-    o.items.forEach((item) => {
-      units += item.quantity
-
-      const existing =
-        agg.get(item.product_id) ??
-        {
-          product_id: item.product_id,
-
-          // Falls back to the purchase-time name so deleted products still report correctly.
-
-          name: productName.get(item.product_id) ?? item.product_name,
-
-          product_type: productType.get(item.product_id) ?? "DIGITAL_PRODUCT",
-
-          units: 0,
-
-          gross: 0,
-
-          net: 0,
-
-          orders: 0,
-        } as ProductRevenue
-
-      existing.units += item.quantity
-
-      existing.gross += item.unit_price * item.quantity
-
-      existing.net += item.line_total
-
-      existing.orders += 1
-
-      agg.set(item.product_id, existing)
-    })
-  })
-
-  const byProduct = [...agg.values()].sort((a, b) => b.net - a.net)
 
   const byDay = bucketByDay(paid, range)
 
@@ -361,10 +294,6 @@ export function computeRevenue(
     units_sold: units,
 
     refund_request_count: refundRequestsInRange.length,
-
-    by_product: byProduct,
-
-    by_book: byProduct.filter((p) => p.product_type === "EBOOK"),
 
     by_day: byDay,
 

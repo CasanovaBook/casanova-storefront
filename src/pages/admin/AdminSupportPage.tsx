@@ -149,10 +149,10 @@ function InquiryModal({
 
   const admins = users.filter((u) => u.role === "ADMIN")
 
-  const submitNote = () => {
+  const submitNote = async () => {
     if (!noteDraft.trim()) return
 
-    const result = addInquiryNote(
+    const result = await addInquiryNote(
       inquiry.inquiry_id,
       noteDraft.trim(),
       internal,
@@ -319,8 +319,8 @@ function InquiryModal({
                 className={inputClass}
                 style={inputStyle}
                 value={inquiry.status}
-                onChange={(e) => {
-                  const result = updateInquiry(inquiry.inquiry_id, {
+                onChange={async (e) => {
+                  const result = await updateInquiry(inquiry.inquiry_id, {
                     status: e.target.value as InquiryStatus,
                   })
 
@@ -345,8 +345,8 @@ function InquiryModal({
                 className={inputClass}
                 style={inputStyle}
                 value={inquiry.assigned_to ?? ""}
-                onChange={(e) => {
-                  const result = updateInquiry(inquiry.inquiry_id, {
+                onChange={async (e) => {
+                  const result = await updateInquiry(inquiry.inquiry_id, {
                     assigned_to: e.target.value || undefined,
                   })
 
@@ -380,8 +380,8 @@ function InquiryModal({
                   className={inputClass}
                   style={inputStyle}
                   value={inquiry.related_order_id ?? ""}
-                  onChange={(e) => {
-                    const result = linkInquiryToOrder(
+                  onChange={async (e) => {
+                    const result = await linkInquiryToOrder(
                       inquiry.inquiry_id,
                       e.target.value || null,
                     )
@@ -516,6 +516,8 @@ function InquiryModal({
 /* ── Manual ticket ────────────────────────────────────── */
 
 function NewInquiryModal({ onClose }: { onClose: () => void }) {
+  const { actor } = useAdmin()
+
   const [form, setForm] = useState({
     customer_name: "",
 
@@ -532,8 +534,14 @@ function NewInquiryModal({ onClose }: { onClose: () => void }) {
 
   const [error, setError] = useState("")
 
-  const submit = () => {
-    const result = createInquiry({ ...form, source: "CMS" })
+  const [saving, setSaving] = useState(false)
+
+  const submit = async () => {
+    setSaving(true)
+
+    const result = await createInquiry(actor, { ...form, source: "CMS" })
+
+    setSaving(false)
 
     if (!result.ok) {
       setError(result.error)
@@ -638,9 +646,10 @@ function NewInquiryModal({ onClose }: { onClose: () => void }) {
           />
           <button
             onClick={submit}
-            className="btn-gradient w-full py-2.5 rounded-full font-semibold text-sm"
+            disabled={saving}
+            className="btn-gradient w-full py-2.5 rounded-full font-semibold text-sm disabled:opacity-40"
           >
-            שמירת הפנייה
+            {saving ? "שומר…" : "שמירת הפנייה"}
           </button>
         </div>
       </div>

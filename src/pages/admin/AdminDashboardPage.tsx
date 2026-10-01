@@ -200,9 +200,6 @@ export default function AdminDashboardPage() {
     (up) => up.access_status === "ACTIVE",
   ).length
 
-  const topProducts = rev.by_product.slice(0, 5)
-  const maxRevenue = topProducts[0]?.net ?? 1
-
   const recentOrders = [...orders]
     .sort(
       (a, b) =>
@@ -460,63 +457,6 @@ export default function AdminDashboardPage() {
 
       <div className="grid md:grid-cols-[1fr_320px] gap-6">
         <div className="space-y-6">
-          {/* Top products */}
-          <div className="card-glow overflow-hidden">
-            <div
-              className="px-5 py-4 border-b"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              <h2 className="font-semibold text-sm">
-                מוצרים מובילים · {RANGE_LABEL[preset]}
-              </h2>
-            </div>
-            {topProducts.length === 0 ? (
-              <p
-                className="px-5 py-6 text-sm text-center"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                אין מכירות בטווח שנבחר.
-              </p>
-            ) : (
-              <div className="p-5 space-y-4">
-                {topProducts.map((p, i) => (
-                  <div key={p.product_id} className="flex items-center gap-3">
-                    <span
-                      className="text-xs font-bold w-4 text-center flex-shrink-0"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-medium truncate">{p.name}</p>
-                        <p
-                          className="text-xs font-semibold flex-shrink-0"
-                          style={{ color: "var(--color-primary)" }}
-                        >
-                          ₪{Math.round(p.net).toLocaleString()} · {p.units} יח׳
-                        </p>
-                      </div>
-                      <div
-                        className="h-1.5 rounded-full overflow-hidden"
-                        style={{ background: "var(--color-secondary)" }}
-                      >
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${(p.net / maxRevenue) * 100}%`,
-                            background:
-                              "linear-gradient(90deg, #E7B94C, #B8862A)",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Recent orders */}
           <div className="card-glow overflow-hidden">
             <div

@@ -93,6 +93,7 @@ import {
   grantAccess,
   getCustomerProfile,
   linkInquiryToOrder,
+  mirrorRemoteInquiries,
   removeAccess,
   setAccessStatus,
   setUserAdminRole,
@@ -102,7 +103,9 @@ import {
   type CustomerProfile,
 } from "../lib/api-support"
 
-import { isSupabaseConfigured } from "../lib/supabase"
+import { isSupabaseConfigured, requireSupabase } from "../lib/supabase"
+
+import { fetchAllInquiries } from "../lib/supabase-inquiries"
 
 import { fetchAllProfiles, mergeUserSources } from "../lib/supabase-auth"
 
@@ -277,18 +280,18 @@ interface AdminContextValue {
     inquiryId: string,
 
     patch: Partial<Pick<Inquiry, "status" | "assigned_to" | "related_order_id" | "topic" | "subject">>,
-  ) => Result<Inquiry>
+  ) => Promise<Result<Inquiry>>
 
   linkInquiryToOrder: (
     inquiryId: string,
     orderId: string | null,
-  ) => Result<Inquiry>
+  ) => Promise<Result<Inquiry>>
 
   addInquiryNote: (
     inquiryId: string,
     content: string,
     internal?: boolean,
-  ) => Result<InquiryNote>
+  ) => Promise<Result<InquiryNote>>
 
   /* CRM */
 
@@ -454,6 +457,58 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("focus", onFocus)
   }, [user?.user_id, refreshEntitlements])
 
+  /* ── Support tickets (staff queue) ──────────────────────
+   *
+   * Tickets submitted from the customer's device land in Postgres, so the
+   * queue is mirrored here the way the users list is: an initial read once
+   * a staff session exists, a re-read on returning to the tab, and a
+   * realtime subscription that refetches on every change — the event is a
+   * hint; the RLS-scoped read is the data. A non-staff JWT passes only its
+   * own rows' policies, so the mirror can never widen beyond what the
+   * server allows.
+   */
+  const isStaff =
+    user?.role === "ADMIN" || user?.role === "MODERATOR"
+
+  const refreshInquiries = useMemo(
+    () => async () => {
+      mirrorRemoteInquiries(await fetchAllInquiries(), null)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !isStaff) return
+    void refreshInquiries()
+  }, [user?.user_id, isStaff, refreshInquiries])
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !isStaff) return
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void refreshInquiries()
+    }
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [user?.user_id, isStaff, refreshInquiries])
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !isStaff) return
+    const client = requireSupabase()
+    const channel = client
+      .channel("inquiries-staff")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inquiries" },
+        () => {
+          void refreshInquiries()
+        },
+      )
+      .subscribe()
+    return () => {
+      void client.removeChannel(channel)
+    }
+  }, [user?.user_id, isStaff, refreshInquiries])
+
   const userProducts = useMemo(() => {
     /* Admin manages the source of truth, which is `public.user_products`.
      * Merging the localStorage document in here resurrected rows that had
@@ -466,6 +521,23 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
     return db.user_products
   }, [db.user_products, remoteEntitlements])
+
+  /* Mirrored remote rows carry only the assignee's id; the support modal
+   * renders a name, so it is resolved from the merged user list here —
+   * the same display the local driver stores directly. */
+  const inquiries = useMemo(() => {
+    return db.inquiries.map((i) => {
+      if (i.assigned_to_name || !i.assigned_to) return i
+      const assignee = users.find((u) => u.user_id === i.assigned_to)
+      if (!assignee) return i
+      return {
+        ...i,
+        assigned_to_name:
+          `${assignee.first_name} ${assignee.last_name}`.trim() ||
+          assignee.email,
+      }
+    })
+  }, [db.inquiries, users])
 
   const value = useMemo<AdminContextValue>(() => {
     const alerts = computeAlerts(db)
@@ -501,7 +573,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       auditLog: db.audit_log,
 
-      inquiries: db.inquiries,
+      inquiries,
 
       inquiryNotes: db.inquiry_notes,
 
@@ -519,13 +591,12 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       dismissAlert: (alertId) => dismissAlert(actor, alertId),
 
-      reinstateAlert: (alertId) => reinstateAlert(actor, alertId),
-
-      revenueFor: (preset, custom) =>
+      reinstateAlert: (alertId) => reinstateAlert(actor, alertId),      revenueFor: (preset, custom) =>
         computeRevenue(
           db.orders,
+
           db.refunds,
-          db.products,
+
           presetRange(preset, custom),
         ),
 

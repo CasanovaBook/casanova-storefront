@@ -36,6 +36,8 @@ import {
   isUuid,
 } from "./supabase-entitlements"
 
+import { createMyInquiry, updateInquiryRemote } from "./supabase-inquiries"
+
 import {
   dispatchEmail,
   fail,
@@ -102,10 +104,34 @@ export const INQUIRY_TOPIC_LABEL: Record<InquiryTopic, string> = {
  * supplied, so the CMS can show the relationship without duplicating data.
  */
 
-export function createInquiry(input: InquiryInput): Result<Inquiry> {
-  const name = input.customer_name.trim()
+export async function createInquiry(
+  actor: Actor | null,
+  input: InquiryInput,
+): Promise<Result<Inquiry>> {
+  /* The authenticated account is the authoritative sender: for a signed-in
+   * customer the stored profile supplies the name and address, and the
+   * submitted values are ignored — a crafted request cannot open a ticket
+   * under someone else's identity. `CMS` submissions are the deliberate
+   * exception: an admin logging a phone call enters the caller's details
+   * by hand. */
+  const isCustomerSubmission = actor !== null && input.source !== "CMS"
 
-  const email = normalizeEmail(input.customer_email)
+  const account = isCustomerSubmission
+    ? getDb().users.find((u) => u.user_id === actor?.user_id)
+    : undefined
+
+  const email = normalizeEmail(
+    isCustomerSubmission
+      ? (account?.email ?? input.customer_email)
+      : input.customer_email,
+  )
+
+  const name = isCustomerSubmission
+    ? `${account?.first_name ?? ""} ${account?.last_name ?? ""}`.trim() ||
+      account?.email ||
+      actor?.name ||
+      email
+    : input.customer_name.trim()
 
   const subject = input.subject.trim()
 
@@ -129,6 +155,49 @@ export function createInquiry(input: InquiryInput): Result<Inquiry> {
     db.orders.some((o) => o.order_id === input.related_order_id)
       ? input.related_order_id
       : undefined
+
+  /* Authenticated website submissions persist to `public.inquiries` — the
+   * shared queue the admin dashboard reads — through the create_my_inquiry
+   * RPC, which stamps the identity from the JWT and profile server-side.
+   * The local document stays the fallback for an unconfigured install,
+   * anonymous visitors and admin-logged phone tickets. */
+  if (isSupabaseConfigured && isCustomerSubmission) {
+    const remote = await createMyInquiry({
+      subject,
+
+      message,
+
+      topic: input.topic ?? (relatedOrderId ? "ORDER" : "GENERAL"),
+
+      customer_phone: input.customer_phone?.trim() || undefined,
+
+      /* The hosted orders table does not hold this browser's `ord_…` rows,
+       * so only a real uuid may be forwarded (same guard as
+       * adminGrantAccess). */
+      related_order_id:
+        relatedOrderId && isUuid(relatedOrderId) ? relatedOrderId : undefined,
+    })
+
+    if (!remote.ok) return remote
+
+    upsertRemoteInquiries([remote.data])
+
+    dispatchEmail({
+      recipient: remote.data.customer_email,
+
+      recipient_name: remote.data.customer_name,
+
+      template: "INQUIRY_RECEIVED",
+
+      subject: `קיבלנו את פנייתך — ${remote.data.ticket_number}`,
+
+      related_type: "INQUIRY",
+
+      related_id: remote.data.inquiry_id,
+    })
+
+    return remote
+  }
 
   const inquiry = mutate((d) => {
     const year = new Date().getFullYear()
@@ -241,13 +310,13 @@ export function listInquiryNotes(inquiryId: string): InquiryNote[] {
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
 }
 
-export function updateInquiry(
+export async function updateInquiry(
   actor: Actor | null,
 
   inquiryId: string,
 
   patch: Partial<Pick<Inquiry, "status" | "assigned_to" | "related_order_id" | "topic" | "subject">>,
-): Result<Inquiry> {
+): Promise<Result<Inquiry>> {
   const denied = guard(actor, "manage_support")
 
   if (denied) return denied
@@ -256,16 +325,74 @@ export function updateInquiry(
 
   if (!existing) return fail("NOT_FOUND", "הפנייה לא נמצאה.")
 
-  const assigneeName = patch.assigned_to
-    ? getDb().users.find((u) => u.user_id === patch.assigned_to)
-    : undefined
-
   const nextStatus: InquiryStatus = patch.status ?? existing.status
 
   const resolvedAt =
     nextStatus === "RESOLVED" || nextStatus === "CLOSED"
       ? (existing.resolved_at ?? nowIso())
       : undefined
+
+  /* A remote-owned ticket (uuid id) is updated in Postgres, and the row
+   * that lands there — not the patch — becomes the local record. The
+   * realtime event this write produces carries the same change to the
+   * customer's open page. */
+  if (isSupabaseConfigured && isUuid(inquiryId)) {
+    if (patch.assigned_to !== undefined && !isUuid(patch.assigned_to)) {
+      return fail("VALIDATION", "ניתן לשייך פנייה בשרת רק לנציג הרשום בשרת.")
+    }
+
+    if (
+      "related_order_id" in patch &&
+      patch.related_order_id !== undefined &&
+      !isUuid(patch.related_order_id)
+    ) {
+      return fail("VALIDATION", "ניתן לשייך פנייה בשרת רק להזמנה הרשומה בשרת.")
+    }
+
+    const remote = await updateInquiryRemote(inquiryId, {
+      status: patch.status,
+
+      assigned_to: patch.assigned_to,
+
+      related_order_id:
+        "related_order_id" in patch
+          ? (patch.related_order_id ?? null)
+          : undefined,
+
+      topic: patch.topic,
+
+      subject: patch.subject,
+
+      resolved_at:
+        patch.status !== undefined ? (resolvedAt ?? null) : undefined,
+    })
+
+    if (!remote.ok) return remote
+
+    upsertRemoteInquiries([remote.data])
+
+    if (patch.status && patch.status !== existing.status) {
+      writeAudit(actor, {
+        category: "INQUIRY",
+
+        action: "עדכון סטטוס פנייה",
+
+        target_type: "INQUIRY",
+
+        target_id: inquiryId,
+
+        target_label: `${remote.data.ticket_number} · ${remote.data.customer_name}`,
+
+        details: `${INQUIRY_STATUS_LABEL[existing.status]} → ${INQUIRY_STATUS_LABEL[patch.status]}`,
+      })
+    }
+
+    return ok(remote.data)
+  }
+
+  const assigneeName = patch.assigned_to
+    ? getDb().users.find((u) => u.user_id === patch.assigned_to)
+    : undefined
 
   const updated = mutate((db) => {
     const next: Inquiry = {
@@ -313,11 +440,11 @@ export function updateInquiry(
   return ok(updated)
 }
 
-export function linkInquiryToOrder(
+export async function linkInquiryToOrder(
   actor: Actor | null,
   inquiryId: string,
   orderId: string | null,
-): Result<Inquiry> {
+): Promise<Result<Inquiry>> {
   const denied = guard(actor, "manage_support")
 
   if (denied) return denied
@@ -331,7 +458,7 @@ export function linkInquiryToOrder(
   })
 }
 
-export function addInquiryNote(
+export async function addInquiryNote(
   actor: Actor | null,
 
   inquiryId: string,
@@ -339,7 +466,7 @@ export function addInquiryNote(
   content: string,
 
   internal = true,
-): Result<InquiryNote> {
+): Promise<Result<InquiryNote>> {
   const denied = guard(actor, "support")
 
   if (denied) return denied
@@ -382,7 +509,97 @@ export function addInquiryNote(
     return created
   })
 
+  /* The note itself stays in this browser's document (as before), but the
+   * parent ticket may live in Postgres: the NEW→OPEN transition and the
+   * freshness stamp are part of the ticket, so they are pushed to the
+   * server for remote rows — otherwise the next sync would revert them. */
+  if (isSupabaseConfigured && isUuid(inquiryId)) {
+    const bump = await updateInquiryRemote(inquiryId, {
+      status: inquiry.status === "NEW" ? "OPEN" : inquiry.status,
+    })
+
+    if (!bump.ok) {
+      console.warn("[support] ticket freshness bump failed:", bump.error)
+    } else {
+      upsertRemoteInquiries([bump.data])
+    }
+  }
+
   return ok(note)
+}
+
+/* ── Support ticket mirror ───────────────────────────── */
+
+/**
+ * Merges server-held tickets into the local document without pruning —
+ * used for the single row a create/update just returned, so the change
+ * shows immediately even before the next full read (or realtime event).
+ */
+export function upsertRemoteInquiries(rows: Inquiry[]): void {
+  if (rows.length === 0) return
+
+  const current = getDb().inquiries
+
+  const changed = rows.some((row) => {
+    const existing = current.find((i) => i.inquiry_id === row.inquiry_id)
+    return !existing || JSON.stringify(existing) !== JSON.stringify(row)
+  })
+
+  if (!changed) return
+
+  mutate((db) => {
+    const byId = new Map(db.inquiries.map((i) => [i.inquiry_id, i]))
+    for (const row of rows) byId.set(row.inquiry_id, row)
+    db.inquiries = [...byId.values()].sort((a, b) =>
+      b.created_at.localeCompare(a.created_at),
+    )
+  })
+}
+
+/**
+ * Caches an authoritative RLS-scoped read of support tickets.
+ *
+ * `ownerId` is the account the read covers, or `null` for the staff-wide
+ * queue. Server-owned rows (uuid ids) are replaced by what the server now
+ * holds, and rows the read no longer covers are REMOVED — a ticket the
+ * backend no longer lists must not live on in the browser. Local-only rows
+ * (the `inq_…` ids the offline driver, anonymous visitors and admin-logged
+ * phone tickets mint) are preserved, and a null read (failed fetch)
+ * touches nothing.
+ */
+export function mirrorRemoteInquiries(
+  remote: Inquiry[] | null,
+  ownerId: string | null,
+): void {
+  if (remote === null) return
+
+  const current = getDb().inquiries
+
+  const isRemoteOwned = (i: Inquiry) => isUuid(i.inquiry_id)
+  const inScope = (i: Inquiry) =>
+    isRemoteOwned(i) && (ownerId === null || i.user_id === ownerId)
+
+  const remoteIds = new Set(remote.map((r) => r.inquiry_id))
+  const survivors = current.filter(
+    (i) => !inScope(i) || remoteIds.has(i.inquiry_id),
+  )
+
+  const changed =
+    survivors.length !== current.length ||
+    remote.some((row) => {
+      const existing = current.find((i) => i.inquiry_id === row.inquiry_id)
+      return !existing || JSON.stringify(existing) !== JSON.stringify(row)
+    })
+
+  if (!changed) return
+
+  mutate((db) => {
+    const byId = new Map(survivors.map((i) => [i.inquiry_id, i]))
+    for (const row of remote) byId.set(row.inquiry_id, row)
+    db.inquiries = [...byId.values()].sort((a, b) =>
+      b.created_at.localeCompare(a.created_at),
+    )
+  })
 }
 
 /* ── Customers ────────────────────────────────────────── */

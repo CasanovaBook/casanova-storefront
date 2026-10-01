@@ -82,6 +82,29 @@ export default function SupportPage() {
 
   const myInquiries = listMyInquiries(actor)
 
+  /* Identity fields are display-only for a signed-in customer: the values
+   * come straight from the authenticated profile, and the service layer
+   * re-derives them server-side regardless of what is submitted. */
+  const identityLocked = user !== null
+
+  const identityName = user
+    ? `${user.first_name} ${user.last_name}`.trim() || user.email
+    : form.customer_name
+
+  const identityEmail = user ? user.email : form.customer_email
+
+  const identityFieldStyle = identityLocked
+    ? {
+        ...inputStyle,
+
+        opacity: 0.6,
+
+        cursor: "not-allowed",
+
+        color: "var(--color-muted-foreground)",
+      }
+    : inputStyle
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -89,23 +112,21 @@ export default function SupportPage() {
 
     setSending(true)
 
-    const result = await Promise.resolve(
-      createInquiry({
-        customer_name: form.customer_name,
+    const result = await createInquiry(actor, {
+      customer_name: identityName,
 
-        customer_email: form.customer_email,
+      customer_email: identityEmail,
 
-        customer_phone: form.customer_phone || undefined,
+      customer_phone: form.customer_phone || undefined,
 
-        subject: form.subject,
+      subject: form.subject,
 
-        message: form.message,
+      message: form.message,
 
-        topic: form.topic,
+      topic: form.topic,
 
-        related_order_id: form.related_order_id || undefined,
-      }),
-    )
+      related_order_id: form.related_order_id || undefined,
+    })
 
     setSending(false)
 
@@ -206,12 +227,25 @@ export default function SupportPage() {
                   </label>
                   <input
                     className={inputClass}
-                    style={inputStyle}
-                    value={form.customer_name}
-                    onChange={(e) =>
+                    style={identityFieldStyle}
+                    value={identityName}
+                    disabled={identityLocked}
+                    readOnly={identityLocked}
+                    aria-readonly={identityLocked}
+                    onChange={(e) => {
+                      if (identityLocked) return
+
                       setForm({ ...form, customer_name: e.target.value })
-                    }
+                    }}
                   />
+                  {identityLocked && (
+                    <p
+                      className="text-[11px] mt-1"
+                      style={{ color: "var(--color-muted-foreground)" }}
+                    >
+                      נקבע לפי החשבון המחובר ואינו ניתן לעריכה.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
@@ -224,11 +258,16 @@ export default function SupportPage() {
                     dir="ltr"
                     type="email"
                     className={inputClass}
-                    style={inputStyle}
-                    value={form.customer_email}
-                    onChange={(e) =>
+                    style={identityFieldStyle}
+                    value={identityEmail}
+                    disabled={identityLocked}
+                    readOnly={identityLocked}
+                    aria-readonly={identityLocked}
+                    onChange={(e) => {
+                      if (identityLocked) return
+
                       setForm({ ...form, customer_email: e.target.value })
-                    }
+                    }}
                   />
                 </div>
               </div>

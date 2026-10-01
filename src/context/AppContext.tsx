@@ -47,7 +47,11 @@ import {
   type RegisterInput,
   type Result,
 } from "../lib/api"
-import { mirrorRemoteEntitlements, saveReadingProgress } from "../lib/api-support"
+import {
+  mirrorRemoteEntitlements,
+  mirrorRemoteInquiries,
+  saveReadingProgress,
+} from "../lib/api-support"
 import {
   checkout,
   listOrdersForUser,
@@ -69,6 +73,7 @@ import {
   buildAppUser,
 } from "../lib/supabase-auth"
 import { fetchMyEntitlements } from "../lib/supabase-entitlements"
+import { fetchMyInquiries } from "../lib/supabase-inquiries"
 
 /**
  * Resolves a stored session to an app user, refusing a blocked account.
@@ -440,6 +445,79 @@ export function AppProvider({ children }: { children: ReactNode }) {
       window.clearInterval(beat)
     }
   }, [user?.user_id, refreshEntitlements])
+
+  /* ── Support tickets (customer side) ────────────────────
+   *
+   * The same split the entitlements had: a ticket created or answered on
+   * another device lives in Supabase, while `db.inquiries` only ever held
+   * rows this browser wrote. The signed-in account's own tickets are
+   * mirrored into the store so the support page shows them, and so an
+   * admin's status change reaches an open page within seconds of the
+   * click — the channel's event is treated as a hint and answered with a
+   * fresh RLS-scoped read, never with the payload itself.
+   */
+  const refreshMyInquiries = useCallback(
+    async (uid: string) => {
+      if (!isSupabaseConfigured) return
+
+      mirrorRemoteInquiries(await fetchMyInquiries(uid), uid)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return
+
+    let cancelled = false
+
+    const sync = async () => {
+      const rows = await fetchMyInquiries(user.user_id)
+
+      if (!cancelled) mirrorRemoteInquiries(rows, user.user_id)
+    }
+
+    void sync()
+
+    const onFocus = () => {
+      if (document.visibilityState !== "visible") return
+
+      void sync()
+    }
+
+    window.addEventListener("focus", onFocus)
+
+    return () => {
+      cancelled = true
+
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [user?.user_id])
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return
+
+    const client = requireSupabase()
+
+    const channel = client
+      .channel(`inquiries-${user.user_id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "inquiries",
+          filter: `user_id=eq.${user.user_id}`,
+        },
+        () => {
+          void refreshMyInquiries(user.user_id)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void client.removeChannel(channel)
+    }
+  }, [user?.user_id, refreshMyInquiries])
 
   // A dropped or deactivated account ends the session immediately.
   useEffect(() => {
