@@ -31,6 +31,8 @@ import type {
 
 import AccessDenied from "../../components/AccessDenied"
 
+import Modal from "../../components/Modal"
+
 import Icon, { type IconName } from "../../components/icons"
 
 const STATUS_ORDER: InquiryStatus[] = [
@@ -227,34 +229,25 @@ function InquiryModal({
   ]
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-    >
-      <div className="card-glow w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <div className="min-w-0">
-            <h2 className="font-display text-xl font-semibold truncate">
-              {inquiry.subject}
-            </h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span
-                dir="ltr"
-                className="font-mono text-xs"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {inquiry.inquiry_id}
-              </span>
-              <StatusPill status={inquiry.status} />
-            </div>
-          </div>
-          <button
-            onClick={onClose}
+    <Modal
+      size="3xl"
+      title={inquiry.subject}
+      titleClassName="truncate"
+      ariaLabel={inquiry.subject}
+      onClose={onClose}
+      subtitle={
+        <div className="flex items-center gap-2 mt-1">
+          <span
+            dir="ltr"
+            className="font-mono text-xs"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            <Icon name="x" size={16} />
-          </button>
+            {inquiry.inquiry_id}
+          </span>
+          <StatusPill status={inquiry.status} />
         </div>
+      }
+    >
 
         {error && (
           <p
@@ -508,8 +501,7 @@ function InquiryModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   )
 }
 
@@ -553,22 +545,7 @@ function NewInquiryModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-    >
-      <div className="card-glow w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-xl font-semibold">
-            רישום פנייה שהתקבלה טלפונית
-          </h2>
-          <button
-            onClick={onClose}
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            <Icon name="x" size={16} />
-          </button>
-        </div>
+    <Modal size="xl" title="רישום פנייה שהתקבלה טלפונית" onClose={onClose}>
 
         {error && (
           <p
@@ -652,8 +629,7 @@ function NewInquiryModal({ onClose }: { onClose: () => void }) {
             {saving ? "שומר…" : "שמירת הפנייה"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   )
 }
 

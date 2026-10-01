@@ -776,8 +776,8 @@ export function MaestroProductsPage() {
 
       {/* ── Create Dialog ──────────────────────────────────────────── */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
-          <div className="w-full max-w-md p-6 m-4" style={{ ...cardStyle, background: "var(--color-card)" }}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div className="w-full max-w-md p-6 my-auto" style={{ ...cardStyle, background: "var(--color-card)" }}>
             <div className="flex items-center gap-2 mb-5">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(227,174,60,0.15)" }}>
                 <span className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>+</span>

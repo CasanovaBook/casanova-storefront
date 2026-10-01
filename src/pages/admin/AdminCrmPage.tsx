@@ -28,6 +28,8 @@ import type {
 
 import AccessDenied from "../../components/AccessDenied"
 
+import Modal from "../../components/Modal"
+
 import Icon, { type IconName } from "../../components/icons"
 
 const STAGES: LeadStage[] = ["NEW", "CONTACTED", "INTERESTED", "WON", "LOST"]
@@ -114,23 +116,9 @@ function ModalShell({
   children: React.ReactNode
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-    >
-      <div className="card-glow w-full max-w-xl p-6 max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-xl font-semibold">{title}</h2>
-          <button
-            onClick={onClose}
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            <Icon name="x" size={16} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    <Modal size="xl" title={title} onClose={onClose}>
+      {children}
+    </Modal>
   )
 }
 

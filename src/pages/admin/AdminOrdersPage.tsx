@@ -10,6 +10,7 @@ import type {
   RefundRequestStatus,
 } from "../../types"
 import AccessDenied from "../../components/AccessDenied"
+import Modal from "../../components/Modal"
 import Icon from "../../components/icons"
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
@@ -426,21 +427,7 @@ function OrderDetailModal({
   ]
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-    >
-      <div className="card-glow w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-xl font-semibold">פרטי הזמנה</h2>
-          <button
-            onClick={onClose}
-            style={{ color: "var(--color-muted-foreground)" }}
-            aria-label="סגירה"
-          >
-            <Icon name="x" size={16} />
-          </button>
-        </div>
+    <Modal size="2xl" title="פרטי הזמנה" onClose={onClose}>
 
         <div className="grid grid-cols-2 gap-3 mb-5">
           {details.map(({ label, value, mono, color }) => (
@@ -912,8 +899,7 @@ function OrderDetailModal({
         >
           סגירה
         </button>
-      </div>
-    </div>
+      </Modal>
   )
 }
 

@@ -47,6 +47,8 @@ import type {
 
 import AccessDenied from "../../components/AccessDenied"
 
+import Modal from "../../components/Modal"
+
 import Icon, { type IconName } from "../../components/icons"
 
 const inputStyle = {
@@ -355,26 +357,11 @@ function PolicyEditor({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-4 sm:p-6 drawer-scrim">
-      <div
-        className="w-full max-w-2xl rounded-2xl border p-6 my-4"
-        style={{
-          background: "var(--color-card)",
-          borderColor: "var(--color-border)",
-        }}
-      >
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="font-display text-xl font-semibold">
-            {policy ? "עריכת מדיניות הגנה" : "מדיניות הגנה חדשה"}
-          </h3>
-          <button
-            onClick={onClose}
-            aria-label="סגירה"
-            className="tap-target flex items-center justify-center"
-          >
-            <Icon name="x" size={17} />
-          </button>
-        </div>
+    <Modal
+      size="2xl"
+      title={policy ? "עריכת מדיניות הגנה" : "מדיניות הגנה חדשה"}
+      onClose={onClose}
+    >
 
         <div className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -615,8 +602,7 @@ function PolicyEditor({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   )
 }
 

@@ -1,5 +1,4 @@
 import { useState } from "react"
-import { createPortal } from "react-dom"
 import { useAdmin } from "../../context/AdminContext"
 import { useCms } from "../../context/CmsContext"
 import { formatIsraelDateTime } from "../../lib/datetime"
@@ -7,6 +6,7 @@ import { can } from "../../lib/permissions"
 import { SECURITY_NOTE } from "../../lib/sensitive"
 import type { ProductSnapshot, User } from "../../types"
 import AccessDenied from "../../components/AccessDenied"
+import Modal from "../../components/Modal"
 import Icon from "../../components/icons"
 import { useAccessActions } from "./useAccessActions"
 
@@ -245,37 +245,13 @@ function UserDetailModal({
     { id: "activity", label: "פעילות" },
   ]
 
-  /* Rendered through a portal so `fixed` resolves against the viewport.
-   *
-   * The page root carries `page-enter`, whose `fadeUp` animation is applied
-   * with `fill-mode: both`. That retains `transform: translateY(0)` after the
-   * animation finishes, and any transform other than `none` makes an element
-   * the containing block for its `position: fixed` descendants. `fixed
-   * inset-0` was therefore sized to this page-height container rather than to
-   * the viewport, so the dialog was centred against a box many screens tall:
-   * it sat below the fold and its top could not be scrolled to. Portalling to
-   * `document.body` escapes every transformed ancestor.
-   *
-   * The layout matches AdminSecurityPage's dialog — `items-start` with
-   * `overflow-y-auto` on the overlay — so content taller than the viewport
-   * scrolls from the top and the header, close button and footer all stay
-   * reachable. Scrolling the overlay rather than the panel is what keeps that
-   * true; a `max-h` on the panel would clip instead. */
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-4 sm:p-6"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-    >
-      <div className="card-glow w-full max-w-2xl p-6 my-4">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-xl font-semibold">פרופיל לקוח</h2>
-          <button
-            onClick={onClose}
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            <Icon name="x" size={16} />
-          </button>
-        </div>
+  /* Rendered through the shared Modal primitive (src/components/Modal): it
+   * portals to `document.body` so the dialog is sized and laid out against
+   * the viewport rather than the `page-enter`-transformed page container, and
+   * it scrolls the overlay from the top so tall content stays reachable. */
+  return (
+    <>
+      <Modal size="2xl" title="פרופיל לקוח" onClose={onClose}>
 
         <div className="flex items-center gap-4 mb-5">
           <div
@@ -1017,20 +993,17 @@ function UserDetailModal({
             )}
           </div>
         </div>
-      </div>
+      </Modal>
       {notice && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={notice.title}
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.7)" }}
-          onClick={() => setNotice(null)}
+        <Modal
+          size="sm"
+          align="center"
+          zIndex={200}
+          ariaLabel={notice.title}
+          panelClassName="text-center"
+          closeOnOverlayClick
+          onClose={() => setNotice(null)}
         >
-          <div
-            className="card-glow w-full max-w-sm p-6 text-center"
-            onClick={(event) => event.stopPropagation()}
-          >
             <div
               className="mx-auto mb-4 w-11 h-11 rounded-full flex items-center justify-center"
               style={{
@@ -1058,11 +1031,9 @@ function UserDetailModal({
             >
               הבנתי
             </button>
-          </div>
-        </div>
+        </Modal>
       )}
-    </div>,
-    document.body,
+    </>
   )
 }
 

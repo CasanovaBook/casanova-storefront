@@ -40,6 +40,7 @@ import type {
 import type { IconName } from "../../components/icons"
 import { detectPlatform, toEmbedUrl, PLATFORM_LABEL } from "../../lib/media"
 import AccessDenied from "../../components/AccessDenied"
+import Modal from "../../components/Modal"
 import Icon from "../../components/icons"
 
 const STATUS_LABEL: Record<ProductStatus, string> = {
@@ -550,22 +551,11 @@ function ProductModal({
   const maxKb = Math.round(maxUploadBytes / 1024).toLocaleString()
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}
+    <Modal
+      size="3xl"
+      title={product ? "עריכת מוצר" : "מוצר חדש"}
+      onClose={onClose}
     >
-      <div className="card-glow w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-xl font-semibold">
-            {product ? "עריכת מוצר" : "מוצר חדש"}
-          </h2>
-          <button
-            onClick={onClose}
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            <Icon name="x" size={16} />
-          </button>
-        </div>
 
         {saveError && (
           <p
@@ -1390,8 +1380,7 @@ function ProductModal({
             ביטול
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   )
 }
 
@@ -1425,20 +1414,7 @@ function CategoryModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-    >
-      <div className="card-glow w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-xl font-semibold">קטגוריות</h2>
-          <button
-            onClick={onClose}
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            <Icon name="x" size={16} />
-          </button>
-        </div>
+    <Modal size="lg" title="קטגוריות" onClose={onClose}>
 
         {error && (
           <p
@@ -1517,8 +1493,7 @@ function CategoryModal({
             ))}
           </ul>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }
 
