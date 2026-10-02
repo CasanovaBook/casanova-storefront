@@ -32,7 +32,7 @@
  * `document.body` escapes every transformed ancestor.
  * ───────────────────────────────────────────────────────────── */
 
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import Icon from "./icons"
 
@@ -105,6 +105,58 @@ export default function Modal({
     }
   }, [onClose])
 
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const previousActive = useRef<Element | null>(null)
+
+  useEffect(() => {
+    // Focus management: save active element, move focus into panel and trap Tab
+    previousActive.current = document.activeElement
+
+    const node = panelRef.current
+    if (node) {
+      const focusable = node.querySelector<HTMLElement>(
+        'button, a[href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
+      )
+      try {
+        ;(focusable ?? node).focus()
+      } catch {}
+    }
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return
+      if (!node) return
+      const focusables = Array.from(
+        node.querySelectorAll<HTMLElement>(
+          'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null)
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    document.addEventListener("keydown", onKey)
+
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      try {
+        ;(previousActive.current as HTMLElement | null)?.focus()
+      } catch {}
+    }
+  }, [])
+
   const showHeader = !hideHeader && title !== undefined
 
   return createPortal(
@@ -117,6 +169,8 @@ export default function Modal({
       onClick={closeOnOverlayClick ? onClose : undefined}
     >
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className={`card-glow w-full ${SIZE_CLASS[size]} p-6 ${
           align === "center" ? "my-auto" : "my-4"
         } ${panelClassName}`}

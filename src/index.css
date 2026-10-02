@@ -260,6 +260,56 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Skip-to-content link: visible when focused for keyboard users */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 9999;
+  padding: 8px 12px;
+  background: var(--color-card);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  transform: translateY(-120%);
+  transition: transform 0.2s ease;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Visible focus indicator for keyboard users */
+:focus-visible {
+  outline: 3px solid var(--color-ring);
+  outline-offset: 3px;
+}
+
+/* Accessibility data-attribute driven overrides */
+[data-access-reduced-motion='true'] * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0s !important;
+}
+
+[data-access-high-contrast='true'] {
+  --color-background: #000000;
+  --color-foreground: #ffffff;
+  --color-card: #000000;
+  --color-card-foreground: #ffffff;
+  --color-primary: #ffff00;
+  --color-primary-foreground: #000000;
+}
+
+[data-access-grayscale='true'] body, [data-access-grayscale='true'] #root {
+  filter: grayscale(100%);
+}
+
+[data-access-highlight-links='true'] a {
+  text-decoration: underline;
+  font-weight: 700;
+  text-underline-offset: 2px;
+}
+
+
 /* Gentle floating motion for hero visuals */
 .float-slow { animation: floaty 5s ease-in-out infinite; }
 .float-slower { animation: floaty 7s ease-in-out infinite reverse; }

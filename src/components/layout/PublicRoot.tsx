@@ -5,6 +5,7 @@ import { useCms } from "../../context/CmsContext"
 import { useContent } from "../../content/useContent"
 import Icon from "../icons"
 import ThemeToggle from "../ThemeToggle"
+import AccessibilityMenu from "../AccessibilityMenu"
 import { loadContent } from "../../content/store"
 import useFavicon from "../useFavicon"
 import logoImg from "../../../images/main_photo.jpg"
@@ -122,6 +123,7 @@ export default function PublicRoot() {
       className="min-h-full flex flex-col"
       style={{ background: "var(--color-background)" }}
     >
+      <a href="#main" className="skip-link">דלג לתוכן הראשי</a>
       <header
         className="safe-top fixed left-0 right-0 z-50 glass border-b transition-all top-0"
         style={{ borderColor: "rgba(30,30,46,0.8)" }}
@@ -167,6 +169,14 @@ export default function PublicRoot() {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Debug: always-visible accessibility trigger for local preview */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-accessibility-debug'))}
+              className="tap-target px-3 py-2 rounded-lg border"
+              style={{ marginLeft: 6 }}
+            >
+              נגישות
+            </button>
             {isAuthenticated && (
               <span
                 className="text-sm hidden lg:block"
@@ -177,10 +187,12 @@ export default function PublicRoot() {
             )}
             <div className="hidden md:flex items-center gap-3">
               <ThemeToggle />
+              <AccessibilityMenu />
               {accountActions}
             </div>
             <div className="md:hidden flex items-center gap-1">
               <ThemeToggle />
+              <AccessibilityMenu />
               <button
                 onClick={() => setMenuOpen((open) => !open)}
                 className="tap-target flex items-center justify-center rounded-lg border"
@@ -236,7 +248,7 @@ export default function PublicRoot() {
         )}
       </header>
 
-      <main className="flex-1 pt-16">
+      <main id="main" className="flex-1 pt-16">
         <Outlet />
       </main>
 

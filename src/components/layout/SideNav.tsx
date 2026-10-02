@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 
 import { Link, useLocation } from "react-router"
 
@@ -62,6 +62,8 @@ export default function SideNav({
   const [open, setOpen] = useState(false)
 
   const location = useLocation()
+  const panelRef = useRef<HTMLElement | null>(null)
+  const previousActive = useRef<Element | null>(null)
 
   // Navigating from the drawer must not leave it covering the new screen.
 
@@ -82,10 +84,25 @@ export default function SideNav({
 
     document.body.style.overflow = "hidden"
 
+    // Focus management: save active element and move focus into the panel
+    previousActive.current = document.activeElement
+    try {
+      const node = panelRef.current
+      if (node) {
+        const first = node.querySelector<HTMLElement>(
+          'a, button, [tabindex]:not([tabindex="-1"])',
+        )
+        ;(first ?? node).focus()
+      }
+    } catch {}
+
     return () => {
       window.removeEventListener("keydown", onKey)
 
       document.body.style.overflow = previousOverflow
+      try {
+        ;(previousActive.current as HTMLElement | null)?.focus()
+      } catch {}
     }
   }, [open])
 
@@ -180,6 +197,7 @@ export default function SideNav({
       )}
 
       <aside
+        ref={panelRef}
         data-open={open}
         className="drawer-panel safe-bottom fixed top-0 right-0 h-full w-60 max-w-[85vw] border-l flex flex-col z-50"
         style={{

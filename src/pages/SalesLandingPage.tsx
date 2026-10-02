@@ -32,6 +32,7 @@ import { effectivePrice, isOnSale } from "../types"
 import Icon from "../components/icons"
 
 import ThemeToggle from "../components/ThemeToggle"
+import AccessibilityMenu from "../components/AccessibilityMenu"
 
 import { loadContent } from "../content/store"
 
@@ -1192,6 +1193,7 @@ export default function SalesLandingPage() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <AccessibilityMenu />
             <Link
               to="/login"
               className="btn-gradient tap-target inline-flex items-center justify-center text-sm font-bold px-5 py-2 rounded-full"
@@ -1202,7 +1204,7 @@ export default function SalesLandingPage() {
         </div>
       </header>
 
-      <main className="pt-14">
+      <main id="main" className="pt-14">
         <HeroSection product={product} c={c} />
         <ProofStrip c={c} />
         <AgitationSection c={c} />
