@@ -1,18 +1,17 @@
 /* ─────────────────────────────────────────────────────────────
- * CMS — catalogue management.
+ * CMS — catalogue management, authoritative over the hosted catalogue.
  *
- * This page is the only place a product comes into existence. Every
- * field the storefront reads (title, author, price, sale price,
- * currency, categories, tags, SKU, status, visibility, availability,
- * inventory, featured flag, position, SEO, slug, cover art, content
- * file) is edited here, so a title created in the CMS appears on the
- * shop, in search and in checkout with no code change.
+ * The list and every save on this page work against the real catalogue:
+ * `public.products` / `public.categories` in Supabase when it is
+ * configured, and the local document only on an install where it is not.
+ * Writes go through the admin RPCs in migrations/0022_admin_product_writes.sql,
+ * which re-check `is_admin()` server-side — the buttons below are hidden
+ * purely as a convenience. After a successful save the catalogue is
+ * re-read, so the storefront, the reader and this list all show what the
+ * database now holds.
  *
  * Nothing is synthesised: the list renders the persisted catalogue and
- * shows an empty state when it is empty. Audits for create / update /
- * price change / content swap are written by the service layer, which
- * is also where the permission check happens — the buttons below are
- * hidden purely as a convenience.
+ * shows an empty state when it is empty.
  * ───────────────────────────────────────────────────────────── */
 
 import { useMemo, useRef, useState, type ReactNode } from "react"
@@ -25,6 +24,7 @@ import {
   uploadBookFile,
 } from "../../lib/content-storage"
 import { isSupabaseConfigured } from "../../lib/supabase"
+import { isUuid } from "../../lib/supabase-entitlements"
 import { uid } from "../../lib/db"
 import type {
   BookMetadata,
@@ -244,7 +244,7 @@ interface ProductModalProps {
   defaultCurrency: string
   categories: { category_id: string, name: string }[]
   onClose: () => void
-  onSave: (patch: Partial<Product>) => Result<Product>
+  onSave: (patch: Partial<Product>) => Promise<Result<Product>>
 }
 
 function ProductModal({
@@ -302,7 +302,11 @@ function ProductModal({
   /* A brand-new product has no id until it is saved, but a Supabase
    * Storage upload is keyed by product_id. Pre-generate a stable id so the
    * file can be uploaded before the first save; createProduct honours it. */
-  const [presetId] = useState(() => uid("prd"))
+  const [presetId] = useState(() =>
+    isSupabaseConfigured && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : uid("prd"),
+  )
   const contentProductId = product?.product_id ?? presetId
   const [storageBucket, setStorageBucket] = useState<string | undefined>(
     product?.storage_bucket,
@@ -443,7 +447,7 @@ function ProductModal({
     setLinkDraft({ label: "", url: "" })
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSaveError("")
     const price = Number(form.price)
     const saleRaw = form.sale_price.trim()
@@ -539,7 +543,7 @@ function ProductModal({
       seo: seoDraft,
     }
 
-    const result = onSave(diffPatch(product, next))
+    const result = await onSave(diffPatch(product, next))
     if (!result.ok) {
       setSaveError(result.error)
       return
@@ -1398,9 +1402,9 @@ function CategoryModal({
   const [description, setDescription] = useState("")
   const [error, setError] = useState("")
 
-  const add = () => {
+  const add = async () => {
     if (!name.trim()) return setError("שם הקטגוריה חובה.")
-    const result = saveCategory({
+    const result = await saveCategory({
       name: name.trim(),
       description: description.trim() || undefined,
     })
@@ -1444,7 +1448,7 @@ function CategoryModal({
             onChange={(e) => setDescription(e.target.value)}
           />
           <button
-            onClick={add}
+            onClick={() => void add()}
             className="btn-gradient w-full py-2.5 rounded-full font-semibold text-sm"
           >
             + הוספת קטגוריה
@@ -1478,8 +1482,9 @@ function CategoryModal({
                 </div>
                 <button
                   onClick={() => {
-                    const result = deleteCategory(c.category_id)
-                    if (!result.ok) onNotice(result.error)
+                    void deleteCategory(c.category_id).then((result) => {
+                      if (!result.ok) onNotice(result.error)
+                    })
                   }}
                   className="text-xs px-3 py-1 rounded-full border"
                   style={{
@@ -1525,9 +1530,11 @@ function diffPatch(
 
 export default function AdminProductsPage() {
   const {
-    products,
+    adminProducts: products,
     categories,
     settings,
+    catalogLoading,
+    catalogSource,
     saveProduct,
     deleteProduct,
     setProductStatus,
@@ -1550,6 +1557,16 @@ export default function AdminProductsPage() {
     [products],
   )
 
+  /* Which catalogue the list is showing. `supabase` means every row came
+   * from the hosted tables this page also writes; `local` means Supabase is
+   * unconfigured or its read was refused, and the document on screen is
+   * browser-local. Shown so an empty or stale list can never pass itself off
+   * as the live catalogue. */
+  const usingHostedCatalogue =
+    isSupabaseConfigured &&
+    (catalogSource === "supabase" ||
+      products.some((p) => isUuid(p.product_id)))
+
   const query = search.trim().toLowerCase()
   const filtered = sorted.filter((p) => {
     if (statusFilter !== "ALL" && p.status !== statusFilter) return false
@@ -1568,26 +1585,30 @@ export default function AdminProductsPage() {
 
   if (!can(adminRole, "products")) return <AccessDenied page="מוצרים ותוכן" />
 
-  const run = (result: Result<unknown>, successMessage?: string) => {
-    if (!result.ok) {
-      setNotice(result.error)
+  const run = async (
+    result: Promise<Result<unknown>>,
+    successMessage?: string,
+  ) => {
+    const settled = await result
+    if (!settled.ok) {
+      setNotice(settled.error)
       return
     }
     setNotice(successMessage ?? "")
   }
 
-  const handleSave = (patch: Partial<Product>): Result<Product> => {
+  const handleSave = async (patch: Partial<Product>): Promise<Result<Product>> => {
     if (editing && Object.keys(patch).length === 0) {
       setEditing(undefined)
       return { ok: true, data: editing } as Result<Product>
     }
-    const result = saveProduct(patch, editing?.product_id)
+    const result = await saveProduct(patch, editing?.product_id)
     if (result.ok) setEditing(undefined)
     return result
   }
 
   const toggleFeatured = (product: Product) => {
-    run(saveProduct({ featured: !product.featured }, product.product_id))
+    void run(saveProduct({ featured: !product.featured }, product.product_id))
   }
 
   return (
@@ -1598,8 +1619,13 @@ export default function AdminProductsPage() {
             מוצרים ותוכן
           </h1>
           <p style={{ color: "var(--color-muted-foreground)" }}>
-            {products.length} מוצרים בקטלוג · ניהול מחירים, קבצי תוכן, עטיפות,
-            קטגוריות וחבילות
+            {products.length} מוצרים בקטלוג ·{" "}
+            {usingHostedCatalogue
+              ? "נטען מהקטלוג שבשרת"
+              : catalogLoading
+                ? "טוען את הקטלוג..."
+                : "קטלוג מקומי — Supabase אינו מחובר"}{" "}
+            · ניהול מחירים, קבצי תוכן, עטיפות, קטגוריות וחבילות
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
@@ -1759,7 +1785,9 @@ export default function AdminProductsPage() {
                     <div className="flex flex-col gap-1">
                       <button
                         title="הזזה למעלה"
-                        onClick={() => run(moveProduct(product.product_id, -1))}
+                        onClick={() =>
+                          void run(moveProduct(product.product_id, -1))
+                        }
                         style={{ color: "var(--color-muted-foreground)" }}
                       >
                         <Icon
@@ -1770,7 +1798,9 @@ export default function AdminProductsPage() {
                       </button>
                       <button
                         title="הזזה למטה"
-                        onClick={() => run(moveProduct(product.product_id, 1))}
+                        onClick={() =>
+                          void run(moveProduct(product.product_id, 1))
+                        }
                         style={{ color: "var(--color-muted-foreground)" }}
                       >
                         <Icon name="chevronDown" size={14} />
@@ -1900,7 +1930,7 @@ export default function AdminProductsPage() {
                       {product.status !== "ARCHIVED" && (
                         <button
                           onClick={() =>
-                            run(
+                            void run(
                               setProductStatus(
                                 product.product_id,
                                 product.status === "ACTIVE"
@@ -1942,7 +1972,7 @@ export default function AdminProductsPage() {
                             window.confirm(
                               `להעביר את "${product.name}" לארכיון? המוצר יוסר מהחנות אך היסטוריית ההזמנות תישמר.`,
                             ) &&
-                            run(
+                            void run(
                               setProductStatus(product.product_id, "ARCHIVED"),
                               "המוצר הועבר לארכיון.",
                             )
@@ -1962,7 +1992,7 @@ export default function AdminProductsPage() {
                             window.confirm(
                               `למחוק לצמיתות את "${product.name}"? פעולה זו אינה הפיכה.`,
                             ) &&
-                            run(
+                            void run(
                               deleteProduct(product.product_id),
                               "המוצר נמחק.",
                             )

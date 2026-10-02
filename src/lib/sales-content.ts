@@ -15,8 +15,12 @@
  *
  * The product below is also a fallback: if the catalogue has no
  * published EBOOK with slug "hya-kvdm", the sales page uses this
- * object for the offer block and seeds it into the database on the
- * first CTA click so checkout can resolve it.
+ * object for the offer block. Where the local document is the
+ * catalogue (Supabase unconfigured) the first CTA click still seeds it
+ * so checkout can resolve it. With Supabase configured the catalogue is
+ * the database: the bundled row is never written anywhere, and shipping
+ * a price or an id the catalogue does not hold would be a second source
+ * of truth — checkout reports the missing product instead.
  * ───────────────────────────────────────────────────────────── */
 
 import type { CmsSection, FaqItem, Product, Testimonial } from "../types"

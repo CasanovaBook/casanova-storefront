@@ -23,9 +23,10 @@ import type {
   Refund,
   RefundRequestStatus,
   User,
+  UserProduct,
 } from "../types"
 
-import { effectivePrice } from "../types"
+import { effectivePrice, snapshotProduct } from "../types"
 
 import { getDb, mutate, nextSequence, nowIso, uid, type Database } from "./db"
 
@@ -45,6 +46,14 @@ import {
 } from "./api"
 
 import { grantAccessForOrder } from "./api-support"
+
+import { isSupabaseConfigured } from "./supabase"
+
+import { fetchProductByIdFromDb } from "./supabase-catalog"
+
+import { createStorefrontOrder } from "./supabase-checkout"
+
+import { isUuid } from "./supabase-entitlements"
 
 /* ── Reads ────────────────────────────────────────────── */
 
@@ -129,9 +138,202 @@ export interface CheckoutOutcome {
   customer: User
 }
 
+/**
+ * Hosted checkout: the server records the order and the entitlement, the
+ * browser caches what it returned.
+ *
+ * The product, its price and the entitlement are all resolved by
+ * `create_storefront_order` from `public.products` — the request cannot
+ * name a price, and it can only grant access to `auth.uid()`. What this
+ * side does is validate the form, keep the coupon rule (coupons have not
+ * moved to Supabase yet) and mirror the server's answer into the local
+ * document, so the success page, the admin order list and the reader's
+ * entitlement cache all see one and the same order — under the server's
+ * UUIDs, never a second local one.
+ */
+async function checkoutHosted(
+  input: CheckoutInput,
+): Promise<Result<CheckoutOutcome>> {
+  if (!isUuid(input.product_id)) {
+    return fail(
+      "NOT_FOUND",
+      "המוצר לא נמצא בקטלוג השרת. יש לרענן את העמוד ולבחור את הספר שוב.",
+    )
+  }
+
+  if (!input.first_name.trim() || !input.last_name.trim())
+    return fail("VALIDATION", "יש למלא שם מלא.")
+
+  const email = normalizeEmail(input.email)
+
+  if (!isEmail(email)) return fail("VALIDATION", "כתובת המייל אינה תקינה.")
+
+  const productResult = await fetchProductByIdFromDb(input.product_id)
+
+  if (!productResult.ok) return productResult
+
+  const product = productResult.data
+
+  if (product.status !== "ACTIVE" || product.visibility === "HIDDEN") {
+    return fail("CONFLICT", "המוצר אינו זמין לרכישה כרגע.")
+  }
+
+  if (product.availability === "OUT_OF_STOCK")
+    return fail("CONFLICT", "המוצר אזל מהמלאי.")
+
+  const unitPrice = effectivePrice(product)
+
+  const couponCode = input.coupon_code?.trim().toUpperCase() || undefined
+
+  const coupon = couponCode ? findCoupon(couponCode) : undefined
+
+  if (couponCode && !coupon)
+    return fail("VALIDATION", "קוד הקופון אינו תקף או שפג תוקפו.")
+
+  let discount = 0
+
+  if (coupon) {
+    if (unitPrice < coupon.minimum_order) {
+      return fail(
+        "VALIDATION",
+        `הקופון תקף להזמנות החל מ־₪${coupon.minimum_order.toLocaleString()}.`,
+      )
+    }
+
+    discount =
+      coupon.discount_type === "PERCENTAGE"
+        ? Math.round(unitPrice * (coupon.discount_value / 100) * 100) / 100
+        : Math.min(coupon.discount_value, unitPrice)
+  }
+
+  const remote = await createStorefrontOrder(
+    {
+      product_id: input.product_id,
+      first_name: input.first_name.trim(),
+      last_name: input.last_name.trim(),
+      email,
+      phone: input.phone?.trim() || undefined,
+      coupon_code: couponCode,
+      discount,
+    },
+    product,
+  )
+
+  if (!remote.ok) return remote
+
+  const order = remote.data.order
+
+  const customer = remote.data.customer
+
+  /* Cache the server's answer. The entitlement keeps the server's uuid, so
+   * `mirrorRemoteEntitlements` treats it as a remote-owned row from now on
+   * and the realtime/refresh paths keep it in sync. */
+  mutate((db) => {
+    db.orders = [order, ...db.orders.filter((o) => o.order_id !== order.order_id)]
+
+    db.payments = [
+      {
+        payment_id: uid("pay"),
+
+        order_id: order.order_id,
+
+        provider: "MANUAL",
+
+        status: "CAPTURED",
+
+        amount: order.total_amount,
+
+        currency: order.currency,
+
+        transaction_reference: `AUTO-${order.order_number}`,
+
+        created_at: order.paid_at ?? order.created_at,
+      },
+      ...db.payments.filter((p) => p.order_id !== order.order_id),
+    ]
+
+    const existing = db.user_products.find(
+      (up) =>
+        up.user_id === customer.user_id && up.product_id === product.product_id,
+    )
+
+    const entitlement: UserProduct = {
+      user_product_id: remote.data.user_product_id,
+
+      user_id: customer.user_id,
+
+      product_id: product.product_id,
+
+      product_snapshot: snapshotProduct(product),
+
+      source_order_id: order.order_id,
+
+      access_status: "ACTIVE",
+
+      granted_at: remote.data.granted_at || nowIso(),
+    }
+
+    db.user_products = existing
+      ? db.user_products.map((up) =>
+          up.user_product_id === existing.user_product_id
+            ? { ...entitlement, user_product_id: up.user_product_id }
+            : up,
+        )
+      : [...db.user_products, entitlement]
+  })
+
+  if (coupon) redeemCoupon(coupon.code)
+
+  dispatchEmail({
+    recipient: order.customer_email,
+
+    recipient_name: `${order.customer_first_name} ${order.customer_last_name}`,
+
+    template: "ORDER_RECEIVED",
+
+    subject: `ההזמנה ${order.order_number} התקבלה`,
+
+    related_type: "ORDER",
+
+    related_id: order.order_id,
+  })
+
+  dispatchEmail({
+    recipient: order.customer_email,
+
+    recipient_name: `${order.customer_first_name} ${order.customer_last_name}`,
+
+    template: "ORDER_PAID",
+
+    subject: `התשלום עבור הזמנה ${order.order_number} אושר — הגישה נפתחה`,
+
+    related_type: "ORDER",
+
+    related_id: order.order_id,
+  })
+
+  return ok({
+    order,
+
+    payment_confirmed: true,
+
+    auto_approved: true,
+
+    customer,
+  })
+}
+
 export async function checkout(
   input: CheckoutInput,
 ): Promise<Result<CheckoutOutcome>> {
+  /* Hosted deployment: the catalogue and the entitlement ledger live in
+   * Supabase, so the purchase is resolved and written there. The local
+   * document is deliberately not consulted for the product — a cached row
+   * could hold a stale price, or a product no server row exists for, and
+   * the reader's signed-URL endpoint only recognises a real
+   * `public.user_products` row. */
+  if (isSupabaseConfigured) return checkoutHosted(input)
+
   const db = getDb()
 
   const product = db.products.find((p) => p.product_id === input.product_id)

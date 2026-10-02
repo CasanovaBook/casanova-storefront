@@ -5,6 +5,7 @@
 import type {
   AdminRole,
   AuditCategory,
+  Category,
   Inquiry,
   InquiryNote,
   InquiryStatus,
@@ -1203,6 +1204,102 @@ export function mirrorRemoteEntitlements(remote: UserProduct[] | null): void {
     remote.forEach((row) => next.set(keyOf(row), row))
 
     db.user_products = [...next.values()]
+  })
+}
+
+/*
+ * ── Catalogue mirror ──────────────────────────────────
+ *
+ * The hosted `public.products` / `public.categories` tables are the
+ * catalogue. The local document is the cache the rest of the app reads
+ * synchronously (cart lines, the reader's product lookup, the admin
+ * editor's lists), so a successful hosted read is mirrored here — the
+ * same arrangement `mirrorRemoteEntitlements` already uses for access.
+ *
+ * Merge rules:
+ *   • hosted rows (uuid ids) are replaced by what the server now holds
+ *     and rows the server no longer lists are pruned;
+ *   • local-only rows (`prd_…` / `cat_…`) survive, because they are the
+ *     whole catalogue on an install where Supabase is not configured;
+ *   • a local-only row whose slug now exists on the server is dropped,
+ *     since it is the offline stand-in for that very product and keeping
+ *     both would shadow the real one in slug lookups.
+ *
+ * A failed read (null) must leave the cache untouched — pruning on a
+ * dropped request would flash the catalogue empty — while a successful
+ * empty read is a real answer and does prune.
+ */
+
+function mirrorRemoteCollection<T>(options: {
+  remote: T[] | null
+  current: T[]
+  idOf: (row: T) => string
+  slugOf: (row: T) => string
+  isRemoteOwned: (row: T) => boolean
+}): T[] | null {
+  const { remote, current, idOf, slugOf, isRemoteOwned } = options
+
+  if (remote === null) return null
+
+  const remoteIds = new Set(remote.map(idOf))
+  const remoteSlugs = new Set(remote.map(slugOf))
+
+  const keepLocal = (row: T) =>
+    !isRemoteOwned(row) && !remoteSlugs.has(slugOf(row))
+
+  const survivors = current.filter(
+    (row) => keepLocal(row) || remoteIds.has(idOf(row)),
+  )
+
+  const changed =
+    survivors.length !== current.length ||
+    remote.some((row) => {
+      const existing = current.find((c) => idOf(c) === idOf(row))
+      return !existing || JSON.stringify(existing) !== JSON.stringify(row)
+    })
+
+  if (!changed) return null
+
+  const next = new Map<string, T>()
+  current.forEach((row) => {
+    if (keepLocal(row) || remoteIds.has(idOf(row))) next.set(idOf(row), row)
+  })
+  remote.forEach((row) => next.set(idOf(row), row))
+
+  return [...next.values()]
+}
+
+/** Mirrors the hosted catalogue products into the local document. */
+export function mirrorRemoteCatalogProducts(remote: Product[] | null): void {
+  const next = mirrorRemoteCollection({
+    remote,
+    current: getDb().products,
+    idOf: (p) => p.product_id,
+    slugOf: (p) => p.slug,
+    isRemoteOwned: (p) => isUuid(p.product_id),
+  })
+
+  if (!next) return
+
+  mutate((db) => {
+    db.products = next
+  })
+}
+
+/** Mirrors the hosted categories into the local document. */
+export function mirrorRemoteCatalogCategories(remote: Category[] | null): void {
+  const next = mirrorRemoteCollection({
+    remote,
+    current: getDb().categories,
+    idOf: (c) => c.category_id,
+    slugOf: (c) => c.slug,
+    isRemoteOwned: (c) => isUuid(c.category_id),
+  })
+
+  if (!next) return
+
+  mutate((db) => {
+    db.categories = next
   })
 }
 

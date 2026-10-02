@@ -39,6 +39,8 @@ import logoImg from "../../images/main_photo.jpg"
 
 import { getDb, mutate } from "../lib/db"
 
+import { isSupabaseConfigured } from "../lib/supabase"
+
 import {
   BUNDLED_PRODUCT,
   SALES_DEFAULTS,
@@ -53,26 +55,28 @@ import type { SectionType } from "../types"
 const EXIT_SEEN_KEY = "casanova_exit_seen_v1"
 
 /* The sales page can render its offer from BUNDLED_PRODUCT when the
- * catalogue has no `hya-kvdm` row. Checkout, however, resolves the
- * purchase strictly from the localStorage DB — an in-memory object is
- * invisible to it, which is exactly why an unseeded click used to bounce
- * back with "המוצר לא נמצא.". This helper closes the gap the module
- * comment in sales-content.ts promised: on the first CTA click it upserts
- * the bundled product into the DB, then hands the (now real) product to
- * the shared selection so checkout can find it. */
+ * catalogue has no `hya-kvdm` row. On an install without Supabase the local
+ * document IS the catalogue, so the bundled row still has to be seeded there
+ * before checkout can resolve it — that is the branch below. With Supabase
+ * configured the catalogue is the database, and seeding a browser-local copy
+ * would hand checkout a product no server row exists for: the exact parallel
+ * catalogue this page used to create. In that case the bundled product is
+ * display copy only, and checkout reports the missing row honestly. */
 
-function seedAndSelect(
+function selectProduct(
   product: Product,
   setSelectedProduct: (p: Product | null) => void,
 ) {
-  const exists = getDb().products.some(
-    (p) => p.product_id === product.product_id,
-  )
+  if (!isSupabaseConfigured) {
+    const exists = getDb().products.some(
+      (p) => p.product_id === product.product_id,
+    )
 
-  if (!exists) {
-    mutate((db) => {
-      db.products = [...db.products, product]
-    })
+    if (!exists) {
+      mutate((db) => {
+        db.products = [...db.products, product]
+      })
+    }
   }
 
   setSelectedProduct(product)
@@ -160,20 +164,13 @@ function useSalesProduct(): Product {
 
   if (!real) return BUNDLED_PRODUCT
 
+  /* A real catalogue row is authoritative: its price and sale price are what
+   * the storefront and checkout charge, and forcing the bundled ₪99 → ₪89 on
+   * top of them made this page advertise a price the database did not hold.
+   * The bundled values below fill only fields the row leaves empty, and only
+   * for display — never a price. */
   return {
-    ...BUNDLED_PRODUCT,
-
     ...real,
-
-    /* The sales landing page owns its own launch pricing and visuals —
-     * the catalogue row supplies identity (name, slug, content_url) but
-     * the price, sale_price and cover come from the bundled launch copy
-     * so that the strikethrough (₪99 → ₪89) always renders correctly
-     * regardless of what an administrator typed into the product form. */
-
-    price: BUNDLED_PRODUCT.price,
-
-    sale_price: BUNDLED_PRODUCT.sale_price,
 
     image_url: real.image_url || BUNDLED_PRODUCT.image_url,
 
@@ -254,7 +251,7 @@ function HeroSection({ product, c }: { product: Product, c: ReturnType<typeof us
     : ["גישה מיידית", "תשלום מאובטח"]
 
   const handleBuy = () => {
-    seedAndSelect(product, setSelectedProduct)
+    selectProduct(product, setSelectedProduct)
 
     navigate("/checkout")
   }
@@ -789,7 +786,7 @@ function OfferSection({ product, c }: { product: Product, c: ReturnType<typeof u
   const onSale = isOnSale(product)
 
   const handleBuy = () => {
-    seedAndSelect(product, setSelectedProduct)
+    selectProduct(product, setSelectedProduct)
 
     navigate("/checkout")
   }
@@ -964,7 +961,7 @@ function FinalCtaSection({ product, c }: { product: Product, c: ReturnType<typeo
   const content = c("sales.final.content") || section?.content || ""
 
   const handleBuy = () => {
-    seedAndSelect(product, setSelectedProduct)
+    selectProduct(product, setSelectedProduct)
 
     navigate("/checkout")
   }
@@ -1022,7 +1019,7 @@ function StickyCta({ product, c }: { product: Product, c: ReturnType<typeof useC
   }, [])
 
   const handleBuy = () => {
-    seedAndSelect(product, setSelectedProduct)
+    selectProduct(product, setSelectedProduct)
 
     navigate("/checkout")
   }
@@ -1101,7 +1098,7 @@ function ExitPopup({ product, c }: { product: Product, c: ReturnType<typeof useC
   if (!show) return null
 
   const handleBuy = () => {
-    seedAndSelect(product, setSelectedProduct)
+    selectProduct(product, setSelectedProduct)
 
     navigate("/checkout")
   }

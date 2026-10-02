@@ -44,10 +44,21 @@ import { useStore } from "../lib/store"
 import { isSupabaseConfigured } from "../lib/supabase"
 
 import {
+  deleteCategoryFromDb,
+  deleteProductFromDb,
   fetchAllProductsFromDb,
   fetchCategoriesFromDb,
   fetchPublicProductsFromDb,
+  moveProductInDb,
+  saveCategoryToDb,
+  saveProductToDb,
+  setProductStatusInDb,
 } from "../lib/supabase-catalog"
+
+import {
+  mirrorRemoteCatalogCategories,
+  mirrorRemoteCatalogProducts,
+} from "../lib/api-support"
 
 import {
   archiveProduct,
@@ -59,6 +70,7 @@ import {
   deleteSection,
   deleteTestimonial,
   exportCmsBackup,
+  fail,
   findCoupon as findCouponRequest,
   listPublicProducts,
   moveProduct,
@@ -75,6 +87,8 @@ import {
   updateProduct,
   type Result,
 } from "../lib/api"
+
+import { uniqueSlug } from "../lib/db"
 
 import { useApp } from "./AppContext"
 
@@ -175,26 +189,31 @@ interface CmsContextValue {
 
   moveSection: (id: string, dir: -1 | 1) => Result
 
-  /* Products */
+  /* Products. Every mutation resolves: with Supabase configured it writes the
+   * hosted catalogue through the admin RPCs (and re-reads it); without it, it
+   * writes the local document exactly as before. */
 
-  saveProduct: (data: Partial<Product>, id?: string) => Result<Product>
+  saveProduct: (data: Partial<Product>, id?: string) => Promise<Result<Product>>
 
-  archiveProduct: (id: string) => Result<Product>
+  archiveProduct: (id: string) => Promise<Result<Product>>
 
-  deleteProduct: (id: string) => Result
+  deleteProduct: (id: string) => Promise<Result>
 
-  setProductStatus: (id: string, status: Product["status"]) => Result<Product>
+  setProductStatus: (
+    id: string,
+    status: Product["status"],
+  ) => Promise<Result<Product>>
 
-  moveProduct: (id: string, dir: -1 | 1) => Result
+  moveProduct: (id: string, dir: -1 | 1) => Promise<Result>
 
   /* Categories */
 
   saveCategory: (
     data: { name: string, slug?: string, description?: string },
     id?: string,
-  ) => Result<Category>
+  ) => Promise<Result<Category>>
 
-  deleteCategory: (id: string) => Result
+  deleteCategory: (id: string) => Promise<Result>
 
   /* Testimonials */
 
@@ -238,19 +257,17 @@ export function CmsProvider({ children }: { children: ReactNode }) {
   const { actor } = useApp()
 
   /* ── Storefront catalogue ────────────────────────────────
-   * Read from Supabase Postgres, which is where the storefront
-   * contract now lives. `categories` and `products` below
-   * deliberately stay bound to the local document: the admin
-   * panel still writes there, so pointing the editor's own
-   * lists at a table it cannot write to would hand it a screen
-   * whose saves go nowhere.
+   * Read from Supabase Postgres, which is the catalogue the
+   * storefront, the reader and /admin/products all work against.
+   * The local document is the cache the synchronous consumers read
+   * and the whole catalogue only on an install where Supabase is
+   * unconfigured — see the mirror effect below.
    *
-   * A read that fails falls back to the local document and says
-   * so through `catalogError` and `catalogSource`. A read that
-   * succeeds and happens to be empty does not fall back: an
-   * empty hosted catalogue is a real answer, and quietly filling
-   * it in from local rows is exactly the confusion this state
-   * exists to prevent. */
+   * A read that fails falls back to the cached local rows and says so
+   * through `catalogError` and `catalogSource`. A read that succeeds and
+   * happens to be empty does not fall back: an empty hosted catalogue is
+   * a real answer, and quietly filling it in from local rows is exactly
+   * the confusion this state exists to prevent. */
   const [remoteCatalog, setRemoteCatalog] = useState<{
     categories: Category[]
     products: Product[]
@@ -348,6 +365,26 @@ export function CmsProvider({ children }: { children: ReactNode }) {
     }
   }, [actor?.role, catalogNonce])
 
+  /* ── Cache mirror ───────────────────────────────────────
+   *
+   * The local document is the cache every synchronous consumer reads (cart
+   * lines, the reader's product lookup, the editor's pickers), so the rows a
+   * hosted read returned are mirrored into it. The admin's full-catalogue
+   * read wins when it exists: it is a superset of the public list. A failed
+   * read mirrors nothing — neither effect runs on an error, because both
+   * sources stay null and pruning on a dropped request would blank the
+   * catalogue. */
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+    const source = remoteAdminProducts ?? remoteCatalog?.products ?? null
+    if (source) mirrorRemoteCatalogProducts(source)
+  }, [remoteCatalog, remoteAdminProducts])
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !remoteCatalog) return
+    mirrorRemoteCatalogCategories(remoteCatalog.categories)
+  }, [remoteCatalog])
+
   const byId = useMemo(
     () => new Map(db.products.map((p) => [p.product_id, p])),
     [db.products],
@@ -382,13 +419,11 @@ export function CmsProvider({ children }: { children: ReactNode }) {
   /** The products a visitor sees: the hosted catalogue once it has answered. */
   const catalogProducts = remoteCatalog ? remoteCatalog.products : published
 
-  /* Never emptier than before: a hosted catalogue that answered with nothing
-   * (or refused) falls back to the local rows rather than showing an empty
-   * grant picker, which is what made "פתיחת גישה" unusable. */
+  /* The admin screens read the same rows the service layer writes. A refused
+   * or unconfigured read falls back to the mirrored local rows rather than
+   * showing an empty screen. */
   const adminProducts =
-    remoteAdminProducts && remoteAdminProducts.length > 0
-      ? remoteAdminProducts
-      : db.products
+    remoteAdminProducts !== null ? remoteAdminProducts : db.products
 
   const catalogCategories = remoteCatalog ? remoteCatalog.categories : categories
 
@@ -459,14 +494,17 @@ export function CmsProvider({ children }: { children: ReactNode }) {
 
       productById: (id) => (id ? byId.get(id) : undefined),
 
-      /* The sales landing asks for one hardcoded slug. It is served
-       * from the storefront catalogue first and from the local
-       * document second, so a title that exists only locally still
-       * reaches a paid-traffic page instead of degrading to the
-       * bundled placeholder. The lists above never mix sources. */
+      /* The sales landing asks for one hardcoded slug. It is served from the
+       * storefront catalogue first. The local document is only a second
+       * source on an install with no hosted catalogue: with Supabase
+       * configured a local-only title is exactly the parallel product this
+       * page must not sell, so there the lookup answers from the hosted rows
+       * alone (and an empty result correctly degrades to the bundled copy). */
       productBySlug: (slug) =>
         catalogProducts.find((p) => p.slug === slug) ??
-        db.products.find((p) => p.slug === slug),
+        (isSupabaseConfigured
+          ? undefined
+          : db.products.find((p) => p.slug === slug)),
 
       categoryName: (id) =>
         catalogCategories.find((c) => c.category_id === id)?.name ?? "",
@@ -489,20 +527,101 @@ export function CmsProvider({ children }: { children: ReactNode }) {
 
       moveSection: (id, dir) => moveSection(actor, id, dir),
 
-      saveProduct: (data, id) =>
-        id ? updateProduct(actor, id, data) : createProduct(actor, data),
+      /* Hosted catalogue: the write goes to Supabase through the
+       * admin RPCs and the catalogue is re-read afterwards, so every screen
+       * (storefront, reader, admin) is serving what the database now holds.
+       * Without Supabase the local document is the catalogue, exactly as
+       * before. */
+      saveProduct: async (data, id) => {
+        if (!isSupabaseConfigured) {
+          return id ? updateProduct(actor, id, data) : createProduct(actor, data)
+        }
 
-      archiveProduct: (id) => archiveProduct(actor, id),
+        /* Prefer the hosted read over the local mirror when resolving the row
+         * being edited: the payload merges Storage metadata over what the row
+         * already holds, and the hosted list is the fresher of the two. */
+        const existing = id
+          ? ((remoteAdminProducts ?? db.products).find(
+              (p) => p.product_id === id,
+            ) ?? null)
+          : null
 
-      deleteProduct: (id) => deleteProductRequest(actor, id),
+        const result = await saveProductToDb(
+          { ...data, product_id: id ?? data.product_id },
+          existing,
+        )
 
-      setProductStatus: (id, status) => setProductStatus(actor, id, status),
+        if (result.ok) refreshCatalog()
 
-      moveProduct: (id, dir) => moveProduct(actor, id, dir),
+        return result
+      },
 
-      saveCategory: (data, id) => saveCategory(actor, data, id),
+      archiveProduct: async (id) => {
+        if (!isSupabaseConfigured) return archiveProduct(actor, id)
 
-      deleteCategory: (id) => deleteCategory(actor, id),
+        const result = await setProductStatusInDb(id, "ARCHIVED")
+        if (result.ok) refreshCatalog()
+        return result
+      },
+
+      deleteProduct: async (id) => {
+        if (!isSupabaseConfigured) return deleteProductRequest(actor, id)
+
+        const result = await deleteProductFromDb(id)
+        if (result.ok) refreshCatalog()
+        return result
+      },
+
+      setProductStatus: async (id, status) => {
+        if (!isSupabaseConfigured) return setProductStatus(actor, id, status)
+
+        const result = await setProductStatusInDb(id, status)
+        if (result.ok) refreshCatalog()
+        return result
+      },
+
+      moveProduct: async (id, dir) => {
+        if (!isSupabaseConfigured) return moveProduct(actor, id, dir)
+
+        const result = await moveProductInDb(id, dir)
+        if (result.ok) refreshCatalog()
+        return result
+      },
+
+      saveCategory: async (data, id) => {
+        if (!isSupabaseConfigured) return saveCategory(actor, data, id)
+
+        const existing = id
+          ? (db.categories.find((c) => c.category_id === id) ?? null)
+          : null
+
+        const name = data.name.trim()
+        if (!name) return fail("VALIDATION", "שם הקטגוריה חובה.")
+
+        const taken = db.categories
+          .filter((c) => c.category_id !== id)
+          .map((c) => c.slug)
+
+        const result = await saveCategoryToDb({
+          category_id: id ?? undefined,
+          name,
+          slug: uniqueSlug(data.slug || name, taken, "category"),
+          description: data.description,
+          display_order: existing?.display_order,
+        })
+
+        if (result.ok) refreshCatalog()
+
+        return result
+      },
+
+      deleteCategory: async (id) => {
+        if (!isSupabaseConfigured) return deleteCategory(actor, id)
+
+        const result = await deleteCategoryFromDb(id)
+        if (result.ok) refreshCatalog()
+        return result
+      },
 
       saveTestimonial: (data, id) => saveTestimonial(actor, data, id),
 

@@ -711,9 +711,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // While no payment gateway is connected checkout auto-approves the
         // order and grants access at once. Sign a guest buyer into the account
         // we just created so they can open the book immediately; a buyer who is
-        // already signed in keeps their current session.
-        if (result.data.auto_approved && !readSessionUserId()) {
+        // already signed in keeps their current session. Hosted checkout only
+        // runs for a signed-in Supabase account, so there is no local session
+        // to open.
+        if (
+          result.data.auto_approved &&
+          !isSupabaseConfigured &&
+          !readSessionUserId()
+        ) {
           beginSession(result.data.customer)
+        }
+        // Hosted purchases write the entitlement server-side. Pull the
+        // account's rows now so the library and the reader see the book
+        // immediately instead of waiting for the next sync beat — the reader
+        // re-verifies the entitlement server-side either way.
+        if (isSupabaseConfigured && result.data.customer.user_id) {
+          void refreshEntitlements(result.data.customer.user_id)
         }
       }
       return result
