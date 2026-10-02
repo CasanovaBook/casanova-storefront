@@ -45,9 +45,22 @@ export interface DbRelationRow {
  * Kept in one place so the public catalogue, the slug lookup and the admin
  * read cannot drift: a field added for the storefront must also reach the
  * admin screens, which map through the same `mapDbProductToEntity`.
+ *
+ * The columns are named rather than `*` on purpose. Migration 0025 revoked
+ * `content_url` and `content_asset_id` from `anon` and `authenticated` at the
+ * column level, so a request that asks for them is refused by Postgres rather
+ * than answered and then hidden here. A `select=*` would ask for both and
+ * fail the whole read. The reader never needed either: it resolves the file
+ * through the `get-content-url` edge function, which checks the entitlement
+ * first. An administrator reads `content_url` through `admin_list_products()`.
  */
 const PRODUCT_SELECT = `
-      *,
+      product_id, name, subtitle, slug, sku, description, short_description,
+      product_type, price, sale_price, currency, image_url, cover_colors,
+      rating, reviews_count, tags, metadata,
+      seo_title, seo_description, seo_keywords,
+      status, visibility, availability, inventory, featured, position,
+      created_at, updated_at, archived_at,
       book:books(*),
       categories:product_categories(category_id),
       images:product_images(image_url, sort_order),
@@ -376,6 +389,15 @@ export async function fetchProductByIdFromDb(
  * store's books are private by default, reading only the public rows left
  * the grant picker empty.
  *
+ * It goes through `admin_list_products()` rather than an unfiltered
+ * `select()`. Migration 0025 replaced the policies on `public.products` with
+ * ones that show the published set to every caller including staff, so a
+ * plain table read can no longer reach a draft — and would reach it for
+ * anyone whose token happened to satisfy a looser policy. The function is
+ * SECURITY DEFINER and checks the `products` permission in the same
+ * ROLE_PERMISSIONS matrix the panel's buttons are hidden by, so this read
+ * is authorised where it happens rather than where it is called.
+ *
  * A refused read returns the error so the caller can fall back to the local
  * document rather than presenting an empty catalogue as fact.
  */
@@ -384,19 +406,18 @@ export async function fetchAllProductsFromDb(): Promise<Result<Product[]>> {
     return fail("PROVIDER_NOT_CONFIGURED", "Supabase is not configured.")
   }
 
-  const { data, error } = await supabase
-    .from("products")
-    .select(PRODUCT_SELECT)
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: false })
+  const { data, error } = await supabase.rpc("admin_list_products")
 
   if (error) {
+    const refused = describeProductRefusal(error.code ?? "", error.message ?? "")
+    if (refused) return fail(refused.code, refused.error)
     return fail("STORAGE", error.message)
   }
 
-  return ok(
-    ((data as unknown as DbProductRow[]) || []).map(mapDbProductToEntity),
-  )
+  /* The function returns jsonb rows whose keys are the columns the mapper
+   * already reads, so they go through `mapDbProductToEntity` unchanged. */
+  const rows = Array.isArray(data) ? (data as DbProductRow[]) : []
+  return ok(rows.map(mapDbProductToEntity))
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -455,6 +476,22 @@ const PRODUCT_REFUSALS: Record<string, { error: string; code: ErrorCode }> = {
       "לא ניתן למחוק מוצר שקיימות עבורו הרשאות גישה של לקוחות — יש להעביר אותו לארכיון.",
     code: "CONFLICT",
   },
+  product_has_subscriptions: {
+    error:
+      "לא ניתן למחוק מוצר שיש לו מנויים פעילים — יש להעביר אותו לארכיון.",
+    code: "CONFLICT",
+  },
+
+  /* Migration 0024 enforces the ROLE_PERMISSIONS matrix inside the
+   * catalogue functions, so a refusal here means the server declined on
+   * the account's role rather than on the shape of the payload. The
+   * message carries the permission name; the wording is generic on
+   * purpose — an admin does not need the server to enumerate the matrix
+   * back at them, and the panel has already hidden what they may not do. */
+  permission_denied: {
+    error: "לתפקיד הזה אין הרשאה לבצע את הפעולה הזו.",
+    code: "FORBIDDEN",
+  },
 }
 
 /** Resolves a refused RPC to wording an admin can read, or `null` when the
@@ -475,6 +512,17 @@ function describeProductRefusal(
     return { error: "אחד השדות שהוזנו אינו תקין.", code: "VALIDATION" }
   }
   if (code === "23505") return PRODUCT_REFUSALS.slug_taken
+
+  /* A referential-integrity refusal the functions did not name — a
+   * product still held by a table this migration does not check, for
+   * instance — would otherwise surface as a raw Postgres sentence. */
+  if (code === "23503") {
+    return {
+      error:
+        "לא ניתן למחוק מוצר שיש לו היסטוריה במערכת — יש להעביר אותו לארכיון.",
+      code: "CONFLICT",
+    }
+  }
 
   if (code === "P0001") {
     console.warn("[supabase-catalog] unmapped RPC refusal:", message)
@@ -534,11 +582,19 @@ const hasOwn = (obj: object, key: string) =>
 /**
  * Builds the JSON payload `admin_save_product` expects.
  *
- * The RPC treats *presence* as "write this field": a key that is absent is
- * left untouched, a key present with null clears the column. The panel
- * sends a diff, so `undefined` values have to survive JSON serialisation
- * as explicit nulls — otherwise clearing a sale price would look like
- * "leave it alone" and silently keep the old one.
+ * Three states have to survive the trip, because the RPC reads *presence*
+ * as the instruction:
+ *
+ *   absent   leave the column alone  — `diffPatch` dropped the key
+ *   null     clear the column        — the editor emptied the field
+ *   value    write it                 — the editor changed it
+ *
+ * The middle state is the one that needs work. A cleared field arrives
+ * from the panel as `undefined`, and `JSON.stringify` omits a key whose
+ * value is `undefined`, so it left as "absent" and the database kept the
+ * old value — the sale price an editor had just deleted stayed on sale.
+ * `put` and `putList` below do the one conversion that turns those three
+ * into three distinct keys; nothing downstream has to know.
  *
  * The panel's extra fields (Storage pointer, uploaded file metadata) ride
  * inside `metadata`, the one JSONB bag the products table already has, and
@@ -550,8 +606,24 @@ export function toProductPayload(
   existing?: Product | null,
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
+
+  /* A column the editor emptied arrives as `undefined`, and `JSON.stringify`
+   * drops any key whose value is `undefined`. Forwarded as-is, clearing a
+   * sale price, a SKU or a subtitle therefore reached the server as "leave
+   * it alone" and silently kept the old value. The RPC reads *presence* as
+   * the instruction, so the two forms have to be made distinct here, once:
+   * an absent key means untouched, an explicit null clears.
+   *
+   * A collection is different: clearing it is an empty list, not a null,
+   * because the function deletes the rows and re-inserts from the array. */
   const put = (key: string, value: unknown) => {
-    if (hasOwn(patch, key)) payload[key] = value
+    if (!hasOwn(patch, key)) return
+    payload[key] = value === undefined ? null : value
+  }
+
+  const putList = (key: string, value: unknown) => {
+    if (!hasOwn(patch, key)) return
+    payload[key] = value === undefined || value === null ? [] : value
   }
 
   put("product_id", patch.product_id)
@@ -566,9 +638,7 @@ export function toProductPayload(
   put("sale_price", patch.sale_price)
   put("currency", patch.currency)
   put("image_url", patch.image_url)
-  put("cover_colors", patch.cover_colors)
   put("content_url", patch.content_url)
-  put("tags", patch.tags)
   put("status", patch.status)
   put("visibility", patch.visibility)
   put("availability", patch.availability)
@@ -576,18 +646,26 @@ export function toProductPayload(
   put("featured", patch.featured)
   put("position", patch.position)
   put("book", patch.book)
-  put("images", patch.images)
-  put("media_links", patch.media_links)
-  put("category_ids", patch.category_ids)
-  put("related_product_ids", patch.related_product_ids)
-  put("upsell_ids", patch.upsell_ids)
-  put("cross_sell_ids", patch.cross_sell_ids)
-  put("bundle_item_ids", patch.bundle_item_ids)
+
+  /* Collections: an emptied one is sent as `[]`, which the function reads
+   * as "replace the set with nothing". Sending null here would delete the
+   * rows and skip the re-insert, which is the same outcome today, but `[]`
+   * is the honest statement of intent and survives the next edit to the
+   * function. */
+  putList("cover_colors", patch.cover_colors)
+  putList("tags", patch.tags)
+  putList("images", patch.images)
+  putList("media_links", patch.media_links)
+  putList("category_ids", patch.category_ids)
+  putList("related_product_ids", patch.related_product_ids)
+  putList("upsell_ids", patch.upsell_ids)
+  putList("cross_sell_ids", patch.cross_sell_ids)
+  putList("bundle_item_ids", patch.bundle_item_ids)
 
   if (hasOwn(patch, "seo")) {
-    payload.seo_title = patch.seo?.title
-    payload.seo_description = patch.seo?.description
-    payload.seo_keywords = patch.seo?.keywords
+    payload.seo_title = patch.seo?.title ?? null
+    payload.seo_description = patch.seo?.description ?? null
+    payload.seo_keywords = patch.seo?.keywords ?? null
   }
 
   const meta: Record<string, unknown> = { ...(existing?.metadata ?? {}) }

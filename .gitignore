@@ -105,3 +105,6 @@ $RECYCLE.BIN/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# local Postgres connection strings (never commit a superuser credential)
+.db.local

@@ -113,6 +113,17 @@ interface CmsContextValue {
 
   categories: Category[]
 
+  /**
+   * The local catalogue cache — NOT a source of truth.
+   *
+   * `public.products` is the catalogue. This is the mirror of it that the
+   * synchronous consumers read (the reader's title and page count, the
+   * library's cover lookup), refreshed by the mirror effects above whenever a
+   * hosted read answers. It is deliberately *not* what `/admin/products` and
+   * the storefront render: those read `adminProducts` and `publishedProducts`,
+   * which come from the database. Editing a product writes through
+   * `saveProduct` to Supabase, never to this.
+   */
   products: Product[]
 
   /**
@@ -336,9 +347,16 @@ export function CmsProvider({ children }: { children: ReactNode }) {
   /* ── Admin catalogue ─────────────────────────────────────
    *
    * The storefront list is narrowed to ACTIVE + PUBLIC. The access screens
-   * need the opposite: every product an entitlement could point at. Read
-   * only for an administrator, so a customer's browser never asks for the
-   * whole catalogue. */
+   * need the opposite: every product an entitlement could point at, because a
+   * title can be DRAFT, INACTIVE, UNLISTED or HIDDEN and still be exactly the
+   * book an entitlement has to point at.
+   *
+   * The broad read goes through `admin_list_products()` (migration 0025), which
+   * is SECURITY DEFINER and checks the `products` permission in the same
+   * ROLE_PERMISSIONS matrix the panel's buttons are hidden by. The role test
+   * below is therefore not what protects the catalogue — it only avoids
+   * spending a round trip on a screen a customer cannot use, and a customer
+   * who called it anyway would be refused by the database. */
   const [remoteAdminProducts, setRemoteAdminProducts] = useState<Product[] | null>(
     null,
   )

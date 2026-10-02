@@ -166,8 +166,15 @@ function supabaseAuth(cfg: Cfg): AuthConnector {
   };
 }
 
-function filterQuery(opts: ListOptions): string {
+function filterQuery(opts: ListOptions, select?: string): string {
   const p: string[] = [];
+  /* `select` has to lead when present. Without it PostgREST returns every
+   * column, and for `products` that includes `content_url` and
+   * `content_asset_id` — which migration 0025 revoked from anon and
+   * authenticated at the column level. A `select=*` would ask for both and
+   * fail the whole request with 42501 rather than quietly omitting them, so
+   * the collection is told which columns it may name. */
+  if (select) p.push(`select=${encodeURIComponent(select)}`);
   for (const [k, v] of Object.entries(opts.filter ?? {})) {
     p.push(`${encodeURIComponent(k)}=${v === null ? "is.null" : `eq.${encodeURIComponent(String(v))}`}`);
   }
@@ -176,14 +183,26 @@ function filterQuery(opts: ListOptions): string {
   return p.length ? `?${p.join("&")}` : "";
 }
 
-function sbCollection<T extends Base>(cfg: Cfg, auth: AuthConnector, table: string): Collection<T> {
+/** The `products` columns a browser token may read. Mirrors the grant in
+ *  migrations/0025_product_read_boundaries.sql; `content_url` and
+ *  `content_asset_id` are deliberately absent. */
+const PRODUCT_COLUMNS = [
+  "product_id", "name", "subtitle", "slug", "sku", "description",
+  "short_description", "product_type", "price", "sale_price", "currency",
+  "image_url", "cover_colors", "rating", "reviews_count", "tags", "metadata",
+  "seo_title", "seo_description", "seo_keywords", "status", "visibility",
+  "availability", "inventory", "featured", "position", "created_at",
+  "updated_at", "archived_at",
+].join(",");
+
+function sbCollection<T extends Base>(cfg: Cfg, auth: AuthConnector, table: string, columns?: string): Collection<T> {
   const token = () => auth.session()?.accessToken ?? null;
   const isStaff = () => STAFF_ROLES.includes(auth.session()?.role as Role);
 
   return {
     async list(opts = {}) {
       try {
-        const res = await http(cfg, `/rest/v1/${table}${filterQuery(opts)}`, { token: token() });
+        const res = await http(cfg, `/rest/v1/${table}${filterQuery(opts, columns)}`, { token: token() });
         if (!res.ok) return { data: null, error: await toError(res) };
         return { data: (await res.json()) as T[], error: null };
       } catch (e) {
@@ -192,7 +211,8 @@ function sbCollection<T extends Base>(cfg: Cfg, auth: AuthConnector, table: stri
     },
     async get(id: ID) {
       try {
-        const res = await http(cfg, `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}&limit=1`, { token: token() });
+        const query = filterQuery({ filter: { id }, limit: 1 }, columns);
+        const res = await http(cfg, `/rest/v1/${table}${query}`, { token: token() });
         if (!res.ok) return { data: null, error: await toError(res) };
         const rows = (await res.json()) as T[];
         return rows[0] ? { data: rows[0], error: null } : { data: null, error: new MaestroError("Not found", { code: "not_found" }) };
@@ -270,7 +290,7 @@ export function createSupabaseConnector(cfg: Cfg): MaestroConnector {
   return {
     name: "supabase",
     shared: true,
-    products: sbCollection<GenericRecord>(cfg, auth, "products"),
+    products: sbCollection<GenericRecord>(cfg, auth, "products", PRODUCT_COLUMNS),
     categories: sbCollection<GenericRecord>(cfg, auth, "categories"),
     cms_sections: sbCollection<GenericRecord>(cfg, auth, "cms_sections"),
     cms_pages: sbCollection<GenericRecord>(cfg, auth, "cms_pages"),
