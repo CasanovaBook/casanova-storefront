@@ -191,7 +191,7 @@ AXE_PATH=.tmp/package/axe.min.js A11Y_ALL_SETTINGS=1 node scripts/audit-accessib
 ```
 
 `scripts/` holds the canonical versions of both CDP scripts; `.tmp/` holds
-older working copies. **Runtime behaviour — 42/42 checks pass** on the
+older working copies. **Runtime behaviour — 44/44 checks pass** on the
 production build: one launcher and no legacy markup; accessible name,
 `aria-expanded`, `aria-controls`, `aria-haspopup`, floating 52px circular
 launcher whose logo is the whole face of the button — rendered at full size,
@@ -202,9 +202,13 @@ tile updates `aria-pressed`, the `<html>` attribute
 and storage; the legacy v1 key is gone; Escape closes and returns focus to the
 launcher; hiding keeps every setting, persists, appears in the footer and
 receives focus; `Alt+A` restores; preferences survive a reload; reset returns to
-defaults; the panel stays inside a 360×640 viewport, inside a 640×480 viewport
-at 160% text, scrolls internally with every control reachable, and causes no
-horizontal overflow; a hidden widget stays hidden and restorable after a reload.
+defaults; reducing motion stops the site's own animations (a real animated
+node's computed `animation-duration` and `animation-iteration-count` are read
+before, during and after the toggle); the panel stays inside a 360×640 viewport,
+inside a 640×480 viewport at 160% text, scrolls internally with every control
+reachable, causes no horizontal overflow, and never leaves the launcher half
+covered — an overlap with the button is total or none; a hidden widget stays
+hidden and restorable after a reload.
 
 **axe-core — 0 violations** on `/`, `/store`, `/checkout`, `/support`, `/login`,
 `/register`, `/forgot-password`, `/terms-and-conditions`, with the panel open,
@@ -229,7 +233,11 @@ overlaps on desktop**, and on a 360px viewport two corner overlaps under 4% of
 one control's area (a filter select, a text input) — the control stays clickable
 outside that corner, and the button can be hidden. The open panel necessarily
 covers part of the page; that is what an overlay popup does, and it closes on
-Escape, on the close button or on a click outside.
+Escape, on the close button or on a click outside. Its own footprint is kept
+off the launcher unless it can cover it completely: when the button has no room
+left beside the panel — a 360px viewport, or 640×480 at 160% text — the panel
+steps over the button rather than stopping on it, so no cropped sliver of the
+button is left showing next to the dialog.
 
 **Contrast** was verified manually where axe cannot compute against a gradient.
 `.btn-gradient` (gold gradient, near-black text) resolves to ≈6.0:1 at its

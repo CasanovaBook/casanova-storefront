@@ -147,6 +147,30 @@ export default function AccessibilityWidget() {
       Math.max(VIEWPORT_MARGIN, viewportWidth - width - VIEWPORT_MARGIN),
     )
 
+    // An overlap with the launcher has to be total or none. A panel that
+    // merely steps over the button hides it without being able to stand in
+    // for it: nothing remains visible to click. When the clamped placement
+    // lands in that in-between band, snap it so the panel either covers the
+    // launcher completely or clears it entirely.
+    const coversLauncher = (x: number) =>
+      x <= anchor.left && x + width >= anchor.right
+    const clearsLauncher = (x: number) =>
+      x + width <= anchor.left || x >= anchor.right
+    if (!coversLauncher(left) && !clearsLauncher(left)) {
+      const maxLeft = Math.max(
+        VIEWPORT_MARGIN,
+        viewportWidth - width - VIEWPORT_MARGIN,
+      )
+      const coverFrom = Math.max(VIEWPORT_MARGIN, anchor.right - width)
+      const coverTo = Math.min(maxLeft, anchor.left)
+      const clearFrom = Math.max(VIEWPORT_MARGIN, anchor.right + ANCHOR_GAP)
+      const clearTo = Math.min(maxLeft, anchor.left - ANCHOR_GAP - width)
+      if (coverFrom <= coverTo)
+        left = Math.min(Math.max(left, coverFrom), coverTo)
+      else if (clearFrom <= clearTo)
+        left = Math.min(Math.max(left, clearFrom), clearTo)
+    }
+
     const anchorCenter = anchor.top + anchor.height / 2
     const top = Math.min(
       Math.max(anchorCenter - height / 2, VIEWPORT_MARGIN),

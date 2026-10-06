@@ -383,6 +383,84 @@ async function main() {
         toggledState.stored === true,
     )
     check("legacy v1 storage key is removed", toggledState.legacy === null)
+    // The reduce-motion toggle has to strip real animation from the page, not
+    // just flip an attribute: read the computed style of looping page
+    // decoration before, during and after the toggle. The attribute read
+    // happens in its own eval so it lands after React commits the change.
+    const motionBefore = await cdp.eval(`(
+      () => {
+        const node = document.querySelector('.glow-pulse, .float-slow, [class*="animate-"]')
+        if (!node) return { found: false }
+        const style = getComputedStyle(node)
+        return {
+          found: true,
+          duration: style.animationDuration,
+          iterations: style.animationIterationCount,
+        }
+      }
+    )()`)
+    await cdp.eval(`(
+      () => {
+        const tile = Array.from(document.querySelectorAll('#accessibility-panel .a11y-tile')).find(
+          (button) => button.textContent.includes('עצירת אנימציות'),
+        )
+        tile.click()
+        return true
+      }
+    )()`)
+    await sleep(250)
+    const motionDuring = await cdp.eval(`(
+      () => {
+        const node = document.querySelector('.glow-pulse, .float-slow, [class*="animate-"]')
+        const reduce = document.documentElement.dataset.a11yReduceMotion
+        if (!node) return { found: false, reduce }
+        const style = getComputedStyle(node)
+        return {
+          found: true,
+          duration: style.animationDuration,
+          iterations: style.animationIterationCount,
+          reduce,
+        }
+      }
+    )()`)
+    await cdp.eval(`(
+      () => {
+        const tile = Array.from(document.querySelectorAll('#accessibility-panel .a11y-tile')).find(
+          (button) => button.textContent.includes('עצירת אנימציות'),
+        )
+        tile.click()
+        return true
+      }
+    )()`)
+    await sleep(250)
+    const motionAfter = await cdp.eval(`(
+      () => {
+        const node = document.querySelector('.glow-pulse, .float-slow, [class*="animate-"]')
+        const reduce = document.documentElement.dataset.a11yReduceMotion
+        if (!node) return { found: false, reduce }
+        const style = getComputedStyle(node)
+        return {
+          found: true,
+          duration: style.animationDuration,
+          iterations: style.animationIterationCount,
+          reduce,
+        }
+      }
+    )()`)
+    check(
+      "reduce-motion tile strips page animation, then restores it",
+      motionBefore.found === true &&
+        motionDuring.found === true &&
+        motionAfter.found === true &&
+        motionDuring.reduce === "true" &&
+        motionAfter.reduce !== "true" &&
+        parseFloat(motionDuring.duration) <
+          parseFloat(motionBefore.duration) / 100 &&
+        motionDuring.iterations === "1" &&
+        motionAfter.duration === motionBefore.duration &&
+        motionAfter.iterations === motionBefore.iterations,
+      JSON.stringify({ motionBefore, motionDuring, motionAfter }),
+    )
 
     await cdp.key("Escape", "Escape", { vk: 27 })
     await sleep(300)
@@ -583,6 +661,12 @@ async function main() {
             (button) => button.offsetParent !== null,
           ),
           bodyScrollWidth: document.body.scrollWidth,
+          launcher: (() => {
+            const box = document
+              .getElementById('accessibility-launcher')
+              .getBoundingClientRect()
+            return { left: box.left, right: box.right, top: box.top, bottom: box.bottom }
+          })(),
         }
       })()
     `)
@@ -601,6 +685,24 @@ async function main() {
     check(
       "no horizontal overflow at 160% text",
       zoomed.bodyScrollWidth <= zoomed.vw + 1,
+    )
+    // The panel may overlap the launcher, but only completely: a panel that
+    // merely steps over the button hides it without being able to stand in
+    // for it, so nothing would remain clickable.
+    const overlapsY =
+      zoomed.rect.top < zoomed.launcher.bottom &&
+      zoomed.rect.bottom > zoomed.launcher.top
+    const coversX =
+      zoomed.rect.left <= zoomed.launcher.left &&
+      zoomed.rect.right >= zoomed.launcher.right
+    const clearsX =
+      zoomed.rect.right <= zoomed.launcher.left ||
+      zoomed.rect.left >= zoomed.launcher.right
+    const launcherPartial = overlapsY && !coversX && !clearsX
+    check(
+      "the panel never leaves the launcher half covered",
+      launcherPartial === false,
+      JSON.stringify({ panel: zoomed.rect, launcher: zoomed.launcher }),
     )
 
     // Hiding must not be a one-way door, even across a reload.

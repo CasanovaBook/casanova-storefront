@@ -361,7 +361,10 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  /* Logical padding: the extra breathing room stays on the inline-start
+   * side in both LTR and RTL. */
+  padding: 0.5rem;
+  padding-inline-start: 1rem;
   border-bottom: 1px solid var(--color-border);
 }
 .a11y-panel-title {
@@ -392,15 +395,22 @@ body {
 }
 .a11y-group legend {
   padding: 0;
-  margin-bottom: 0.4rem;
+  /* The caption gap is the panel's base rhythm; group spacing below keeps
+   * the divider border centred inside it. */
+  margin-bottom: 0.5rem;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--color-foreground);
 }
 .a11y-group + .a11y-group {
-  padding-top: 0.75rem;
   border-top: 1px solid var(--color-border);
+}
+/* Fieldset default padding is zeroed above, so the gap between groups is
+ * carried by the following group's legend margin; that keeps the divider
+ * visually centred between the two captions. */
+.a11y-group + .a11y-group legend {
+  margin-top: 0.75rem;
 }
 
 /* Toggle tiles: one icon + label per setting, pressed state carried by
@@ -408,6 +418,7 @@ body {
 .a11y-tile-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
   gap: 0.5rem;
 }
 .a11y-tile {
@@ -416,6 +427,9 @@ body {
   gap: 0.55rem;
   min-height: 44px;
   padding: 0.4rem 0.55rem;
+  /* Uniform, compact line box so both tiles of a row wrap to the same
+   * height and the grid's 1fr rows equalise them exactly. */
+  line-height: 1.3;
   font-family: var(--font-body);
   font-size: 0.8125rem;
   font-weight: 600;
@@ -442,6 +456,10 @@ body {
   border-radius: 0.5rem;
 }
 .a11y-tile[aria-pressed='true'] {
+  /* Pressed tiles grow a 1px → 2px border; the padding gives the pixel back
+   * on each side so the label and icon never shift when a tile toggles. */
+  padding: calc(0.4rem - 1px) calc(0.55rem - 1px);
+  border-width: 2px;
   color: var(--color-primary-foreground);
   background: var(--color-primary);
   border-color: var(--color-primary);
@@ -527,8 +545,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
+  /* A plain 2.75rem shrank to 39.6px at 90% text, under the 44px floor;
+   * max() keeps the floor while letting the button grow with the root font. */
+  min-width: max(2.75rem, 44px);
+  min-height: max(2.75rem, 44px);
   color: var(--color-muted-foreground);
   background: transparent;
   border: 1px solid transparent;
@@ -747,9 +767,9 @@ body {
 
 /* Reduced motion. Animation is removed, never function: transitions become
  * instant and looping decoration stops, but nothing is hidden or disabled. */
-:root[data-a11y-reduced-motion='true'] *,
-:root[data-a11y-reduced-motion='true'] *::before,
-:root[data-a11y-reduced-motion='true'] *::after {
+:root[data-a11y-reduce-motion='true'] *,
+:root[data-a11y-reduce-motion='true'] *::before,
+:root[data-a11y-reduce-motion='true'] *::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
