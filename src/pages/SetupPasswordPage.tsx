@@ -269,7 +269,7 @@ export default function SetupPasswordPage() {
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <img
               src={logoImg}
-              alt="Casanova"
+              alt=""
               className="w-9 h-9 rounded-lg object-cover"
             />
             <span
@@ -309,6 +309,7 @@ export default function SetupPasswordPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
+              htmlFor="setup-password-new"
               className="block text-xs font-medium mb-1.5"
               style={{ color: "var(--color-muted-foreground)" }}
             >
@@ -316,6 +317,7 @@ export default function SetupPasswordPage() {
             </label>
             <div className="relative">
               <input
+                id="setup-password-new"
                 type={showPassword ? "text" : "password"}
                 className="w-full px-4 py-3 pl-10 rounded-lg border text-sm outline-none"
                 dir="ltr"
@@ -329,14 +331,15 @@ export default function SetupPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
+                className="tap-target absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
                 style={{
                   color: showPassword
                     ? "#FFFFFF"
                     : "var(--color-muted-foreground)",
                   opacity: showPassword ? 1 : 0.5,
                 }}
-                tabIndex={-1}
+                aria-pressed={showPassword}
+                aria-label={showPassword ? "הסתרת הסיסמה" : "הצגת הסיסמה"}
                 title={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}
               >
                 <Icon name="eye" size={16} />
@@ -365,6 +368,7 @@ export default function SetupPasswordPage() {
 
           <div>
             <label
+              htmlFor="setup-password-confirm"
               className="block text-xs font-medium mb-1.5"
               style={{ color: "var(--color-muted-foreground)" }}
             >
@@ -372,6 +376,7 @@ export default function SetupPasswordPage() {
             </label>
             <div className="relative">
               <input
+                id="setup-password-confirm"
                 type={showConfirmPassword ? "text" : "password"}
                 className="w-full px-4 py-3 pl-10 rounded-lg border text-sm outline-none"
                 dir="ltr"
@@ -385,14 +390,15 @@ export default function SetupPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
+                className="tap-target absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
                 style={{
                   color: showConfirmPassword
                     ? "#FFFFFF"
                     : "var(--color-muted-foreground)",
                   opacity: showConfirmPassword ? 1 : 0.5,
                 }}
-                tabIndex={-1}
+                aria-pressed={showConfirmPassword}
+                aria-label={showConfirmPassword ? "הסתרת הסיסמה" : "הצגת הסיסמה"}
                 title={showConfirmPassword ? "הסתר סיסמה" : "הצג סיסמה"}
               >
                 <Icon name="eye" size={16} />
@@ -402,6 +408,7 @@ export default function SetupPasswordPage() {
 
           {error && (
             <div
+              role="alert"
               className="px-4 py-3 rounded-lg border text-sm"
               style={{
                 background: "rgba(239,68,68,0.08)",

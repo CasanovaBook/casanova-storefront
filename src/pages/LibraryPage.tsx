@@ -57,11 +57,15 @@ function LibraryCover({
 }) {
   const src = imageUrl ?? snapshot.image_url
   const [from, to] = snapshot.cover_colors ?? FALLBACK_COVER
+  /* Clicking the cover opens the book, but that is a pointer shortcut: the
+   * button beside it does the same thing from the keyboard. The image is
+   * therefore announced as decorative — its title sits right next to it and
+   * repeating it would only make the screen reader read the name twice. */
   if (src) {
     return (
       <img
         src={src}
-        alt={snapshot.name}
+        alt=""
         className="w-16 h-24 rounded-md flex-shrink-0 cursor-pointer shadow-lg object-cover"
         style={{ opacity: active ? 1 : 0.5 }}
         onClick={onClick}
@@ -76,6 +80,7 @@ function LibraryCover({
         opacity: active ? 1 : 0.5,
       }}
       onClick={onClick}
+      aria-hidden="true"
     />
   )
 }

@@ -23,6 +23,7 @@ import { useApp } from "../context/AppContext"
 import { isSupabaseConfigured } from "../lib/supabase"
 import Icon from "../components/icons"
 import ThemeToggle from "../components/ThemeToggle"
+import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
 import logoImg from "../../images/main_photo.jpg"
 
 type VerifyState = "checking" | "confirmed" | "expired" | "no-session"
@@ -146,12 +147,12 @@ export default function VerifyEmailPage() {
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-sm page-enter relative">
+      <main id="main" className="w-full max-w-sm page-enter relative">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <img
               src={logoImg}
-              alt="Casanova"
+              alt=""
               className="w-9 h-9 rounded-lg object-cover"
             />
             <span
@@ -220,7 +221,13 @@ export default function VerifyEmailPage() {
             התחבר עכשיו
           </Link>
         )}
-      </div>
+
+        {/* No site footer on this screen; the accessibility controls still
+         * have to be reachable from here. */}
+        <div className="text-center mt-6 text-xs">
+          <AccessibilityFooterLink />
+        </div>
+      </main>
     </div>
   )
 }

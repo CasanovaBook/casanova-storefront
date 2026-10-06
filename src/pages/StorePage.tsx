@@ -234,7 +234,9 @@ export default function StorePage() {
         </p>
       </div>
 
-      {/* Search & filters — all options come from the catalogue itself */}
+      {/* Search & filters — all options come from the catalogue itself.
+       * The visible text of a filter is not a label, so each control carries
+       * its own accessible name; the search icon is decorative. */}
       <div className="flex flex-wrap items-center gap-3 mb-8">
         <div className="relative flex-1 min-w-56">
           <span
@@ -243,7 +245,11 @@ export default function StorePage() {
           >
             <Icon name="search" size={15} />
           </span>
+          <label htmlFor="store-search" className="sr-only">
+            חיפוש בקטלוג
+          </label>
           <input
+            id="store-search"
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -253,6 +259,7 @@ export default function StorePage() {
           />
         </div>
         <select
+          aria-label="סינון לפי קטגוריה"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
           className={controlClass}
@@ -266,6 +273,7 @@ export default function StorePage() {
           ))}
         </select>
         <select
+          aria-label="סינון לפי סוג מוצר"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as ProductType | "ALL")}
           className={controlClass}

@@ -5,7 +5,7 @@ import { useCms } from "../../context/CmsContext"
 import { useContent } from "../../content/useContent"
 import Icon from "../icons"
 import ThemeToggle from "../ThemeToggle"
-import AccessibilityMenu from "../AccessibilityMenu"
+import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
 import { loadContent } from "../../content/store"
 import useFavicon from "../useFavicon"
 import logoImg from "../../../images/main_photo.jpg"
@@ -132,7 +132,7 @@ export default function PublicRoot() {
           <Link to="/" className="flex items-center gap-2.5 group min-w-0">
             <img
               src={logoSrc}
-              alt={brand}
+              alt=""
               className="w-8 h-8 rounded-lg object-cover shadow-lg flex-shrink-0"
             />
             <span
@@ -169,14 +169,6 @@ export default function PublicRoot() {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Debug: always-visible accessibility trigger for local preview */}
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-accessibility-debug'))}
-              className="tap-target px-3 py-2 rounded-lg border"
-              style={{ marginLeft: 6 }}
-            >
-              נגישות
-            </button>
             {isAuthenticated && (
               <span
                 className="text-sm hidden lg:block"
@@ -187,12 +179,10 @@ export default function PublicRoot() {
             )}
             <div className="hidden md:flex items-center gap-3">
               <ThemeToggle />
-              <AccessibilityMenu />
               {accountActions}
             </div>
             <div className="md:hidden flex items-center gap-1">
               <ThemeToggle />
-              <AccessibilityMenu />
               <button
                 onClick={() => setMenuOpen((open) => !open)}
                 className="tap-target flex items-center justify-center rounded-lg border"
@@ -270,7 +260,7 @@ export default function PublicRoot() {
           <div className="flex items-center gap-2">
             <img
               src={logoSrc}
-              alt={brand}
+              alt=""
               className="w-6 h-6 rounded object-cover"
             />
             <span
@@ -280,7 +270,7 @@ export default function PublicRoot() {
               {brand}
             </span>
           </div>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             {navItems.map((item) => (
               <Link key={item.to} to={item.to} className="hover:opacity-80 transition-opacity">
                 {item.label}
@@ -289,6 +279,9 @@ export default function PublicRoot() {
             <Link to="/login" className="hover:opacity-80 transition-opacity">
               {loginLabel}
             </Link>
+            {/* Always available, and the way back if the floating button was
+             * hidden. See AccessibilityFooterLink. */}
+            <AccessibilityFooterLink />
           </div>
           <p>{footerCopyright}</p>
         </div>

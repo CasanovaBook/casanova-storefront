@@ -15,7 +15,7 @@
  * bundled defaults) so they too are editable from /admin/settings.
  * ───────────────────────────────────────────────────────────── */
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { Link, useNavigate } from "react-router"
 
@@ -32,7 +32,7 @@ import { effectivePrice, isOnSale } from "../types"
 import Icon from "../components/icons"
 
 import ThemeToggle from "../components/ThemeToggle"
-import AccessibilityMenu from "../components/AccessibilityMenu"
+import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
 
 import { loadContent } from "../content/store"
 
@@ -1068,6 +1068,36 @@ function ExitPopup({ product, c }: { product: Product, c: ReturnType<typeof useC
 
   const [show, setShow] = useState(false)
 
+  const dialogRef = useRef<HTMLDivElement | null>(null)
+  const openerRef = useRef<HTMLElement | null>(null)
+
+  /* A promotional popup is still a dialog: it announces itself, takes focus,
+   * closes on Escape and hands focus back. Without this it was a mouse-only
+   * overlay that a keyboard user could not dismiss. */
+  useEffect(() => {
+    if (!show) return
+    openerRef.current = document.activeElement as HTMLElement | null
+    const previouslyFocused = openerRef.current
+    try {
+      dialogRef.current?.focus()
+    } catch {}
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      setShow(false)
+    }
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("keydown", onKeyDown)
+      if (previouslyFocused?.isConnected) {
+        try {
+          previouslyFocused.focus()
+        } catch {}
+      }
+    }
+  }, [show])
+
   useEffect(() => {
     if (sessionStorage.getItem(EXIT_SEEN_KEY)) return
 
@@ -1106,15 +1136,20 @@ function ExitPopup({ product, c }: { product: Product, c: ReturnType<typeof useC
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.7)" }}
       onClick={() => setShow(false)}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sales-exit-title"
+        tabIndex={-1}
         className="card-glow w-full max-w-md p-8 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="font-display text-3xl font-bold mb-3">
+        <h3 id="sales-exit-title" className="font-display text-3xl font-bold mb-3">
           {c("sales.exit.title") || settings.exit_title}
         </h3>
         <p
@@ -1166,6 +1201,11 @@ export default function SalesLandingPage() {
         color: "var(--color-foreground)",
       }}
     >
+      {/* This page is its own shell without PublicRoot, so it carries its own
+       * skip link; see the layout note in index.css. */}
+      <a href="#main" className="skip-link">
+        דלג לתוכן הראשי
+      </a>
       <header
         className="fixed left-0 right-0 z-30 glass border-b top-0"
         style={{ borderColor: "rgba(30,30,46,0.8)" }}
@@ -1174,7 +1214,7 @@ export default function SalesLandingPage() {
           <div className="flex items-center gap-2">
             <img
               src={logoSrc}
-              alt={brand}
+              alt=""
               className="w-7 h-7 rounded-lg object-cover shadow-lg flex-shrink-0"
             />
             <span
@@ -1193,7 +1233,6 @@ export default function SalesLandingPage() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <AccessibilityMenu />
             <Link
               to="/login"
               className="btn-gradient tap-target inline-flex items-center justify-center text-sm font-bold px-5 py-2 rounded-full"
@@ -1232,7 +1271,7 @@ export default function SalesLandingPage() {
           >
             <img
               src={logoSrc}
-              alt={brand}
+              alt=""
               className="w-6 h-6 rounded-lg object-cover flex-shrink-0"
             />
             {brand}
@@ -1247,6 +1286,7 @@ export default function SalesLandingPage() {
           >
             {c("sales.footer.powered") || "Powered by Phantom Third Labs"}
           </a>
+          <AccessibilityFooterLink className="text-xs" />
         </div>
       </footer>
 

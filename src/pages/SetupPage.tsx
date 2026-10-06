@@ -19,6 +19,8 @@ import Icon from "../components/icons"
 
 import ThemeToggle from "../components/ThemeToggle"
 
+import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
+
 import logoImg from "../../images/main_photo.jpg"
 
 // Function to detect Hebrew characters
@@ -184,12 +186,12 @@ export default function SetupPage() {
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md page-enter relative">
+      <main id="main" className="w-full max-w-md page-enter relative">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <img
               src={logoImg}
-              alt="Casanova"
+              alt=""
               className="w-9 h-9 rounded-lg object-cover"
             />
             <span
@@ -224,6 +226,7 @@ export default function SetupPage() {
 
           {error && (
             <p
+              role="alert"
               className="text-xs px-3 py-2.5 rounded-lg mb-4"
               style={{
                 background: "rgba(239,68,68,0.1)",
@@ -238,6 +241,7 @@ export default function SetupPage() {
             {fields.map(({ key, label, type, ltr }) => (
               <div key={key}>
                 <label
+                  htmlFor={`setup-field-${key}`}
                   className="block text-xs font-medium mb-1.5"
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
@@ -246,6 +250,7 @@ export default function SetupPage() {
                 {type === "password" ? (
                   <div className="relative">
                     <input
+                      id={`setup-field-${key}`}
                       type={
                         key === "password"
                           ? showPassword
@@ -277,7 +282,7 @@ export default function SetupPage() {
                           setShowConfirmPassword(!showConfirmPassword)
                         }
                       }}
-                      className="absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
+                      className="tap-target absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
                       style={{
                         color: (
                           key === "password"
@@ -295,7 +300,18 @@ export default function SetupPage() {
                           ? 1
                           : 0.5,
                       }}
-                      tabIndex={-1}
+                      aria-label={
+                        (
+                          key === "password"
+                            ? showPassword
+                            : showConfirmPassword
+                        )
+                          ? "הסתרת הסיסמה"
+                          : "הצגת הסיסמה"
+                      }
+                      aria-pressed={
+                        key === "password" ? showPassword : showConfirmPassword
+                      }
                       title={
                         (
                           key === "password"
@@ -311,6 +327,7 @@ export default function SetupPage() {
                   </div>
                 ) : (
                   <input
+                    id={`setup-field-${key}`}
                     type={type}
                     dir={ltr ? "ltr" : undefined}
                     className={inputClass + (ltr ? " text-left" : "")}
@@ -374,8 +391,14 @@ export default function SetupPage() {
               {busy ? "יוצר את החשבון…" : "יצירת חשבון המנהל הראשון"}
             </button>
           </form>
+
+          {/* Setup runs before any site chrome exists; the accessibility
+           * controls are reachable from the screen itself. */}
+          <div className="text-center mt-6 text-xs">
+            <AccessibilityFooterLink />
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

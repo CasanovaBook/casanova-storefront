@@ -598,6 +598,12 @@ export default function ReaderPage() {
         userSelect: "none",
       }}
     >
+      {/* The reader has no site header, but its toolbar is fixed above the
+       * document; keyboard users get past it in one Tab. */}
+      <a href="#main" className="skip-link">
+        דלג לתוכן הקריאה
+      </a>
+
       {/* Top bar */}
       <header
         className="safe-top fixed top-0 left-0 right-0 z-50 border-b flex items-center justify-between px-3 sm:px-5 h-14 sm:h-12"
@@ -711,7 +717,7 @@ export default function ReaderPage() {
       </header>
 
       {/* Main reading area */}
-      <main className="flex-1 pt-14 sm:pt-12 pb-24 sm:pb-20">
+      <main id="main" className="flex-1 pt-14 sm:pt-12 pb-24 sm:pb-20">
         {contentUrl && !locked ? (
           <div
             className="relative mx-auto px-1.5 sm:px-2 py-2"

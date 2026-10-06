@@ -514,21 +514,29 @@ export default function CheckoutPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label
+                        htmlFor="checkout-first-name"
                         className="block text-xs font-bold mb-1.5"
                         style={{ color: "var(--color-muted-foreground)" }}
                       >
                         שם פרטי
                       </label>
                       <input
+                        id="checkout-first-name"
                         className={inputClass}
                         style={inputStyle}
                         value={form.first_name}
+                        aria-invalid={errors.first_name ? true : undefined}
+                        aria-describedby={
+                          errors.first_name ? "checkout-first-name-error" : undefined
+                        }
                         onChange={(e) =>
                           setForm({ ...form, first_name: e.target.value })
                         }
                       />
                       {errors.first_name && (
                         <p
+                          id="checkout-first-name-error"
+                          role="alert"
                           className="text-xs mt-1"
                           style={{ color: "var(--color-danger)" }}
                         >
@@ -538,21 +546,29 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <label
+                        htmlFor="checkout-last-name"
                         className="block text-xs font-bold mb-1.5"
                         style={{ color: "var(--color-muted-foreground)" }}
                       >
                         שם משפחה
                       </label>
                       <input
+                        id="checkout-last-name"
                         className={inputClass}
                         style={inputStyle}
                         value={form.last_name}
+                        aria-invalid={errors.last_name ? true : undefined}
+                        aria-describedby={
+                          errors.last_name ? "checkout-last-name-error" : undefined
+                        }
                         onChange={(e) =>
                           setForm({ ...form, last_name: e.target.value })
                         }
                       />
                       {errors.last_name && (
                         <p
+                          id="checkout-last-name-error"
+                          role="alert"
                           className="text-xs mt-1"
                           style={{ color: "var(--color-danger)" }}
                         >
@@ -564,22 +580,30 @@ export default function CheckoutPage() {
 
                   <div>
                     <label
+                      htmlFor="checkout-email"
                       className="block text-xs font-bold mb-1.5"
                       style={{ color: "var(--color-muted-foreground)" }}
                     >
                       כתובת מייל
                     </label>
                     <input
+                      id="checkout-email"
                       type="email"
                       dir="ltr"
                       className={`${inputClass} text-left`}
                       style={inputStyle}
                       value={form.email}
+                      aria-invalid={errors.email ? true : undefined}
+                      aria-describedby={
+                        errors.email ? "checkout-email-error checkout-email-hint" : "checkout-email-hint"
+                      }
                       onChange={(e) => handleEmailChange(e.target.value)}
                       placeholder="you@example.com"
                     />
                     {errors.email && (
                       <p
+                        id="checkout-email-error"
+                        role="alert"
                         className="text-xs mt-1"
                         style={{ color: "var(--color-danger)" }}
                       >
@@ -587,6 +611,7 @@ export default function CheckoutPage() {
                       </p>
                     )}
                     <p
+                      id="checkout-email-hint"
                       className="text-xs mt-1"
                       style={{ color: "var(--color-muted-foreground)" }}
                     >
@@ -596,6 +621,7 @@ export default function CheckoutPage() {
 
                   <div>
                     <label
+                      htmlFor="checkout-confirm-email"
                       className="block text-xs font-bold mb-1.5"
                       style={{ color: "var(--color-muted-foreground)" }}
                     >
@@ -603,17 +629,26 @@ export default function CheckoutPage() {
                       <span style={{ color: "var(--color-danger)" }}>*</span>
                     </label>
                     <input
+                      id="checkout-confirm-email"
                       type="email"
                       dir="ltr"
                       className={`${inputClass} text-left`}
                       style={inputStyle}
                       value={confirmEmail}
+                      aria-invalid={confirmEmailError ? true : undefined}
+                      aria-describedby={
+                        confirmEmailError
+                          ? "checkout-confirm-email-error"
+                          : "checkout-confirm-email-status"
+                      }
                       onChange={(e) => handleConfirmEmailChange(e.target.value)}
                       onPaste={(e) => e.preventDefault()}
                       placeholder="הקלד שוב את כתובת המייל"
                     />
                     {confirmEmailError ? (
                       <p
+                        id="checkout-confirm-email-error"
+                        role="alert"
                         className="text-xs mt-1"
                         style={{ color: "var(--color-danger)" }}
                       >
@@ -623,6 +658,7 @@ export default function CheckoutPage() {
                       confirmEmail.trim().toLowerCase() ===
                         form.email.trim().toLowerCase() ? (
                       <p
+                        id="checkout-confirm-email-status"
                         className="text-xs mt-1 flex items-center gap-1"
                         style={{ color: "var(--color-success)" }}
                       >
@@ -634,6 +670,7 @@ export default function CheckoutPage() {
 
                   <div>
                     <label
+                      htmlFor="checkout-phone"
                       className="block text-xs font-bold mb-1.5"
                       style={{ color: "var(--color-muted-foreground)" }}
                     >
@@ -642,8 +679,13 @@ export default function CheckoutPage() {
                     <div className="flex gap-2" dir="rtl">
                       {/* Phone number input - on the right side (RTL) */}
                       <input
+                        id="checkout-phone"
                         type="tel"
                         dir="ltr"
+                        aria-invalid={errors.phone ? true : undefined}
+                        aria-describedby={
+                          errors.phone ? "checkout-phone-error" : undefined
+                        }
                         className={`${inputClass} text-left flex-1`}
                         style={inputStyle}
                         value={phoneNumber}
@@ -676,6 +718,7 @@ export default function CheckoutPage() {
                       />
                       {/* Phone prefix dropdown - on the left side (RTL) */}
                       <select
+                        aria-label="קידומת הטלפון"
                         value={phonePrefix}
                         onChange={(e) => setPhonePrefix(e.target.value)}
                         className={`${inputClass} text-center flex-shrink-0`}
@@ -693,6 +736,8 @@ export default function CheckoutPage() {
                     </div>
                     {errors.phone && (
                       <p
+                        id="checkout-phone-error"
+                        role="alert"
                         className="text-xs mt-1"
                         style={{ color: "var(--color-danger)" }}
                       >

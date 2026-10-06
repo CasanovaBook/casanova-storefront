@@ -290,6 +290,7 @@ function ConversationModal({
 
       {error && (
         <p
+          role="alert"
           className="text-xs px-3 py-2 rounded-lg mb-3"
           style={{
             background: "rgba(239,68,68,0.1)",
@@ -325,7 +326,11 @@ function ConversationModal({
       )}
 
       <div className="flex items-start gap-2 flex-wrap">
+        <label htmlFor="support-reply" className="sr-only">
+          כתיבת תגובה לצוות התמיכה
+        </label>
         <textarea
+          id="support-reply"
           className={`flex-1 min-w-56 ${inputClass} min-h-20 resize-y`}
           style={canReply ? inputStyle : { ...inputStyle, opacity: 0.55 }}
           placeholder={
@@ -519,6 +524,7 @@ export default function SupportPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <p
+                  role="alert"
                   className="text-xs px-3 py-2.5 rounded-lg"
                   style={{
                     background: "rgba(239,68,68,0.1)",
@@ -532,18 +538,21 @@ export default function SupportPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label
+                    htmlFor="support-name"
                     className="block text-xs font-medium mb-1.5"
                     style={{ color: "var(--color-muted-foreground)" }}
                   >
                     שם מלא
                   </label>
                   <input
+                    id="support-name"
                     className={inputClass}
                     style={identityFieldStyle}
                     value={identityName}
                     disabled={identityLocked}
                     readOnly={identityLocked}
                     aria-readonly={identityLocked}
+                    aria-describedby={identityLocked ? "support-identity-note" : undefined}
                     onChange={(e) => {
                       if (identityLocked) return
 
@@ -552,6 +561,7 @@ export default function SupportPage() {
                   />
                   {identityLocked && (
                     <p
+                      id="support-identity-note"
                       className="text-[11px] mt-1"
                       style={{ color: "var(--color-muted-foreground)" }}
                     >
@@ -561,12 +571,14 @@ export default function SupportPage() {
                 </div>
                 <div>
                   <label
+                    htmlFor="support-email"
                     className="block text-xs font-medium mb-1.5"
                     style={{ color: "var(--color-muted-foreground)" }}
                   >
                     אימייל
                   </label>
                   <input
+                    id="support-email"
                     dir="ltr"
                     type="email"
                     className={inputClass}
@@ -575,6 +587,7 @@ export default function SupportPage() {
                     disabled={identityLocked}
                     readOnly={identityLocked}
                     aria-readonly={identityLocked}
+                    aria-describedby={identityLocked ? "support-identity-note" : undefined}
                     onChange={(e) => {
                       if (identityLocked) return
 
@@ -587,12 +600,14 @@ export default function SupportPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label
+                    htmlFor="support-phone"
                     className="block text-xs font-medium mb-1.5"
                     style={{ color: "var(--color-muted-foreground)" }}
                   >
                     טלפון (אופציונלי)
                   </label>
                   <input
+                    id="support-phone"
                     dir="ltr"
                     className={inputClass}
                     style={inputStyle}
@@ -604,12 +619,14 @@ export default function SupportPage() {
                 </div>
                 <div>
                   <label
+                    htmlFor="support-topic"
                     className="block text-xs font-medium mb-1.5"
                     style={{ color: "var(--color-muted-foreground)" }}
                   >
                     נושא הפנייה
                   </label>
                   <select
+                    id="support-topic"
                     className={inputClass}
                     style={inputStyle}
                     value={form.topic}
@@ -634,12 +651,14 @@ export default function SupportPage() {
               {orders.length > 0 && (
                 <div>
                   <label
+                    htmlFor="support-order"
                     className="block text-xs font-medium mb-1.5"
                     style={{ color: "var(--color-muted-foreground)" }}
                   >
                     שיוך להזמנה (אופציונלי)
                   </label>
                   <select
+                    id="support-order"
                     className={inputClass}
                     style={inputStyle}
                     value={form.related_order_id}
@@ -660,12 +679,14 @@ export default function SupportPage() {
 
               <div>
                 <label
+                  htmlFor="support-subject"
                   className="block text-xs font-medium mb-1.5"
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
                   כותרת
                 </label>
                 <input
+                  id="support-subject"
                   className={inputClass}
                   style={inputStyle}
                   value={form.subject}
@@ -677,12 +698,14 @@ export default function SupportPage() {
 
               <div>
                 <label
+                  htmlFor="support-message"
                   className="block text-xs font-medium mb-1.5"
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
                   פירוט הפנייה
                 </label>
                 <textarea
+                  id="support-message"
                   className={`${inputClass} min-h-32 resize-y`}
                   style={inputStyle}
                   value={form.message}

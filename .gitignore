@@ -30,6 +30,10 @@ logs/
 /backups/
 .claude-replay.*
 .tmp-*
+# Scratch space for browser-automation runs: disposable CDP probe scripts,
+# npm-packed audit tools and headless-Chrome profiles (tens of MB each).
+# Ignored whole, or one `git add .` stages thousands of throwaway files.
+/.tmp/
 tmp/
 
 # ── Sellable content ───────────────────────────────────────────
@@ -57,6 +61,9 @@ tmp/
 /docs/*
 !/docs/ARCHITECTURE.md
 !/docs/PRODUCT_BRIEF.md
+# The accessibility system and its known limitations are reviewed by hand
+# before a compliance claim is published, so the document is versioned.
+!/docs/ACCESSIBILITY.md
 # Supabase Auth renders its e-mails from templates stored in the dashboard, not
 # from this repo (see `supabase/config.toml`). These files are the versioned,
 # reviewable copy of those templates plus how to apply them, so they are

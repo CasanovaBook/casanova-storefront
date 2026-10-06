@@ -4,6 +4,7 @@ import { useApp } from "../context/AppContext"
 import { useContent } from "../content/useContent"
 import { passwordProblem } from "../lib/auth"
 import Icon from "../components/icons"
+import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
 import logoImg from "../../images/main_photo.jpg"
 
 // Function to detect Hebrew characters
@@ -152,7 +153,7 @@ export default function LoginPage() {
         className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden"
         style={{ background: "var(--color-background)" }}
       >
-        <div className="w-full max-w-sm page-enter text-center">
+        <main id="main" className="w-full max-w-sm page-enter text-center">
           <div
             className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 glow-pulse"
             style={{
@@ -226,7 +227,7 @@ export default function LoginPage() {
               חזרה למסך ההתחברות
             </button>
           </div>
-        </div>
+        </main>
       </div>
     )
   }
@@ -238,6 +239,16 @@ export default function LoginPage() {
     borderColor: "var(--color-border)",
     color: "var(--color-foreground)",
   }
+
+  /* Every message a password field can explain itself with, wired to the input
+   * so a screen reader reads it as the field's description. */
+  const passwordDescribedBy =
+    [
+      hebrewWarning ? "auth-password-warning" : null,
+      mode === "register" ? "auth-password-hint" : null,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined
 
   return (
     <div
@@ -264,12 +275,12 @@ export default function LoginPage() {
         }}
       />
 
-      <div className="w-full max-w-sm page-enter relative">
+      <main id="main" className="w-full max-w-sm page-enter relative">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <img
               src={logoImg}
-              alt="Casanova"
+              alt=""
               className="w-9 h-9 rounded-lg object-cover"
             />
             <span
@@ -298,12 +309,14 @@ export default function LoginPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label
+                  htmlFor="auth-first-name"
                   className="block text-xs font-medium mb-1.5"
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
                   {c("ui.auth.firstName") || "שם פרטי"}
                 </label>
                 <input
+                  id="auth-first-name"
                   type="text"
                   className={inputClass}
                   style={inputStyle}
@@ -315,12 +328,14 @@ export default function LoginPage() {
               </div>
               <div>
                 <label
+                  htmlFor="auth-last-name"
                   className="block text-xs font-medium mb-1.5"
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
                   {c("ui.auth.lastName") || "שם משפחה"}
                 </label>
                 <input
+                  id="auth-last-name"
                   type="text"
                   className={inputClass}
                   style={inputStyle}
@@ -335,14 +350,18 @@ export default function LoginPage() {
 
           <div>
             <label
+              htmlFor="auth-email"
               className="block text-xs font-medium mb-1.5"
               style={{ color: "var(--color-muted-foreground)" }}
             >
               {c("ui.auth.emailLabel") || "אימייל"}
             </label>
             <input
+              id="auth-email"
               type="email"
               dir="ltr"
+              aria-invalid={emailHebrewWarning ? true : undefined}
+              aria-describedby={emailHebrewWarning ? "auth-email-warning" : undefined}
               className={
                 inputClass +
                 " text-left" +
@@ -357,6 +376,7 @@ export default function LoginPage() {
             />
             {emailHebrewWarning && (
               <div
+                id="auth-email-warning"
                 className="flex items-center gap-2 mt-1.5 px-3 py-2 rounded-md"
                 style={{
                   background: "rgba(245,158,11,0.1)",
@@ -380,6 +400,7 @@ export default function LoginPage() {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label
+                htmlFor="auth-password"
                 className="text-xs font-medium"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
@@ -397,8 +418,11 @@ export default function LoginPage() {
             </div>
             <div className="relative">
               <input
+                id="auth-password"
                 type={showPassword ? "text" : "password"}
                 dir="ltr"
+                aria-describedby={passwordDescribedBy}
+                aria-invalid={hebrewWarning ? true : undefined}
                 className={inputClass + " text-left pl-10"}
                 style={inputStyle}
                 value={password}
@@ -409,17 +433,20 @@ export default function LoginPage() {
                 }
                 required
               />
+              {/* Reachable from the keyboard: it used to be pulled out of the
+               * tab order, which left a functional control mouse-only. */}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
+                className="tap-target absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
                 style={{
                   color: showPassword
                     ? "#FFFFFF"
                     : "var(--color-muted-foreground)",
                   opacity: showPassword ? 1 : 0.5,
                 }}
-                tabIndex={-1}
+                aria-pressed={showPassword}
+                aria-label={showPassword ? "הסתרת הסיסמה" : "הצגת הסיסמה"}
                 title={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}
               >
                 <Icon name="eye" size={16} />
@@ -427,6 +454,7 @@ export default function LoginPage() {
             </div>
             {hebrewWarning && (
               <div
+                id="auth-password-warning"
                 className="flex items-center gap-2 mt-1.5 px-3 py-2 rounded-md"
                 style={{
                   background: "rgba(245,158,11,0.1)",
@@ -445,6 +473,7 @@ export default function LoginPage() {
             )}
             {mode === "register" && (
               <p
+                id="auth-password-hint"
                 className="text-[11px] mt-1.5"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
@@ -456,6 +485,7 @@ export default function LoginPage() {
           {error && (
             <div className="space-y-2">
               <div
+                role="alert"
                 className="px-4 py-3 rounded-lg border text-sm"
                 style={{
                   background: "rgba(239,68,68,0.08)",
@@ -579,7 +609,14 @@ export default function LoginPage() {
           </Link>
           {c("ui.auth.guestCheckoutSuffix") || "— החשבון ייווצר אוטומטית."}
         </p>
-      </div>
+
+        {/* The auth screens have no site footer; this is their way into the
+         * accessibility settings, and their way back if the floating button
+         * was hidden on another page. */}
+        <div className="text-center mt-6 text-xs">
+          <AccessibilityFooterLink />
+        </div>
+      </main>
     </div>
   )
 }

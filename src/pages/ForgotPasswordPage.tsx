@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
             <img
               src={logoImg}
-              alt="Casanova"
+              alt=""
               className="w-9 h-9 rounded-lg object-cover"
             />
             <span
@@ -162,12 +162,14 @@ export default function ForgotPasswordPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label
+                htmlFor="forgot-email"
                 className="block text-xs font-medium mb-1.5"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
                 כתובת מייל
               </label>
               <input
+                id="forgot-email"
                 type="email"
                 dir="ltr"
                 className="w-full px-4 py-3 rounded-lg border text-sm outline-none text-left"
@@ -185,6 +187,7 @@ export default function ForgotPasswordPage() {
 
             {error && (
               <p
+                role="alert"
                 className="text-xs px-3 py-2.5 rounded-lg"
                 style={{
                   background: "rgba(239,68,68,0.1)",

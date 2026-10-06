@@ -1,6 +1,6 @@
 import type { ReactElement, SVGProps } from "react"
 
-export type IconName = "home" | "grid" | "box" | "users" | "user" | "receipt" | "target" | "library" | "book" | "bookOpen" | "bag" | "cart" | "card" | "check" | "checkCircle" | "x" | "mail" | "phone" | "message" | "tag" | "star" | "sparkles" | "shield" | "lock" | "key" | "zap" | "chart" | "clock" | "calendar" | "trendUp" | "trophy" | "crown" | "money" | "inbox" | "flame" | "gift" | "infinity" | "pen" | "list" | "search" | "eye" | "eyeOff" | "alert-triangle" | "alertTriangle" | "logout" | "arrowLeft" | "arrowRight" | "chevronDown" | "chevronLeft" | "chevronRight" | "menu" | "smartphone" | "sun" | "moon" | "layers" | "video" | "download" | "upload" | "link" | "external" | "refresh" | "zoomIn" | "zoomOut" | "fitWidth" | "settings"
+export type IconName = "home" | "grid" | "box" | "users" | "user" | "receipt" | "target" | "library" | "book" | "bookOpen" | "bag" | "cart" | "card" | "check" | "checkCircle" | "x" | "mail" | "phone" | "message" | "tag" | "star" | "sparkles" | "shield" | "lock" | "key" | "zap" | "chart" | "clock" | "calendar" | "trendUp" | "trophy" | "crown" | "money" | "inbox" | "flame" | "gift" | "infinity" | "pen" | "list" | "search" | "eye" | "eyeOff" | "alert-triangle" | "alertTriangle" | "logout" | "arrowLeft" | "arrowRight" | "chevronDown" | "chevronLeft" | "chevronRight" | "menu" | "smartphone" | "sun" | "moon" | "layers" | "video" | "download" | "upload" | "link" | "external" | "refresh" | "zoomIn" | "zoomOut" | "fitWidth" | "settings" | "accessibility" | "type" | "lineSpacing" | "letterSpacing" | "maximize"
 
 const ICONS: Record<IconName, ReactElement> = {
   home: (
@@ -447,6 +447,57 @@ const ICONS: Record<IconName, ReactElement> = {
       <path d="M3 12h18" />
       <path d="m6.5 8.5-3.5 3.5 3.5 3.5" />
       <path d="m17.5 8.5 3.5 3.5-3.5 3.5" />
+    </>
+  ),
+
+  /* Glyphs for the accessibility panel's toggle tiles. Each toggle pairs one
+   * with a visible text label — the icon is never the whole name. */
+  type: (
+    <>
+      <path d="M4 7V4h16v3" />
+      <path d="M12 4v16" />
+      <path d="M9 20h6" />
+    </>
+  ),
+
+  lineSpacing: (
+    <>
+      <path d="M10 5h11" />
+      <path d="M10 12h11" />
+      <path d="M10 19h11" />
+      <path d="M5 4v16" />
+      <path d="m3 6 2-2 2 2" />
+      <path d="m3 18 2 2 2-2" />
+    </>
+  ),
+
+  letterSpacing: (
+    <>
+      <path d="m4 16 3.5-9L11 16" />
+      <path d="M5.2 13h5.6" />
+      <path d="m13 16 3.5-9L20 16" />
+      <path d="M14.2 13h5.6" />
+    </>
+  ),
+
+  maximize: (
+    <>
+      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+      <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+    </>
+  ),
+
+  /* Universal access mark: head, outstretched arms, body and legs. Used only
+   * by the accessibility controls, which always pair it with a text label or
+   * an aria-label — the glyph is never the whole accessible name. */
+  accessibility: (
+    <>
+      <circle cx="12" cy="4.7" r="1.9" />
+      <path d="M4.9 8.6c4.6 1.4 9.6 1.4 14.2 0" />
+      <path d="M12 8.4v6.2" />
+      <path d="m12 14.6-3.2 6.1M12 14.6l3.2 6.1" />
     </>
   ),
 

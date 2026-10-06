@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router"
 
 import Icon, { type IconName } from "../icons"
 
+import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
 import logoImg from "../../../images/main_photo.jpg"
 import { useContent } from "../../content/useContent"
 
@@ -147,11 +148,7 @@ export default function SideNav({
 
   const brand = (
     <Link to="/" className="flex items-center gap-2.5">
-      <img
-        src={logoSrc}
-        alt={brandName}
-        className="w-8 h-8 rounded-lg object-cover"
-      />
+      <img src={logoSrc} alt="" className="w-8 h-8 rounded-lg object-cover" />
       <span
         dir="ltr"
         className="font-display text-lg font-bold tracking-wide"
@@ -242,6 +239,11 @@ export default function SideNav({
           style={{ borderColor: "var(--color-border)" }}
         >
           {footer}
+          {/* The dashboard and admin shells have no public footer, so the way
+           * back to a hidden accessibility button lives here. */}
+          <div className="mt-3">
+            <AccessibilityFooterLink className="text-xs" />
+          </div>
         </div>
       </aside>
     </>

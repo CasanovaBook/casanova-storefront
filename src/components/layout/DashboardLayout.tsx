@@ -43,6 +43,9 @@ export default function DashboardLayout() {
       className="min-h-screen flex flex-col lg:flex-row"
       style={{ background: "var(--color-background)" }}
     >
+      <a href="#main" className="skip-link">
+        דלג לתוכן הראשי
+      </a>
       <SideNav
         items={navItems}
         secondaryItems={[
@@ -94,7 +97,7 @@ export default function DashboardLayout() {
 
       {/* Main content */}
       <div className="flex-1 min-w-0 lg:mr-60">
-        <main className="min-h-screen p-4 sm:p-6 lg:p-8">
+        <main id="main" className="min-h-screen p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

@@ -677,11 +677,20 @@ export function MaestroProductsPage() {
                   )}
                 </div>
 
-                {/* Info */}
+                {/* Info. The row is clickable for the mouse, but the product
+                 * name is a real button so the details panel is reachable
+                 * without a pointer. */}
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openDetail(p)}>
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold truncate" style={{ color: "var(--color-foreground)" }}>
-                      {p.name}
+                      <button
+                        type="button"
+                        onClick={() => openDetail(p)}
+                        className="truncate rounded transition-opacity hover:opacity-80"
+                        style={{ color: "inherit", font: "inherit" }}
+                      >
+                        {p.name}
+                      </button>
                     </h3>
                     {p.featured && (
                       <span className="rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ background: "rgba(227,174,60,0.12)", color: "var(--color-primary)" }}>
@@ -716,18 +725,22 @@ export function MaestroProductsPage() {
                   </div>
                 </div>
 
-                {/* Status badge */}
-                <span
-                  className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold cursor-pointer"
-                  style={{ background: statusColors.bg, color: statusColors.fg }}
+                {/* Status badge — a button, so the status can be changed from
+                 * the keyboard as well as by click. */}
+                <button
+                  type="button"
+                  className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
+                  style={{ background: statusColors.bg, color: statusColors.fg, border: 0, cursor: "pointer" }}
                   onClick={() => toggleStatus(p)}
+                  aria-label={`שינוי סטטוס של ${p.name}`}
                   title="לחץ לשינוי סטטוס"
                 >
                   {STATUS_LABEL[p.status ?? "DRAFT"] ?? p.status}
-                </span>
+                </button>
 
-                {/* Quick actions (visible on hover) */}
-                <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Quick actions. Revealed on hover *and* on keyboard focus —
+                 * hover-only controls are invisible to a keyboard user. */}
+                <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                   <button
                     onClick={() => toggleFeatured(p)}
                     className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
@@ -880,8 +893,13 @@ function DetailPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex" dir="rtl">
-      {/* Backdrop */}
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose} />
+      {/* Backdrop: decorative, dismissed with Escape or the close button. */}
+      <div
+        className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.5)" }}
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
       {/* Panel */}
       <div
@@ -899,7 +917,13 @@ function DetailPanel({
           <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: statusColors.bg, color: statusColors.fg }}>
             {STATUS_LABEL[draft.status ?? "DRAFT"] ?? draft.status}
           </span>
-          <button onClick={onClose} className="p-1.5 rounded-lg transition-colors hover:bg-white/5" style={{ color: "var(--color-muted-foreground)" }}>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
+            style={{ color: "var(--color-muted-foreground)" }}
+            aria-label="סגירת החלון"
+            title="סגירה"
+          >
             <Icon name="x" size={18} />
           </button>
         </div>

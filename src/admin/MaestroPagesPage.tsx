@@ -490,7 +490,12 @@ function PageEditor({
         <div className="mb-4 flex items-center gap-2 rounded-lg px-4 py-3 text-sm"
           style={{ background: "rgba(239,68,68,0.10)", color: "var(--color-danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
           <Icon name="alertTriangle" size={16} />{error}
-          <button onClick={onClearError} className="mr-auto" style={{ background: "none", border: "none", cursor: "pointer", color: "inherit" }}>
+          <button
+            onClick={onClearError}
+            className="mr-auto"
+            style={{ background: "none", border: "none", cursor: "pointer", color: "inherit" }}
+            aria-label="סגירת הודעת השגיאה"
+          >
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -660,7 +665,11 @@ function CategoryManager({
         <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--color-primary)" }}>
           <Icon name="tag" size={16} /> ניהול קטגוריות
         </h3>
-        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-muted-foreground)" }}>
+        <button
+          onClick={onClose}
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-muted-foreground)" }}
+          aria-label="סגירת ניהול הקטגוריות"
+        >
           <Icon name="x" size={16} />
         </button>
       </div>

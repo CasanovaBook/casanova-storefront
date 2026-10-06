@@ -390,10 +390,7 @@ function ListItemEditor({
         border: "1px solid var(--color-border)",
       }}
     >
-      <div
-        className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
-        onClick={() => setOpen(!open)}
-      >
+      <div className="flex items-center gap-2 px-3 py-2 select-none">
         <span
           className="text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
           style={{
@@ -403,16 +400,19 @@ function ListItemEditor({
         >
           {idx + 1}
         </span>
-        <span
-          className="text-xs font-medium truncate flex-1"
+        {/* The disclosure is a real button, so the section can be opened and
+         * closed from the keyboard; it can not be the whole row, because the
+         * row also holds the move and delete buttons. */}
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          className="text-xs font-medium truncate flex-1 text-right rounded transition-opacity hover:opacity-80"
           style={{ color: "var(--color-foreground)" }}
         >
           {title}
-        </span>
-        <div
-          className="flex items-center gap-0.5 flex-shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
+        </button>
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           <button
             onClick={() => onMove(-1)}
             disabled={idx === 0}
