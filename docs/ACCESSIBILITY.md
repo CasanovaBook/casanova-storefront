@@ -43,6 +43,8 @@ src/context/AccessibilityContext.tsx      state, validation, persistence, Alt+A
 src/components/accessibility/
   AccessibilityWidget.tsx                 the floating launcher + settings panel
   AccessibilityFooterLink.tsx             footer entry point / restore control
+  AccessibilityLauncherLogo.tsx           the launcher's logo (the button is
+                                          icon-only; its name is its label)
 src/index.css                             the [data-a11y-*] presentation rules
 src/components/icons.tsx                  the universal-access glyph
 src/App.tsx                               one mount point, above the router
@@ -189,12 +191,14 @@ AXE_PATH=.tmp/package/axe.min.js A11Y_ALL_SETTINGS=1 node scripts/audit-accessib
 ```
 
 `scripts/` holds the canonical versions of both CDP scripts; `.tmp/` holds
-older working copies. **Runtime behaviour — 41/41 checks pass** on the
+older working copies. **Runtime behaviour — 42/42 checks pass** on the
 production build: one launcher and no legacy markup; accessible name,
 `aria-expanded`, `aria-controls`, `aria-haspopup`, floating 52px circular
-launcher; Enter opens the panel; dialog semantics with a resolvable name; focus
-moves into the panel; Tab cycles inside it; a font-size step (A+ / A−) changes
-the root font size; a toggle tile updates `aria-pressed`, the `<html>` attribute
+launcher whose logo is the whole face of the button — rendered at full size,
+centred, decorative, with no second visible copy of the name; Enter opens the
+panel; dialog semantics with a resolvable name; focus moves into the panel; Tab
+cycles inside it; a font-size step (A+ / A−) changes the root font size; a toggle
+tile updates `aria-pressed`, the `<html>` attribute
 and storage; the legacy v1 key is gone; Escape closes and returns focus to the
 launcher; hiding keeps every setting, persists, appears in the footer and
 receives focus; `Alt+A` restores; preferences survive a reload; reset returns to

@@ -14,6 +14,7 @@ import {
   type AccessibilityToggle,
 } from "../../context/AccessibilityContext"
 import Icon, { type IconName } from "../icons"
+import AccessibilityLauncherLogo from "./AccessibilityLauncherLogo"
 
 /**
  * The single accessibility interface for the site.
@@ -348,8 +349,12 @@ export default function AccessibilityWidget() {
             else openPanel(event.currentTarget)
           }}
         >
-          <Icon name="accessibility" size={18} />
-          <span>נגישות</span>
+          {/* The launcher's logo, and nothing else: the button is a 52px
+           * circle, so the accessible name it already carries (`aria-label`)
+           * is what identifies it, and the glyph is the visual. Sized in rem
+           * so it keeps its proportion to the button when the root font size
+           * grows. */}
+          <AccessibilityLauncherLogo className="h-10 w-10" />
         </button>
       )}
 

@@ -198,16 +198,43 @@ async function main() {
           haspopup: el.getAttribute('aria-haspopup'),
           rect: { top: rect.top, left: rect.left, bottom: rect.bottom, height: rect.height },
           vh: window.innerHeight,
+          logo: (() => {
+            const svg = el.querySelector('svg')
+            if (!svg) return null
+            const box = svg.getBoundingClientRect()
+            return {
+              width: box.width,
+              height: box.height,
+              hidden: svg.getAttribute('aria-hidden') === 'true',
+              leftGap: box.left - rect.left,
+              rightGap: rect.right - box.right,
+            }
+          })(),
         }
       })()
     `)
     check(
-      "launcher is a real button with a text label",
-      launcher.tag === "BUTTON" && launcher.text.includes("נגישות"),
+      "launcher is a real button with an accessible name",
+      launcher.tag === "BUTTON" && launcher.name.includes("נגישות"),
     )
     check(
-      "launcher has an accessible name that starts with its visible text",
-      launcher.name.includes("נגישות"),
+      "launcher keeps its collapsed label as the accessible name",
+      launcher.name === "נגישות — פתיחת התפריט",
+      launcher.name,
+    )
+    /* The launcher is an icon-only 52px circle, so the logo is its whole face:
+     * it must render at a usable size, be centred, and stay decorative because
+     * the accessible name above is what identifies the button. */
+    check(
+      "launcher renders the logo, centred, at full size and decorative",
+      launcher.logo !== null &&
+        launcher.logo.hidden === true &&
+        launcher.text === "" &&
+        launcher.logo.width >= 32 &&
+        launcher.logo.height >= 32 &&
+        launcher.logo.width <= launcher.rect.height &&
+        Math.abs(launcher.logo.leftGap - launcher.logo.rightGap) < 1,
+      JSON.stringify({ logo: launcher.logo, text: launcher.text }),
     )
     check(
       "launcher exposes collapsed state and panel relationship",
