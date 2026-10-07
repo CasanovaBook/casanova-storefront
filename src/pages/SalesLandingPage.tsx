@@ -23,7 +23,7 @@ import { useApp } from "../context/AppContext"
 
 import { useCms } from "../context/CmsContext"
 
-import { useContent } from "../content/useContent"
+import { fmt, useContent } from "../content/useContent"
 
 import type { Product } from "../types"
 
@@ -259,7 +259,7 @@ function HeroSection({ product, c }: { product: Product, c: ReturnType<typeof us
 
   return (
     <section
-      className="hero-shell relative flex items-center overflow-hidden"
+      className="hero-shell hero-shell-tight relative flex items-center overflow-hidden"
       style={{
         background:
           "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(227,174,60,0.14), transparent), linear-gradient(135deg, #0B0D16 0%, #1A0E14 50%, #0B0D16 100%)",
@@ -283,7 +283,7 @@ function HeroSection({ product, c }: { product: Product, c: ReturnType<typeof us
         style={{ background: "var(--color-primary)", opacity: 0.08 }}
       />
 
-      <div className="relative max-w-6xl mx-auto px-6 py-32 grid md:grid-cols-2 gap-16 items-center">
+      <div className="relative max-w-6xl mx-auto px-6 py-24 md:py-28 grid md:grid-cols-2 gap-16 items-center">
         <div className="page-enter">
           <div
             className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full border text-xs font-bold tracking-wide"
@@ -478,7 +478,7 @@ function AgitationSection({ c }: { c: ReturnType<typeof useContent> }) {
   if (!title && !content) return null
 
   return (
-    <section className="max-w-3xl mx-auto px-6 py-20 md:py-28">
+    <section className="max-w-3xl mx-auto px-6 py-16 md:py-20">
       <SectionHeading title={title} />
       {content && (
         <div
@@ -507,7 +507,7 @@ function MechanismSection({ c }: { c: ReturnType<typeof useContent> }) {
 
   return (
     <section
-      className="border-y py-20 md:py-28"
+      className="border-y py-16 md:py-20"
       style={{
         borderColor: "var(--color-border)",
         background: "var(--color-card)",
@@ -563,7 +563,7 @@ function FeaturesSection({ c }: { c: ReturnType<typeof useContent> }) {
   if (!title && items.length === 0) return null
 
   return (
-    <section className="max-w-6xl mx-auto px-6 py-20 md:py-28">
+    <section className="max-w-6xl mx-auto px-6 py-16 md:py-20">
       <SectionHeading title={title} />
       {items.length > 0 && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -606,7 +606,7 @@ function AudienceSection({ c }: { c: ReturnType<typeof useContent> }) {
   if (!title && yes.length === 0 && no.length === 0) return null
 
   return (
-    <section className="max-w-5xl mx-auto px-6 py-20 md:py-28">
+    <section className="max-w-5xl mx-auto px-6 py-16 md:py-20">
       <SectionHeading title={title} />
       <div className="grid md:grid-cols-2 gap-6">
         {yes.length > 0 && (
@@ -679,7 +679,7 @@ function BrandSection({ c }: { c: ReturnType<typeof useContent> }) {
 
   return (
     <section
-      className="border-y py-20 md:py-28"
+      className="border-y py-16 md:py-20"
       style={{
         borderColor: "var(--color-border)",
         background: "var(--color-card)",
@@ -717,7 +717,7 @@ function SocialSection({ c }: { c: ReturnType<typeof useContent> }) {
   if (!title && testimonials.length === 0) return null
 
   return (
-    <section className="max-w-6xl mx-auto px-6 py-20 md:py-28">
+    <section className="max-w-6xl mx-auto px-6 py-16 md:py-20">
       <SectionHeading title={title} blurb={content} />
       <div className="grid md:grid-cols-3 gap-6">
         {testimonials.map((t) => (
@@ -794,7 +794,7 @@ function OfferSection({ product, c }: { product: Product, c: ReturnType<typeof u
 
   return (
     <section
-      className="py-20 md:py-28 relative overflow-hidden"
+      className="py-16 md:py-20 relative overflow-hidden"
       style={{
         background:
           "radial-gradient(ellipse 60% 80% at 50% 120%, rgba(212,160,48,0.15), transparent), var(--color-card)",
@@ -902,7 +902,7 @@ function FaqSection({ c }: { c: ReturnType<typeof useContent> }) {
 
   return (
     <section
-      className="border-t py-20 md:py-28"
+      className="border-t py-16 md:py-20"
       style={{ borderColor: "var(--color-border)" }}
     >
       <div className="max-w-3xl mx-auto px-6">
@@ -969,7 +969,7 @@ function FinalCtaSection({ product, c }: { product: Product, c: ReturnType<typeo
 
   return (
     <section
-      className="py-24 md:py-32 text-center relative overflow-hidden"
+      className="py-20 md:py-28 text-center relative overflow-hidden"
       style={{
         background:
           "radial-gradient(ellipse 60% 80% at 50% 120%, rgba(212,160,48,0.18), transparent), linear-gradient(180deg, var(--color-background) 0%, #1A0E14 100%)",
@@ -1276,7 +1276,7 @@ export default function SalesLandingPage() {
             />
             {brand}
           </span>
-          <p>{c("sales.footer.copyright") || `© ${new Date().getFullYear()} Casanova. כל הזכויות שמורות.`}</p>
+          <p>{fmt(c("sales.footer.copyright") || `© ${new Date().getFullYear()} Casanova. כל הזכויות שמורות.`, { year: new Date().getFullYear() })}</p>
           <a
             href="https://www.phantomthirdlabs.com/"
             target="_blank"

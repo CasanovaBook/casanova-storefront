@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Outlet, Link, useLocation, useNavigate } from "react-router"
 import { useApp } from "../../context/AppContext"
 import { useCms } from "../../context/CmsContext"
-import { useContent } from "../../content/useContent"
+import { fmt, useContent } from "../../content/useContent"
 import Icon from "../icons"
 import ThemeToggle from "../ThemeToggle"
 import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
@@ -116,7 +116,12 @@ export default function PublicRoot() {
 
   // Editable footer text
   const footerTagline = c("global.footerTagline") || "כל הספרים שלכם, במקום אחד."
-  const footerCopyright = c("global.footerCopyright") || `© ${new Date().getFullYear()} Casanova. כל הזכויות שמורות.`
+  // The editable string may carry a {year} placeholder (the registry default
+  // does); fill it in at render so the year is always the current one.
+  const footerCopyright = fmt(
+    c("global.footerCopyright") || `© ${new Date().getFullYear()} Casanova. כל הזכויות שמורות.`,
+    { year: new Date().getFullYear() },
+  )
 
   return (
     <div

@@ -187,6 +187,14 @@ body {
   min-height: min(100svh, 50rem);
 }
 
+/* The sales-letter hero carries a shorter floor: on narrow screens the
+ * original 50rem minimum padded the centred content back out to a full
+ * screen, so tightening its own padding changed nothing. The next section
+ * may now hint above the fold without shrinking the hero's content. */
+.hero-shell-tight {
+  min-height: min(88svh, 44rem);
+}
+
 .font-display { font-family: var(--font-display); }
 .font-mono    { font-family: var(--font-mono); }
 
