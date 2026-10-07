@@ -154,9 +154,10 @@ body {
  * a section whose *only* container was the measure, so the entire
  * band — background included — shrank together with the text.
  *
- * Section rhythm (`py-20 md:py-28`) is deliberately NOT viewport
- * scaled: vertical breathing room belongs to the content, and tying
- * it to `vw` is how a page ends up with 300px gaps on a 4K display.
+ * Section rhythm (`py-14 md:py-16` on the sales letter's bands) is
+ * deliberately NOT viewport scaled: vertical breathing room belongs to
+ * the content, and tying it to `vw` is how a page ends up with 300px
+ * gaps on a 4K display.
  * ───────────────────────────────────────────────────────────── */
 
 /*
@@ -190,9 +191,14 @@ body {
 /* The sales-letter hero carries a shorter floor: on narrow screens the
  * original 50rem minimum padded the centred content back out to a full
  * screen, so tightening its own padding changed nothing. The next section
- * may now hint above the fold without shrinking the hero's content. */
+ * may now hint above the fold without shrinking the hero's content.
+ *
+ * The floor is inert on a phone and on a laptop, where the hero's own
+ * content is already taller than it; it only decides how much empty
+ * gradient a tall display adds beneath that content, which is why the
+ * ceiling is the value that moves with the page's tightened rhythm. */
 .hero-shell-tight {
-  min-height: min(88svh, 44rem);
+  min-height: min(84svh, 40rem);
 }
 
 .font-display { font-family: var(--font-display); }

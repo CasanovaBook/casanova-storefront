@@ -211,7 +211,7 @@ function SectionHeading({ title, blurb }: { title?: string, blurb?: string }) {
   if (!title?.trim()) return null
 
   return (
-    <div className="mb-10 md:mb-14">
+    <div className="mb-8 md:mb-12">
       <GoldRule />
       <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold leading-tight whitespace-pre-line">
         {title}
@@ -283,7 +283,7 @@ function HeroSection({ product, c }: { product: Product, c: ReturnType<typeof us
         style={{ background: "var(--color-primary)", opacity: 0.08 }}
       />
 
-      <div className="relative max-w-6xl mx-auto px-6 py-24 md:py-28 grid md:grid-cols-2 gap-16 items-center">
+      <div className="relative max-w-6xl mx-auto px-6 py-20 md:py-24 grid md:grid-cols-2 gap-16 items-center">
         <div className="page-enter">
           <div
             className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full border text-xs font-bold tracking-wide"
@@ -432,7 +432,7 @@ function ProofStrip({ c }: { c: ReturnType<typeof useContent> }) {
         background: "var(--color-card)",
       }}
     >
-      <div className="max-w-6xl mx-auto px-6 py-8 text-center">
+      <div className="max-w-6xl mx-auto px-6 py-6 text-center">
         {title && (
           <p className="text-lg md:text-xl font-display font-bold mb-2">
             {title}
@@ -478,7 +478,7 @@ function AgitationSection({ c }: { c: ReturnType<typeof useContent> }) {
   if (!title && !content) return null
 
   return (
-    <section className="max-w-3xl mx-auto px-6 py-16 md:py-20">
+    <section className="max-w-3xl mx-auto px-6 py-14 md:py-16">
       <SectionHeading title={title} />
       {content && (
         <div
@@ -507,7 +507,7 @@ function MechanismSection({ c }: { c: ReturnType<typeof useContent> }) {
 
   return (
     <section
-      className="border-y py-16 md:py-20"
+      className="border-y py-14 md:py-16"
       style={{
         borderColor: "var(--color-border)",
         background: "var(--color-card)",
@@ -563,7 +563,7 @@ function FeaturesSection({ c }: { c: ReturnType<typeof useContent> }) {
   if (!title && items.length === 0) return null
 
   return (
-    <section className="max-w-6xl mx-auto px-6 py-16 md:py-20">
+    <section className="max-w-6xl mx-auto px-6 py-14 md:py-16">
       <SectionHeading title={title} />
       {items.length > 0 && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -606,7 +606,7 @@ function AudienceSection({ c }: { c: ReturnType<typeof useContent> }) {
   if (!title && yes.length === 0 && no.length === 0) return null
 
   return (
-    <section className="max-w-5xl mx-auto px-6 py-16 md:py-20">
+    <section className="max-w-5xl mx-auto px-6 py-14 md:py-16">
       <SectionHeading title={title} />
       <div className="grid md:grid-cols-2 gap-6">
         {yes.length > 0 && (
@@ -679,7 +679,7 @@ function BrandSection({ c }: { c: ReturnType<typeof useContent> }) {
 
   return (
     <section
-      className="border-y py-16 md:py-20"
+      className="border-y py-14 md:py-16"
       style={{
         borderColor: "var(--color-border)",
         background: "var(--color-card)",
@@ -717,7 +717,7 @@ function SocialSection({ c }: { c: ReturnType<typeof useContent> }) {
   if (!title && testimonials.length === 0) return null
 
   return (
-    <section className="max-w-6xl mx-auto px-6 py-16 md:py-20">
+    <section className="max-w-6xl mx-auto px-6 py-14 md:py-16">
       <SectionHeading title={title} blurb={content} />
       <div className="grid md:grid-cols-3 gap-6">
         {testimonials.map((t) => (
@@ -794,7 +794,7 @@ function OfferSection({ product, c }: { product: Product, c: ReturnType<typeof u
 
   return (
     <section
-      className="py-16 md:py-20 relative overflow-hidden"
+      className="py-14 md:py-16 relative overflow-hidden"
       style={{
         background:
           "radial-gradient(ellipse 60% 80% at 50% 120%, rgba(212,160,48,0.15), transparent), var(--color-card)",
@@ -833,7 +833,7 @@ function OfferSection({ product, c }: { product: Product, c: ReturnType<typeof u
           {c("sales.offer.cta") || "לקחת את הספר עכשיו"} — ₪{nowPrice}
         </button>
         <p
-          className="text-sm mb-10"
+          className="text-sm mb-8"
           style={{ color: "var(--color-muted-foreground)" }}
         >
           {c("sales.offer.subtext") || "תשלום מאובטח · הורדה מיידית · אפשר לקרוא הערב"}
@@ -902,7 +902,7 @@ function FaqSection({ c }: { c: ReturnType<typeof useContent> }) {
 
   return (
     <section
-      className="border-t py-16 md:py-20"
+      className="border-t py-14 md:py-16"
       style={{ borderColor: "var(--color-border)" }}
     >
       <div className="max-w-3xl mx-auto px-6">
@@ -969,7 +969,7 @@ function FinalCtaSection({ product, c }: { product: Product, c: ReturnType<typeo
 
   return (
     <section
-      className="py-20 md:py-28 text-center relative overflow-hidden"
+      className="py-16 md:py-20 text-center relative overflow-hidden"
       style={{
         background:
           "radial-gradient(ellipse 60% 80% at 50% 120%, rgba(212,160,48,0.18), transparent), linear-gradient(180deg, var(--color-background) 0%, #1A0E14 100%)",
