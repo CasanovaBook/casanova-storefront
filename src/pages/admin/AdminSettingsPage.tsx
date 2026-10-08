@@ -554,7 +554,7 @@ export default function AdminSettingsPage() {
               <input
                 className={inputClass}
                 style={inputStyle}
-                placeholder="רכישה עכשיו — 89 ₪"
+                placeholder="רכישה עכשיו — {price} ₪"
                 value={form.sales_sticky_cta}
                 onChange={(e) =>
                   setForm({ ...form, sales_sticky_cta: e.target.value })

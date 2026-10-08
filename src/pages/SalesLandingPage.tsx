@@ -166,7 +166,6 @@ function useSalesProduct(): Product {
   if (!real) return BUNDLED_PRODUCT
 
   /* A real catalogue row is authoritative: its price and sale price are what
-   * the storefront and checkout charge, and forcing the bundled ₪99 → ₪89 on
    * top of them made this page advertise a price the database did not hold.
    * The bundled values below fill only fields the row leaves empty, and only
    * for display — never a price. */
@@ -885,16 +884,19 @@ function OfferSection({ product, c }: { product: Product, c: ReturnType<typeof u
 
 /* ── FAQ (K) ───────────────────────────────────────────── */
 
-function FaqSection({ c }: { c: ReturnType<typeof useContent> }) {
+function FaqSection({ product, c }: { product: Product, c: ReturnType<typeof useContent> }) {
   const section = useSalesSlot("FAQ")
   const title = c("sales.faq.title") || section?.title || ""
 
-  // Read FAQs from content store first, fall back to CMS/bundled
+  // Read FAQs from content store first, fall back to CMS/bundled. A {price}
+  // token left in an editable question is filled from the authoritative
+  // product price — the same effectivePrice the storefront and checkout use.
+  const priceVars = { price: effectivePrice(product) }
   const regFaqs = c.list<{ question: string; answer: string }>("sales.faq.items")
   const cmsFaqs = useSalesFaqs()
   const faqs = regFaqs.length > 0
-    ? regFaqs.map((f, i) => ({ faq_id: String(i), question: f.question, answer: f.answer, active: true, display_order: i }))
-    : cmsFaqs
+    ? regFaqs.map((f, i) => ({ faq_id: String(i), question: fmt(f.question, priceVars), answer: fmt(f.answer, priceVars), active: true, display_order: i }))
+    : cmsFaqs.map((f) => ({ ...f, question: fmt(f.question, priceVars), answer: fmt(f.answer ?? "", priceVars) }))
 
   const [open, setOpen] = useState<number | null>(null)
 
@@ -959,7 +961,7 @@ function FinalCtaSection({ product, c }: { product: Product, c: ReturnType<typeo
 
   const section = useSalesSlot("FINAL_CTA")
   const title = c("sales.final.title") || section?.title || ""
-  const content = c("sales.final.content") || section?.content || ""
+  const content = fmt(c("sales.final.content") || section?.content || "", { price: effectivePrice(product) })
 
   const handleBuy = () => {
     selectProduct(product, setSelectedProduct)
@@ -1050,7 +1052,7 @@ function StickyCta({ product, c }: { product: Product, c: ReturnType<typeof useC
           onClick={handleBuy}
           className="btn-gradient px-6 py-3 rounded-full font-bold text-sm flex-shrink-0"
         >
-          {c("sales.stickyCta") || settings.sticky_cta}
+          {fmt(c("sales.stickyCta") || settings.sticky_cta, { price: effectivePrice(product) })}
         </button>
       </div>
     </div>
@@ -1156,7 +1158,7 @@ function ExitPopup({ product, c }: { product: Product, c: ReturnType<typeof useC
           className="text-base mb-6"
           style={{ color: "var(--color-muted-foreground)" }}
         >
-          {c("sales.exit.body") || settings.exit_body}
+          {fmt(c("sales.exit.body") || settings.exit_body, { price: effectivePrice(product) })}
         </p>
         <button
           onClick={handleBuy}
@@ -1253,7 +1255,7 @@ export default function SalesLandingPage() {
         <BrandSection c={c} />
         <SocialSection c={c} />
         <OfferSection product={product} c={c} />
-        <FaqSection c={c} />
+        <FaqSection product={product} c={c} />
         <FinalCtaSection product={product} c={c} />
       </main>
 

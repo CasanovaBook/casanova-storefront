@@ -179,7 +179,7 @@ text("sales", "header.login", "הדר — כפתור התחברות", "לאזו�
 text("sales", "footer.copyright", "פוטר — זכויות יוצרים", "© {year} Casanova. כל הזכויות שמורות.");
 text("sales", "footer.powered", "פוטר — קרדיט", "Powered by Phantom Third Labs");
 text("sales", "exit.dismiss", "פופאפ יציאה — כפתור ביטול", "לא, תודה");
-text("sales", "stickyCta", "סרגל נייד — כפתור", "קנייה");
+text("sales", "stickyCta", "סרגל נייד — כפתור", "קנייה", "החלק {price} מוחלף אוטומטית במחיר המוצר העדכני.");
 
 // ── sales: proof strip (B) ──────────────────────────────────────────────────
 rich("sales", "proof.title", "Proof — כותרת", 'לא עוד "תחזיק יותר זמן".');
@@ -260,16 +260,16 @@ list("sales", "faq.items", "FAQ — שאלות ותשובות", [
   { question: "צריך ניסיון קודם?", answer: "לא. צריך רצון להפסיק לנחש." },
   { question: "זה גס / משפיל?", answer: "לא. זה ישיר. יש הבדל." },
   { question: "דיגיטלי או מודפס?", answer: "ספר דיגיטלי — גישה מיידית אחרי הרכישה." },
-  { question: "למה 89 ולא חינם באינטרנט?", answer: "כי באינטרנט יש רעש. כאן יש סדר פעולות." },
-], [{ key: "question", label: "שאלה", type: "text" }, { key: "answer", label: "תשובה", type: "textarea" }], "question");
+  { question: "למה {price} ולא חינם באינטרנט?", answer: "כי באינטרנט יש רעש. כאן יש סדר פעולות." },
+], [{ key: "question", label: "שאלה", type: "text" }, { key: "answer", label: "תשובה", type: "textarea" }], "question", "החלק {price} מוחלף אוטומטית במחיר המוצר העדכני.");
 
 // ── sales: final CTA (L) ────────────────────────────────────────────────────
 rich("sales", "final.title", "CTA סופי — כותרת", "הלילה הזה יכול להיות כמו תמיד.\nאו שהוא יכול להיות הלילה שבו היא הבינה שאתה לא כמו השאר.");
-area("sales", "final.content", "CTA סופי — טקסט", "Casanova · היא קודם · 89 ₪");
+area("sales", "final.content", "CTA סופי — טקסט", "Casanova · היא קודם · {price} ₪", "החלק {price} מוחלף אוטומטית במחיר המוצר העדכני.");
 
 // ── sales: exit popup ───────────────────────────────────────────────────────
 text("sales", "exit.title", "פופאפ יציאה — כותרת", "רגע.");
-area("sales", "exit.body", "פופאפ יציאה — טקסט", "89 ₪ ואתה יודע מה לעשות הלילה.");
+area("sales", "exit.body", "פופאפ יציאה — טקסט", "{price} ₪ ואתה יודע מה לעשות הלילה.", "החלק {price} מוחלף אוטומטית במחיר המוצר העדכני.");
 text("sales", "exit.cta", "פופאפ יציאה — כפתור", "כן, אני לוקח");
 
 seo("sales", "Casanova · היא קודם — המדריך לגבר", "המדריך הפרקטי לגבר שרוצה לדעת מה באמת קורה בגוף שלה, איך להוביל בלי למהר, ואיך לגרום לה לבקש עוד.");

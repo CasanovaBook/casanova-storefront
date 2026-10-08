@@ -29,6 +29,18 @@ import { uid, nowIso } from "./db"
 
 const at = nowIso()
 
+/**
+ * Offline launch offer — the price `BUNDLED_PRODUCT` carries when there is
+ * no hosted catalogue row to read from (a no-Supabase install). On a
+ * Supabase-configured site the live `hya-kvdm` row wins and every marketing
+ * price is resolved through the `{price}` token → `effectivePrice(product)`,
+ * so these two numbers are the last-resort fallback default, NOT a second
+ * marketing source. Kept in one place so they can never drift apart from
+ * each other again.
+ */
+const LAUNCH_PRICE = 99
+const LAUNCH_SALE_PRICE = 59
+
 /** The bundled product — used as the offer's source of truth when the
  *  catalogue is empty, and as a safety net when the real product is
  *  missing visual fields (cover image, short description). */
@@ -42,9 +54,9 @@ export const BUNDLED_PRODUCT: Product = {
 
   product_type: "EBOOK",
 
-  price: 99,
+  price: LAUNCH_PRICE,
 
-  sale_price: 89,
+  sale_price: LAUNCH_SALE_PRICE,
 
   currency: "ILS",
 
@@ -367,7 +379,7 @@ export const SALES_DEFAULTS: Record<SalesSlot, CmsSection> = {
     title:
       "הלילה הזה יכול להיות כמו תמיד.\nאו שהוא יכול להיות הלילה שבו היא הבינה שאתה לא כמו השאר.",
 
-    content: "Casanova · היא קודם · 89 ₪",
+    content: "Casanova · היא קודם · {price} ₪",
 
     active: true,
 
@@ -431,7 +443,7 @@ export const SALES_FAQ_DEFAULTS: FaqItem[] = [
   {
     faq_id: uid("faq"),
 
-    question: "למה 89 ולא חינם באינטרנט?",
+    question: "למה {price} ולא חינם באינטרנט?",
 
     answer: "כי באינטרנט יש רעש. כאן יש סדר פעולות.",
 
@@ -496,11 +508,11 @@ export const SALES_TESTIMONIAL_DEFAULTS: Testimonial[] = [
 /** Bundled conversion copy — used as fallback when settings fields are empty. */
 
 export const SALES_SETTINGS_DEFAULTS = {
-  sales_sticky_cta: "לקחת את הספר · 89 ₪",
+  sales_sticky_cta: "לקחת את הספר · {price} ₪",
 
   sales_exit_title: "רגע.",
 
-  sales_exit_body: "89 ₪ ואתה יודע מה לעשות הלילה.",
+  sales_exit_body: "{price} ₪ ואתה יודע מה לעשות הלילה.",
 
   sales_exit_cta: "כן, אני לוקח",
 }
