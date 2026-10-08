@@ -315,11 +315,11 @@ export default function SetupPasswordPage() {
             >
               סיסמה חדשה
             </label>
-            <div className="relative">
+            <div dir="ltr" className="relative">
               <input
                 id="setup-password-new"
                 type={showPassword ? "text" : "password"}
-                className="w-full px-4 py-3 pl-10 rounded-lg border text-sm outline-none"
+                className="w-full px-4 py-3 rounded-lg border text-sm outline-none pe-14"
                 dir="ltr"
                 style={inputStyle}
                 value={password}
@@ -331,7 +331,7 @@ export default function SetupPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="tap-target absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
+                className="tap-target absolute end-3 top-1/2 transform -translate-y-1/2 inline-flex items-center justify-center transition-colors hover:opacity-100"
                 style={{
                   color: showPassword
                     ? "#FFFFFF"
@@ -374,11 +374,11 @@ export default function SetupPasswordPage() {
             >
               אימות סיסמה
             </label>
-            <div className="relative">
+            <div dir="ltr" className="relative">
               <input
                 id="setup-password-confirm"
                 type={showConfirmPassword ? "text" : "password"}
-                className="w-full px-4 py-3 pl-10 rounded-lg border text-sm outline-none"
+                className="w-full px-4 py-3 rounded-lg border text-sm outline-none pe-14"
                 dir="ltr"
                 style={inputStyle}
                 value={confirm}
@@ -390,7 +390,7 @@ export default function SetupPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="tap-target absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
+                className="tap-target absolute end-3 top-1/2 transform -translate-y-1/2 inline-flex items-center justify-center transition-colors hover:opacity-100"
                 style={{
                   color: showConfirmPassword
                     ? "#FFFFFF"

@@ -416,14 +416,19 @@ export default function LoginPage() {
                 </Link>
               )}
             </div>
-            <div className="relative">
+            {/* The password value is entered as LTR text, so the whole field
+             * (input + trailing visibility toggle) is laid out LTR. Keeping the
+             * wrapper dir="ltr" lets the input's `pe-*` reserve and the button's
+             * `end-*` inset resolve to the same physical side, so the toggle can
+             * never drift onto the text even if the surrounding page is RTL. */}
+            <div dir="ltr" className="relative">
               <input
                 id="auth-password"
                 type={showPassword ? "text" : "password"}
                 dir="ltr"
                 aria-describedby={passwordDescribedBy}
                 aria-invalid={hebrewWarning ? true : undefined}
-                className={inputClass + " text-left pl-10"}
+                className={inputClass + " text-left pe-14"}
                 style={inputStyle}
                 value={password}
                 onChange={handlePasswordChange}
@@ -438,7 +443,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="tap-target absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
+                className="tap-target absolute end-3 top-1/2 transform -translate-y-1/2 inline-flex items-center justify-center transition-colors hover:opacity-100"
                 style={{
                   color: showPassword
                     ? "#FFFFFF"

@@ -248,7 +248,7 @@ export default function SetupPage() {
                   {label}
                 </label>
                 {type === "password" ? (
-                  <div className="relative">
+                  <div dir="ltr" className="relative">
                     <input
                       id={`setup-field-${key}`}
                       type={
@@ -265,7 +265,7 @@ export default function SetupPage() {
                       dir="ltr"
                       className={
                         inputClass +
-                        " pl-10 " +
+                        " pe-14 " +
                         "text-left"
                       }
                       style={inputStyle}
@@ -282,7 +282,7 @@ export default function SetupPage() {
                           setShowConfirmPassword(!showConfirmPassword)
                         }
                       }}
-                      className="tap-target absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors p-1 hover:opacity-100"
+                      className="tap-target absolute end-3 top-1/2 transform -translate-y-1/2 inline-flex items-center justify-center transition-colors hover:opacity-100"
                       style={{
                         color: (
                           key === "password"
