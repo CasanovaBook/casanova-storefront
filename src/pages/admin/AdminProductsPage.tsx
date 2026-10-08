@@ -14,7 +14,7 @@
  * shows an empty state when it is empty.
  * ───────────────────────────────────────────────────────────── */
 
-import { useMemo, useRef, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useCms } from "../../context/CmsContext"
 import { useAdmin } from "../../context/AdminContext"
 import { can } from "../../lib/permissions"
@@ -22,6 +22,8 @@ import { readAssetFile, type Result } from "../../lib/api"
 import {
   createContentUploadUrl,
   uploadBookFile,
+  fetchContentStatus,
+  type ContentStatus,
 } from "../../lib/content-storage"
 import { isSupabaseConfigured } from "../../lib/supabase"
 import { isUuid } from "../../lib/supabase-entitlements"
@@ -104,6 +106,111 @@ function StatusBadge({ status }: { status: ProductStatus }) {
       style={{ background: s.bg, color: s.color }}
     >
       {STATUS_LABEL[status] ?? status}
+    </span>
+  )
+}
+
+/** A product delivers a file unless it is a purely physical good. */
+const needsDigitalContent = (p: Product) => p.product_type !== "PHYSICAL_PRODUCT"
+
+type ContentTone = "available" | "recorded" | "linked" | "missing" | "unverified" | "na"
+
+interface ContentView {
+  tone: ContentTone
+  label: string
+  hint: string
+  icon: IconName
+}
+
+/**
+ * Resolve the digital-content state from ONE source of truth.
+ *
+ * A verified check (the object really exists in the private `books` bucket,
+ * the same place the Reader signs its URL from) is authoritative. When that
+ * check has not run (no Supabase, function not deployed, product id not a
+ * uuid) we fall back to the row's own recorded pointer — and when even that
+ * is absent we report "unverified" rather than the old, misleading
+ * "not uploaded", because a book added to Storage by path convention has no
+ * pointer on the row yet is fully readable.
+ */
+function resolveContent(
+  product: Product,
+  status: ContentStatus | undefined,
+): ContentView {
+  if (!needsDigitalContent(product)) {
+    return { tone: "na", label: "—", hint: "מוצר פיזי — ללא קובץ דיגיטלי", icon: "box" }
+  }
+  if (status?.state === "available") {
+    const mb =
+      typeof status.sizeBytes === "number"
+        ? ` · ${(status.sizeBytes / 1_048_576).toFixed(1)} MB`
+        : ""
+    return {
+      tone: "available",
+      label: "זמין",
+      hint: `הקובץ מאוחסן ונגיש לקוראים${mb}`,
+      icon: "bookOpen",
+    }
+  }
+  if (status?.state === "missing") {
+    return {
+      tone: "missing",
+      label: "לא הועלה",
+      hint: "לא נמצא קובץ בסל האחסון עבור מוצר זה",
+      icon: "alertTriangle",
+    }
+  }
+  // Not verified — fall back to the recorded pointer.
+  if (product.storage_path || product.content_file) {
+    return {
+      tone: "recorded",
+      label: "מאוחסן",
+      hint: "מצביע לקובץ בסל האחסון הפרטי",
+      icon: "bookOpen",
+    }
+  }
+  if (product.content_url) {
+    return {
+      tone: "linked",
+      label: "מקושר",
+      hint: product.content_url,
+      icon: "link",
+    }
+  }
+  return {
+    tone: "unverified",
+    label: "לא אומת",
+    hint: "לא ניתן לאמת את קיום הקובץ כעת — ייתכן שהתוכן קיים ב־Storage",
+    icon: "alertTriangle",
+  }
+}
+
+const CONTENT_TONE: Record<ContentTone, { bg: string; color: string }> = {
+  available: { bg: "rgba(34,197,94,0.12)", color: "var(--color-success)" },
+  recorded: { bg: "rgba(34,197,94,0.08)", color: "var(--color-success)" },
+  linked: { bg: "rgba(59,130,246,0.12)", color: "#3B82F6" },
+  missing: { bg: "rgba(239,68,68,0.1)", color: "var(--color-danger)" },
+  unverified: { bg: "rgba(148,163,184,0.14)", color: "var(--color-muted-foreground)" },
+  na: { bg: "transparent", color: "var(--color-muted-foreground)" },
+}
+
+function ContentStatusPill({
+  product,
+  status,
+}: {
+  product: Product
+  status: ContentStatus | undefined
+}) {
+  const view = resolveContent(product, status)
+  const tone = CONTENT_TONE[view.tone]
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full whitespace-nowrap"
+      style={{ background: tone.bg, color: tone.color }}
+      title={view.hint}
+    >
+      {view.tone !== "na" && <Icon name={view.icon} size={12} />}
+      {view.label}
     </span>
   )
 }
@@ -1548,6 +1655,43 @@ export default function AdminProductsPage() {
   const [typeFilter, setTypeFilter] = useState<"ALL" | ProductType>("ALL")
   const [notice, setNotice] = useState("")
 
+  /* Verified digital-content availability, keyed by product id. The truth is
+   * the object in the private Storage bucket (what the Reader actually serves),
+   * not a URL/flag on the row — so we ask the admin status function rather
+   * than trust a field the storefront never uses. */
+  const [contentStatus, setContentStatus] = useState<
+    Record<string, ContentStatus>
+  >({})
+
+  // Re-check whenever the set of verifiable products changes — including when
+  // an upload records a storage pointer on a row that had none before.
+  const digitalCheckKey = useMemo(() => {
+    if (!isSupabaseConfigured) return ""
+    return products
+      .filter((p) => needsDigitalContent(p) && isUuid(p.product_id))
+      .map((p) => `${p.product_id}::${p.storage_path ?? ""}`)
+      .sort()
+      .join("|")
+  }, [products])
+
+  useEffect(() => {
+    if (!digitalCheckKey) return
+    let cancelled = false
+    const ids = digitalCheckKey
+      .split("|")
+      .map((row) => row.slice(0, row.indexOf("::")))
+      .filter(Boolean)
+    void Promise.all(
+      ids.map(async (id) => [id, await fetchContentStatus(id)] as const),
+    ).then((entries) => {
+      if (cancelled) return
+      setContentStatus((prev) => ({ ...prev, ...Object.fromEntries(entries) }))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [digitalCheckKey])
+
   const canEditContent = can(adminRole, "edit_content")
   const canEditPrice = can(adminRole, "edit_price")
   const canDelete = can(adminRole, "delete_product")
@@ -1743,22 +1887,55 @@ export default function AdminProductsPage() {
           className="rounded-lg border overflow-x-auto"
           style={{ borderColor: "var(--color-border)" }}
         >
-          <table className="w-full text-sm">
+          <table
+            className="w-full text-sm"
+            style={{ tableLayout: "fixed", minWidth: "56rem" }}
+          >
+            <caption className="sr-only">
+              רשימת מוצרים — עמודה לפי סדר, מוצר, סוג, מחיר, מלאי, תוכן דיגיטלי,
+              סטטוס ופעולות
+            </caption>
+            {/* Column widths are intentional, not equal. Only "product" is
+             * flexible (no width) so it absorbs the remaining space; every
+             * other column is sized to its content, and Actions is kept
+             * compact instead of sprawling. */}
+            <colgroup>
+              <col style={{ width: "2.75rem" }} />
+              <col />
+              <col style={{ width: "6.75rem" }} />
+              <col style={{ width: "8rem" }} />
+              <col style={{ width: "11rem" }} />
+              <col style={{ width: "8.5rem" }} />
+              <col style={{ width: "7rem" }} />
+              <col style={{ width: "12.5rem" }} />
+            </colgroup>
             <thead>
               <tr style={{ background: "var(--color-secondary)" }}>
+                <th scope="col" className="px-3 py-3">
+                  <span className="sr-only">סדר</span>
+                </th>
+                <th
+                  scope="col"
+                  className="text-right px-4 py-3 text-xs tracking-wide"
+                  style={{
+                    color: "var(--color-muted-foreground)",
+                    borderBottom: "1px solid var(--color-border)",
+                  }}
+                >
+                  מוצר
+                </th>
                 {[
-                  "",
-                  "מוצר",
-                  "סוג",
-                  "מחיר",
-                  "מלאי",
-                  "תוכן",
-                  "סטטוס",
-                  "פעולות",
-                ].map((col) => (
+                  ["סוג", "text-right"],
+                  ["מחיר", "text-right"],
+                  ["מלאי", "text-right"],
+                  ["תוכן דיגיטלי", "text-right"],
+                  ["סטטוס", "text-right"],
+                  ["פעולות", "text-left"],
+                ].map(([col, align]) => (
                   <th
-                    key={col || "order"}
-                    className="text-right px-4 py-3 text-xs tracking-wide whitespace-nowrap"
+                    key={col}
+                    scope="col"
+                    className={`${align} px-4 py-3 text-xs tracking-wide whitespace-nowrap`}
                     style={{
                       color: "var(--color-muted-foreground)",
                       borderBottom: "1px solid var(--color-border)",
@@ -1886,40 +2063,21 @@ export default function AdminProductsPage() {
                       {AVAILABILITY_LABEL[product.availability]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {product.content_url || product.content_file ? (
-                      <span
-                        className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full"
-                        style={{
-                          background: "rgba(34,197,94,0.1)",
-                          color: "var(--color-success)",
-                        }}
-                        title={
-                          product.content_file?.file_name ?? product.content_url
-                        }
-                      >
-                        <Icon name="bookOpen" size={12} />
-                        {product.content_file
-                          ? `גרסה ${product.content_file.version}`
-                          : "מקושר"}
-                      </span>
-                    ) : (
-                      <span
-                        className="text-xs"
-                        style={{ color: "var(--color-danger)" }}
-                      >
-                        לא הועלה
-                      </span>
-                    )}
+                  <td className="px-4 py-3">
+                    <ContentStatusPill
+                      product={product}
+                      status={contentStatus[product.product_id]}
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={product.status} />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1.5 flex-wrap">
+                    <div className="flex flex-wrap items-center justify-start gap-1">
                       <button
                         onClick={() => setEditing(product)}
-                        className="text-xs px-3 py-1 rounded-full border transition-colors hover:bg-white/5"
+                        aria-label={`עריכת ${product.name}`}
+                        className="text-[11px] px-2.5 py-1 rounded-md border transition-colors hover:bg-white/5"
                         style={{
                           borderColor: "var(--color-border)",
                           color: "var(--color-foreground)",
@@ -1942,7 +2100,12 @@ export default function AdminProductsPage() {
                                 : "המוצר פורסם.",
                             )
                           }
-                          className="text-xs px-3 py-1 rounded-full border transition-colors hover:bg-white/5"
+                          aria-label={
+                            product.status === "ACTIVE"
+                              ? `הסרת ${product.name} מפרסום`
+                              : `פרסום ${product.name}`
+                          }
+                          className="text-[11px] px-2.5 py-1 rounded-md border transition-colors hover:bg-white/5"
                           style={{
                             borderColor: "var(--color-border)",
                             color: "var(--color-foreground)",
@@ -1956,7 +2119,9 @@ export default function AdminProductsPage() {
                       <button
                         onClick={() => toggleFeatured(product)}
                         title="החלפת מצב מומלץ"
-                        className="text-xs px-2 py-1 rounded-full border transition-colors hover:bg-white/5"
+                        aria-label="החלפת מצב מומלץ"
+                        aria-pressed={product.featured}
+                        className="text-[11px] px-2 py-1 rounded-md border transition-colors hover:bg-white/5"
                         style={{
                           borderColor: "var(--color-border)",
                           color: product.featured
@@ -1977,7 +2142,8 @@ export default function AdminProductsPage() {
                               "המוצר הועבר לארכיון.",
                             )
                           }
-                          className="text-xs px-3 py-1 rounded-full border transition-colors hover:bg-white/5"
+                          aria-label={`העברת ${product.name} לארכיון`}
+                          className="text-[11px] px-2.5 py-1 rounded-md border transition-colors hover:bg-white/5"
                           style={{
                             borderColor: "var(--color-border)",
                             color: "var(--color-muted-foreground)",
@@ -1997,9 +2163,10 @@ export default function AdminProductsPage() {
                               "המוצר נמחק.",
                             )
                           }
-                          className="text-xs px-3 py-1 rounded-full border transition-colors hover:bg-red-500/10"
+                          aria-label={`מחיקת ${product.name} לצמיתות`}
+                          className="text-[11px] px-2.5 py-1 rounded-md border transition-colors hover:bg-red-500/10"
                           style={{
-                            borderColor: "rgba(239,68,68,0.3)",
+                            borderColor: "rgba(239,68,68,0.35)",
                             color: "var(--color-danger)",
                           }}
                         >

@@ -37,6 +37,26 @@ export interface UploadTarget {
   version?: number
 }
 
+/**
+ * Admin-facing availability of a product's digital file.
+ *
+ * `available` / `missing` come from an authoritative check of the private
+ * bucket (the object at `product-<id>/book.pdf` really does / does not exist).
+ * `unverified` means the check could not run (Supabase off, the status
+ * function not deployed, or a transport failure) — callers must fall back to
+ * the row's own pointer fields and must NOT report a confident "not uploaded".
+ * No URL, path or token is ever returned here.
+ */
+export type ContentStatus =
+  | {
+      state: "available"
+      fileName: string
+      sizeBytes?: number
+      contentType?: string
+    }
+  | { state: "missing" }
+  | { state: "unverified" }
+
 interface InvokeResult<T> {
   data?: T
 
@@ -207,5 +227,50 @@ export async function uploadBookFile(
       "STORAGE",
       err instanceof Error ? err.message : "שגיאת העלאה בלתי צפויה.",
     )
+  }
+}
+
+/**
+ * Admin path: ask whether a product's file actually exists in the private
+ * bucket. This is the honest source of truth behind the "digital content"
+ * column — the same object the Reader serves through `get-content-url`.
+ *
+ * Degrades to `unverified` rather than a false negative when the function is
+ * not deployed or the call fails, so the CMS never claims a real book was
+ * never uploaded just because a lookup could not be made.
+ */
+export async function fetchContentStatus(
+  productId: string,
+): Promise<ContentStatus> {
+  if (!isSupabaseConfigured) return { state: "unverified" }
+
+  try {
+    const res = await invoke<{
+      exists?: unknown
+      fileName?: unknown
+      sizeBytes?: unknown
+      contentType?: unknown
+    }>("get-content-status", { product_id: productId })
+
+    // A confirmed answer is always a 200 with an `exists` boolean, whether
+    // the file is present or genuinely absent. Anything else is "could not
+    // verify" — never report a confident miss on a failed lookup.
+    if (typeof res.data?.exists !== "boolean") return { state: "unverified" }
+
+    if (!res.data.exists) return { state: "missing" }
+
+    const size = Number(res.data.sizeBytes)
+    return {
+      state: "available",
+      fileName:
+        typeof res.data.fileName === "string" ? res.data.fileName : "book.pdf",
+      sizeBytes: Number.isFinite(size) ? size : undefined,
+      contentType:
+        typeof res.data.contentType === "string"
+          ? res.data.contentType
+          : undefined,
+    }
+  } catch {
+    return { state: "unverified" }
   }
 }

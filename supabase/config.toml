@@ -27,3 +27,12 @@ verify_jwt = false
 # password_reset_links, a table no client key can read).
 [functions.redeem-password-reset]
 verify_jwt = false
+
+# Same arrangement as the others: the JWT is verified inside the function so
+# the caller's role can be checked against public.users.role (ADMIN only)
+# before any privileged Storage lookup happens. It reports only whether the
+# deterministic object books/product-<id>/book.pdf exists — never a path, a
+# public URL or a signed URL — so it is safe to expose the admin status signal
+# without leaking where the protected file lives.
+[functions.get-content-status]
+verify_jwt = false
