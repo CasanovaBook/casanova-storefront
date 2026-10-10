@@ -145,7 +145,7 @@ const AdminSecurityPage = lazyPage(
   () => import("./pages/admin/AdminSecurityPage"),
 )
 
-const MaestroAdminApp = lazyPage(() => import("./admin/AdminApp").then(m => ({ default: m.AdminApp })))
+const MaestroAdminApp = lazyPage(() => import("./cms/AdminApp").then(m => ({ default: m.AdminApp })))
 
 export const router = createBrowserRouter([
   {

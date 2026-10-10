@@ -2,7 +2,7 @@
  * Lightweight toast notification system for Maestro admin.
  *
  * Usage:
- *   import { Toaster, toast } from "@/admin/toast";
+ *   import { Toaster, toast } from "@/cms/toast";
  *   <Toaster />              ← mount once in the layout
  *   toast.success("פורסם!")  ← show a green toast
  *   toast.error("שגיאה…")    ← show a red toast
