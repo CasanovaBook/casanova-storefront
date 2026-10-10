@@ -36,11 +36,11 @@ import AccessibilityFooterLink from "../components/accessibility/AccessibilityFo
 
 import { loadContent } from "../content/store"
 
-import logoImg from "../../images/main_photo.jpg"
+import logoImg from "../assets/main_photo.jpg"
 
-import { getDb, mutate } from "../lib/db"
+import { getDb, mutate } from "../data/db"
 
-import { isSupabaseConfigured } from "../lib/supabase"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
 import {
   BUNDLED_PRODUCT,

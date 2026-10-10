@@ -32,16 +32,15 @@ import type {
   Category,
   CmsBackup,
   CmsSection,
-  Coupon,
   FaqItem,
   PlatformSettings,
   Product,
   Testimonial,
 } from "../types"
 
-import { useStore } from "../lib/store"
+import { useStore } from "../data/store"
 
-import { isSupabaseConfigured } from "../lib/supabase"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
 import {
   deleteCategoryFromDb,
@@ -53,7 +52,7 @@ import {
   saveCategoryToDb,
   saveProductToDb,
   setProductStatusInDb,
-} from "../lib/supabase-catalog"
+} from "../integrations/supabase/supabase-catalog"
 
 import {
   mirrorRemoteCatalogCategories,
@@ -64,21 +63,18 @@ import {
   archiveProduct,
   createProduct,
   deleteCategory,
-  deleteCoupon,
   deleteFaq,
   deleteProduct as deleteProductRequest,
   deleteSection,
   deleteTestimonial,
   exportCmsBackup,
   fail,
-  findCoupon as findCouponRequest,
   listPublicProducts,
   moveProduct,
   moveSection,
   resolveProducts,
   restoreCmsBackup,
   saveCategory,
-  saveCoupon,
   saveFaq,
   saveSection,
   saveTestimonial,
@@ -88,7 +84,7 @@ import {
   type Result,
 } from "../lib/api"
 
-import { uniqueSlug } from "../lib/db"
+import { uniqueSlug } from "../data/db"
 
 import { useApp } from "./AppContext"
 
@@ -140,8 +136,6 @@ interface CmsContextValue {
 
   faqs: FaqItem[]
 
-  coupons: Coupon[]
-
   /* Storefront views */
 
   activeSections: CmsSection[]
@@ -176,8 +170,6 @@ interface CmsContextValue {
   productBySlug: (slug: string) => Product | undefined
 
   categoryName: (id: string) => string
-
-  findCoupon: (code: string) => Coupon | undefined
 
   relatedProducts: (product: Product) => Product[]
 
@@ -243,15 +235,6 @@ interface CmsContextValue {
   ) => Result<FaqItem>
 
   deleteFaq: (id: string) => Result
-
-  /* Coupons */
-
-  saveCoupon: (
-    data: Omit<Coupon, "coupon_id" | "times_used">,
-    id?: string,
-  ) => Result<Coupon>
-
-  deleteCoupon: (id: string) => Result
 
   /* Backup */
 
@@ -488,8 +471,6 @@ export function CmsProvider({ children }: { children: ReactNode }) {
 
       faqs,
 
-      coupons: db.coupons,
-
       activeSections: sections.filter((s) => s.active),
 
       publishedProducts: catalogProducts,
@@ -526,8 +507,6 @@ export function CmsProvider({ children }: { children: ReactNode }) {
 
       categoryName: (id) =>
         catalogCategories.find((c) => c.category_id === id)?.name ?? "",
-
-      findCoupon: findCouponRequest,
 
       relatedProducts: (product) => lookup(product.related_product_ids),
 
@@ -648,10 +627,6 @@ export function CmsProvider({ children }: { children: ReactNode }) {
       saveFaq: (data, id) => saveFaq(actor, data, id),
 
       deleteFaq: (id) => deleteFaq(actor, id),
-
-      saveCoupon: (data, id) => saveCoupon(actor, data, id),
-
-      deleteCoupon: (id) => deleteCoupon(actor, id),
 
       exportBackup: () => exportCmsBackup(actor),
 

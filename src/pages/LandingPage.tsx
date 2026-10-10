@@ -9,7 +9,7 @@ import { effectivePrice, FREEFORM_SECTION_TYPES, isOnSale } from "../types"
 import { toEmbedUrl } from "../lib/media"
 import Icon from "../components/icons"
 import CmsHint from "../components/CmsHint"
-import logoImg from "../../images/main_photo.jpg"
+import logoImg from "../assets/main_photo.jpg"
 
 /** Neutral gradient used when a product has neither a cover image nor colours. */
 const FALLBACK_COVER: [string, string] = ["#1A1A2E", "#2A2A3E"]

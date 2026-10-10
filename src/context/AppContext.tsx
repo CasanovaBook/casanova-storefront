@@ -30,8 +30,8 @@ import type {
   UserProduct,
 } from "../types"
 import { effectivePrice } from "../types"
-import { getDb } from "../lib/db"
-import { ensureCrossTabSync, useStore } from "../lib/store"
+import { getDb } from "../data/db"
+import { ensureCrossTabSync, useStore } from "../data/store"
 import {
   readSessionUserId,
   writeSessionUserId,
@@ -64,7 +64,7 @@ import {
   supabase,
   isSupabaseConfigured,
   requireSupabase,
-} from "../lib/supabase"
+} from "../integrations/supabase/supabase"
 import { maestro } from "../maestro"
 import {
   signInWithEmail,
@@ -73,9 +73,9 @@ import {
   resendVerification,
   fetchProfile,
   buildAppUser,
-} from "../lib/supabase-auth"
-import { fetchMyEntitlements } from "../lib/supabase-entitlements"
-import { fetchMyInquiries, fetchMyInquiryNotes } from "../lib/supabase-inquiries"
+} from "../integrations/supabase/supabase-auth"
+import { fetchMyEntitlements } from "../integrations/supabase/supabase-entitlements"
+import { fetchMyInquiries, fetchMyInquiryNotes } from "../integrations/supabase/supabase-inquiries"
 
 /**
  * Resolves a stored session to an app user, refusing a blocked account.

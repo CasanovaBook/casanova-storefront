@@ -42,8 +42,7 @@
  * somebody else's account by passing a different id.
  * ───────────────────────────────────────────────────────────── */
 
-import { isSupabaseConfigured, requireSupabase } from "./supabase"
-import type { User } from "../types"
+import { isSupabaseConfigured, requireSupabase } from "../integrations/supabase/supabase"
 
 /* Without a backend there is no account to attach the fact to, so the
  * old per-browser record is the best available answer. This path only
@@ -105,50 +104,5 @@ export async function claimFirstLogin(
     return Boolean(data)
   } catch {
     return claimLocally(userId)
-  }
-}
-
-/**
- * Reads the flag without claiming it, for callers that need to know
- * the state without consuming the first-login greeting.
- */
-export async function hasBeenGreeted(
-  user: User | null,
-): Promise<boolean> {
-  if (!user) return false
-  if (!isSupabaseConfigured) return !claimLocallyReadOnly(user.user_id)
-
-  try {
-    const client = requireSupabase()
-    const { data, error } = await client
-      .from("users")
-      .select("greeted_at")
-      .eq("user_id", user.user_id)
-      .maybeSingle()
-    if (error) return false
-    return Boolean(data?.greeted_at)
-  } catch {
-    return false
-  }
-}
-
-function claimLocallyReadOnly(userId: string): boolean {
-  if (typeof window === "undefined") return false
-  try {
-    const raw = window.localStorage.getItem(LOCAL_KEY)
-    const seen: Record<string, true> = raw ? JSON.parse(raw) : {}
-    return Boolean(seen?.[userId])
-  } catch {
-    return false
-  }
-}
-
-/** Support/testing helper: forget the local fallback record. */
-export function resetFirstLoginTracking(): void {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.removeItem(LOCAL_KEY)
-  } catch {
-    /* see claimLocally */
   }
 }

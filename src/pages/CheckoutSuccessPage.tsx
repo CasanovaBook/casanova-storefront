@@ -166,20 +166,6 @@ export default function CheckoutSuccessPage() {
               </div>
             ))}
           </div>
-          {order.discount_amount > 0 && (
-            <div
-              className="flex justify-between gap-3 pb-2 mb-2 border-b"
-              style={{
-                borderColor: "var(--color-border)",
-                color: "var(--color-success)",
-              }}
-            >
-              <span>
-                הנחה{order.coupon_code ? ` · ${order.coupon_code}` : ""}
-              </span>
-              <span>-₪{order.discount_amount.toLocaleString()}</span>
-            </div>
-          )}
           <div className="flex justify-between gap-3 font-bold text-base">
             <span>סה״כ</span>
             <span style={{ color: "var(--color-primary)" }}>

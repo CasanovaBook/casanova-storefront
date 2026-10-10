@@ -24,7 +24,7 @@ import { useAdmin } from "../../context/AdminContext"
 
 import { can } from "../../lib/permissions"
 
-import { resetDatabase } from "../../lib/db"
+import { resetDatabase } from "../../data/db"
 
 import type { PlatformSettings } from "../../types"
 

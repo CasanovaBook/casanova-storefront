@@ -1,7 +1,7 @@
 /**
  * The logo inside the accessibility launcher.
  *
- * This is the emblem from the reference artwork (`images/accessability.jpeg`) —
+ * This is the emblem from the reference artwork (`src/assets/accessability.jpeg`) —
  * the ring, the seated figure and the wheel — vector-traced from that image
  * rather than redrawn, so the launcher keeps the exact shapes and proportions
  * of the reference at any size, on any display, at any device pixel ratio.

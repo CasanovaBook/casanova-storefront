@@ -13,8 +13,8 @@
 
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js"
 import { requireSupabase, isSupabaseConfigured } from "./supabase"
-import { toPublicUser } from "./auth"
-import type { StoredUser, User, Role, AdminRole, AccountStatus } from "../types"
+import { toPublicUser } from "../../lib/auth"
+import type { StoredUser, User, Role, AdminRole, AccountStatus } from "../../types"
 
 export interface AuthSuccess<T = undefined> {
   ok: true

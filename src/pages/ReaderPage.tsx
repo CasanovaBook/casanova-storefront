@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
-import { useStore } from "../lib/store"
+import { useStore } from "../data/store"
 import PdfCanvas, {
   prefetchPdfRuntime,
 } from "../components/PdfCanvas"

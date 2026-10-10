@@ -20,11 +20,11 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
-import { isSupabaseConfigured } from "../lib/supabase"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import Icon from "../components/icons"
 import ThemeToggle from "../components/ThemeToggle"
 import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
-import logoImg from "../../images/main_photo.jpg"
+import logoImg from "../assets/main_photo.jpg"
 
 type VerifyState = "checking" | "confirmed" | "expired" | "no-session"
 

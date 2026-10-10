@@ -16,8 +16,8 @@ import type {
   ProductStatus,
   ProductVisibility,
   ProductAvailability,
-} from "../types"
-import { ok, fail, type ErrorCode, type Result } from "./api"
+} from "../../types"
+import { ok, fail, type ErrorCode, type Result } from "../../shared/result"
 import { supabase, isSupabaseConfigured } from "./supabase"
 
 export interface DbBookRow {

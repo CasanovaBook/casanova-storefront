@@ -23,8 +23,8 @@ import type {
   ProductSnapshot,
   ProductType,
   UserProduct,
-} from "../types"
-import { fail, ok, type ErrorCode, type Result } from "./api"
+} from "../../types"
+import { fail, ok, type ErrorCode, type Result } from "../../shared/result"
 import { isSupabaseConfigured, requireSupabase } from "./supabase"
 
 /** Columns this app reads back. `product_snapshot` is the JSONB snapshot. */

@@ -21,7 +21,7 @@ import ThemeToggle from "../components/ThemeToggle"
 
 import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
 
-import logoImg from "../../images/main_photo.jpg"
+import logoImg from "../assets/main_photo.jpg"
 
 // Function to detect Hebrew characters
 

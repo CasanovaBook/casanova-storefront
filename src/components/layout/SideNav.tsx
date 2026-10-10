@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router"
 import Icon, { type IconName } from "../icons"
 
 import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
-import logoImg from "../../../images/main_photo.jpg"
+import logoImg from "../../assets/main_photo.jpg"
 import { useContent } from "../../content/useContent"
 
 /**

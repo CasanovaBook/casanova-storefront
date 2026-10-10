@@ -25,9 +25,9 @@ import {
   fetchContentStatus,
   type ContentStatus,
 } from "../../lib/content-storage"
-import { isSupabaseConfigured } from "../../lib/supabase"
-import { isUuid } from "../../lib/supabase-entitlements"
-import { uid } from "../../lib/db"
+import { isSupabaseConfigured } from "../../integrations/supabase/supabase"
+import { isUuid } from "../../integrations/supabase/supabase-entitlements"
+import { uid } from "../../data/db"
 import type {
   BookMetadata,
   ContentFile,

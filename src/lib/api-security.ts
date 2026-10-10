@@ -42,7 +42,7 @@ import {
   mutate,
   nowIso,
   uid,
-} from "./db"
+} from "../data/db"
 
 import {
   fail,
@@ -56,7 +56,7 @@ import {
 
 import { fetchSignedContentUrl } from "./content-storage"
 
-import { isSupabaseConfigured } from "./supabase"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
 /* ── Policy resolution ────────────────────────────────── */
 
