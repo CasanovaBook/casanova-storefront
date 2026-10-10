@@ -7,10 +7,9 @@ A Hebrew, right-to-left digital-title storefront with a protected browser reader
 ```text
 src/             Web application: routes, pages, components, contexts, and client services
 public/          Public static assets (protected book files are deliberately excluded)
-supabase/        Supabase project configuration and Edge Functions
-migrations/      Database migrations
+supabase/        Supabase project configuration, database migrations, and Edge Functions
 react-native/    Independent React Native protected-reader application
-images/          Source image assets used by the web application
+src/assets/      Source image assets (logo) imported by the web application
 docs/            Maintained architecture reference (other local documents stay ignored)
 ```
 
@@ -57,7 +56,7 @@ cp .env.example .env.local
 
 `supabase/functions/` contains the content-delivery functions. Deploy them with the Supabase CLI after configuring the project and its server-side secrets. The functions keep protected content in private storage and issue signed URLs; do not add sellable PDFs to Git.
 
-Database source exists in `schema.sql` and `migrations/`. Apply it through the team’s chosen Supabase migration workflow; this repository does not include a deployment script.
+Database source exists in `supabase/schema.sql` and `supabase/migrations/`. Apply it through the team’s chosen Supabase migration workflow; this repository does not include a deployment script.
 
 ## React Native reader
 
