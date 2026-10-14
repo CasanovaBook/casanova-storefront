@@ -125,9 +125,16 @@ export default function VerifyEmailPage() {
       border: "1px solid rgba(245,158,11,0.3)",
     },
     "no-session": {
-      title: "הכתובת אומתה — נשאר רק להתחבר",
+      /* This state is reached both when a link was opened in a browser that
+       * holds no session AND when someone lands here without a link at all —
+       * a bookmark, a crawler, a typed URL. Asserting "the address was
+       * verified" would be a claim this page cannot support in the second
+       * case, and a false claim on a screen that talks about the security of
+       * an account is worse than plain wording. So it says what is true either
+       * way and what to do about it. */
+      title: "נשאר רק להתחבר",
       body: isSupabaseConfigured
-        ? "האימות הושלם, אבל הדפדפן הזה אינו מחובר. התחבר עם הכתובת והסיסמה שבחרת, והכול מוכן."
+        ? "אם פתחת את קישור האימות מהמייל, הכתובת כבר אומתה — בדפדפן הזה צריך להתחבר איתה בשנית. אם עדיין לא אישרת, פתח את הקישור שהגיע אליך."
         : 'אין כרגע שרת Supabase מחובר, ולכן אימות בדוא"ל אינו זמין.',
       icon: "lock",
       color: "var(--color-primary)",
