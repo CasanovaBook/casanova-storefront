@@ -4,7 +4,32 @@ import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import type { CheckoutFormData, Product } from "../types"
 import { effectivePrice, isOnSale } from "../types"
+import {
+  PHONE_NUMBER_DIGITS,
+  PHONE_PREFIXES,
+  emailProblem,
+  joinPhone,
+  parsePhoneParts,
+  phoneProblem,
+  type PhoneParts,
+} from "../lib/auth"
+import {
+  clearCheckoutIntent,
+  rememberProductId,
+  rememberedProductId,
+} from "../lib/checkout-intent"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import Icon from "../components/icons"
+
+/* The red star already used for the confirmation field: every field the
+ * customer cannot submit without carries it, on both screens that collect
+ * customer details. "חובה" that only appears in an error message after a
+ * failed submit is not an indicator. */
+const required = (
+  <span style={{ color: "var(--color-danger)" }} aria-hidden="true">
+    {" *"}
+  </span>
+)
 
 const FALLBACK_COVER: [string, string] = ["#1A1A2E", "#2A2A3E"]
 
@@ -29,7 +54,8 @@ function BookCoverMini({ product }: { product: Product }) {
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
-  const { selectedProduct, placeOrder, user, resendConfirmation } = useApp()
+  const { selectedProduct, setSelectedProduct, placeOrder, user, resendConfirmation } =
+    useApp()
   const cms = useCms()
 
   const product = selectedProduct
@@ -58,11 +84,10 @@ export default function CheckoutPage() {
     }
   }
 
-  const [form, setForm] = useState<CheckoutFormData>({
+  const [form, setForm] = useState<Omit<CheckoutFormData, "phone">>({
     first_name: user?.first_name ?? "",
     last_name: user?.last_name ?? "",
     email: user?.email ?? "",
-    phone: user?.phone ?? "",
   })
 
   // Synchronize form with logged-in user
@@ -74,50 +99,32 @@ export default function CheckoutPage() {
         last_name: prev.last_name || user.last_name || "",
         email: prev.email || user.email || "",
       }))
-      setConfirmEmail((prev) => prev || user.email || "")
     }
   }, [user])
-  const [phonePrefix, setPhonePrefix] = useState("050")
-  const [phoneNumber, setPhoneNumber] = useState("")
 
-  // Initialize phone prefix and number from existing phone if available
+  /* The number is two controls, not one free-text box, because the store
+   * sells Israeli mobile numbers and a flat field cannot tell a missing
+   * digit from a country code. The parsing and the rule live in `lib/auth`
+   * beside the register screen's copy of the same control, so both accept
+   * exactly the same numbers. */
+  const [phoneParts, setPhoneParts] = useState<PhoneParts>(() =>
+    parsePhoneParts(user?.phone),
+  )
+
+  const phone = joinPhone(phoneParts)
+
+  // Prefill the number from the account, but never over what is being typed
   useEffect(() => {
-    if (user?.phone) {
-      const cleaned = user.phone.replace(/\D/g, "")
-      if (cleaned.length >= 10 && cleaned.startsWith("972")) {
-        // Format: 972501234567 -> prefix: 050, number: 1234567
-        // After removing country code "972", we have "501234567" (9 digits)
-        // Prefix is "050" (add back the leading 0), number is "1234567"
-        const withoutCountry = cleaned.slice(3)
-        const prefix = "0" + withoutCountry.slice(0, 2)
-        const number = withoutCountry.slice(2)
-        setPhonePrefix(prefix)
-        setPhoneNumber(number)
-      } else if (cleaned.length >= 10 && cleaned.startsWith("0")) {
-        // Format: 0501234567 -> prefix: 050, number: 1234567
-        // Prefix is first 3 chars "050", number is remaining 7 chars "1234567"
-        const prefix = cleaned.slice(0, 3)
-        const number = cleaned.slice(3)
-        setPhonePrefix(prefix)
-        setPhoneNumber(number)
-      }
-    }
+    if (!user?.phone) return
+
+    setPhoneParts((prev) => (prev.number ? prev : parsePhoneParts(user.phone)))
   }, [user?.phone])
 
-  // Update form.phone whenever prefix or number changes
-  useEffect(() => {
-    // phonePrefix already includes the leading "0" (e.g., "050")
-    // phoneNumber is 7 digits (e.g., "1234567")
-    // Full phone: "050" + "1234567" = "0501234567" (10 digits)
-    const fullPhone =
-      phonePrefix && phoneNumber ? `${phonePrefix}${phoneNumber}` : ""
-    setForm((prev) => ({ ...prev, phone: fullPhone }))
-  }, [phonePrefix, phoneNumber])
   const [errors, setErrors] = useState<Partial<CheckoutFormData>>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [step, setStep] = useState<"details" | "review">("details")
-  const [confirmEmail, setConfirmEmail] = useState(user?.email ?? "")
+  const [confirmEmail, setConfirmEmail] = useState("")
   const [confirmEmailError, setConfirmEmailError] = useState("")
   // 18+ gate: the content is adult, so the buyer must explicitly confirm
   // legal age before the order can proceed past the details step.
@@ -127,6 +134,46 @@ export default function CheckoutPage() {
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [step])
+
+  /* A purchase interrupted by the sign-up-then-verify trip comes back to
+   * /checkout as a fresh document: the chosen product lived in React state,
+   * so the funnel ended on "לא נבחר מוצר" after the customer had already gone
+   * and confirmed their address. The id is written down while a purchase is
+   * live and read back here from the catalogue, so the order resumes where it
+   * stopped instead of starting over. */
+  useEffect(() => {
+    if (product) rememberProductId(product.product_id)
+  }, [product?.product_id])
+
+  const [restorePending, setRestorePending] = useState(
+    () => !product && rememberedProductId() !== null,
+  )
+
+  useEffect(() => {
+    if (product || !restorePending) return
+
+    /* The hosted catalogue is still in flight; a lookup before it answers
+     * would report the book as gone. */
+    if (cms.catalogLoading) return
+
+    const stored = rememberedProductId()
+
+    if (stored) {
+      const match = cms.publishedProducts.find(
+        (p) => p.product_id === stored,
+      )
+
+      if (match) setSelectedProduct(match)
+    }
+
+    setRestorePending(false)
+  }, [
+    product,
+    restorePending,
+    cms.catalogLoading,
+    cms.publishedProducts,
+    setSelectedProduct,
+  ])
 
   // Only ASCII / English characters are allowed in the email address
   const handleEmailChange = (value: string) => {
@@ -153,50 +200,62 @@ export default function CheckoutPage() {
   const subtotal = unitPrice
   const finalPrice = subtotal
 
+  /* The address printed on the account is the one Supabase verified, so a
+   * purchase under it has already proven the thing a typed twice would only
+   * re-prove. The confirmation field therefore appears when the buyer edits
+   * the address away from the verified one — the single case where a typo
+   * would send a receipt somewhere the store cannot verify. Requiring the
+   * double entry when nothing was changed asked every customer to retype an
+   * address they had just confirmed by email. */
+  const typedEmail = form.email.trim().toLowerCase()
+
+  const accountEmail = (user?.email ?? "").trim().toLowerCase()
+
+  /* A signed-out visitor has no verified address to deviate from, and cannot
+   * reach the review step at all, so the confirmation field would only be
+   * noise there. It answers to an account or not at all. */
+  const needsEmailConfirmation =
+    accountEmail.length > 0 &&
+    typedEmail.length > 0 &&
+    typedEmail !== accountEmail
+
   const validate = (): boolean => {
     const newErrors: Partial<CheckoutFormData> = {}
+
     if (!form.first_name.trim()) newErrors.first_name = "שדה חובה"
     if (!form.last_name.trim()) newErrors.last_name = "שדה חובה"
-    if (!form.email.trim() || /[^\x20-\x7E]/.test(form.email))
-      newErrors.email = "כתובת המייל חייבת להיות באנגלית בלבד"
-    else if (!form.email.includes("@"))
-      newErrors.email = "כתובת המייל חייבת להכיל את הסימן @"
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      newErrors.email = "נדרשת כתובת מייל תקינה"
-    // Email confirmation: must match exactly so receipts/access never go to the wrong address
-    if (!confirmEmail.trim()) {
-      setConfirmEmailError("יש לאמת את כתובת המייל")
-    } else if (confirmEmail.trim().toLowerCase() !== form.email.trim().toLowerCase()) {
-      setConfirmEmailError(
-        "כתובות המייל אינן תואמות — יש להקליד שוב את אותה כתובת",
-      )
-    } else if (!confirmEmail.includes("@")) {
-      setConfirmEmailError("כתובת המייל חייבת להכיל את הסימן @")
-    } else {
-      setConfirmEmailError("")
-    }
-    if (!form.phone.trim() || phoneNumber.length === 0) {
-      newErrors.phone = "שדה חובה"
-    } else if (phoneNumber.length < 7) {
-      newErrors.phone = `מספר הטלפון חייב להכיל בדיוק 7 ספרות (הוקלדו ${phoneNumber.length} ספרות)`
-    } else if (phoneNumber.length !== 7) {
-      newErrors.phone = "מספר הטלפון חייב להכיל בדיוק 7 ספרות"
-    } else if (!/^\d{7}$/.test(phoneNumber)) {
-      newErrors.phone = "מספר הטלפון יכול להכיל רק ספרות"
-    } else {
-      // Additional validation: ensure the full phone format is correct (0XX-XXXXXXX)
-      const digits = form.phone.replace(/\D/g, "")
-      if (digits.length !== 10 || !digits.startsWith("0")) {
-        newErrors.phone = "פורמט מספר טלפון לא תקין"
+
+    const emailIssue = emailProblem(form.email)
+
+    if (emailIssue) newErrors.email = emailIssue
+
+    const phoneIssue = phoneProblem(phoneParts, true)
+
+    if (phoneIssue) newErrors.phone = phoneIssue
+
+    let confirmIssue = ""
+
+    if (needsEmailConfirmation) {
+      const value = confirmEmail.trim()
+
+      if (!value) confirmIssue = "יש לאמת את כתובת המייל"
+      else {
+        const issue = emailProblem(value)
+
+        confirmIssue =
+          issue ??
+          (value.toLowerCase() === typedEmail
+            ? ""
+            : "כתובות המייל אינן תואמות — יש להקליד שוב את אותה כתובת")
       }
     }
+
+    setConfirmEmailError(confirmIssue)
     setAgeError(ageConfirmed ? "" : "יש לאשר שאתה בן 18 ומעלה כדי להמשיך.")
     setErrors(newErrors)
+
     return (
-      Object.keys(newErrors).length === 0 &&
-      confirmEmail.trim().toLowerCase() === form.email.trim().toLowerCase() &&
-      confirmEmail.trim().length > 0 &&
-      ageConfirmed
+      Object.keys(newErrors).length === 0 && !confirmIssue && ageConfirmed
     )
   }
 
@@ -205,7 +264,14 @@ export default function CheckoutPage() {
       setSubmitError("יש להתחבר או להירשם לחשבון כדי להמשיך לרכישה.")
       return
     }
-    if (!user.email_confirmed_at) {
+    /* The verified-address gate is a hosted-backend rule. Without Supabase
+     * there is nothing that can confirm an address — no mail is sent and no
+     * `email_confirmed_at` is ever written — so requiring it here demanded the
+     * customer satisfy a condition the product could not offer them, and the
+     * screen refused with a message pointing at an email that never arrives.
+     * (docs/PRODUCTION_PLAN.md B2 gates real purchases on real verification,
+     * and the local driver is not a real purchase path.) */
+    if (isSupabaseConfigured && !user.email_confirmed_at) {
       setSubmitError("יש לאמת את כתובת האימייל שלך לפני ביצוע רכישה.")
       return
     }
@@ -231,7 +297,7 @@ export default function CheckoutPage() {
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
       email: form.email.trim(),
-      phone: form.phone.trim() || undefined,
+      phone: phone || undefined,
     })
     setIsProcessing(false)
     if (!result.ok) {
@@ -239,6 +305,9 @@ export default function CheckoutPage() {
       setStep("details")
       return
     }
+    /* The purchase is recorded, so there is nothing left to resume — and a
+     * leftover intent would offer this book again on the next visit. */
+    clearCheckoutIntent()
     navigate("/checkout/success")
   }
 
@@ -256,6 +325,29 @@ export default function CheckoutPage() {
   )
 
   if (!product) {
+    /* Only a purchase that is actually being resumed holds the screen here;
+     * a visitor who arrived with nothing selected gets the honest empty
+     * state at once rather than a spinner that leads nowhere. */
+    if (restorePending) {
+      return (
+        <div
+          className="min-h-screen flex items-center justify-center px-6"
+          style={{ background: "var(--color-background)" }}
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            className="w-6 h-6 rounded-full border-2 animate-spin"
+            style={{
+              borderColor: "var(--color-border)",
+              borderTopColor: "var(--color-primary)",
+            }}
+          />
+          <span className="sr-only">מאמת את ההזמנה…</span>
+        </div>
+      )
+    }
+
     return (
       <div
         className="min-h-screen flex items-center justify-center px-6"
@@ -372,7 +464,9 @@ export default function CheckoutPage() {
                   className="text-sm mb-8"
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
-                  משמשים ליצירת החשבון ולשליחת הקבלה.
+                  {isSupabaseConfigured
+                    ? "הפרטים מאשרים את ההזמנה ואת שליחת הקבלה."
+                    : "משמשים ליצירת החשבון ולשליחת הקבלה."}
                 </p>
 
                 {/* Verified-User Gate Banner */}
@@ -419,7 +513,7 @@ export default function CheckoutPage() {
                       </button>
                     </div>
                   </div>
-                ) : !user.email_confirmed_at ? (
+                ) : isSupabaseConfigured && !user.email_confirmed_at ? (
                   <div
                     className="p-5 rounded-2xl mb-8 border space-y-3"
                     style={{
@@ -482,7 +576,7 @@ export default function CheckoutPage() {
                         className="block text-xs font-bold mb-1.5"
                         style={{ color: "var(--color-muted-foreground)" }}
                       >
-                        שם פרטי
+                        שם פרטי{required}
                       </label>
                       <input
                         id="checkout-first-name"
@@ -514,7 +608,7 @@ export default function CheckoutPage() {
                         className="block text-xs font-bold mb-1.5"
                         style={{ color: "var(--color-muted-foreground)" }}
                       >
-                        שם משפחה
+                        שם משפחה{required}
                       </label>
                       <input
                         id="checkout-last-name"
@@ -548,7 +642,7 @@ export default function CheckoutPage() {
                       className="block text-xs font-bold mb-1.5"
                       style={{ color: "var(--color-muted-foreground)" }}
                     >
-                      כתובת מייל
+                      כתובת מייל{required}
                     </label>
                     <input
                       id="checkout-email"
@@ -579,58 +673,80 @@ export default function CheckoutPage() {
                       className="text-xs mt-1"
                       style={{ color: "var(--color-muted-foreground)" }}
                     >
-                      החשבון שלך ייווצר עם הכתובת הזו.
+                      {/* "החשבון שלך ייווצר עם הכתובת הזו" described a guest
+                       * checkout that the hosted flow does not have: a
+                       * purchase is only allowed for a signed-in, verified
+                       * account, so this address is not creating anything. */}
+                      {isSupabaseConfigured
+                        ? "כתובת החשבון המאומת. אליה תישלח הקבלה."
+                        : "החשבון ייווצר עם הכתובת הזו אם עדיין אין לך אחד."}
                     </p>
                   </div>
 
-                  <div>
-                    <label
-                      htmlFor="checkout-confirm-email"
-                      className="block text-xs font-bold mb-1.5"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      אימות כתובת מייל{" "}
-                      <span style={{ color: "var(--color-danger)" }}>*</span>
-                    </label>
-                    <input
-                      id="checkout-confirm-email"
-                      type="email"
-                      dir="ltr"
-                      className={`${inputClass} text-left`}
-                      style={inputStyle}
-                      value={confirmEmail}
-                      aria-invalid={confirmEmailError ? true : undefined}
-                      aria-describedby={
-                        confirmEmailError
-                          ? "checkout-confirm-email-error"
-                          : "checkout-confirm-email-status"
-                      }
-                      onChange={(e) => handleConfirmEmailChange(e.target.value)}
-                      onPaste={(e) => e.preventDefault()}
-                      placeholder="הקלד שוב את כתובת המייל"
-                    />
-                    {confirmEmailError ? (
-                      <p
-                        id="checkout-confirm-email-error"
-                        role="alert"
-                        className="text-xs mt-1"
-                        style={{ color: "var(--color-danger)" }}
+                  {/* Only shown when the address above was edited away from
+                   * the verified one — see needsEmailConfirmation. */}
+                  {needsEmailConfirmation && (
+                    <div>
+                      <label
+                        htmlFor="checkout-confirm-email"
+                        className="block text-xs font-bold mb-1.5"
+                        style={{ color: "var(--color-muted-foreground)" }}
                       >
-                        {confirmEmailError}
-                      </p>
-                    ) : confirmEmail.trim() &&
-                      confirmEmail.trim().toLowerCase() ===
-                        form.email.trim().toLowerCase() ? (
-                      <p
-                        id="checkout-confirm-email-status"
-                        className="text-xs mt-1 flex items-center gap-1"
-                        style={{ color: "var(--color-success)" }}
-                      >
-                        <Icon name="checkCircle" size={13} /> הכתובות תואמות —
-                        הקבלה והגישה יישלחו לכתובת זו.
-                      </p>
-                    ) : null}
-                  </div>
+                        אימות כתובת מייל{required}
+                      </label>
+                      <input
+                        id="checkout-confirm-email"
+                        type="email"
+                        dir="ltr"
+                        className={`${inputClass} text-left`}
+                        style={inputStyle}
+                        value={confirmEmail}
+                        aria-invalid={confirmEmailError ? true : undefined}
+                        aria-describedby={
+                          confirmEmailError
+                            ? "checkout-confirm-email-error"
+                            : "checkout-confirm-email-status"
+                        }
+                        onChange={(e) =>
+                          handleConfirmEmailChange(e.target.value)
+                        }
+                        /* Typing, not pasting, is the point of a field that
+                         * exists to catch a mistyped address. It only appears
+                         * in the one case where that risk is real. */
+                        onPaste={(e) => e.preventDefault()}
+                        placeholder="הקלד שוב את כתובת המייל"
+                      />
+                      {confirmEmailError ? (
+                        <p
+                          id="checkout-confirm-email-error"
+                          role="alert"
+                          className="text-xs mt-1"
+                          style={{ color: "var(--color-danger)" }}
+                        >
+                          {confirmEmailError}
+                        </p>
+                      ) : confirmEmail.trim() &&
+                        confirmEmail.trim().toLowerCase() === typedEmail ? (
+                        <p
+                          id="checkout-confirm-email-status"
+                          className="text-xs mt-1 flex items-center gap-1"
+                          style={{ color: "var(--color-success)" }}
+                        >
+                          <Icon name="checkCircle" size={13} /> הכתובות תואמות —
+                          הקבלה והגישה יישלחו לכתובת זו.
+                        </p>
+                      ) : (
+                        <p
+                          id="checkout-confirm-email-status"
+                          className="text-xs mt-1"
+                          style={{ color: "var(--color-muted-foreground)" }}
+                        >
+                          כתובת זו שונה מהכתובת המאומתת של החשבון. אימות בהקלדה
+                          שוב שומר שהקבלה לא תישלח לכתובת שגויה.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label
@@ -638,7 +754,7 @@ export default function CheckoutPage() {
                       className="block text-xs font-bold mb-1.5"
                       style={{ color: "var(--color-muted-foreground)" }}
                     >
-                      מספר טלפון
+                      מספר טלפון{required}
                     </label>
                     <div className="flex gap-2" dir="rtl">
                       {/* Phone number input - on the right side (RTL) */}
@@ -648,18 +764,21 @@ export default function CheckoutPage() {
                         dir="ltr"
                         aria-invalid={errors.phone ? true : undefined}
                         aria-describedby={
-                          errors.phone ? "checkout-phone-error" : undefined
+                          errors.phone
+                            ? "checkout-phone-error"
+                            : "checkout-phone-hint"
                         }
                         className={`${inputClass} text-left flex-1`}
                         style={inputStyle}
-                        value={phoneNumber}
-                        onChange={(e) => {
-                          // Only allow digits and limit to exactly 7 characters
-                          const value = e.target.value
-                            .replace(/[^\d]/g, "")
-                            .slice(0, 7)
-                          setPhoneNumber(value)
-                        }}
+                        value={phoneParts.number}
+                        onChange={(e) =>
+                          setPhoneParts((prev) => ({
+                            ...prev,
+                            number: e.target.value
+                              .replace(/[^\d]/g, "")
+                              .slice(0, PHONE_NUMBER_DIGITS),
+                          }))
+                        }
                         onKeyPress={(e) => {
                           // Block non-numeric characters
                           if (
@@ -676,29 +795,33 @@ export default function CheckoutPage() {
                           }
                         }}
                         placeholder="1234567"
-                        maxLength={7}
+                        autoComplete="tel-national"
+                        maxLength={PHONE_NUMBER_DIGITS}
                         inputMode="numeric"
                         pattern="[0-9]*"
                       />
                       {/* Phone prefix dropdown - on the left side (RTL) */}
                       <select
                         aria-label="קידומת הטלפון"
-                        value={phonePrefix}
-                        onChange={(e) => setPhonePrefix(e.target.value)}
+                        value={phoneParts.prefix}
+                        onChange={(e) =>
+                          setPhoneParts((prev) => ({
+                            ...prev,
+                            prefix: e.target.value,
+                          }))
+                        }
                         className={`${inputClass} text-center flex-shrink-0`}
                         style={{ ...inputStyle, width: "80px" }}
                         dir="ltr"
                       >
-                        <option value="050">050</option>
-                        <option value="051">051</option>
-                        <option value="052">052</option>
-                        <option value="053">053</option>
-                        <option value="054">054</option>
-                        <option value="055">055</option>
-                        <option value="058">058</option>
+                        {PHONE_PREFIXES.map((prefix) => (
+                          <option key={prefix} value={prefix}>
+                            {prefix}
+                          </option>
+                        ))}
                       </select>
                     </div>
-                    {errors.phone && (
+                    {errors.phone ? (
                       <p
                         id="checkout-phone-error"
                         role="alert"
@@ -706,6 +829,14 @@ export default function CheckoutPage() {
                         style={{ color: "var(--color-danger)" }}
                       >
                         {errors.phone}
+                      </p>
+                    ) : (
+                      <p
+                        id="checkout-phone-hint"
+                        className="text-xs mt-1"
+                        style={{ color: "var(--color-muted-foreground)" }}
+                      >
+                        חובה לרכישה — לצורכי יצירת קשר על ההזמנה.
                       </p>
                     )}
                   </div>
@@ -811,7 +942,7 @@ export default function CheckoutPage() {
                       {form.email}
                     </p>
                     <p dir="ltr" className="text-left">
-                      {form.phone}
+                      {phone}
                     </p>
                   </div>
                   <button
@@ -977,7 +1108,9 @@ export default function CheckoutPage() {
                 }}
               >
                 {[
-                  "החשבון נוצר אוטומטית לפי כתובת המייל",
+                  isSupabaseConfigured
+                    ? "ההזמנה נרשמת לחשבון המאומת שלך"
+                    : "החשבון נוצר אוטומטית לפי כתובת המייל",
                   "ההזמנה נשמרת במערכת עם מספר הזמנה למעקב",
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-2">

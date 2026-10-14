@@ -6,6 +6,7 @@
  *   • signUpWithEmail
  *   • signOutUser
  *   • resendVerification
+ *   • syncAccountPhone
  *   • requestPasswordReset
  *   • updatePassword
  *   • fetchProfile
@@ -100,6 +101,28 @@ export function translateAuthError(err: { message?: string; status?: number; cod
   if (lower.includes("password should be at least")) {
     return {
       message: "הסיסמה חייבת להכיל לפחות 8 תווים.",
+      isUnconfirmed: false,
+    }
+  }
+
+  /* GoTrue's mail failure, raised when the signup confirmation message cannot
+   * be delivered — an unconfigured SMTP provider, an unverified sender, a
+   * quota. It is answered as `unexpected_failure` with this bare English
+   * sentence, which otherwise reaches a Hebrew screen verbatim (observed on a
+   * live signup: the customer read "Error sending confirmation email").
+   *
+   * `isUnconfirmed` stays false on purpose: GoTrue aborts the signup when the
+   * mail fails, so no account exists and offering "send it again" would point
+   * at nothing. It also means a taken address reports THIS failure rather than
+   * "already registered" — the mail breaks before the duplicate is reached —
+   * which is why the wording asks for a retry instead of claiming a conflict. */
+  if (
+    lower.includes("error sending confirmation email") ||
+    lower.includes("sending confirmation")
+  ) {
+    return {
+      message:
+        "לא ניתן היה לשלוח את אימייל האימות. נסו שוב בעוד רגע; אם זה חוזר, יש לפנות לתמיכה.",
       isUnconfirmed: false,
     }
   }
@@ -516,6 +539,55 @@ export async function requestPasswordReset(email: string): Promise<AuthResult<vo
 
   if (error) {
     const { message } = translateAuthError(error)
+    return authFail(message, error.code)
+  }
+
+  return authOk(undefined)
+}
+
+/**
+ * Records the purchase phone on the account itself.
+ *
+ * A checkout number reaches `orders.customer_phone` and stops there:
+ * `create_storefront_order` has no business writing a profile, and migration
+ * 0004 leaves `authenticated` with UPDATE on `greeted_at` only, so the
+ * browser is not allowed to write `users.phone` at all. The auth user's own
+ * metadata is the one place it may — GoTrue writes it for the session holder,
+ * and `buildAppUser` already reads it as the fallback for the profile value.
+ *
+ * The whole metadata object is sent rather than the single key, so the write
+ * is correct whether the server merges it or replaces it — losing
+ * `first_name`/`last_name` here would quietly change what the storefront
+ * renders for that customer.
+ */
+export async function syncAccountPhone(phone: string): Promise<AuthResult<void>> {
+  if (!isSupabaseConfigured) return authFail("שרת Supabase אינו מוגדר.")
+
+  const client = requireSupabase()
+  const value = phone.trim()
+
+  if (!value) return authFail("אין מספר טלפון לשמירה.", "VALIDATION")
+
+  const { data } = await client.auth.getSession()
+  const metadata = (data.session?.user?.user_metadata ?? {}) as Record<
+    string,
+    unknown
+  >
+
+  if (metadata.phone === value) return authOk(undefined)
+
+  const { error } = await client.auth.updateUser({
+    data: { ...metadata, phone: value },
+  })
+
+  if (error) {
+    const { message } = translateAuthError(error)
+
+    /* Never fatal for the caller: the order is already written. Say what
+     * happened in the console so a silently missing contact number can still
+     * be traced, and hand back the refusal. */
+    console.warn("[supabase-auth] account phone not recorded:", message)
+
     return authFail(message, error.code)
   }
 

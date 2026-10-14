@@ -2,15 +2,32 @@ import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useContent } from "../content/useContent"
-import { passwordProblem } from "../lib/auth"
+import {
+  PHONE_NUMBER_DIGITS,
+  PHONE_PREFIXES,
+  emailProblem,
+  hasHebrewChars,
+  joinPhone,
+  passwordProblem,
+  phoneProblem,
+  type PhoneParts,
+} from "../lib/auth"
+import {
+  rememberReturnPath,
+  safeInternalPath,
+} from "../lib/checkout-intent"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import Icon from "../components/icons"
 import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
 import logoImg from "../assets/main_photo.jpg"
 
-// Function to detect Hebrew characters
-function hasHebrewChars(text: string): boolean {
-  return /[\u0590-\u05FF]/.test(text)
-}
+/** Marks a field the customer cannot submit without. The same red star the
+ *  checkout screen already uses, so "required" is not a guess on either side. */
+const requiredMark = (
+  <span style={{ color: "var(--color-danger)" }} aria-hidden="true">
+    {" *"}
+  </span>
+)
 
 export default function LoginPage() {
   const { login, register, resendConfirmation, bootstrapRequired } = useApp()
@@ -19,15 +36,27 @@ export default function LoginPage() {
   const location = useLocation()
   const mode = location.pathname === "/register" ? "register" : "login"
 
+  /* Where a finished sign-in goes. Sanitized because the value arrives from
+   * a query string anybody can write, and it is used for a navigation. */
+  const redirect = safeInternalPath(
+    new URLSearchParams(location.search).get("redirect"),
+  )
+
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [phoneParts, setPhoneParts] = useState<PhoneParts>({
+    prefix: PHONE_PREFIXES[0],
+    number: "",
+  })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [hebrewWarning, setHebrewWarning] = useState(false)
   const [emailHebrewWarning, setEmailHebrewWarning] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Email verification UX state
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
@@ -85,6 +114,23 @@ export default function LoginPage() {
     setHebrewWarning(hasHebrewChars(newPassword))
   }
 
+  /**
+   * The phone is optional here and mandatory at checkout, and that split is
+   * the business rule, not an oversight: `docs/PRODUCT_BRIEF.md` §5 lists the
+   * number among what a purchase must collect, while §7 identifies an account
+   * by email alone and `users.phone` is nullable. Offering the field at
+   * registration is still worth it — `signUpWithEmail` already forwards it into
+   * the account metadata and `buildAppUser` already reads it back — so a
+   * customer who gives the number once is not asked for it again at checkout,
+   * and the support form (which prefills from `user.phone`) finally has it.
+   */
+  const handlePhoneDigitChange = (value: string) => {
+    setPhoneParts((prev) => ({
+      ...prev,
+      number: value.replace(/[^\d]/g, "").slice(0, PHONE_NUMBER_DIGITS),
+    }))
+  }
+
   // A fresh installation has no accounts at all, so nobody can sign in
   // until the first administrator is created.
   useEffect(() => {
@@ -97,27 +143,40 @@ export default function LoginPage() {
     setUnconfirmedEmail(null)
     setResendMessage(null)
 
-    // Disallow Hebrew in email
-    if (hasHebrewChars(email)) {
-      setError(
-        "כתובת האימייל אינה יכולה להכיל אותיות בעברית. יש להזין כתובת באנגלית בלבד.",
-      )
-      return
-    }
+    /* One validator for both screens and both modes. It is the rule the
+     * service layer applies too, so nothing is accepted here only to be
+     * refused when the order is placed. */
+    const emailIssue = emailProblem(email)
 
-    // Validate email contains @ symbol
-    if (!email.includes("@")) {
-      setError("כתובת האימייל חייבת להכיל את הסימן @")
+    if (emailIssue) {
+      setError(emailIssue)
       return
     }
 
     if (mode === "register") {
       const problem = passwordProblem(password)
+
       if (problem) {
         setError(problem)
         return
       }
+
+      /* Password confirmation is the convention on every other screen that
+       * sets a password (first-run setup, recovery). Registration creates the
+       * credential the customer will live with, so it asks for it too. */
+      if (password !== confirmPassword) {
+        setError("הסיסמאות אינן תואמות.")
+        return
+      }
+
+      const phoneIssue = phoneProblem(phoneParts, false)
+
+      if (phoneIssue) {
+        setError(phoneIssue)
+        return
+      }
     }
+
     setIsLoading(true)
     const result =
       mode === "login"
@@ -127,15 +186,20 @@ export default function LoginPage() {
             last_name: lastName.trim(),
             email: email.trim(),
             password,
+            phone: joinPhone(phoneParts) || undefined,
           })
     setIsLoading(false)
     if (result.ok) {
       if (mode === "register" && result.needsEmailConfirmation) {
+        /* The verification link is a trip out of this document. Whatever the
+         * customer was heading for is written down now, so the confirmation
+         * screen can finish the journey instead of dropping them in the
+         * library mid-purchase. */
+        if (redirect) rememberReturnPath(redirect)
+
         setRegisteredEmail(email.trim())
         return
       }
-      const searchParams = new URLSearchParams(location.search)
-      const redirect = searchParams.get("redirect")
       navigate(redirect || (result.user?.role === "ADMIN" ? "/admin" : "/dashboard"), {
         replace: true,
       })
@@ -182,6 +246,10 @@ export default function LoginPage() {
             style={{ color: "var(--color-muted-foreground)" }}
           >
             יש ללחוץ על הקישור במייל כדי להפעיל את החשבון ולהתחבר.
+            {/* Naming the destination is what tells the customer the purchase
+             * they started has not been forgotten on this side of the mail. */}
+            {redirect === "/checkout" &&
+              " לאחר האימות נחזיר אותך להשלמת הרכישה."}
           </p>
 
           {resendMessage && (
@@ -219,7 +287,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => {
                 setRegisteredEmail(null)
-                navigate("/login")
+                navigate(redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login")
               }}
               className="w-full py-2.5 rounded-lg text-sm transition-opacity hover:opacity-80"
               style={{ color: "var(--color-primary)" }}
@@ -304,7 +372,12 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* The browser's own validation bubbles are English, unstyled and
+         * fire before anything here — on a Hebrew form whose every message is
+         * already written in Hebrew. `noValidate` hands the answering to
+         * `emailProblem` / `passwordProblem`, while the `required` attributes
+         * stay for assistive technology and for the field semantics. */}
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {mode === "register" && (
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -314,6 +387,7 @@ export default function LoginPage() {
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
                   {c("ui.auth.firstName") || "שם פרטי"}
+                  {requiredMark}
                 </label>
                 <input
                   id="auth-first-name"
@@ -333,6 +407,7 @@ export default function LoginPage() {
                   style={{ color: "var(--color-muted-foreground)" }}
                 >
                   {c("ui.auth.lastName") || "שם משפחה"}
+                  {requiredMark}
                 </label>
                 <input
                   id="auth-last-name"
@@ -355,6 +430,7 @@ export default function LoginPage() {
               style={{ color: "var(--color-muted-foreground)" }}
             >
               {c("ui.auth.emailLabel") || "אימייל"}
+              {requiredMark}
             </label>
             <input
               id="auth-email"
@@ -405,6 +481,7 @@ export default function LoginPage() {
                 style={{ color: "var(--color-muted-foreground)" }}
               >
                 {c("ui.auth.passwordLabel") || "סיסמה"}
+                {requiredMark}
               </label>
               {mode === "login" && (
                 <Link
@@ -486,6 +563,115 @@ export default function LoginPage() {
               </p>
             )}
           </div>
+
+          {/* Confirmation of a typed credential is already the rule on the
+           * first-run setup screen and on password recovery; registration is
+           * where the credential is invented, so it asks the same question. */}
+          {mode === "register" && (
+            <div>
+              <label
+                htmlFor="auth-confirm-password"
+                className="block text-xs font-medium mb-1.5"
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                {c("ui.auth.confirmPassword") || "אימות סיסמה"}
+                {requiredMark}
+              </label>
+              <div dir="ltr" className="relative">
+                <input
+                  id="auth-confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  dir="ltr"
+                  className={inputClass + " text-left pe-14"}
+                  style={inputStyle}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="tap-target absolute end-3 top-1/2 transform -translate-y-1/2 inline-flex items-center justify-center transition-colors hover:opacity-100"
+                  style={{
+                    color: showConfirmPassword
+                      ? "#FFFFFF"
+                      : "var(--color-muted-foreground)",
+                    opacity: showConfirmPassword ? 1 : 0.5,
+                  }}
+                  aria-pressed={showConfirmPassword}
+                  aria-label={
+                    showConfirmPassword ? "הסתרת אימות הסיסמה" : "הצגת אימות הסיסמה"
+                  }
+                  title={
+                    showConfirmPassword ? "הסתר אימות סיסמה" : "הצג אימות סיסמה"
+                  }
+                >
+                  <Icon name="eye" size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {mode === "register" && (
+            <div>
+              <label
+                htmlFor="auth-phone"
+                className="block text-xs font-medium mb-1.5"
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                {c("ui.auth.phoneLabel") || "מספר טלפון"}{" "}
+                <span style={{ color: "var(--color-muted-foreground)" }}>
+                  (אופציונלי)
+                </span>
+              </label>
+              {/* The same two controls the checkout screen uses, so the number
+               * is entered, stored and validated identically on both sides. */}
+              <div className="flex gap-2" dir="rtl">
+                <input
+                  id="auth-phone"
+                  type="tel"
+                  dir="ltr"
+                  className={inputClass + " text-left flex-1"}
+                  style={inputStyle}
+                  value={phoneParts.number}
+                  onChange={(e) => handlePhoneDigitChange(e.target.value)}
+                  placeholder="1234567"
+                  autoComplete="tel-national"
+                  maxLength={PHONE_NUMBER_DIGITS}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                />
+                <select
+                  aria-label="קידומת הטלפון"
+                  value={phoneParts.prefix}
+                  onChange={(e) =>
+                    setPhoneParts((prev) => ({
+                      ...prev,
+                      prefix: e.target.value,
+                    }))
+                  }
+                  className={inputClass + " text-center flex-shrink-0"}
+                  style={{ ...inputStyle, width: "80px" }}
+                  dir="ltr"
+                >
+                  {PHONE_PREFIXES.map((prefix) => (
+                    <option key={prefix} value={prefix}>
+                      {prefix}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p
+                className="text-[11px] mt-1.5"
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                {c("ui.auth.phoneHint") ||
+                  "מועיל לעדכונים על הזמנות. בקופה מספר טלפון הוא שדה חובה."}
+              </p>
+            </div>
+          )}
 
           {error && (
             <div className="space-y-2">
@@ -604,7 +790,9 @@ export default function LoginPage() {
           style={{ color: "var(--color-muted-foreground)" }}
         >
           <Icon name="bag" size={13} />
-          {c("ui.auth.guestCheckout") || "ניתן גם לרכוש ישירות מ־"}
+          {isSupabaseConfigured
+            ? "עיון בחנות אינו מחייב חשבון — "
+            : (c("ui.auth.guestCheckout") || "ניתן גם לרכוש ישירות מ־")}
           <Link
             to="/store"
             className="transition-opacity hover:opacity-70"
@@ -612,7 +800,9 @@ export default function LoginPage() {
           >
             {c("ui.auth.guestCheckoutStore") || "החנות"}
           </Link>
-          {c("ui.auth.guestCheckoutSuffix") || "— החשבון ייווצר אוטומטית."}
+          {isSupabaseConfigured
+            ? ", אבל השלמת רכישה דורשת חשבון מאומת."
+            : (c("ui.auth.guestCheckoutSuffix") || "— החשבון ייווצר אוטומטית.")}
         </p>
 
         {/* The auth screens have no site footer; this is their way into the

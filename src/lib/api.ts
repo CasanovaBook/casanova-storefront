@@ -400,6 +400,15 @@ export async function registerCustomer(
 
   if (!isEmail(email)) return fail("VALIDATION", "כתובת המייל אינה תקינה.")
 
+  /* Both forms mark the name fields as required and both say so in their own
+   * words; this is the same rule the hosted path enforces
+   * (`create_storefront_order` → `name_required`). Stating it here as well is
+   * what makes the agreement real rather than a courtesy the client may skip.
+   * A passwordless guest row created without a name would also leave the
+   * admin CRM and the invoice with nothing to print. */
+  if (!input.first_name.trim() || !input.last_name.trim())
+    return fail("VALIDATION", "יש למלא שם מלא.")
+
   const db = getDb()
 
   const sessionUser = options?.upgradeUserId
@@ -484,7 +493,33 @@ export async function findOrCreateCustomer(
 
   const existing = getDb().users.find((u) => u.email === email)
 
-  if (existing) return ok(existing)
+  if (existing) {
+    /* A returning customer can hand over a phone number for the first time at
+     * the till: the checkout form has always collected it while the account was
+     * created without one. The order keeps it either way; carrying it onto the
+     * profile is what stops the support form and the next checkout from asking
+     * again for something the customer already gave — and it is the local
+     * mirror of what `syncAccountPhone` does on the hosted backend.
+     *
+     * Only ever fills a blank. A profile that already holds a number was set
+     * deliberately somewhere else, and a purchase form is not the place to
+     * overwrite it. */
+    const phone = input.phone?.trim()
+
+    if (!phone || existing.phone) return ok(existing)
+
+    const updated = mutate((d) => {
+      d.users = d.users.map((u) =>
+        u.user_id === existing.user_id
+          ? { ...u, phone, updated_at: nowIso() }
+          : u,
+      )
+
+      return d.users.find((u) => u.user_id === existing.user_id) as StoredUser
+    })
+
+    return ok(updated)
+  }
 
   const created = await registerCustomer(input)
 

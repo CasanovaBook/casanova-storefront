@@ -71,6 +71,7 @@ import {
   signUpWithEmail,
   signOutUser,
   resendVerification,
+  syncAccountPhone,
   fetchProfile,
   buildAppUser,
 } from "../integrations/supabase/supabase-auth"
@@ -727,6 +728,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // re-verifies the entitlement server-side either way.
         if (isSupabaseConfigured && result.data.customer.user_id) {
           void refreshEntitlements(result.data.customer.user_id)
+
+          /* The number typed at purchase belongs to the order, and today it
+           * dies there: `create_storefront_order` writes it into
+           * `orders.customer_phone` only, and the browser has no UPDATE grant
+           * on `users.phone`. Meanwhile every screen that wants a phone reads
+           * the account — the checkout form prefills from `user.phone`, and so
+           * does the support ticket. Recording it on the session's own
+           * metadata is the one write the client is allowed to make, and it is
+           * the one `buildAppUser` already reads back.
+           *
+           * Deliberately not awaited: the order is already written and paid.
+           * A metadata hiccup must never turn a completed purchase into an
+           * error screen. */
+          if (input.phone?.trim()) {
+            void syncAccountPhone(input.phone.trim())
+          }
         }
       }
       return result

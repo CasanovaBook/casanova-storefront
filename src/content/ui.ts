@@ -143,7 +143,10 @@ export const UI: Record<string, [string, string]> = {
   "auth.guestCheckoutStore": ["קישור חנות", "החנות"],
   "auth.guestCheckoutSuffix": ["המשך טקסט רכישה", "— החשבון ייווצר אוטומטית."],
   "auth.passwordHint": ["רמז סיסמה", "8 תווים לפחות, כולל אותיות וספרה אחת."],
-  "auth.termsAgree": ["הסכמה לתנאים", "על ידי יצירת חשבון, אתה מסים ל"],
+  "auth.confirmPassword": ["שדה אימות סיסמה", "אימות סיסמה"],
+  "auth.phoneLabel": ["שדה טלפון בהרשמה", "מספר טלפון"],
+  "auth.phoneHint": ["רמז לשדה טלפון בהרשמה", "מועיל לעדכונים על הזמנות. בקופה מספר טלפון הוא שדה חובה."],
+  "auth.termsAgree": ["הסכמה לתנאים", "על ידי יצירת חשבון, אתה מסכים ל"],
   "auth.termsLink": ["קישור תנאי שימוש", "תנאי השימוש"],
   "auth.termsSuffix": ["המשך טקסט תנאים", "שלנו."],
   // support

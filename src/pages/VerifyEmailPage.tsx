@@ -21,6 +21,10 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
+import {
+  peekReturnPath,
+  takeReturnPath,
+} from "../lib/checkout-intent"
 import Icon from "../components/icons"
 import ThemeToggle from "../components/ThemeToggle"
 import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
@@ -32,6 +36,12 @@ export default function VerifyEmailPage() {
   const { isAuthenticated, authReady, user } = useApp()
   const navigate = useNavigate()
   const [state, setState] = useState<VerifyState>("checking")
+
+  /* The destination the customer was heading for before leaving to click
+   * this link. Reading it is what lets the screen promise the right place;
+   * it is consumed only on the way out, so a link opened in the wrong
+   * browser still has it waiting for the sign-in. */
+  const [returnPath] = useState(() => peekReturnPath())
 
   /* Supabase reports a spent or tampered link in the URL fragment as
    * `#error=...&error_code=otp_expired`. Read once, on mount, because
@@ -76,14 +86,16 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     if (state !== "confirmed") return
     const timer = setTimeout(() => {
-      navigate(user?.role === "ADMIN" ? "/admin" : "/dashboard/library", {
-        replace: true,
-      })
+      navigate(
+        takeReturnPath() ?? (user?.role === "ADMIN" ? "/admin" : "/dashboard/library"),
+        { replace: true },
+      )
     }, 2500)
     return () => clearTimeout(timer)
   }, [state, navigate, user?.role])
 
   const isAdmin = user?.role === "ADMIN"
+  const destination = returnPath ?? (isAdmin ? "/admin" : "/dashboard/library")
   const busy = state === "checking"
   const copy = {
     checking: {
@@ -96,7 +108,9 @@ export default function VerifyEmailPage() {
     },
     confirmed: {
       title: "הכתובת אומתה בהצלחה",
-      body: "החשבון שלך מאומת ואתה מחובר. מעבירים אותך לספרייה שלך…",
+      body: returnPath
+        ? "החשבון שלך מאומת ואתה מחובר. מעבירים אותך חזרה להמשך."
+        : "החשבון שלך מאומת ואתה מחובר. מעבירים אותך לספרייה שלך…",
       icon: "checkCircle",
       color: "var(--color-success)",
       bg: "rgba(34,197,94,0.12)",
@@ -111,9 +125,16 @@ export default function VerifyEmailPage() {
       border: "1px solid rgba(245,158,11,0.3)",
     },
     "no-session": {
-      title: "הכתובת אומתה — נשאר רק להתחבר",
+      /* This state is reached both when a link was opened in a browser that
+       * holds no session AND when someone lands here without a link at all —
+       * a bookmark, a crawler, a typed URL. Asserting "the address was
+       * verified" would be a claim this page cannot support in the second
+       * case, and a false claim on a screen that talks about the security of
+       * an account is worse than plain wording. So it says what is true either
+       * way and what to do about it. */
+      title: "נשאר רק להתחבר",
       body: isSupabaseConfigured
-        ? "האימות הושלם, אבל הדפדפן הזה אינו מחובר. התחבר עם הכתובת והסיסמה שבחרת, והכול מוכן."
+        ? "אם פתחת את קישור האימות מהמייל, הכתובת כבר אומתה — בדפדפן הזה צריך להתחבר איתה בשנית. אם עדיין לא אישרת, פתח את הקישור שהגיע אליך."
         : 'אין כרגע שרת Supabase מחובר, ולכן אימות בדוא"ל אינו זמין.',
       icon: "lock",
       color: "var(--color-primary)",
@@ -192,15 +213,23 @@ export default function VerifyEmailPage() {
           </p>
         ) : state === "confirmed" ? (
           <Link
-            to={isAdmin ? "/admin" : "/dashboard/library"}
+            to={destination}
             className="btn-gradient block w-full py-3 rounded-full font-semibold text-sm text-center"
           >
-            {isAdmin ? "לממשק הניהול" : "לספרייה שלי"}
+            {returnPath === "/checkout"
+              ? "להשלמת הרכישה"
+              : isAdmin
+                ? "לממשק הניהול"
+                : "לספרייה שלי"}
           </Link>
         ) : state === "expired" ? (
           <div className="space-y-3">
             <Link
-              to="/login"
+              to={
+                returnPath
+                  ? `/login?redirect=${encodeURIComponent(returnPath)}`
+                  : "/login"
+              }
               className="btn-gradient block w-full py-3 rounded-full font-semibold text-sm text-center"
             >
               חזרה להתחברות
@@ -215,7 +244,11 @@ export default function VerifyEmailPage() {
           </div>
         ) : (
           <Link
-            to="/login"
+            to={
+              returnPath
+                ? `/login?redirect=${encodeURIComponent(returnPath)}`
+                : "/login"
+            }
             className="btn-gradient block w-full py-3 rounded-full font-semibold text-sm text-center"
           >
             התחבר עכשיו
