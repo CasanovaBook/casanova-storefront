@@ -18,10 +18,10 @@
 
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router"
-import { isSupabaseConfigured, requireSupabase } from "../lib/supabase"
+import { isSupabaseConfigured, requireSupabase } from "../integrations/supabase/supabase"
 import Icon from "../components/icons"
 import ThemeToggle from "../components/ThemeToggle"
-import logoImg from "../../images/main_photo.jpg"
+import logoImg from "../assets/main_photo.jpg"
 
 type RedeemState = "redeeming" | "redirecting" | "invalid" | "error"
 

@@ -9,7 +9,7 @@
 
 import type { SystemAlert } from "../types"
 
-import type { Database } from "./db"
+import type { Database } from "../data/db"
 
 function severityRank(sev: SystemAlert["severity"]): number {
   return sev === "CRITICAL" ? 3 : sev === "HIGH" ? 2 : sev === "MEDIUM" ? 1 : 0

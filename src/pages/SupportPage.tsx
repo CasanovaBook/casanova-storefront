@@ -26,7 +26,7 @@ import {
 import { useContent } from "../content/useContent"
 import { Rich } from "../content/render"
 
-import { useStore } from "../lib/store"
+import { useStore } from "../data/store"
 
 import { formatIsraelDateTime } from "../lib/datetime"
 

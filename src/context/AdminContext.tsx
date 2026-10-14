@@ -39,7 +39,7 @@ import type {
   UserProduct,
 } from "../types"
 
-import { useStore } from "../lib/store"
+import { useStore } from "../data/store"
 
 import { computeAlerts } from "../lib/alerts"
 
@@ -104,18 +104,18 @@ import {
   type CustomerProfile,
 } from "../lib/api-support"
 
-import { isSupabaseConfigured, requireSupabase } from "../lib/supabase"
+import { isSupabaseConfigured, requireSupabase } from "../integrations/supabase/supabase"
 
 import {
   fetchAllInquiries,
   fetchAllInquiryNotes,
-} from "../lib/supabase-inquiries"
+} from "../integrations/supabase/supabase-inquiries"
 
-import { fetchAllProfiles, mergeUserSources } from "../lib/supabase-auth"
+import { fetchAllProfiles, mergeUserSources } from "../integrations/supabase/supabase-auth"
 
-import { fetchAllEntitlements } from "../lib/supabase-entitlements"
+import { fetchAllEntitlements } from "../integrations/supabase/supabase-entitlements"
 
-import { createAdminPasswordResetLink } from "../lib/supabase-admin"
+import { createAdminPasswordResetLink } from "../integrations/supabase/supabase-admin"
 
 import { useApp } from "./AppContext"
 

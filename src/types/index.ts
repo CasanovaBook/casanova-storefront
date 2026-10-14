@@ -308,24 +308,11 @@ export interface Invoice {
   status: string
 }
 
-export interface Coupon {
-  coupon_id: string
-  code: string
-  discount_type: DiscountType
-  discount_value: number
-  minimum_order: number
-  expires_at?: string
-  usage_limit?: number
-  times_used: number
-  status: string
-}
-
 export interface CheckoutFormData {
   first_name: string
   last_name: string
   email: string
   phone: string
-  coupon_code: string
 }
 
 export interface CartItem {

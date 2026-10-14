@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-check-migrations.py — structural sanity check for the SQL in migrations/.
+check-migrations.py — structural sanity check for the SQL in supabase/migrations/.
 
 This exists because the SQL is applied by hand through a browser, so
 there is no compile step between writing it and running it against
@@ -32,7 +32,7 @@ code).
 
 Usage:
     python scripts/check-migrations.py                    # all migrations
-    python scripts/check-migrations.py migrations/0024*.sql
+    python scripts/check-migrations.py supabase/migrations/0024*.sql
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MIGRATIONS = ROOT / "migrations"
+MIGRATIONS = ROOT / "supabase" / "migrations"
 
 
 class Report:

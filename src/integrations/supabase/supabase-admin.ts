@@ -7,7 +7,7 @@
  * same arrangement content-storage.ts uses for Storage URLs.
  * ───────────────────────────────────────────────────────────── */
 
-import { fail, ok, type ErrorCode, type Result } from "./api"
+import { fail, ok, type ErrorCode, type Result } from "../../shared/result"
 
 import { isSupabaseConfigured, requireSupabase } from "./supabase"
 

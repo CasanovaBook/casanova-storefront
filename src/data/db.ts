@@ -21,7 +21,6 @@ import type {
   CmsSection,
   CmsSectionItem,
   ContentGrant,
-  Coupon,
   CrmLead,
   CrmNote,
   CrmTask,
@@ -108,8 +107,6 @@ export interface Database {
   email_logs: EmailLog[]
 
   audit_log: AuditLogEntry[]
-
-  coupons: Coupon[]
 
   sections: CmsSection[]
 
@@ -270,8 +267,6 @@ export function emptyDatabase(): Database {
     email_logs: [],
 
     audit_log: [],
-
-    coupons: [],
 
     sections: [],
 

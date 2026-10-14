@@ -1,5 +1,5 @@
 /*
- * Generates the favicon set from images/main_photo.jpg.
+ * Generates the favicon set from src/assets/main_photo.jpg.
  *
  * One-off build tool (run: `node scripts/generate-favicons.mjs`); the
  * output is committed to public/ so the app never depends on sharp at
@@ -19,7 +19,7 @@ import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import sharp from "sharp"
 
-const SRC = path.resolve("images/main_photo.jpg")
+const SRC = path.resolve("src/assets/main_photo.jpg")
 const OUT = path.resolve("public")
 
 if (!existsSync(SRC)) {

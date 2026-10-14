@@ -46,7 +46,7 @@ The brief's honesty clause requires this to be stated up front rather than impli
 - `src/components/layout/DashboardLayout.tsx`.
 - React Native: `src/components/ui.tsx`, screens `DashboardScreen`, `StoreScreen`, `LoginScreen`, `SupportScreen`, `ForgotPasswordScreen`; `android/app/proguard-rules.pro`, `res/xml/data_extraction_rules.xml`, `res/values/styles.xml`; `ios` asset catalogue (absent — see §20).
 - The removed legacy root `ScreenShield.tsx` was a superseded prototype (see §26).
-- `public/books/Senia_book.pdf`, `docs/Senia_book.pdf`, `images/main_photo.jpg` — binary assets, not read.
+- `public/books/Senia_book.pdf`, `docs/Senia_book.pdf`, `src/assets/main_photo.jpg` — binary assets, not read.
 
 Where a section below depends on a file in the second list, that dependency is named and the confidence is reduced accordingly.
 
@@ -221,8 +221,8 @@ book/
 ├── .figma/make/          7 extension-less bash scripts + site.json + dev.json
 ├── dist/                 build output (git-ignored)
 ├── docs/                 Senia_book.pdf (git-ignored; 48 MB duplicate)
-├── images/               main_photo.jpg (the logo; tracked, 221 KB)
-├── migrations/           0001_mobile_reader.sql      ← UNTRACKED in git
+├── src/assets/           main_photo.jpg (the logo; tracked, 221 KB)
+├── supabase/migrations/  0001_mobile_reader.sql      ← UNTRACKED in git
 ├── node_modules/         (git-ignored)
 ├── public/books/         .gitkeep + Senia_book.pdf   ← the PDF is git-ignored
 ├── react-native/         the entire mobile app       ← UNTRACKED except one file
@@ -230,7 +230,7 @@ book/
 ├── AGENTS.md, CLAUDE.md  agent guidance (CLAUDE.md is literally "@AGENTS.md")
 ├── index.html            Vite shell
 ├── package.json, pnpm-lock.yaml, tsconfig.json, vite.config.ts
-├── schema.sql            the PostgreSQL contract (tracked)
+├── supabase/schema.sql    the PostgreSQL contract (tracked)
 ├── .mise.toml, .gitignore, .gitattributes
 └── ~20 *.png             browser-automation screenshots (see §26)
 ```
@@ -2026,7 +2026,7 @@ Five independently fatal consequences:
 | | Status |
 |---|---|
 | All 59 entries under `src/**` (57 code files plus the founding brief and one image) | **Tracked** |
-| `index.html`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `vite.config.ts`, `.mise.toml`, `.gitignore`, `.gitattributes`, `AGENTS.md`, `CLAUDE.md`, `schema.sql`, `.figma/make/*`, `images/main_photo.jpg`, `public/books/.gitkeep` | **Tracked** |
+| `index.html`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `vite.config.ts`, `.mise.toml`, `.gitignore`, `.gitattributes`, `AGENTS.md`, `CLAUDE.md`, `schema.sql`, `.figma/make/*`, `src/assets/main_photo.jpg`, `public/books/.gitkeep` | **Tracked** |
 | Removed legacy root `ScreenShield.tsx` | Deleted during repository cleanup; it was the obsolete `ELITEREAD` prototype (§26) |
 | `migrations/` (the entire directory, including `0001_mobile_reader.sql`) | **Untracked** |
 | `react-native/{App.tsx, index.js, app.json, package.json, tsconfig.json, metro.config.js, babel.config.js, .gitignore, src/, android/, ios/}` | **Untracked** — the entire real mobile application |

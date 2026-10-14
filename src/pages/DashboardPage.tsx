@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
-import { useStore } from "../lib/store"
+import { useStore } from "../data/store"
 import { claimFirstLogin } from "../lib/first-login"
 import {
   deviceFingerprint,

@@ -11,11 +11,11 @@
 import { useState } from "react"
 import { Link } from "react-router"
 import { getSettings, requestPasswordReset } from "../lib/api"
-import { isSupabaseConfigured } from "../lib/supabase"
-import { requestPasswordReset as requestSupabaseReset } from "../lib/supabase-auth"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
+import { requestPasswordReset as requestSupabaseReset } from "../integrations/supabase/supabase-auth"
 import Icon from "../components/icons"
 import ThemeToggle from "../components/ThemeToggle"
-import logoImg from "../../images/main_photo.jpg"
+import logoImg from "../assets/main_photo.jpg"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")

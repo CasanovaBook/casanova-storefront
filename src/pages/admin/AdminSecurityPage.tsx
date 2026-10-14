@@ -20,7 +20,7 @@ import { useMemo, useState } from "react"
 
 import { useAdmin } from "../../context/AdminContext"
 
-import { useStore } from "../../lib/store"
+import { useStore } from "../../data/store"
 
 import { can } from "../../lib/permissions"
 

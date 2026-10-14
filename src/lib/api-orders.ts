@@ -28,18 +28,16 @@ import type {
 
 import { effectivePrice, snapshotProduct } from "../types"
 
-import { getDb, mutate, nextSequence, nowIso, uid, type Database } from "./db"
+import { getDb, mutate, nextSequence, nowIso, uid, type Database } from "../data/db"
 
 import { normalizeEmail, isEmail, toPublicUser } from "./auth"
 
 import {
   dispatchEmail,
   fail,
-  findCoupon,
   findOrCreateCustomer,
   guard,
   ok,
-  redeemCoupon,
   writeAudit,
   type Actor,
   type Result,
@@ -47,13 +45,13 @@ import {
 
 import { grantAccessForOrder } from "./api-support"
 
-import { isSupabaseConfigured } from "./supabase"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
-import { fetchProductByIdFromDb } from "./supabase-catalog"
+import { fetchProductByIdFromDb } from "../integrations/supabase/supabase-catalog"
 
-import { createStorefrontOrder } from "./supabase-checkout"
+import { createStorefrontOrder } from "../integrations/supabase/supabase-checkout"
 
-import { isUuid } from "./supabase-entitlements"
+import { isUuid } from "../integrations/supabase/supabase-entitlements"
 
 /* ── Reads ────────────────────────────────────────────── */
 
@@ -114,8 +112,6 @@ export interface CheckoutInput {
 
   phone?: string
 
-  coupon_code?: string
-
   card_last4?: string
 }
 
@@ -145,8 +141,7 @@ export interface CheckoutOutcome {
  * The product, its price and the entitlement are all resolved by
  * `create_storefront_order` from `public.products` — the request cannot
  * name a price, and it can only grant access to `auth.uid()`. What this
- * side does is validate the form, keep the coupon rule (coupons have not
- * moved to Supabase yet) and mirror the server's answer into the local
+ * side does is validate the form and mirror the server's answer into the local
  * document, so the success page, the admin order list and the reader's
  * entitlement cache all see one and the same order — under the server's
  * UUIDs, never a second local one.
@@ -181,31 +176,6 @@ async function checkoutHosted(
   if (product.availability === "OUT_OF_STOCK")
     return fail("CONFLICT", "המוצר אזל מהמלאי.")
 
-  const unitPrice = effectivePrice(product)
-
-  const couponCode = input.coupon_code?.trim().toUpperCase() || undefined
-
-  const coupon = couponCode ? findCoupon(couponCode) : undefined
-
-  if (couponCode && !coupon)
-    return fail("VALIDATION", "קוד הקופון אינו תקף או שפג תוקפו.")
-
-  let discount = 0
-
-  if (coupon) {
-    if (unitPrice < coupon.minimum_order) {
-      return fail(
-        "VALIDATION",
-        `הקופון תקף להזמנות החל מ־₪${coupon.minimum_order.toLocaleString()}.`,
-      )
-    }
-
-    discount =
-      coupon.discount_type === "PERCENTAGE"
-        ? Math.round(unitPrice * (coupon.discount_value / 100) * 100) / 100
-        : Math.min(coupon.discount_value, unitPrice)
-  }
-
   const remote = await createStorefrontOrder(
     {
       product_id: input.product_id,
@@ -213,8 +183,7 @@ async function checkoutHosted(
       last_name: input.last_name.trim(),
       email,
       phone: input.phone?.trim() || undefined,
-      coupon_code: couponCode,
-      discount,
+      discount: 0,
     },
     product,
   )
@@ -281,8 +250,6 @@ async function checkoutHosted(
         )
       : [...db.user_products, entitlement]
   })
-
-  if (coupon) redeemCoupon(coupon.code)
 
   dispatchEmail({
     recipient: order.customer_email,
@@ -358,30 +325,7 @@ export async function checkout(
 
   const subtotal = unitPrice
 
-  const couponCode = input.coupon_code?.trim().toUpperCase() || undefined
-
-  const coupon = couponCode ? findCoupon(couponCode) : undefined
-
-  let discount = 0
-
-  if (couponCode && !coupon)
-    return fail("VALIDATION", "קוד הקופון אינו תקף או שפג תוקפו.")
-
-  if (coupon) {
-    if (subtotal < coupon.minimum_order) {
-      return fail(
-        "VALIDATION",
-        `הקופון תקף להזמנות החל מ־₪${coupon.minimum_order.toLocaleString()}.`,
-      )
-    }
-
-    discount =
-      coupon.discount_type === "PERCENTAGE"
-        ? Math.round(subtotal * (coupon.discount_value / 100) * 100) / 100
-        : Math.min(coupon.discount_value, subtotal)
-  }
-
-  const total = Math.max(0, Math.round((subtotal - discount) * 100) / 100)
+  const total = subtotal
 
   const customer = await findOrCreateCustomer({
     first_name: input.first_name.trim(),
@@ -423,7 +367,7 @@ export async function checkout(
 
       unit_price: unitPrice,
 
-      discount_amount: discount,
+      discount_amount: 0,
 
       line_total: total,
     }
@@ -445,13 +389,11 @@ export async function checkout(
 
       subtotal,
 
-      discount_amount: discount,
+      discount_amount: 0,
 
       total_amount: total,
 
       currency: product.currency,
-
-      coupon_code: coupon ? coupon.code : undefined,
 
       payment_provider: provider ?? "MANUAL",
 
@@ -502,8 +444,6 @@ export async function checkout(
 
     return created
   })
-
-  if (coupon) redeemCoupon(coupon.code)
 
   dispatchEmail({
     recipient: order.customer_email,

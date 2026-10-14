@@ -13,12 +13,12 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router"
 import { resetPasswordWithToken } from "../lib/api"
-import { supabase, isSupabaseConfigured } from "../lib/supabase"
-import { updatePassword as updateSupabasePassword } from "../lib/supabase-auth"
+import { supabase, isSupabaseConfigured } from "../integrations/supabase/supabase"
+import { updatePassword as updateSupabasePassword } from "../integrations/supabase/supabase-auth"
 import { passwordProblem } from "../lib/auth"
 import Icon from "../components/icons"
 import ThemeToggle from "../components/ThemeToggle"
-import logoImg from "../../images/main_photo.jpg"
+import logoImg from "../assets/main_photo.jpg"
 
 export default function SetupPasswordPage() {
   const navigate = useNavigate()

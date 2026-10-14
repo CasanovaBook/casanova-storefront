@@ -20,22 +20,22 @@ import type {
 
 import { snapshotProduct } from "../types"
 
-import { getDb, mutate, nextSequence, nowIso, uid } from "./db"
+import { getDb, mutate, nextSequence, nowIso, uid } from "../data/db"
 
 import { toPublicUser, isEmail, normalizeEmail } from "./auth"
 
 import { revokeGrantsForEntitlement } from "./api-security"
 
-import { isSupabaseConfigured } from "./supabase"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
-import { updateAccountStatus } from "./supabase-auth"
+import { updateAccountStatus } from "../integrations/supabase/supabase-auth"
 
 import {
   adminGrantAccess,
   adminRemoveAccess,
   adminSetAccessStatus,
   isUuid,
-} from "./supabase-entitlements"
+} from "../integrations/supabase/supabase-entitlements"
 
 import {
   createInquiryNoteRemote,
@@ -43,7 +43,7 @@ import {
   fetchMyInquiries,
   replyToMyInquiry,
   updateInquiryRemote,
-} from "./supabase-inquiries"
+} from "../integrations/supabase/supabase-inquiries"
 
 import {
   dispatchEmail,

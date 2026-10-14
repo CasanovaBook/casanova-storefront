@@ -51,8 +51,6 @@ export const UI: Record<string, [string, string]> = {
   "err.emailBad": ["אימייל לא תקין", "כתובת האימייל אינה תקינה."],
   "err.passwordShort": ["סיסמה קצרה", "הסיסמה חייבת להכיל לפחות 8 תווים."],
   "err.passwordMismatch": ["סיסמאות לא תואמות", "הסיסמאות אינן תואמות."],
-  "err.couponInvalid": ["קופון לא תקין", "הקופון אינו תקין או שפג תוקפו."],
-  "err.couponExpired": ["קופון פג תוקף", "תוקף הקופון פג."],
   // nav / header
   "nav.home": ["תפריט: בית", "בית"],
   "nav.store": ["תפריט: חנות", "חנות"],
@@ -115,9 +113,6 @@ export const UI: Record<string, [string, string]> = {
   // checkout
   "checkout.title": ["כותרת תשלום", "תשלום"],
   "checkout.summary": ["כותרת סיכום הזמנה", "סיכום הזמנה"],
-  "checkout.couponLabel": ["שדה קופון", "קוד קופון"],
-  "checkout.couponApply": ["כפתור החלת קופון", "החל"],
-  "checkout.couponRemove": ["כפתור הסרת קופון", "הסר"],
   "checkout.total": ["סה\"כ לתשלום", "סה\"כ לתשלום"],
   "checkout.pay": ["כפתור תשלום", "תשלום מאובטח"],
   "checkout.processing": ["כפתור בעת תשלום", "מעבד תשלום…"],

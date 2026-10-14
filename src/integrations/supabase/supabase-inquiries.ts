@@ -15,9 +15,9 @@
  * network error, and the app's `Result` shape already carries failure.
  * ───────────────────────────────────────────────────────────── */
 
-import type { Inquiry, InquiryNote, InquiryStatus, InquiryTopic } from "../types"
+import type { Inquiry, InquiryNote, InquiryStatus, InquiryTopic } from "../../types"
 
-import { fail, ok, type ErrorCode, type Result } from "./api"
+import { fail, ok, type ErrorCode, type Result } from "../../shared/result"
 
 import { isSupabaseConfigured, requireSupabase } from "./supabase"
 

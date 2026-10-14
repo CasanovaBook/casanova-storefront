@@ -80,7 +80,7 @@ export default defineConfig(({ mode, command }) => {
         ignored: [
           "**/.figma/**",
           "**/docs/**",
-          "**/images/**",
+          "**/src/assets/**",
           "**/dist/**",
           "**/react-native/**",
         ],

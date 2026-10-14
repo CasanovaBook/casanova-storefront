@@ -63,7 +63,6 @@ export default function CheckoutPage() {
     last_name: user?.last_name ?? "",
     email: user?.email ?? "",
     phone: user?.phone ?? "",
-    coupon_code: "",
   })
 
   // Synchronize form with logged-in user
@@ -115,9 +114,6 @@ export default function CheckoutPage() {
     setForm((prev) => ({ ...prev, phone: fullPhone }))
   }, [phonePrefix, phoneNumber])
   const [errors, setErrors] = useState<Partial<CheckoutFormData>>({})
-  const [couponApplied, setCouponApplied] = useState(false)
-  const [couponDiscount, setCouponDiscount] = useState(0)
-  const [couponError, setCouponError] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [step, setStep] = useState<"details" | "review">("details")
@@ -155,10 +151,7 @@ export default function CheckoutPage() {
 
   const unitPrice = product ? effectivePrice(product) : 0
   const subtotal = unitPrice
-  const finalPrice = Math.max(
-    0,
-    Math.round((subtotal - couponDiscount) * 100) / 100,
-  )
+  const finalPrice = subtotal
 
   const validate = (): boolean => {
     const newErrors: Partial<CheckoutFormData> = {}
@@ -207,32 +200,6 @@ export default function CheckoutPage() {
     )
   }
 
-  const applyCoupon = () => {
-    const code = form.coupon_code.trim().toUpperCase()
-    const coupon = cms.findCoupon(code)
-    if (!coupon) {
-      setCouponError("קוד קופון לא תקין או שפג תוקפו.")
-      setCouponApplied(false)
-      setCouponDiscount(0)
-      return
-    }
-    if (subtotal < coupon.minimum_order) {
-      setCouponError(
-        `הקופון תקף להזמנות בסכום של ₪${coupon.minimum_order.toLocaleString()} ומעלה.`,
-      )
-      setCouponApplied(false)
-      setCouponDiscount(0)
-      return
-    }
-    const discount =
-      coupon.discount_type === "PERCENTAGE"
-        ? Math.round(subtotal * (coupon.discount_value / 100) * 100) / 100
-        : Math.min(coupon.discount_value, subtotal)
-    setCouponApplied(true)
-    setCouponDiscount(discount)
-    setCouponError("")
-  }
-
   const handleDetailsNext = () => {
     if (!user) {
       setSubmitError("יש להתחבר או להירשם לחשבון כדי להמשיך לרכישה.")
@@ -265,9 +232,6 @@ export default function CheckoutPage() {
       last_name: form.last_name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim() || undefined,
-      coupon_code: couponApplied
-        ? form.coupon_code.trim().toUpperCase()
-        : undefined,
     })
     setIsProcessing(false)
     if (!result.ok) {
@@ -849,9 +813,6 @@ export default function CheckoutPage() {
                     <p dir="ltr" className="text-left">
                       {form.phone}
                     </p>
-                    {couponApplied && (
-                      <p>קופון: {form.coupon_code.trim().toUpperCase()}</p>
-                    )}
                   </div>
                   <button
                     onClick={() => setStep("details")}
@@ -997,15 +958,6 @@ export default function CheckoutPage() {
                     ₪{subtotal.toLocaleString()}
                   </span>
                 </div>
-                {couponApplied && (
-                  <div
-                    className="flex justify-between"
-                    style={{ color: "var(--color-success)" }}
-                  >
-                    <span>הנחת קופון</span>
-                    <span>-₪{couponDiscount.toLocaleString()}</span>
-                  </div>
-                )}
                 <div
                   className="border-t pt-2 flex justify-between font-bold text-base"
                   style={{ borderColor: "var(--color-border)" }}

@@ -25,7 +25,7 @@
 
 import type { CmsSection, FaqItem, Product, Testimonial } from "../types"
 
-import { uid, nowIso } from "./db"
+import { uid, nowIso } from "../data/db"
 
 const at = nowIso()
 

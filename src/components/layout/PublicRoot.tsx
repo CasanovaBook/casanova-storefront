@@ -8,7 +8,7 @@ import ThemeToggle from "../ThemeToggle"
 import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
 import { loadContent } from "../../content/store"
 import useFavicon from "../useFavicon"
-import logoImg from "../../../images/main_photo.jpg"
+import logoImg from "../../assets/main_photo.jpg"
 
 /**
  * Public shell: header, navigation and the routed page.

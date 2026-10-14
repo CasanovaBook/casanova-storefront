@@ -14,9 +14,9 @@
  * any other service failure.
  * ───────────────────────────────────────────────────────────── */
 
-import { fail, ok, type ErrorCode, type Result } from "./api"
+import { fail, ok, type ErrorCode, type Result } from "../shared/result"
 
-import { isSupabaseConfigured, requireSupabase } from "./supabase"
+import { isSupabaseConfigured, requireSupabase } from "../integrations/supabase/supabase"
 
 export interface SignedContent {
   signedUrl: string
