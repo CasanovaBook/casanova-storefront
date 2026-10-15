@@ -114,6 +114,55 @@ function codeFor(status: number | undefined): ErrorCode {
 }
 
 /**
+ * What a failed content lookup means, decided from the HTTP status alone.
+ *
+ * The status is the only trustworthy part: the body of a refusal comes from
+ * the Edge Function or from the transport layer, and both speak English —
+ * "Could not sign the content URL" reaching a customer through the reader is
+ * exactly how a storage outage came to be reported as "the publisher has not
+ * uploaded the file yet". The raw message stays in the console, never on the
+ * screen.
+ *
+ * `NOT_FOUND` is the one code that entitles the UI to claim the file is
+ * missing, and only the server's 404 on the deterministic object earns it.
+ * A 5xx and a request that never got an answer share a code because the
+ * customer's next step is the same in both cases: try again.
+ */
+export function contentFailure(
+  status: number | undefined,
+): { code: ErrorCode; message: string } {
+  switch (status) {
+    case 404:
+      return {
+        code: "NOT_FOUND",
+        message: "לקובץ הקריאה של הספר הזה עדיין לא הוצמד עותק דיגיטלי.",
+      }
+    case 403:
+      return {
+        code: "FORBIDDEN",
+        message:
+          "הגישה לספר הזה נדחתה על ידי השרת. אם שילמת עבורו, יש לפנות לתמיכה.",
+      }
+    case 401:
+      return {
+        code: "UNAUTHENTICATED",
+        message: "תוקף ההתחברות פג. יש להתחבר מחדש כדי לפתוח את הספר.",
+      }
+    case 400:
+      return {
+        code: "VALIDATION",
+        message: "בקשת הפתיחה של הספר לא תקינה. יש לרענן את העמוד ולנסות שוב.",
+      }
+    default:
+      return {
+        code: "STORAGE",
+        message:
+          "לא ניתן היה לפתוח את הקובץ כרגע. התקלה אינה בספר — ניתן לנסות שוב.",
+      }
+  }
+}
+
+/**
  * Reader path: exchange a product id for a short-lived signed URL.
  * The path is derived server-side from the validated product_id, so the
  * client never dictates which object is signed.
@@ -135,21 +184,29 @@ export async function fetchSignedContentUrl(
     })
 
     if (!res.data?.signedUrl) {
-      return fail(
-        codeFor(res.status),
+      const failure = contentFailure(res.status)
 
-        res.status === 404
-          ? "לתוכן הזה לא הוצמד קובץ. יש לפנות לתמיכה."
-          : (res.message ?? "לא ניתן לקבל קישור לתוכן כרגע."),
+      /* The provider's own words stay in the console for whoever is looking
+       * into a report; the customer gets the sentence above. */
+      console.warn(
+        "[content] signing refused:",
+        res.status ?? "no status",
+        res.message ?? "",
       )
+
+      return fail(failure.code, failure.message)
     }
 
     return ok({ signedUrl: res.data.signedUrl, expiresAt: res.data.expiresAt })
   } catch (err) {
-    return fail(
-      "STORAGE",
-      err instanceof Error ? err.message : "שגיאת אחסון בלתי צפויה.",
+    const failure = contentFailure(undefined)
+
+    console.warn(
+      "[content] signing threw:",
+      err instanceof Error ? err.message : err,
     )
+
+    return fail(failure.code, failure.message)
   }
 }
 

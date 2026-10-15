@@ -128,6 +128,15 @@ export default function ReaderPage() {
     undefined,
   )
   const [grantError, setGrantError] = useState<string | null>(null)
+  /* The status class the refusal carried. Without it a missing file and a
+   * storage outage look identical to this screen, which is how the heading
+   * came to read "the link was not approved" over a body saying the file was
+   * never uploaded. */
+  const [grantCode, setGrantCode] = useState<string | null>(null)
+  /* The mint is a network round trip. Until it has been answered nothing is
+   * known about the file — and the screen used to declare, inside that
+   * window, that the publisher had never uploaded it. */
+  const [grantPending, setGrantPending] = useState(true)
   const isPdf = Boolean(contentUrl && /\.pdf(\?|#|$)/i.test(contentUrl))
 
   /* A PDF renders through PdfCanvas, which parses the document once and
@@ -245,7 +254,9 @@ export default function ReaderPage() {
       if (!issued.ok) {
         grantedFor.current = null
         setContentUrl(undefined)
+        setGrantCode(issued.code)
         setGrantError(issued.error)
+        setGrantPending(false)
         return
       }
       const redeemed = consumeContentGrant(issued.data.token, productId)
@@ -253,10 +264,14 @@ export default function ReaderPage() {
       if (!redeemed.ok) {
         grantedFor.current = null
         setContentUrl(undefined)
+        setGrantCode(redeemed.code)
         setGrantError(redeemed.error)
+        setGrantPending(false)
         return
       }
       setGrantError(null)
+      setGrantCode(null)
+      setGrantPending(false)
       setGrantWatermark(redeemed.data.watermark_text)
       setContentUrl(redeemed.data.content_url)
     })()
@@ -566,6 +581,20 @@ export default function ReaderPage() {
   const revoked = Boolean(session?.revoked)
   const locked = Boolean(deviceError) || expired || revoked
 
+  /* One decision, made once, about what this screen is allowed to claim.
+   * "The file was never uploaded" is a statement about the catalogue and it
+   * is earned two ways: the lookup answered that the object is not there
+   * (NOT_FOUND), or it came back with nothing to show. Every other refusal is
+   * named as a refusal, because a storage outage told to a paying customer as
+   * "the publisher has not uploaded it yet" sends support the wrong way. */
+  const contentVerdict: "checking" | "refused" | "missing" = grantError
+    ? grantCode === "NOT_FOUND"
+      ? "missing"
+      : "refused"
+    : grantPending
+      ? "checking"
+      : "missing"
+
   const resume = () => {
     if (!actor) return
     // A revoked slot cannot be renewed — it has to be claimed again, which
@@ -812,19 +841,46 @@ export default function ReaderPage() {
                 color: "var(--color-primary)",
               }}
             >
-              <Icon name="bookOpen" size={26} />
+              {contentVerdict === "checking" ? (
+                <div
+                  className="w-6 h-6 rounded-full border-2 animate-spin"
+                  style={{
+                    borderColor: "rgba(212,160,48,0.25)",
+                    borderTopColor: "var(--color-primary)",
+                  }}
+                />
+              ) : (
+                <Icon name="bookOpen" size={26} />
+              )}
             </div>
-            <h1 className="font-display text-2xl font-semibold mb-2">
-              {grantError ? "הקישור לתוכן לא אושר" : "התוכן טרם הועלה"}
+            {/* Three different answers, and only one of them may say the file
+             * was never uploaded: that claim needs the lookup to have come
+             * back with it. A paying customer was previously told to wait for
+             * an upload that was never the problem. */}
+            <h1
+              className="font-display text-2xl font-semibold mb-2"
+              role="status"
+              aria-live="polite"
+            >
+              {contentVerdict === "checking"
+                ? "פותח את הספר…"
+                : contentVerdict === "refused"
+                  ? "הקישור לתוכן לא אושר"
+                  : "התוכן טרם הועלה"}
             </h1>
             <p className="text-sm mb-2" style={{ color: mutedColor }}>
-              {grantError ??
-                `לקובץ הקריאה של "${title}" עדיין לא הוצמד עותק דיגיטלי במערכת.`}
+              {contentVerdict === "checking"
+                ? "הבדיקה מול שירות התוכן עדיין לא הסתיימה."
+                : contentVerdict === "missing"
+                  ? `לקובץ הקריאה של "${title}" עדיין לא הוצמד עותק דיגיטלי במערכת.`
+                  : grantError}
             </p>
             <p className="text-sm mb-8" style={{ color: mutedColor }}>
-              {grantError
-                ? "כל קריאה מקבלת קישור חד־פעמי משלה. אם הגישה שלך תקינה, ניסיון נוסף מנפיק קישור טרי."
-                : "הגישה שלך לספר תקינה — התוכן יופיע כאן מיד לאחר שהקובץ יועלה."}
+              {contentVerdict === "checking"
+                ? "העמוד ייטען מעצמו ברגע שהקובץ ייפתח — אין צורך לפנות לתמיכה בינתיים."
+                : contentVerdict === "refused"
+                  ? "כל קריאה מקבלת קישור חד־פעמי משלה. אם הגישה שלך תקינה, ניסיון נוסף מנפיק קישור טרי."
+                  : "הגישה שלך לספר תקינה — התוכן יופיע כאן מיד לאחר שהקובץ יועלה."}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               {grantError && (
@@ -834,6 +890,8 @@ export default function ReaderPage() {
                      * without it a refusal would be permanent for this slot. */
                     grantedFor.current = null
                     setGrantError(null)
+                    setGrantCode(null)
+                    setGrantPending(true)
                     setContentUrl(undefined)
                     resume()
                   }}
@@ -849,12 +907,17 @@ export default function ReaderPage() {
               >
                 חזרה לספרייה
               </button>
-              <a
-                href="/support"
-                className="btn-gradient tap-target px-5 py-2.5 rounded-full text-sm font-semibold"
-              >
-                פנייה לתמיכה
-              </a>
+              {/* While the answer is still in flight there is nothing to
+               * report, and a support button beside "no need to contact
+               * support yet" contradicts the sentence above it. */}
+              {contentVerdict !== "checking" && (
+                <a
+                  href="/support"
+                  className="btn-gradient tap-target px-5 py-2.5 rounded-full text-sm font-semibold"
+                >
+                  פנייה לתמיכה
+                </a>
+              )}
             </div>
           </div>
         )}
