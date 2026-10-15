@@ -39,6 +39,30 @@
 -- same arrangement 0011 and 0023 use. SQLSTATE 22023 is the one 0023 already
 -- raises for `name_required`; the client matches the token in the message
 -- before it falls back to the code, so the mapping stays unambiguous.
+--
+-- ROLLBACK AND RECOVERY
+--
+-- This migration changes no data, no table and no grant that 0023 did not
+-- already set: it is one `CREATE OR REPLACE FUNCTION`. There is nothing to
+-- unwind in the rows, and `storefront_order_seq` is untouched, so order
+-- numbers keep advancing either way.
+--
+-- Supabase migrations are forward-only — deleting a row from
+-- `supabase_migrations.schema_migrations` does not undo SQL that already ran.
+-- To restore the previous behaviour, apply a corrective migration that
+-- re-creates the function from 0023 (that file is idempotent: `CREATE OR
+-- REPLACE`, `CREATE SEQUENCE IF NOT EXISTS`, and it grants the same
+-- privileges to the same role). Re-running 0023 verbatim is the reviewed way
+-- back; do not hand-edit the function in the SQL console, or the file and the
+-- database stop describing the same thing.
+--
+-- Order of operations matters in one direction only. Applying this migration
+-- while an older bundle is still deployed is safe: the old client also
+-- required the phone in the form, so only crafted requests that skipped the
+-- form start being refused. Rolling the bundle back after this migration is
+-- applied is the case to avoid — the client would stop refusing, and the
+-- function would, so a form bug would surface as a database error instead of
+-- a field message.
 -- ============================================================
 
 BEGIN;
@@ -264,6 +288,16 @@ COMMIT;
 
 -- ============================================================
 -- VERIFICATION — run after applying
+--
+-- Only check 1 is safe to run against production: it reads the catalog.
+-- Checks 2, 3 and 4 CALL the function, and a successful call writes a PAID
+-- order, an order item, a captured manual payment and a live entitlement for
+-- whichever account `auth.uid()` resolves to. Run them on a disposable
+-- database. The SQL console cannot stand in for a customer session anyway:
+-- it runs as a role with no `auth.uid()`, so every call there returns
+-- `auth_required` before any of these guards is reached — a green console run
+-- proves nothing about them. The real post-deployment check is one purchase
+-- completed in the storefront, plus check 1.
 -- ============================================================
 -- 1. The guard is in the stored definition:
 --
