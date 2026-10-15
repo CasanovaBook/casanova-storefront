@@ -318,6 +318,24 @@ export default function LoginPage() {
       .filter(Boolean)
       .join(" ") || undefined
 
+  /* The line under the form that tells a visitor what an account is actually
+   * for. Which sentence is true depends on whether a real auth backend can
+   * confirm an address here at all, but both are read the same way: three
+   * pieces of one flowing sentence, the middle one being the link. */
+  const browseNotice = isSupabaseConfigured
+    ? {
+        lead: c("ui.auth.browseNoticeLead") || "אפשר לעיין",
+        link: c("ui.auth.browseNoticeStore") || "בחנות",
+        tail:
+          c("ui.auth.browseNoticeTail") ||
+          "ולצפות בספרים ללא חשבון. כדי להשלים רכישה, יש ליצור חשבון ולאמת את כתובת האימייל.",
+      }
+    : {
+        lead: c("ui.auth.guestCheckout") || "ניתן גם לרכוש ישירות מ־",
+        link: c("ui.auth.guestCheckoutStore") || "החנות",
+        tail: c("ui.auth.guestCheckoutSuffix") || "— החשבון ייווצר אוטומטית.",
+      }
+
   return (
     <div
       className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden"
@@ -621,10 +639,7 @@ export default function LoginPage() {
                 className="block text-xs font-medium mb-1.5"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
-                {c("ui.auth.phoneLabel") || "מספר טלפון"}{" "}
-                <span style={{ color: "var(--color-muted-foreground)" }}>
-                  (אופציונלי)
-                </span>
+                {c("ui.auth.phoneLabel") || "מספר טלפון (לא חובה)"}
               </label>
               {/* The same two controls the checkout screen uses, so the number
                * is entered, stored and validated identically on both sides. */}
@@ -633,6 +648,7 @@ export default function LoginPage() {
                   id="auth-phone"
                   type="tel"
                   dir="ltr"
+                  aria-describedby="auth-phone-hint"
                   className={inputClass + " text-left flex-1"}
                   style={inputStyle}
                   value={phoneParts.number}
@@ -664,11 +680,12 @@ export default function LoginPage() {
                 </select>
               </div>
               <p
+                id="auth-phone-hint"
                 className="text-[11px] mt-1.5"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
                 {c("ui.auth.phoneHint") ||
-                  "מועיל לעדכונים על הזמנות. בקופה מספר טלפון הוא שדה חובה."}
+                  "אפשר להוסיף מספר טלפון בהמשך. בעת ביצוע הזמנה, נבקש מספר טלפון לצורכי תיאום ועדכוני משלוח."}
               </p>
             </div>
           )}
@@ -785,25 +802,28 @@ export default function LoginPage() {
           )}
         </p>
 
-        <p
-          className="text-center text-xs mt-2 flex items-center justify-center gap-1.5"
+        {/* The bag icon and the sentence are the two flex children; the
+         * sentence itself lives in one <p>, so it wraps as prose. It used to
+         * sit as three bare text runs beside the icon, which made the browser
+         * lay every fragment out on its own line and broke the Hebrew into
+         * pieces on screen. */}
+        <div
+          className="mt-2 flex items-start justify-center gap-1.5 text-center"
           style={{ color: "var(--color-muted-foreground)" }}
         >
-          <Icon name="bag" size={13} />
-          {isSupabaseConfigured
-            ? "עיון בחנות אינו מחייב חשבון — "
-            : (c("ui.auth.guestCheckout") || "ניתן גם לרכוש ישירות מ־")}
-          <Link
-            to="/store"
-            className="transition-opacity hover:opacity-70"
-            style={{ color: "var(--color-primary)" }}
-          >
-            {c("ui.auth.guestCheckoutStore") || "החנות"}
-          </Link>
-          {isSupabaseConfigured
-            ? ", אבל השלמת רכישה דורשת חשבון מאומת."
-            : (c("ui.auth.guestCheckoutSuffix") || "— החשבון ייווצר אוטומטית.")}
-        </p>
+          <Icon name="bag" size={13} className="mt-0.5 shrink-0" />
+          <p className="text-xs">
+            {browseNotice.lead}{" "}
+            <Link
+              to="/store"
+              className="transition-opacity hover:opacity-70"
+              style={{ color: "var(--color-primary)" }}
+            >
+              {browseNotice.link}
+            </Link>{" "}
+            {browseNotice.tail}
+          </p>
+        </div>
 
         {/* The auth screens have no site footer; this is their way into the
          * accessibility settings, and their way back if the floating button

@@ -142,10 +142,16 @@ export const UI: Record<string, [string, string]> = {
   "auth.guestCheckout": ["טקסט רכישה כאורח", "ניתן גם לרכוש ישירות מ־"],
   "auth.guestCheckoutStore": ["קישור חנות", "החנות"],
   "auth.guestCheckoutSuffix": ["המשך טקסט רכישה", "— החשבון ייווצר אוטומטית."],
+  /* The notice under the register form, in the mode that has a real auth
+   * backend. It is three pieces because the middle one is the link to the
+   * catalogue; read together they are one sentence. */
+  "auth.browseNoticeLead": ["הודעת עיון — תחילית", "אפשר לעיין"],
+  "auth.browseNoticeStore": ["הודעת עיון — קישור לחנות", "בחנות"],
+  "auth.browseNoticeTail": ["הודעת עיון — המשך", "ולצפות בספרים ללא חשבון. כדי להשלים רכישה, יש ליצור חשבון ולאמת את כתובת האימייל."],
   "auth.passwordHint": ["רמז סיסמה", "8 תווים לפחות, כולל אותיות וספרה אחת."],
   "auth.confirmPassword": ["שדה אימות סיסמה", "אימות סיסמה"],
-  "auth.phoneLabel": ["שדה טלפון בהרשמה", "מספר טלפון"],
-  "auth.phoneHint": ["רמז לשדה טלפון בהרשמה", "מועיל לעדכונים על הזמנות. בקופה מספר טלפון הוא שדה חובה."],
+  "auth.phoneLabel": ["שדה טלפון בהרשמה", "מספר טלפון (לא חובה)"],
+  "auth.phoneHint": ["רמז לשדה טלפון בהרשמה", "אפשר להוסיף מספר טלפון בהמשך. בעת ביצוע הזמנה, נבקש מספר טלפון לצורכי תיאום ועדכוני משלוח."],
   "auth.termsAgree": ["הסכמה לתנאים", "על ידי יצירת חשבון, אתה מסכים ל"],
   "auth.termsLink": ["קישור תנאי שימוש", "תנאי השימוש"],
   "auth.termsSuffix": ["המשך טקסט תנאים", "שלנו."],
