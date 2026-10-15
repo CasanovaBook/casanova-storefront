@@ -14,7 +14,7 @@
 
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js"
 import { requireSupabase, isSupabaseConfigured } from "./supabase"
-import { toPublicUser } from "../../lib/auth"
+import { passwordProblem, toPublicUser } from "../../lib/auth"
 import type { StoredUser, User, Role, AdminRole, AccountStatus } from "../../types"
 
 export interface AuthSuccess<T = undefined> {
@@ -98,9 +98,44 @@ export function translateAuthError(err: { message?: string; status?: number; cod
     }
   }
 
-  if (lower.includes("password should be at least")) {
+  /* GoTrue's own password refusals (`checkPasswordStrength` in the auth
+   * server). They arrive as English sentences and every one of them is a
+   * rule the customer can act on, so each gets Hebrew wording. The minimum
+   * length is read out of the message rather than assumed: the project's
+   * setting, not this bundle, decides what it is, and a hardcoded number
+   * would be the same kind of lie this mapping exists to remove. */
+  const atLeast = /password should be at least (\d+) characters/i.exec(msg)
+
+  if (atLeast) {
     return {
-      message: "הסיסמה חייבת להכיל לפחות 8 תווים.",
+      message: `הסיסמה חייבת להכיל לפחות ${atLeast[1]} תווים.`,
+      isUnconfirmed: false,
+    }
+  }
+
+  if (lower.includes("password cannot be longer than")) {
+    return {
+      message: "הסיסמה ארוכה מדי — מותרים עד 72 תווים.",
+      isUnconfirmed: false,
+    }
+  }
+
+  if (lower.includes("should contain at least one character")) {
+    return {
+      message:
+        "הסיסמה חייבת להכיל לפחות תו אחד מכל קבוצת תווים נדרשת.",
+      isUnconfirmed: false,
+    }
+  }
+
+  if (
+    lower.includes("known to be weak") ||
+    lower.includes("haveibeenpwned") ||
+    lower.includes("pwned")
+  ) {
+    return {
+      message:
+        "הסיסמה מופיעה ברשימות סיסמאות שנחשפו ברשת. יש לבחור סיסמה אחרת.",
       isUnconfirmed: false,
     }
   }
@@ -457,6 +492,15 @@ export async function signUpWithEmail(input: SignUpData): Promise<AuthResult<Sig
     return authFail("שרת Supabase אינו מוגדר.")
   }
 
+  /* The password policy applied at the one point every hosted credential
+   * passes through, so a screen that forgets its own check cannot put a
+   * non-conforming secret into Auth. This is defence in depth on the client,
+   * not server-side enforcement: the provider itself only checks its minimum
+   * length, and no credential material is logged here or anywhere else. */
+  const policy = passwordProblem(input.password)
+
+  if (policy) return authFail(policy, "WEAK_PASSWORD")
+
   const client = requireSupabase()
   /* The confirmation screen, not the library: the user must be told the
    * address is verified before being moved on, and the library's own
@@ -599,6 +643,13 @@ export async function updatePassword(newPassword: string): Promise<AuthResult<vo
   if (!isSupabaseConfigured) {
     return authFail("שרת Supabase אינו מוגדר.")
   }
+
+  /* Same gate as signup. Only ever reached while a password is being set —
+   * sign-in never runs the policy, so an account opened under the older,
+   * looser rule keeps working. */
+  const policy = passwordProblem(newPassword)
+
+  if (policy) return authFail(policy, "WEAK_PASSWORD")
 
   const client = requireSupabase()
   const { error } = await client.auth.updateUser({

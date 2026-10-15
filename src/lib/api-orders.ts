@@ -30,7 +30,7 @@ import { effectivePrice, snapshotProduct } from "../types"
 
 import { getDb, mutate, nextSequence, nowIso, uid, type Database } from "../data/db"
 
-import { normalizeEmail, isEmail, toPublicUser } from "./auth"
+import { normalizeEmail, isEmail, parsePhoneParts, phoneProblem, toPublicUser } from "./auth"
 
 import {
   dispatchEmail,
@@ -156,12 +156,11 @@ async function checkoutHosted(
     )
   }
 
-  if (!input.first_name.trim() || !input.last_name.trim())
-    return fail("VALIDATION", "יש למלא שם מלא.")
+  const contact = contactProblem(input)
+
+  if (contact) return fail("VALIDATION", contact)
 
   const email = normalizeEmail(input.email)
-
-  if (!isEmail(email)) return fail("VALIDATION", "כתובת המייל אינה תקינה.")
 
   const productResult = await fetchProductByIdFromDb(input.product_id)
 
@@ -290,6 +289,30 @@ async function checkoutHosted(
   })
 }
 
+/**
+ * The contact details a purchase may not go without.
+ *
+ * `CheckoutPage` marks the name, address and number as required, and
+ * `docs/PRODUCT_BRIEF.md` §5 lists them among what a purchase must collect —
+ * but nothing behind the form agreed. Until now the order path would accept a
+ * blank phone and store any string as the address, so the requirement only
+ * existed for a customer who happened to use the form. Both checkout paths
+ * refuse here, and migration 0026 makes the hosted one say the same from the
+ * database, where a crafted request has to answer to it too.
+ *
+ * The wording is the validator the form already uses, so a refusal reads
+ * identically wherever it came from.
+ */
+function contactProblem(input: CheckoutInput): string | null {
+  if (!input.first_name.trim() || !input.last_name.trim())
+    return "יש למלא שם מלא."
+
+  if (!isEmail(normalizeEmail(input.email)))
+    return "כתובת המייל אינה תקינה."
+
+  return phoneProblem(parsePhoneParts(input.phone?.trim() || ""), true)
+}
+
 export async function checkout(
   input: CheckoutInput,
 ): Promise<Result<CheckoutOutcome>> {
@@ -314,12 +337,11 @@ export async function checkout(
   if (product.availability === "OUT_OF_STOCK")
     return fail("CONFLICT", "המוצר אזל מהמלאי.")
 
-  if (!input.first_name.trim() || !input.last_name.trim())
-    return fail("VALIDATION", "יש למלא שם מלא.")
+  const contact = contactProblem(input)
+
+  if (contact) return fail("VALIDATION", contact)
 
   const email = normalizeEmail(input.email)
-
-  if (!isEmail(email)) return fail("VALIDATION", "כתובת המייל אינה תקינה.")
 
   const unitPrice = effectivePrice(product)
 

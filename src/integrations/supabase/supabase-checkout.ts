@@ -70,6 +70,15 @@ const CHECKOUT_REFUSALS: Record<string, { error: string; code: ErrorCode }> = {
     code: "CONFLICT",
   },
   name_required: { error: "יש למלא שם מלא.", code: "VALIDATION" },
+  /* The contact rules the form already states, raised by the same function
+   * since migration 0026. A crafted request that skips the form is answered
+   * in the customer's language rather than with a bare SQL token. */
+  email_invalid: { error: "כתובת המייל אינה תקינה.", code: "VALIDATION" },
+  phone_required: { error: "שדה חובה", code: "VALIDATION" },
+  phone_invalid: {
+    error: "יש להזין מספר טלפון תקין.",
+    code: "VALIDATION",
+  },
   gateway_configured: {
     error:
       "סליקת התשלומים מוגדרת בשרת, ולכן ההזמנה ממתינה לאישור התשלום. הגישה תיפתח לאחר אישור.",

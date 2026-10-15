@@ -889,6 +889,7 @@ export default function CheckoutPage() {
 
                 {submitError && (
                   <div
+                    role="alert"
                     className="mt-6 px-4 py-3 rounded-xl border text-sm"
                     style={{
                       background: "rgba(239,68,68,0.08)",
@@ -998,6 +999,7 @@ export default function CheckoutPage() {
 
                 {submitError && (
                   <div
+                    role="alert"
                     className="mb-4 px-4 py-3 rounded-xl border text-sm"
                     style={{
                       background: "rgba(239,68,68,0.08)",

@@ -15,7 +15,7 @@ import { Link, useNavigate, useSearchParams } from "react-router"
 import { resetPasswordWithToken } from "../lib/api"
 import { supabase, isSupabaseConfigured } from "../integrations/supabase/supabase"
 import { updatePassword as updateSupabasePassword } from "../integrations/supabase/supabase-auth"
-import { passwordProblem } from "../lib/auth"
+import { PASSWORD_CHAR_RULE, passwordProblem } from "../lib/auth"
 import Icon from "../components/icons"
 import ThemeToggle from "../components/ThemeToggle"
 import logoImg from "../assets/main_photo.jpg"
@@ -321,6 +321,7 @@ export default function SetupPasswordPage() {
                 type={showPassword ? "text" : "password"}
                 className="w-full px-4 py-3 rounded-lg border text-sm outline-none pe-14"
                 dir="ltr"
+                aria-describedby="setup-password-rule"
                 style={inputStyle}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -345,6 +346,17 @@ export default function SetupPasswordPage() {
                 <Icon name="eye" size={16} />
               </button>
             </div>
+            {/* The rule is applied by `passwordProblem` when the form is
+             * submitted; saying it here is what stops the recovery screen from
+             * teaching the policy only through a refusal. Same sentence the
+             * refusal uses, so the two can never disagree. */}
+            <p
+              id="setup-password-rule"
+              className="text-[11px] mt-1.5"
+              style={{ color: "var(--color-muted-foreground)" }}
+            >
+              {"8 עד 72 תווים, עם אות אחת וספרה אחת. " + PASSWORD_CHAR_RULE}
+            </p>
             {password && (
               <div className="mt-2">
                 <div className="flex justify-between text-xs mb-1">
