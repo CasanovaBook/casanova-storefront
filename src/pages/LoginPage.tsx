@@ -3,10 +3,12 @@ import { Link, useLocation, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useContent } from "../content/useContent"
 import {
+  PASSWORD_CHAR_RULE,
   PHONE_NUMBER_DIGITS,
   PHONE_PREFIXES,
   emailProblem,
   hasHebrewChars,
+  hasInvalidPasswordChars,
   joinPhone,
   passwordProblem,
   phoneProblem,
@@ -53,7 +55,7 @@ export default function LoginPage() {
   })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [hebrewWarning, setHebrewWarning] = useState(false)
+  const [passwordCharWarning, setPasswordCharWarning] = useState(false)
   const [emailHebrewWarning, setEmailHebrewWarning] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -107,11 +109,11 @@ export default function LoginPage() {
     }
   }
 
-  // Check for Hebrew characters in password
+  // Warn while the password still matches the rule shown under the field
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newPassword = e.target.value
     setPassword(newPassword)
-    setHebrewWarning(hasHebrewChars(newPassword))
+    setPasswordCharWarning(hasInvalidPasswordChars(newPassword))
   }
 
   /**
@@ -312,7 +314,7 @@ export default function LoginPage() {
    * so a screen reader reads it as the field's description. */
   const passwordDescribedBy =
     [
-      hebrewWarning ? "auth-password-warning" : null,
+      passwordCharWarning ? "auth-password-warning" : null,
       mode === "register" ? "auth-password-hint" : null,
     ]
       .filter(Boolean)
@@ -522,7 +524,7 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 dir="ltr"
                 aria-describedby={passwordDescribedBy}
-                aria-invalid={hebrewWarning ? true : undefined}
+                aria-invalid={passwordCharWarning ? true : undefined}
                 className={inputClass + " text-left pe-14"}
                 style={inputStyle}
                 value={password}
@@ -552,7 +554,7 @@ export default function LoginPage() {
                 <Icon name="eye" size={16} />
               </button>
             </div>
-            {hebrewWarning && (
+            {passwordCharWarning && (
               <div
                 id="auth-password-warning"
                 className="flex items-center gap-2 mt-1.5 px-3 py-2 rounded-md"
@@ -567,7 +569,7 @@ export default function LoginPage() {
                   style={{ color: "rgb(245,158,11)" }}
                 />
                 <span className="text-xs" style={{ color: "rgb(245,158,11)" }}>
-                  הסיסמה חייבת להכיל רק אותיות אנגליות וספרות
+                  {PASSWORD_CHAR_RULE}
                 </span>
               </div>
             )}
@@ -577,7 +579,8 @@ export default function LoginPage() {
                 className="text-[11px] mt-1.5"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
-                {c("ui.auth.passwordHint") || "8 תווים לפחות, כולל אותיות וספרה אחת."}
+                {c("ui.auth.passwordHint") ||
+                  "8 עד 72 תווים — תווים באנגלית בלבד, עם אות אחת וספרה אחת."}
               </p>
             )}
           </div>

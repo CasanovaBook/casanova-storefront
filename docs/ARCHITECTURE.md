@@ -1196,7 +1196,20 @@ The mechanics:
 - `randomSalt()` — 16 bytes from `crypto.getRandomValues`, hex-encoded, with a `Math.random()` fallback.
 - `hashPassword(password, salt)` — `SHA-256("<salt>:<password>")` via `crypto.subtle`, falling back to `fallbackDigest()`, a 4-round FNV-1a variant explicitly commented *"Not cryptographic — a placeholder so the app never keeps plaintext passwords even without WebCrypto."*
 - `verifyPassword()` — a constant-length XOR-accumulate comparison, commented *"avoids leaking hash length differences."*
-- `passwordProblem()` — ≥ 8 characters, must contain a letter, must contain a digit. Three Hebrew messages.
+- `passwordProblem()` — 8 to 72 characters, printable ASCII only (`^[\x21-\x7E]+$`: no Hebrew, Arabic, emoji, spaces or control characters; every ASCII symbol stays allowed), and at least one letter and one digit. Four Hebrew messages, one of them exported as `PASSWORD_CHAR_RULE` because the same sentence is shown live under the field and again as the refusal. It runs wherever a password is *set* — `LoginPage` in register mode, `SetupPage`, `SetupPasswordPage`, the `api.ts` service layer, and the `signUpWithEmail` / `updatePassword` chokepoints in `supabase-auth.ts` — and never on the way in, so an account opened under the older, looser rule still signs in.
+
+**[Verified — enforcement boundary]** The ASCII-only rule is an **application-level** rule. **It cannot currently be guaranteed against direct requests to Supabase Auth**, and no available configuration makes it server-enforced. Checked against the auth server's own source and the current hooks reference:
+
+| Candidate | Verdict |
+|---|---|
+| Required-character setting | composition only — implemented as `strings.ContainsAny`, which requires a class to *appear* and never refuses a character outside the listed sets |
+| Minimum length | server-enforced, but a length rule says nothing about script |
+| 72-character cap | server-enforced (bcrypt limit); mirrored client-side so the refusal reaches the customer in Hebrew |
+| `password_verification_attempt` hook (Teams/Enterprise) | payload is `{user_id, valid}` and it runs on sign-in — it never receives the password |
+| `before_user_created` hook (Free/Pro) | receives the user record about to be inserted, not the secret |
+| Signup proxied through an Edge Function | does **not** close it: `/auth/v1/signup` stays reachable with the public anon key, so the proxy is one more client, not a gate |
+
+What the server *can* enforce — minimum length, character classes, HaveIBeenPwned rejection — is listed in `supabase/config.toml`, where this boundary is recorded too. Raising the server-side minimum must be staged: an existing account below the new bar receives a `WeakPasswordError` on sign-in. Treat the character rule as a quality-and-supportability rule, not an access-control boundary: a caller who bypasses it affects only their own credential.
 - `toPublicUser(u)` — destructures away `password_hash`, `password_salt` and `password_set` before the record reaches React state. **This is the only thing standing between credential material and the component tree**, and it is applied at every service-layer exit.
 
 **[Verified — CRITICAL]** SHA-256 is a fast hash. Even with a per-user salt, an attacker holding the `localStorage` blob can brute-force it offline at GPU speed. The code says so itself. **This is acceptable only because the entire database is already in the attacker's hands** — anyone who can read `localStorage['casanova_db_v1']` can read every entitlement, order and e-mail in it. The hash is not the boundary; it is a courtesy. When a real backend arrives, `auth.ts` is replaced wholesale, not adapted.

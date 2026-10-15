@@ -13,7 +13,12 @@ import { Link, useNavigate } from "react-router"
 
 import { useApp } from "../context/AppContext"
 
-import { passwordProblem } from "../lib/auth"
+import {
+  PASSWORD_CHAR_RULE,
+  hasHebrewChars,
+  hasInvalidPasswordChars,
+  passwordProblem,
+} from "../lib/auth"
 
 import Icon from "../components/icons"
 
@@ -22,12 +27,6 @@ import ThemeToggle from "../components/ThemeToggle"
 import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
 
 import logoImg from "../assets/main_photo.jpg"
-
-// Function to detect Hebrew characters
-
-function hasHebrewChars(text: string): boolean {
-  return /[\u0590-\u05FF]/.test(text)
-}
 
 export default function SetupPage() {
   const { setupAdmin, bootstrapRequired } = useApp()
@@ -64,7 +63,7 @@ export default function SetupPage() {
     setForm({ ...form, [key]: value })
 
     if (key === "password") {
-      setHebrewWarning(hasHebrewChars(value))
+      setHebrewWarning(hasInvalidPasswordChars(value))
     }
 
     if (key === "email") {
@@ -376,7 +375,7 @@ export default function SetupPage() {
                       className="text-xs"
                       style={{ color: "rgb(245,158,11)" }}
                     >
-                      הסיסמה חייבת להכיל רק אותיות אנגליות וספרות
+                      {PASSWORD_CHAR_RULE}
                     </span>
                   </div>
                 )}

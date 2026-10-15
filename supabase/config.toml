@@ -7,6 +7,45 @@
 # product_id and by keeping the service_role key inside the function runtime.
 project_id = "zlweiqsqfsspecrubfuf"
 
+# ── password policy: what the auth server can and cannot enforce ─────────────
+#
+# Verified against the auth server's own source and the current Auth Hooks
+# reference, because the storefront states a password rule and it matters
+# whether the rule can be trusted to anything behind the browser:
+#
+#   ENFORCEABLE SERVER-SIDE (project Auth settings, Dashboard →
+#   Authentication → Providers → Email):
+#     • minimum password length
+#     • required character classes (lower / upper / digit / symbol)
+#     • leaked-password rejection via HaveIBeenPwned (Pro plan and above)
+#   The server also always refuses a password longer than 72 characters, the
+#   bcrypt limit — src/lib/auth.ts states the same cap so the customer never
+#   meets that sentence in English on a Hebrew form.
+#
+#   NOT ENFORCEABLE SERVER-SIDE: this project's rule that a password contain
+#   no Hebrew, Arabic, emoji or spaces. The class check is implemented as
+#   `strings.ContainsAny`, which only requires that a class appear — it never
+#   refuses a character outside the listed sets — and no Auth Hook can fill the
+#   gap: the available hooks are custom_access_token, send_sms, send_email,
+#   mfa_verification_attempt and password_verification_attempt. The last of
+#   those runs on sign-in with a payload of {user_id, valid} and never sees the
+#   password, and before_user_created sees the user record, not the secret.
+#   Proxied signup through an edge function would not close it either: the
+#   public /auth/v1/signup endpoint stays reachable with the anon key.
+#
+# So the character rule lives in the client (enforced at every screen that
+# sets a password and at the two supabase-auth.ts chokepoints), and it is a
+# quality-and-supportability rule, not an access-control boundary. Anyone
+# determined enough to bypass it damages only their own account.
+#
+# Before raising the server-side minimum: an existing account whose password
+# falls short gets a WeakPasswordError on sign-in, so the mapping in
+# translateAuthError must be in place first and the change should be staged.
+# No [auth] values are set here on purpose — `supabase config push` applies the
+# whole auth configuration to the live project, which needs an explicit
+# decision, and the exact key names were not verified against this CLI version.
+# ─────────────────────────────────────────────────────────────────────────────
+
 [functions.get-content-url]
 verify_jwt = false
 

@@ -253,10 +253,63 @@ export function phoneProblem(
   return null
 }
 
-/** Basic strength gate shared by setup and reset flows. */
+/** The longest password the auth server will accept.
+ *
+ * Not a style choice: GoTrue rejects anything longer with
+ * "Password cannot be longer than 72 characters" because bcrypt truncates at
+ * 72 bytes, and the storefront has no reason to let a customer discover that
+ * by hitting a bare English sentence on a Hebrew form. */
+export const PASSWORD_MAX_LENGTH = 72
 
+/** The character rule a password must satisfy, in the customer's language.
+ *
+ * It is one constant because the same sentence is shown twice: live under the
+ * field while a disallowed character is typed, and again as the refusal when
+ * the form is submitted anyway. Two copies of it drifted once already — the
+ * screen promised "only English letters and digits" while the validator
+ * accepted anything with a letter and a number in it. */
+export const PASSWORD_CHAR_RULE =
+  "הסיסמה חייבת להכיל תווים באנגלית בלבד - אותיות, ספרות וסימנים, ללא רווחים."
+
+/**
+ * True once anything outside printable ASCII has been typed.
+ *
+ * The rule is a character-set rule, not a composition rule, and it is drawn
+ * this way on purpose. Hebrew, Arabic, emoji and spaces are refused because
+ * the credential has to survive being typed on another keyboard layout, in a
+ * password manager and in the provider's own transport unchanged. Every ASCII
+ * printable symbol stays allowed: forbidding them would push customers toward
+ * shorter, weaker secrets for no gain.
+ */
+export function hasInvalidPasswordChars(text: string): boolean {
+  return !/^[\x21-\x7E]*$/.test(text)
+}
+
+/**
+ * The password policy, in one place: at least 8 characters, printable ASCII
+ * only, and at least one letter and one digit so the secret is not a number.
+ *
+ * Used by every screen that *sets* a password — registration, first-run
+ * setup, recovery — and by the service layer behind them. It is deliberately
+ * never called on the way in: an account opened under an older, looser rule
+ * must still be able to sign in, or tightening the policy would lock people
+ * out of the library they paid for.
+ *
+ * This is the client's rule, and it is the only place this particular rule
+ * can live. Verified against the auth server's own source
+ * (`internal/api/password.go`): its checks are a minimum length, a required
+ * character *class* (`strings.ContainsAny`, which never refuses a character
+ * outside the classes) and a 72-character cap — so no hosted configuration
+ * can forbid a non-Latin script. The length and the cap, on the other hand,
+ * are enforced server-side and are configured in supabase/config.toml.
+ */
 export function passwordProblem(password: string): string | null {
+  if (password.length > PASSWORD_MAX_LENGTH)
+    return `הסיסמה חייבת להכיל לא יותר מ־${PASSWORD_MAX_LENGTH} תווים.`
+
   if (password.length < 8) return "הסיסמה חייבת להכיל לפחות 8 תווים."
+
+  if (hasInvalidPasswordChars(password)) return PASSWORD_CHAR_RULE
 
   if (!/[A-Za-z]/.test(password)) return "הסיסמה חייבת להכיל אותיות."
 
