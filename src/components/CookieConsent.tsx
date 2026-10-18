@@ -14,7 +14,6 @@
  * ───────────────────────────────────────────────────────────── */
 
 import { useEffect, useState } from "react"
-import { Link } from "react-router"
 import Icon from "./icons"
 
 const CONSENT_KEY = "casanova_cookie_consent_v1"
@@ -247,13 +246,13 @@ export default function CookieConsent() {
 
         <p className="text-xs mt-4" style={{ color: "var(--color-muted-foreground)" }}>
           למידע נוסף, ראה את{" "}
-          <Link
-            to="/privacy-policy"
+          <a
+            href="/privacy-policy"
             className="underline transition-opacity hover:opacity-70"
             style={{ color: "var(--color-primary)" }}
           >
             מדיניות הפרטיות
-          </Link>{" "}
+          </a>{" "}
           שלנו.
         </p>
       </div>
