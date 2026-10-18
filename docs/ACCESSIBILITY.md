@@ -150,7 +150,12 @@ than being dropped on `<body>`.
   `aria-describedby` plus `aria-invalid`, so the association survives leaving the
   field. The mismatch/success message on the checkout e-mail confirmation is
   described the same way.
-* Register-mode hints are described on the password field.
+* The password field's live rule warning is described on the field with
+`aria-describedby` and reported through `aria-invalid`, so the explanation arrives
+with the field instead of as an orphan paragraph. The registration form carries no
+standing password-specification text by product decision: the rules are stated when
+one is broken, in the customer's language, and the length ceiling the auth server
+happens to impose is never quoted at all.
 * Icon-only selects in the store and checkout carry accessible names.
 
 **Keyboard**

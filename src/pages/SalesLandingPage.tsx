@@ -387,7 +387,7 @@ function HeroSection({ product, c }: { product: Product, c: ReturnType<typeof us
                 className="text-xs mb-1"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
-                {c("sales.hero.priceLabel") || "מחיר השקה"}
+                {c("sales.hero.priceLabel") || "מחיר"}
               </p>
               <p
                 className="font-display text-2xl font-bold"
@@ -821,7 +821,7 @@ function OfferSection({ product, c }: { product: Product, c: ReturnType<typeof u
               className="text-sm mt-2 font-bold"
               style={{ color: "var(--color-success)" }}
             >
-              {c("sales.offer.priceLabel") || "מחיר השקה"}
+              {c("sales.offer.priceLabel") || "מחיר"}
             </p>
           )}
         </div>
@@ -1278,6 +1278,12 @@ export default function SalesLandingPage() {
             />
             {brand}
           </span>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+            <Link to="/terms-and-conditions" className="hover:opacity-80 transition-opacity">תנאי שימוש</Link>
+            <Link to="/privacy-policy" className="hover:opacity-80 transition-opacity">מדיניות פרטיות</Link>
+            <Link to="/cancellation-and-refund-policy" className="hover:opacity-80 transition-opacity">מדיניות ביטולים</Link>
+            <Link to="/accessibility-statement" className="hover:opacity-80 transition-opacity">הצהרת נגישות</Link>
+          </div>
           <p>{fmt(c("sales.footer.copyright") || `© ${new Date().getFullYear()} Casanova. כל הזכויות שמורות.`, { year: new Date().getFullYear() })}</p>
           <a
             href="https://www.phantomthirdlabs.com/"

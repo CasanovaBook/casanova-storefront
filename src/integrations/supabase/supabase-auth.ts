@@ -114,8 +114,11 @@ export function translateAuthError(err: { message?: string; status?: number; cod
   }
 
   if (lower.includes("password cannot be longer than")) {
+    /* The provider names its number; the customer is not told it. A ceiling
+     * that exists because of a hashing library is an implementation detail —
+     * "too long" is everything they need to act on. */
     return {
-      message: "הסיסמה ארוכה מדי — מותרים עד 72 תווים.",
+      message: "הסיסמה ארוכה מדי.",
       isUnconfirmed: false,
     }
   }

@@ -288,6 +288,20 @@ export default function PublicRoot() {
              * hidden. See AccessibilityFooterLink. */}
             <AccessibilityFooterLink />
           </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+            <Link to="/terms-and-conditions" className="hover:opacity-80 transition-opacity">
+              תנאי שימוש
+            </Link>
+            <Link to="/privacy-policy" className="hover:opacity-80 transition-opacity">
+              מדיניות פרטיות
+            </Link>
+            <Link to="/cancellation-and-refund-policy" className="hover:opacity-80 transition-opacity">
+              מדיניות ביטולים
+            </Link>
+            <Link to="/accessibility-statement" className="hover:opacity-80 transition-opacity">
+              הצהרת נגישות
+            </Link>
+          </div>
           <p>{footerCopyright}</p>
         </div>
       </footer>

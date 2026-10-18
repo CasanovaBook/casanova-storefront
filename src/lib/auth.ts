@@ -255,10 +255,12 @@ export function phoneProblem(
 
 /** The longest password the auth server will accept.
  *
- * Not a style choice: GoTrue rejects anything longer with
- * "Password cannot be longer than 72 characters" because bcrypt truncates at
- * 72 bytes, and the storefront has no reason to let a customer discover that
- * by hitting a bare English sentence on a Hebrew form. */
+ * Not a style choice: GoTrue rejects anything longer because bcrypt truncates
+ * at 72 bytes, and that refusal arrives in English. The storefront applies the
+ * same ceiling so the customer never meets the provider's sentence — and it
+ * refuses with a plain "too long" rather than quoting the number. A limit that
+ * only exists because of a hashing library is an implementation detail, and
+ * the form has no business teaching it before the customer asks for it. */
 export const PASSWORD_MAX_LENGTH = 72
 
 /** The character rule a password must satisfy, in the customer's language.
@@ -304,8 +306,7 @@ export function hasInvalidPasswordChars(text: string): boolean {
  * are enforced server-side and are configured in supabase/config.toml.
  */
 export function passwordProblem(password: string): string | null {
-  if (password.length > PASSWORD_MAX_LENGTH)
-    return `הסיסמה חייבת להכיל לא יותר מ־${PASSWORD_MAX_LENGTH} תווים.`
+  if (password.length > PASSWORD_MAX_LENGTH) return "הסיסמה ארוכה מדי."
 
   if (password.length < 8) return "הסיסמה חייבת להכיל לפחות 8 תווים."
 
