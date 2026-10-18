@@ -165,11 +165,11 @@ rich("sales", "hero.title", "Hero — כותרת", "היא קודם.\n*ואז א
 area("sales", "hero.lede", "Hero — משפט משנה", "המדריך הפרקטי לגבר שרוצה לדעת מה באמת קורה בגוף שלה, איך להוביל בלי למהר, ואיך לגרום לה לבקש עוד — בלי ניחושים.");
 text("sales", "hero.cta", "Hero — כפתור ראשי", "כן. אני רוצה את הספר");
 strings("sales", "hero.trust", "Hero — תגי אמון", ["גישה מיידית", "תשלום מאובטח"]);
-text("sales", "hero.priceLabel", "Hero — תווית מחיר", "מחיר השקה");
+text("sales", "hero.priceLabel", "Hero — תווית מחיר", "מחיר");
 text("sales", "hero.scroll", "Hero — חץ גלילה", "גללו למטה");
 text("sales", "audience.yesTitle", "קהל יעד — כותרת חיובי", "למי כן");
 text("sales", "audience.noTitle", "קהל יעד — כותרת שלילי", "למי לא");
-text("sales", "offer.priceLabel", "הצעה — תווית מחיר", "מחיר השקה");
+text("sales", "offer.priceLabel", "הצעה — תווית מחיר", "מחיר");
 text("sales", "offer.cta", "הצעה — כפתור", "לקחת את הספר עכשיו");
 text("sales", "offer.subtext", "הצעה — טקסט תחת הכפתור", "תשלום מאובטח · הורדה מיידית · אפשר לקרוא הערב");
 text("sales", "offer.bonusesLabel", "הצעה — כותרת בונוסים", "בונוסים כלולים");
@@ -234,19 +234,15 @@ md("sales", "brand.content", "מותג — תוכן", "קזנובה נשאר ש�
 
 // ── sales: social proof / testimonials (H) ──────────────────────────────────
 rich("sales", "social.title", "המלצות — כותרת", "מה קורה אחרי הקריאה");
-area("sales", "social.content", "המלצות — משפט משנה", "נכתב מתוך מאות שיחות עם גברים — ומתוך מה שנשים באמת אומרות כשאין גבר בחדר.");
-list("sales", "social.testimonials", "המלצות — ציטוטים", [
-  { quote: "חשבתי שאני בסדר. אחרי שבוע היא שאלה אותי מה שיניתי.", name: "א.", title: "בזוגיות 3 שנים" },
-  { quote: "פעם ראשונה שהרגשתי שאני מוביל — בלי למהר לסיים.", name: "ד.", title: "רווק, 32" },
-  { quote: "קראתי פעם אחת. הלילה הראשון אחר כך היה שונה לגמרי.", name: "מ.", title: "נשוי" },
-], [
+area("sales", "social.content", "המלצות — משפט משנה", "נכתב מתוך שיחות עם גברים — ומתוך מה שנשים באמת אומרות כשאין גבר בחדר.");
+list("sales", "social.testimonials", "המלצות — ציטוטים", [], [
   { key: "quote", label: "ציטוט", type: "textarea" },
   { key: "name", label: "שם", type: "text" },
   { key: "title", label: "תיאור", type: "text" },
 ], "name");
 
 // ── sales: offer / pricing (I) ──────────────────────────────────────────────
-rich("sales", "offer.title", "הצעה — כותרת", "מחיר השקה");
+rich("sales", "offer.title", "הצעה — כותרת", "מחיר");
 area("sales", "offer.content", "הצעה — משפט משנה", "פחות מחשבון שתייה בבר. יותר מכל מה שלמדת מפורנו.");
 list("sales", "offer.bonuses", "הצעה — בונוסים", [
   { title: "רשימת בדיקה ללילה הראשון אחרי הקריאה", content: "PDF קצר שיוצא יחד עם הספר" },

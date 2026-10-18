@@ -743,6 +743,14 @@ export default function LoginPage() {
               >
                 {c("ui.auth.termsLink") || "תנאי השימוש"}
               </Link>{" "}
+              {c("ui.auth.andPrivacy") || "ול"}{" "}
+              <Link
+                to="/privacy-policy"
+                className="underline transition-opacity hover:opacity-70"
+                style={{ color: "var(--color-primary)" }}
+              >
+                {c("ui.auth.privacyLink") || "מדיניות הפרטיות"}
+              </Link>{" "}
               {c("ui.auth.termsSuffix") || "שלנו."}
             </p>
           )}
