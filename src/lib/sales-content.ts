@@ -318,7 +318,7 @@ export const SALES_DEFAULTS: Record<SalesSlot, CmsSection> = {
     title: "מה קורה אחרי הקריאה",
 
     content:
-      "נכתב מתוך מאות שיחות עם גברים — ומתוך מה שנשים באמת אומרות כשאין גבר בחדר.",
+      "נכתב מתוך שיחות עם גברים — ומתוך מה שנשים באמת אומרות כשאין גבר בחדר.",
 
     active: true,
 
@@ -334,7 +334,7 @@ export const SALES_DEFAULTS: Record<SalesSlot, CmsSection> = {
 
     page: "SALES",
 
-    title: "מחיר השקה",
+    title: "מחיר",
 
     content: "פחות מחשבון שתייה בבר. יותר מכל מה שלמדת מפורנו.",
 
@@ -453,57 +453,18 @@ export const SALES_FAQ_DEFAULTS: FaqItem[] = [
   },
 ]
 
-/** Bundled testimonials — shown when no CMS testimonials exist for the sales page. */
-
-export const SALES_TESTIMONIAL_DEFAULTS: Testimonial[] = [
-  {
-    testimonial_id: uid("tes"),
-
-    quote: "חשבתי שאני בסדר. אחרי שבוע היא שאלה אותי מה שיניתי.",
-
-    name: "א.",
-
-    title: "בזוגיות 3 שנים",
-
-    avatar: "א",
-
-    active: true,
-
-    display_order: 1,
-  },
-
-  {
-    testimonial_id: uid("tes"),
-
-    quote: "פעם ראשונה שהרגשתי שאני מוביל — בלי למהר לסיים.",
-
-    name: "ד.",
-
-    title: "רווק, 32",
-
-    avatar: "ד",
-
-    active: true,
-
-    display_order: 2,
-  },
-
-  {
-    testimonial_id: uid("tes"),
-
-    quote: "קראתי פעם אחת. הלילה הראשון אחר כך היה שונה לגמרי.",
-
-    name: "מ.",
-
-    title: "נשוי",
-
-    avatar: "מ",
-
-    active: true,
-
-    display_order: 3,
-  },
-]
+/** Bundled testimonials — EMPTY by design.
+ *
+ * Previous versions carried three testimonials with initials-only names
+ * ("א.", "ד.", "מ.") that could not be verified as real customers.
+ * Israeli consumer protection law prohibits fabricated reviews, so the
+ * bundled defaults are now empty. The sales page falls back to this list
+ * only when no CMS testimonials exist — an administrator can add real,
+ * verified testimonials through Maestro CMS at any time.
+ *
+ * DO NOT add placeholder testimonials here. Every testimonial must come
+ * from a verified customer with a documented source. */
+export const SALES_TESTIMONIAL_DEFAULTS: Testimonial[] = []
 
 /** Bundled conversion copy — used as fallback when settings fields are empty. */
 

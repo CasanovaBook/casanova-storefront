@@ -310,15 +310,14 @@ export default function LoginPage() {
     color: "var(--color-foreground)",
   }
 
-  /* Every message a password field can explain itself with, wired to the input
-   * so a screen reader reads it as the field's description. */
-  const passwordDescribedBy =
-    [
-      passwordCharWarning ? "auth-password-warning" : null,
-      mode === "register" ? "auth-password-hint" : null,
-    ]
-      .filter(Boolean)
-      .join(" ") || undefined
+  /* The one message a password field can explain itself with while the
+   * customer is still typing, wired to the input so a screen reader reads it
+   * as the field's description. There is deliberately no standing hint under
+   * the field: the rules are the form's business until a customer breaks one,
+   * and then they are stated in full. */
+  const passwordDescribedBy = passwordCharWarning
+    ? "auth-password-warning"
+    : undefined
 
   /* The line under the form that tells a visitor what an account is actually
    * for. Which sentence is true depends on whether a real auth backend can
@@ -573,16 +572,6 @@ export default function LoginPage() {
                 </span>
               </div>
             )}
-            {mode === "register" && (
-              <p
-                id="auth-password-hint"
-                className="text-[11px] mt-1.5"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {c("ui.auth.passwordHint") ||
-                  "8 עד 72 תווים — תווים באנגלית בלבד, עם אות אחת וספרה אחת."}
-              </p>
-            )}
           </div>
 
           {/* Confirmation of a typed credential is already the rule on the
@@ -753,6 +742,14 @@ export default function LoginPage() {
                 style={{ color: "var(--color-primary)" }}
               >
                 {c("ui.auth.termsLink") || "תנאי השימוש"}
+              </Link>{" "}
+              {c("ui.auth.andPrivacy") || "ול"}{" "}
+              <Link
+                to="/privacy-policy"
+                className="underline transition-opacity hover:opacity-70"
+                style={{ color: "var(--color-primary)" }}
+              >
+                {c("ui.auth.privacyLink") || "מדיניות הפרטיות"}
               </Link>{" "}
               {c("ui.auth.termsSuffix") || "שלנו."}
             </p>

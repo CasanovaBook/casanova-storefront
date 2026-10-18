@@ -4,6 +4,7 @@ import { AdminProvider } from "./context/AdminContext"
 import { CmsProvider } from "./context/CmsContext"
 import { AccessibilityProvider } from "./context/AccessibilityContext"
 import AccessibilityWidget from "./components/accessibility/AccessibilityWidget"
+import CookieConsent from "./components/CookieConsent"
 import { router } from "./routes"
 
 /* AppProvider owns the session, so it wraps the two contexts that need
@@ -23,6 +24,7 @@ export default function App() {
           <AccessibilityProvider>
             <RouterProvider router={router} />
             <AccessibilityWidget />
+            <CookieConsent />
           </AccessibilityProvider>
         </AdminProvider>
       </CmsProvider>

@@ -873,6 +873,14 @@ export default function CheckoutPage() {
                         >
                           תנאי השימוש
                         </Link>{" "}
+                        ואת{" "}
+                        <Link
+                          to="/privacy-policy"
+                          className="underline font-medium transition-opacity hover:opacity-70"
+                          style={{ color: "var(--color-primary)" }}
+                        >
+                          מדיניות הפרטיות
+                        </Link>{" "}
                         ואני מסכים להם.
                       </span>
                     </label>

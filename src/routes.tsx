@@ -97,6 +97,10 @@ const TermsPage = lazyPage(() => import("./pages/TermsPage"))
 
 const CancellationPolicyPage = lazyPage(() => import("./pages/CancellationPolicyPage"))
 
+const PrivacyPage = lazyPage(() => import("./pages/PrivacyPage"))
+
+const AccessibilityStatementPage = lazyPage(() => import("./pages/AccessibilityStatementPage"))
+
 const StorePage = lazyPage(() => import("./pages/StorePage"))
 
 const DashboardPage = lazyPage(() => import("./pages/DashboardPage"))
@@ -222,6 +226,10 @@ export const router = createBrowserRouter([
       { path: "terms-and-conditions", Component: TermsPage },
 
       { path: "cancellation-and-refund-policy", Component: CancellationPolicyPage },
+
+      { path: "privacy-policy", Component: PrivacyPage },
+
+      { path: "accessibility-statement", Component: AccessibilityStatementPage },
 
       { path: "setup-password", Component: SetupPasswordPage },
 
