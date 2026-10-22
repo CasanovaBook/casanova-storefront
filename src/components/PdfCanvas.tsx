@@ -78,13 +78,25 @@ async function ensureWorker(): Promise<void> {
 
 const docCache = new Map<string, Promise<PdfDoc>>()
 
+/**
+ * Bound on downloading and parsing the document.
+ *
+ * pdf.js owns its own fetch, so a connection the network stack never
+ * finishes leaves `loading.promise` pending forever and the reader on a
+ * spinner with no way out but a reload. Thirty seconds is comfortably
+ * above the normal open time (~10 s observed), so this only fires when
+ * the transfer has genuinely stalled; the loading task is destroyed and
+ * the error state offers a retry instead of an endless wait.
+ */
+const DOC_LOAD_TIMEOUT_MS = 30_000
+
 function loadDoc(url: string): Promise<PdfDoc> {
   const existing = docCache.get(url)
   if (existing) return existing
 
   const task = ensureWorker().then(() =>
-    PDFJS_IMPORT().then(({ getDocument }) =>
-      getDocument({
+    PDFJS_IMPORT().then(({ getDocument }) => {
+      const loading = getDocument({
         url,
         // The signed URL already carries the authorization; nothing
         // else is sent and credentials are never attached.
@@ -104,8 +116,26 @@ function loadDoc(url: string): Promise<PdfDoc> {
         standardFontDataUrl: "/pdfjs/standard_fonts/",
         cMapUrl: "/pdfjs/cmaps/",
         cMapPacked: true,
-      }).promise,
-    ),
+      })
+
+      return new Promise<PdfDoc>((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          void loading.destroy().catch(() => undefined)
+          reject(new Error("pdf-load-timeout"))
+        }, DOC_LOAD_TIMEOUT_MS)
+
+        loading.promise.then(
+          (doc) => {
+            window.clearTimeout(timer)
+            resolve(doc)
+          },
+          (err) => {
+            window.clearTimeout(timer)
+            reject(err)
+          },
+        )
+      })
+    }),
   )
 
   docCache.set(url, task)
@@ -330,6 +360,10 @@ export default function PdfCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [rendering, setRendering] = useState(true)
+  /* Bumped by the error-state retry. A failed/slow load is the one case
+   * where the effect's other dependencies do not change, so without a
+   * nonce the retry would clear the message and never load anything. */
+  const [reloadNonce, setReloadNonce] = useState(0)
   // Measured container width drives the render scale; a ResizeObserver
   // keeps it honest across viewport and fullscreen changes.
   const [containerWidth, setContainerWidth] = useState(0)
@@ -490,7 +524,9 @@ export default function PdfCanvas({
         setError(
           err instanceof Error && /password/i.test(err.message)
             ? "הקובץ מוגן בסיסמה ואינו ניתן לפתיחה."
-            : "טעינת הקובץ נכשלה. נסו לרענן את העמוד.",
+            : err instanceof Error && err.message === "pdf-load-timeout"
+              ? "הקובץ לא נטען בזמן. בדקו את החיבור ונסו שוב."
+              : "טעינת הקובץ נכשלה. נסו שוב.",
         )
       }
     })()
@@ -505,7 +541,7 @@ export default function PdfCanvas({
     }
     // zoomPermille is derived from zoom; containerWidth drives re-render
     // on resize/fullscreen. eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedUrl, page, zoomPermille, containerWidth])
+  }, [signedUrl, page, zoomPermille, containerWidth, reloadNonce])
 
   /* The wrapper is what ResizeObserver measures; the canvas is centred
    * inside it. */
@@ -533,10 +569,27 @@ export default function PdfCanvas({
       )}
       {error && (
         <div
-          className="absolute inset-0 flex items-center justify-center p-8 text-center text-sm"
+          className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center text-sm"
           style={{ color: "var(--color-danger)" }}
         >
-          {error}
+          <span>{error}</span>
+          <button
+            onClick={() => {
+              /* Drops the rejected/cached loader so the retry starts a
+               * fresh transfer instead of hanging on the same promise. */
+              docCache.delete(signedUrl)
+              setError(null)
+              setRendering(true)
+              setReloadNonce((nonce) => nonce + 1)
+            }}
+            className="tap-target px-4 py-2 rounded-full text-xs font-semibold border transition-opacity hover:opacity-70"
+            style={{
+              borderColor: "var(--color-danger)",
+              color: "var(--color-danger)",
+            }}
+          >
+            ניסיון נוסף
+          </button>
         </div>
       )}
       {/* Attribution layer: the page's own watermark sits under the same

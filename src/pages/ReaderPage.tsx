@@ -6,6 +6,7 @@ import { useStore } from "../data/store"
 import PdfCanvas, {
   prefetchPdfRuntime,
 } from "../components/PdfCanvas"
+import { contentFailure } from "../lib/content-storage"
 import { useScreenProtection } from "../lib/useScreenProtection"
 import {
   consumeContentGrant,
@@ -137,6 +138,12 @@ export default function ReaderPage() {
    * known about the file — and the screen used to declare, inside that
    * window, that the publisher had never uploaded it. */
   const [grantPending, setGrantPending] = useState(true)
+  /* Bumped by the retry actions. The mint effect keys on it because a
+   * retry after a refusal often changes nothing else: the account, the
+   * session id and the entitlement are all identical to the failed run,
+   * so without a nonce the effect would never run again and the retry
+   * button would clear the message and hang on "checking" forever. */
+  const [grantAttempt, setGrantAttempt] = useState(0)
   const isPdf = Boolean(contentUrl && /\.pdf(\?|#|$)/i.test(contentUrl))
 
   /* A PDF renders through PdfCanvas, which parses the document once and
@@ -231,13 +238,36 @@ export default function ReaderPage() {
   /* One mint per account, product and device slot, keyed on a ref for the
    * same reason as the registration above: consuming a grant writes to the
    * store, and an effect that re-runs on every store write would spend the
-   * grant's use budget without the reader turning a page. */
-  const grantedFor = useRef<string | null>(null)
+   * grant's use budget without the reader turning a page.
+   *
+   * The key records whether that slot is IN FLIGHT or DONE. An earlier
+   * version marked it as claimed before the request resolved and never
+   * released it, so a mint that was torn down mid-flight (an entitlement
+   * mirror write, a session refresh) stayed "claimed" while its result was
+   * discarded — the reader sat on "פותח את הספר…" indefinitely and only a
+   * full reload could start a new mint. Releasing the claim when the run
+   * is cancelled is what lets the next run actually ask again.
+   *
+   * The access check is collapsed to a boolean before it enters the
+   * dependency list: `hasAccess` is rebuilt whenever the entitlement array
+   * is touched, and depending on the function itself would cancel a
+   * perfectly healthy signing request for a change that did not alter the
+   * answer. */
+  const grantRun = useRef<{ key: string; status: "inflight" | "done" } | null>(
+    null,
+  )
+  /* A single automatic retry for a transport failure. A hung request that
+   * the 20 s timeout in the content client turns into STORAGE is exactly
+   * the case that used to require a manual browser refresh; retrying once
+   * recovers it without making the customer do anything. */
+  const autoRetried = useRef<string | null>(null)
+  const accessOn = Boolean(productId && hasAccess(productId))
   useEffect(() => {
-    if (!actor || !productId || !sessionId || !hasAccess(productId)) return
+    if (!actor || !productId || !sessionId || !accessOn) return
     const key = `${actor.user_id}:${productId}:${sessionId}`
-    if (grantedFor.current === key) return
-    grantedFor.current = key
+    if (grantRun.current?.key === key) return
+    grantRun.current = { key, status: "inflight" }
+    setGrantPending(true)
 
     /* issueContentGrant is async now: a Storage-hosted file resolves to a
      * short-lived signed URL over the network. Guard against the effect
@@ -245,41 +275,76 @@ export default function ReaderPage() {
      * result cannot write state for a reader that has already moved on. */
     let cancelled = false
     void (async () => {
-      const issued = await issueContentGrant(actor, {
-        productId,
-        sessionId,
-        scope: "STREAM",
-      })
-      if (cancelled) return
-      if (!issued.ok) {
-        grantedFor.current = null
-        setContentUrl(undefined)
-        setGrantCode(issued.code)
-        setGrantError(issued.error)
+      try {
+        const issued = await issueContentGrant(actor, {
+          productId,
+          sessionId,
+          scope: "STREAM",
+        })
+        if (cancelled) return
+        if (!issued.ok) {
+          if (issued.code === "STORAGE" && autoRetried.current !== key) {
+            autoRetried.current = key
+            grantRun.current = null
+            setGrantAttempt((attempt) => attempt + 1)
+            return
+          }
+          grantRun.current = null
+          setContentUrl(undefined)
+          setGrantCode(issued.code)
+          setGrantError(issued.error)
+          setGrantPending(false)
+          return
+        }
+        const redeemed = consumeContentGrant(issued.data.token, productId)
+        if (cancelled) return
+        if (!redeemed.ok) {
+          grantRun.current = null
+          setContentUrl(undefined)
+          setGrantCode(redeemed.code)
+          setGrantError(redeemed.error)
+          setGrantPending(false)
+          return
+        }
+        grantRun.current = { key, status: "done" }
+        setGrantError(null)
+        setGrantCode(null)
         setGrantPending(false)
-        return
-      }
-      const redeemed = consumeContentGrant(issued.data.token, productId)
-      if (cancelled) return
-      if (!redeemed.ok) {
-        grantedFor.current = null
+        setGrantWatermark(redeemed.data.watermark_text)
+        setContentUrl(redeemed.data.content_url)
+      } catch {
+        /* Both service calls resolve by contract, but the store write
+         * underneath them can still throw (a full localStorage, for
+         * one). Without this branch that throw escaped the async task,
+         * left the key inflight and parked the screen on "פותח את
+         * הספר…" forever — the exact failure this effect now guards
+         * against. */
+        if (cancelled) return
+        if (autoRetried.current !== key) {
+          autoRetried.current = key
+          grantRun.current = null
+          setGrantAttempt((attempt) => attempt + 1)
+          return
+        }
+        const failure = contentFailure(undefined)
+        grantRun.current = null
         setContentUrl(undefined)
-        setGrantCode(redeemed.code)
-        setGrantError(redeemed.error)
+        setGrantCode(failure.code)
+        setGrantError(failure.message)
         setGrantPending(false)
-        return
       }
-      setGrantError(null)
-      setGrantCode(null)
-      setGrantPending(false)
-      setGrantWatermark(redeemed.data.watermark_text)
-      setContentUrl(redeemed.data.content_url)
     })()
 
     return () => {
       cancelled = true
+      if (
+        grantRun.current?.key === key &&
+        grantRun.current.status === "inflight"
+      ) {
+        grantRun.current = null
+      }
     }
-  }, [actor, productId, sessionId, hasAccess])
+  }, [actor, productId, sessionId, accessOn, grantAttempt])
 
   /* Live access revalidation.
    *
@@ -887,12 +952,15 @@ export default function ReaderPage() {
                 <button
                   onClick={() => {
                     /* Clearing the guard is what lets the effect mint again;
-                     * without it a refusal would be permanent for this slot. */
-                    grantedFor.current = null
+                     * the nonce covers the case where `resume()` leaves the
+                     * session id unchanged, because then no dependency would
+                     * change and the mint effect would never re-run. */
+                    grantRun.current = null
                     setGrantError(null)
                     setGrantCode(null)
                     setGrantPending(true)
                     setContentUrl(undefined)
+                    setGrantAttempt((attempt) => attempt + 1)
                     resume()
                   }}
                   className="btn-gradient tap-target px-5 py-2.5 rounded-full text-sm font-semibold"

@@ -66,6 +66,19 @@ interface InvokeResult<T> {
 }
 
 /**
+ * Upper bound on one Edge Function call.
+ *
+ * `fetch` has no timeout of its own. A request stuck at the gateway (a
+ * cold start that never boots, a connection the platform holds open)
+ * would otherwise leave the reader on "פותח את הספר…" forever, which is
+ * exactly the shape of the "only a refresh fixes it" report. Twenty
+ * seconds is well above a normal signing round trip — the observed
+ * production call is ~10 s — so this only fires on a genuinely hung
+ * request, and it turns that into the existing retryable failure.
+ */
+const FUNCTION_TIMEOUT_MS = 20_000
+
+/**
  * Invokes a function and normalises both the success and the error
  * channel. On a non-2xx response supabase-js surfaces a FunctionsHttpError
  * whose `context` is the raw Response, so the JSON error the function
@@ -78,7 +91,10 @@ async function invoke<T>(
 ): Promise<InvokeResult<T>> {
   const client = requireSupabase()
 
-  const { data, error } = await client.functions.invoke<T>(fn, { body })
+  const { data, error } = await client.functions.invoke<T>(fn, {
+    body,
+    timeout: FUNCTION_TIMEOUT_MS,
+  })
 
   if (!error) return { data: (data ?? undefined) as T | undefined }
 
