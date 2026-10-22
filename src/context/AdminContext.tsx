@@ -19,15 +19,10 @@ import type {
   AdminSubscription,
   AuditCategory,
   AuditLogEntry,
-  CrmLead,
-  CrmNote,
-  CrmTask,
   EmailLog,
   Inquiry,
   InquiryNote,
   Invoice,
-  LeadStage,
-  NoteCategory,
   Order,
   Payment,
   PlatformSettings,
@@ -53,19 +48,12 @@ import {
 } from "../lib/analytics"
 
 import {
-  addLeadNote,
   createPasswordResetForUser,
-  deleteLead,
-  deleteTask,
   dismissAlert,
   listAudit,
   ok,
   reinstateAlert,
   resendEmail,
-  saveLead,
-  saveTask,
-  setLeadStage,
-  toggleTask,
   updateSettings,
   writeAudit,
   type Actor,
@@ -160,12 +148,6 @@ interface AdminContextValue {
   inquiries: Inquiry[]
 
   inquiryNotes: InquiryNote[]
-
-  leads: CrmLead[]
-
-  tasks: CrmTask[]
-
-  crmNotes: CrmNote[]
 
   dismissedAlerts: string[]
 
@@ -296,35 +278,6 @@ interface AdminContextValue {
     content: string,
     internal?: boolean,
   ) => Promise<Result<InquiryNote>>
-
-  /* CRM */
-
-  saveLead: (
-    data: Omit<CrmLead, "lead_id" | "created_at" | "notes_count"> & {
-      lead_id?: string
-    },
-
-    id?: string,
-  ) => Result<CrmLead>
-
-  setLeadStage: (leadId: string, stage: LeadStage) => Result
-
-  addLeadNote: (
-    leadId: string,
-    content: string,
-    category?: NoteCategory,
-  ) => Result<CrmNote>
-
-  deleteLead: (leadId: string) => Result
-
-  saveTask: (
-    data: Omit<CrmTask, "task_id"> & { task_id?: string },
-    id?: string,
-  ) => Result<CrmTask>
-
-  toggleTask: (taskId: string) => Result
-
-  deleteTask: (taskId: string) => Result
 
   /* Platform settings */
 
@@ -617,12 +570,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       inquiryNotes,
 
-      leads: db.crm_leads,
-
-      tasks: db.crm_tasks,
-
-      crmNotes: db.crm_notes,
-
       dismissedAlerts: dismissed,
 
       alerts,
@@ -788,21 +735,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       addInquiryNote: (inquiryId, content, internal) =>
         addInquiryNote(actor, inquiryId, content, internal),
-
-      saveLead: (data, id) => saveLead(actor, data, id),
-
-      setLeadStage: (leadId, stage) => setLeadStage(actor, leadId, stage),
-
-      addLeadNote: (leadId, content, category) =>
-        addLeadNote(actor, leadId, content, category),
-
-      deleteLead: (leadId) => deleteLead(actor, leadId),
-
-      saveTask: (data, id) => saveTask(actor, data, id),
-
-      toggleTask: (taskId) => toggleTask(actor, taskId),
-
-      deleteTask: (taskId) => deleteTask(actor, taskId),
 
       updateSettings: (patch) => updateSettings(actor, patch),
     }

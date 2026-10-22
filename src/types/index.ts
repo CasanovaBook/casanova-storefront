@@ -402,46 +402,6 @@ export interface InquiryNote {
   created_at: string
 }
 
-/* ── CRM ──────────────────────────────────────────────── */
-
-export type LeadStage = "NEW" | "CONTACTED" | "INTERESTED" | "WON" | "LOST"
-export type LeadSource = "LANDING_PAGE" | "STORE" | "REFERRAL" | "CAMPAIGN" | "MANUAL" | "MOBILE_APP"
-export type TaskPriority = "HIGH" | "MEDIUM" | "LOW"
-export type NoteCategory = "CALL" | "EMAIL" | "MEETING" | "GENERAL"
-
-export interface CrmLead {
-  lead_id: string
-  full_name: string
-  email: string
-  phone?: string
-  stage: LeadStage
-  source: LeadSource
-  interested_product_id?: string
-  tags: string[]
-  notes_count: number
-  created_at: string
-  last_contact_at?: string
-}
-
-export interface CrmTask {
-  task_id: string
-  title: string
-  lead_id?: string
-  lead_name?: string
-  due_date: string
-  priority: TaskPriority
-  done: boolean
-}
-
-export interface CrmNote {
-  note_id: string
-  lead_id: string
-  category: NoteCategory
-  content: string
-  created_at: string
-  author: string
-}
-
 /* ── Transactional email ──────────────────────────────── */
 
 export interface EmailLog {

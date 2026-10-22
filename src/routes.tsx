@@ -121,8 +121,6 @@ const AdminUsersPage = lazyPage(() => import("./pages/admin/AdminUsersPage"))
 
 const AdminOrdersPage = lazyPage(() => import("./pages/admin/AdminOrdersPage"))
 
-const AdminCrmPage = lazyPage(() => import("./pages/admin/AdminCrmPage"))
-
 const AdminAccessPage = lazyPage(() => import("./pages/admin/AdminAccessPage"))
 
 const AdminFinancePage = lazyPage(
@@ -343,7 +341,9 @@ export const router = createBrowserRouter([
 
       { path: "audit", Component: AdminAuditPage },
 
-      { path: "crm", Component: AdminCrmPage },
+      /* The CRM page was removed; keep its old URL working by sending
+       * bookmarks and direct links to the admin dashboard. */
+      { path: "crm", element: <Navigate to="/admin" replace /> },
 
       /* The legacy CMS sections page is gone; the canonical editor is the
        * Maestro app, which carries its own route-level authorization. A

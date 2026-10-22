@@ -21,9 +21,6 @@ import type {
   CmsSection,
   CmsSectionItem,
   ContentGrant,
-  CrmLead,
-  CrmNote,
-  CrmTask,
   DeviceSession,
   DrmPolicy,
   EmailLog,
@@ -97,12 +94,6 @@ export interface Database {
   inquiries: Inquiry[]
 
   inquiry_notes: InquiryNote[]
-
-  crm_leads: CrmLead[]
-
-  crm_tasks: CrmTask[]
-
-  crm_notes: CrmNote[]
 
   email_logs: EmailLog[]
 
@@ -257,12 +248,6 @@ export function emptyDatabase(): Database {
     inquiries: [],
 
     inquiry_notes: [],
-
-    crm_leads: [],
-
-    crm_tasks: [],
-
-    crm_notes: [],
 
     email_logs: [],
 

@@ -19,13 +19,8 @@ import type {
   Category,
   CmsBackup,
   CmsSection,
-  CrmLead,
-  CrmNote,
-  CrmTask,
   EmailLog,
   FaqItem,
-  LeadStage,
-  NoteCategory,
   PlatformSettings,
   Product,
   ProductStatus,
@@ -103,19 +98,6 @@ export {
   listDismissedAlerts,
   reinstateAlert,
 } from "../services/alerts"
-
-export {
-  addLeadNote,
-  deleteLead,
-  deleteTask,
-  listCrmNotes,
-  listCrmTasks,
-  listLeads,
-  saveLead,
-  saveTask,
-  setLeadStage,
-  toggleTask,
-} from "../services/crm"
 
 export {
   archiveProduct,
@@ -405,7 +387,7 @@ export async function registerCustomer(
    * (`create_storefront_order` → `name_required`). Stating it here as well is
    * what makes the agreement real rather than a courtesy the client may skip.
    * A passwordless guest row created without a name would also leave the
-   * admin CRM and the invoice with nothing to print. */
+   * order and the invoice with nothing to print. */
   if (!input.first_name.trim() || !input.last_name.trim())
     return fail("VALIDATION", "יש למלא שם מלא.")
 

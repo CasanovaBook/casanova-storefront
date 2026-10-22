@@ -43,7 +43,6 @@ const navItems: {
     perm: "support",
   },
   { path: "/admin/audit", label: "יומן פעולות", icon: "list", perm: "audit" },
-  { path: "/admin/crm", label: "CRM ולקוחות", icon: "target", perm: "crm" },
   {
     path: "/admin/security",
     label: "הגנת תוכן ואבטחה",

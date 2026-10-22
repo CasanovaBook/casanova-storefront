@@ -15,7 +15,7 @@ import type { AdminRole } from "../types"
 
 export type AdminPermission = /* Pages / nav */
 
-"dashboard" | "products" | "cms" | "users" | "access" | "orders" | "finance" | "emails" | "alerts" | "audit" | "crm" | "support" | "settings" | "security" | /* Sensitive actions */
+"dashboard" | "products" | "cms" | "users" | "access" | "orders" | "finance" | "emails" | "alerts" | "audit" | "support" | "settings" | "security" | /* Sensitive actions */
 
 "refund" | "execute_refund" | "mark_paid" | "edit_order" | "grant_access" | "edit_price" | "edit_content" | "delete_product" | "block_user" | "resend_email" | "manage_roles" | "manage_support" | "manage_drm" | /* Maestro CMS */
 
@@ -50,7 +50,7 @@ export const ROLE_DESCRIPTION: Record<AdminRole, string> = {
 
   CONTENT: "ניהול מוצרים, ספרים, תוכן, קבצים ותמונות.",
 
-  MARKETING: "CMS, קמפיינים, קופונים, מיילים ו־CRM.",
+  MARKETING: "CMS, קמפיינים, קופונים ומיילים.",
 }
 
 const SUPER: AdminPermission[] = [
@@ -73,8 +73,6 @@ const SUPER: AdminPermission[] = [
   "alerts",
 
   "audit",
-
-  "crm",
 
   "support",
 
@@ -127,8 +125,6 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
 
     "alerts",
 
-    "crm",
-
     "support",
 
     "manage_support",
@@ -171,7 +167,6 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
   MARKETING: [
     "dashboard",
     "cms",
-    "crm",
     "finance",
     "emails",
     "resend_email",

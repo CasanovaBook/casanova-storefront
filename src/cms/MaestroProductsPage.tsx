@@ -784,7 +784,7 @@ export function MaestroProductsPage() {
       {/* Sync indicator */}
       <div className="mt-6 flex items-center justify-center gap-2 text-xs" style={{ color: "var(--color-muted-foreground)", opacity: 0.5 }}>
         <span className="inline-block w-2 h-2 rounded-full" style={{ background: "var(--color-success)" }} />
-        מחובר ישירות ל-CRM — נתונים משותפים דרך מסד הנתונים
+        מחובר ישירות למסד הנתונים — נתונים משותפים עם האתר
       </div>
 
       {/* ── Create Dialog ──────────────────────────────────────────── */}
