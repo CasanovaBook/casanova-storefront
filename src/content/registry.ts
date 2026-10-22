@@ -166,7 +166,7 @@ area("sales", "hero.lede", "Hero — משפט משנה", "המדריך הפרק�
 text("sales", "hero.cta", "Hero — כפתור ראשי", "כן. אני רוצה את הספר");
 export const SALES_HERO_TRUST_DEFAULT = [
   "גישה מיידית",
-  "קריאה בספרייה הדיגיטלית",
+  "תשלום מאובטח",
   "דיסקרטיות מלאה",
 ];
 strings("sales", "hero.trust", "Hero — תגי אמון", SALES_HERO_TRUST_DEFAULT);
