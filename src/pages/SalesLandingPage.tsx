@@ -248,7 +248,7 @@ function HeroSection({ product, c }: { product: Product, c: ReturnType<typeof us
 
   const trust = c.strings("sales.hero.trust").length > 0
     ? c.strings("sales.hero.trust")
-    : ["גישה מיידית", "תשלום מאובטח"]
+    : ["גישה מיידית", "קריאה בספרייה הדיגיטלית"]
 
   const handleBuy = () => {
     selectProduct(product, setSelectedProduct)
@@ -835,7 +835,7 @@ function OfferSection({ product, c }: { product: Product, c: ReturnType<typeof u
           className="text-sm mb-8"
           style={{ color: "var(--color-muted-foreground)" }}
         >
-          {c("sales.offer.subtext") || "תשלום מאובטח · הורדה מיידית · אפשר לקרוא הערב"}
+          {c("sales.offer.subtext") || "גישה מיידית · אפשר לקרוא הערב"}
         </p>
         {bonuses.length > 0 && (
           <div

@@ -114,9 +114,9 @@ export const UI: Record<string, [string, string]> = {
   "checkout.title": ["כותרת תשלום", "תשלום"],
   "checkout.summary": ["כותרת סיכום הזמנה", "סיכום הזמנה"],
   "checkout.total": ["סה\"כ לתשלום", "סה\"כ לתשלום"],
-  "checkout.pay": ["כפתור תשלום", "תשלום מאובטח"],
-  "checkout.processing": ["כפתור בעת תשלום", "מעבד תשלום…"],
-  "checkout.success": ["הודעת הצלחה", "התשלום בוצע בהצלחה!"],
+  "checkout.pay": ["כפתור תשלום", "שליחת הזמנה"],
+  "checkout.processing": ["כפתור בעת תשלום", "שולח הזמנה…"],
+  "checkout.success": ["הודעת הצלחה", "ההזמנה התקבלה!"],
   "checkout.successBody": ["טקסט הצלחה", "הספרים מחכים לכם בספרייה."],
   "checkout.goToLibrary": ["כפתור מעבר לספרייה", "לספרייה שלי"],
   // auth

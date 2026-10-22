@@ -22,6 +22,10 @@ export default function CheckoutSuccessPage() {
 
   const order = lastOrder
   const paid = order.payment_status === "PAID"
+  /* A zero-total order is a free sample: nothing was charged and no payment
+   * was captured, so it must not be presented as "payment approved". Access
+   * is still granted, and the read-now path stays the same. */
+  const isFree = order.total_amount === 0
   const failed =
     order.payment_status === "FAILED" || order.order_status === "FAILED"
   // An auto-approved checkout signs the buyer in, so they can jump straight
@@ -49,12 +53,16 @@ export default function CheckoutSuccessPage() {
   const heading = failed
     ? "ההזמנה נכשלה"
     : paid
-      ? "התשלום אושר"
+      ? isFree
+        ? "הגישה נפתחה"
+        : "התשלום אושר"
       : "ההזמנה התקבלה"
   const intro = failed
     ? "לא הצלחנו לרשום את התשלום עבור ההזמנה. הצוות עודכן וייצור איתך קשר."
     : paid
-      ? "תודה שרכשת. הגישה שלך למוצר נפתחה."
+      ? isFree
+        ? "תודה. הספר החינמי נפתח בספרייה שלך — לא בוצע חיוב."
+        : "תודה שרכשת. הגישה שלך למוצר נפתחה."
       : "תודה. ההזמנה נרשמה במערכת והיא ממתינה לאישור תשלום. נעדכן אותך ברגע שהתשלום יאושר והגישה תיפתח."
 
   const steps: { step: string, icon: IconName, title: string, desc: string }[] =

@@ -55,6 +55,19 @@ import { isUuid } from "../integrations/supabase/supabase-entitlements"
 
 /* ── Reads ────────────────────────────────────────────── */
 
+/**
+ * The ORDER_PAID subject, worded for what actually happened.
+ *
+ * A zero-total order is a free sample: no money moved and no payment was
+ * captured, so it must not be announced as "the payment was approved".
+ * Every other order keeps the payment-approved wording.
+ */
+function orderPaidSubject(order: { order_number: string; total_amount: number }): string {
+  return order.total_amount === 0
+    ? `הגישה עבור הזמנה ${order.order_number} נפתחה — ספר חינמי, לא בוצע חיוב`
+    : `התשלום עבור הזמנה ${order.order_number} אושר — הגישה נפתחה`
+}
+
 export function listOrders(actor: Actor | null): Result<Order[]> {
   const denied = guard(actor, "orders")
 
@@ -271,7 +284,7 @@ async function checkoutHosted(
 
     template: "ORDER_PAID",
 
-    subject: `התשלום עבור הזמנה ${order.order_number} אושר — הגישה נפתחה`,
+    subject: orderPaidSubject(order),
 
     related_type: "ORDER",
 
@@ -507,7 +520,7 @@ export async function checkout(
 
       template: "ORDER_PAID",
 
-      subject: `התשלום עבור הזמנה ${paid.order_number} אושר — הגישה נפתחה`,
+      subject: orderPaidSubject(paid),
 
       related_type: "ORDER",
 
@@ -657,7 +670,7 @@ export function markOrderPaid(
 
     template: "ORDER_PAID",
 
-    subject: `התשלום עבור הזמנה ${updated.order_number} אושר — הגישה נפתחה`,
+    subject: orderPaidSubject(updated),
 
     related_type: "ORDER",
 

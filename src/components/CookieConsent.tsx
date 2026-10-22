@@ -127,7 +127,7 @@ export default function CookieConsent() {
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-[100] p-4"
-      role="dialog"
+      role="region"
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-consent-desc"
     >
