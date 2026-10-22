@@ -567,21 +567,26 @@ function FeaturesSection({ c }: { c: ReturnType<typeof useContent> }) {
       <SectionHeading title={title} />
       {items.length > 0 && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {items.map((it) => (
-            <div key={it.item_id} className="card-glow p-6 rounded-2xl">
-              <h3 className="font-display text-lg font-bold mb-2">
-                {it.title}
-              </h3>
-              {it.content && (
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{ color: "var(--color-muted-foreground)" }}
+          {items.map((it) => {
+            const hasContent = Boolean(it.content)
+            return (
+              <div key={it.item_id} className="card-glow p-6 rounded-2xl">
+                <h3
+                  className={`font-display text-lg font-bold${hasContent ? " mb-2" : ""}`}
                 >
-                  {it.content}
-                </p>
-              )}
-            </div>
-          ))}
+                  {it.title}
+                </h3>
+                {hasContent && (
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{ color: "var(--color-muted-foreground)" }}
+                  >
+                    {it.content}
+                  </p>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </section>
