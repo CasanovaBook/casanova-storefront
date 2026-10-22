@@ -25,6 +25,8 @@ import { useCms } from "../context/CmsContext"
 
 import { fmt, useContent } from "../content/useContent"
 
+import { SALES_HERO_TRUST_DEFAULT } from "../content/registry"
+
 import type { Product } from "../types"
 
 import { effectivePrice, isOnSale } from "../types"
@@ -246,9 +248,16 @@ function HeroSection({ product, c }: { product: Product, c: ReturnType<typeof us
 
   const accent = lines.slice(1)
 
-  const trust = c.strings("sales.hero.trust").length > 0
-    ? c.strings("sales.hero.trust")
-    : ["גישה מיידית", "קריאה בספרייה הדיגיטלית"]
+  /* Saved CMS content predates the third highlight, so a two-item list
+   * must still complete the row. Extra configured items are left alone. */
+  const configuredTrust = c.strings("sales.hero.trust")
+  const trust =
+    configuredTrust.length >= 3
+      ? configuredTrust
+      : [
+          ...configuredTrust,
+          ...SALES_HERO_TRUST_DEFAULT.slice(configuredTrust.length),
+        ]
 
   const handleBuy = () => {
     selectProduct(product, setSelectedProduct)
@@ -398,14 +407,6 @@ function HeroSection({ product, c }: { product: Product, c: ReturnType<typeof us
             </div>
           </div>
         </div>
-      </div>
-
-      <div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        <div className="w-px h-8" style={{ background: "currentColor" }} />
-        <span className="text-xs font-bold">{c("sales.hero.scroll") || "גללו למטה"}</span>
       </div>
     </section>
   )

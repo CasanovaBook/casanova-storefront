@@ -164,9 +164,13 @@ text("sales", "hero.eyebrow", "Hero — תווית מותג", "Casanova · מד�
 rich("sales", "hero.title", "Hero — כותרת", "היא קודם.\n*ואז אתה כבר לא גבר ממוצע במיטה.*");
 area("sales", "hero.lede", "Hero — משפט משנה", "המדריך הפרקטי לגבר שרוצה לדעת מה באמת קורה בגוף שלה, איך להוביל בלי למהר, ואיך לגרום לה לבקש עוד — בלי ניחושים.");
 text("sales", "hero.cta", "Hero — כפתור ראשי", "כן. אני רוצה את הספר");
-strings("sales", "hero.trust", "Hero — תגי אמון", ["גישה מיידית", "קריאה בספרייה הדיגיטלית"]);
+export const SALES_HERO_TRUST_DEFAULT = [
+  "גישה מיידית",
+  "קריאה בספרייה הדיגיטלית",
+  "דיסקרטיות מלאה",
+];
+strings("sales", "hero.trust", "Hero — תגי אמון", SALES_HERO_TRUST_DEFAULT);
 text("sales", "hero.priceLabel", "Hero — תווית מחיר", "מחיר");
-text("sales", "hero.scroll", "Hero — חץ גלילה", "גללו למטה");
 text("sales", "audience.yesTitle", "קהל יעד — כותרת חיובי", "למי כן");
 text("sales", "audience.noTitle", "קהל יעד — כותרת שלילי", "למי לא");
 text("sales", "offer.priceLabel", "הצעה — תווית מחיר", "מחיר");
