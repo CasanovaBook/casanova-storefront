@@ -570,6 +570,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ],
   )
 
+  /* Local/offline mode has no Supabase auth event to bridge, but Maestro
+   * still gates content writes on a staff session. Mirror the local admin
+   * session so the CMS saves in the Figma/local build as well. */
+  useEffect(() => {
+    if (isSupabaseConfigured) return
+    if (!user) {
+      maestro.bridgeSession(null)
+      return
+    }
+    maestro.bridgeSession({
+      accessToken: "local",
+      userId: user.user_id,
+      email: user.email,
+      role:
+        user.admin_role ??
+        (user.role === "ADMIN" ? "SUPER_ADMIN" : "CUSTOMER"),
+    })
+  }, [user?.user_id, user?.email, user?.role, user?.admin_role])
+
   const beginSession = useCallback((next: User) => {
     writeSessionUserId(next.user_id)
     setSessionId(next.user_id)

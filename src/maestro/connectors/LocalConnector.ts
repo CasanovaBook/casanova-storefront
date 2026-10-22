@@ -147,16 +147,18 @@ const devPassword: string | null =
 function localAuth(): AuthConnector {
   const listeners = new Set<(s: AuthSession | null) => void>();
   let current: AuthSession | null = null;
+  /** External session injected from the local Casanova admin session. */
+  let external: AuthSession | null = null;
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (raw) current = JSON.parse(raw) as AuthSession;
   } catch {
     /* ignore */
   }
-  const emit = () => listeners.forEach((cb) => cb(current));
+  const emit = () => listeners.forEach((cb) => cb(external ?? current));
 
   return {
-    session: () => current,
+    session: () => external ?? current,
     async signIn(email, password) {
       if (!devPassword) {
         return fail(new MaestroError("Admin sign-in is unavailable: the backend is not configured.", { code: "auth_disabled" }));
@@ -164,6 +166,7 @@ function localAuth(): AuthConnector {
       if (!email || password !== devPassword) {
         return fail(new MaestroError("Invalid email or password", { code: "invalid_credentials" }));
       }
+      external = null;
       current = { user: { id: "local-admin", email }, role: "SUPER_ADMIN" as Role };
       try {
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(current));
@@ -174,6 +177,7 @@ function localAuth(): AuthConnector {
       return ok(current);
     },
     async signOut() {
+      external = null;
       current = null;
       try {
         sessionStorage.removeItem(SESSION_KEY);
@@ -185,6 +189,11 @@ function localAuth(): AuthConnector {
     onChange(cb) {
       listeners.add(cb);
       return () => listeners.delete(cb);
+    },
+    /** Accept the local admin session so the CMS can persist locally. */
+    injectSession(s: AuthSession | null) {
+      external = s;
+      emit();
     },
   };
 }

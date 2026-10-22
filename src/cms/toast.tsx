@@ -50,9 +50,12 @@ export function Toaster() {
   const addToast = useCallback((t: Omit<Toast, "id">) => {
     const id = nextId++;
     setToasts((prev) => [...prev, { ...t, id }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id));
-    }, 3500);
+    setTimeout(
+      () => {
+        setToasts((prev) => prev.filter((x) => x.id !== id));
+      },
+      t.type === "error" ? 6500 : 3500,
+    );
   }, []);
 
   useEffect(() => {
@@ -66,6 +69,9 @@ export function Toaster() {
     <div
       className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none"
       dir="rtl"
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
     >
       {toasts.map((t) => {
         const s = TYPE_STYLES[t.type];

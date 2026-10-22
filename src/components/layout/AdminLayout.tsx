@@ -112,9 +112,17 @@ export default function AdminLayout() {
     }))
 
   /* Maestro CMS is the single navigation entry to the content editor,
-   * shown prominently for users with cms:edit_live permission. */
+   * shown prominently for users with cms:edit_live permission. The path is
+   * the editor's own index route, so the click lands directly in the CMS
+   * shell (the /admin/cms redirect is left only for old bookmarks). */
   if (can(adminRole, "cms:edit_live")) {
-    visibleNav.push({ path: "/admin/cms/content-editor", label: "Maestro CMS", icon: "sparkles" });
+    visibleNav.push({
+      path: "/admin/cms/content-editor",
+      label: "Maestro CMS",
+      icon: "sparkles",
+      variant: "cms",
+      tag: "CMS",
+    })
   }
 
   const secondaryItems: SideNavItem[] = [

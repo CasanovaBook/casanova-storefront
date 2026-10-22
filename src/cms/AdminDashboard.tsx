@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { maestro } from "@/maestro";
 import { FIELDS, GROUPS, fieldsOfGroup } from "@/content/registry";
 import { getSaved, loadContent } from "@/content/store";
@@ -239,9 +239,9 @@ export function AdminDashboard() {
               { href: "/admin/cms/content-editor/audit", label: "יומן שינויים", icon: "list" as const, desc: "היסטוריית עריכות" },
               { href: "/admin/cms/content-editor/media", label: "ספריית מדיה", icon: "inbox" as const, desc: "תמונות וקבצים" },
             ].map((link) => (
-              <a
+              <Link
                 key={link.href}
-                href={link.href}
+                to={link.href}
                 className="flex flex-col gap-1 rounded-xl p-3 text-right transition-all hover:scale-[1.02]"
                 style={{ background: "var(--color-secondary)", border: "1px solid var(--color-border)" }}
               >
@@ -250,7 +250,7 @@ export function AdminDashboard() {
                   {link.label}
                 </span>
                 <span className="text-xs" style={{ color: "var(--color-muted-foreground)", opacity: 0.7 }}>{link.desc}</span>
-              </a>
+              </Link>
             ))}
           </div>
         </div>

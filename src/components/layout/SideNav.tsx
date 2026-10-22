@@ -36,6 +36,14 @@ export interface SideNavItem {
   /** Unresolved count shown as a badge; omitted or zero renders nothing. */
 
   badge?: number
+
+  /** "cms" marks the entry point to the content editor. */
+
+  variant?: "default" | "cms"
+
+  /** Small pill shown beside the label, e.g. "CMS". */
+
+  tag?: string
 }
 
 interface SideNavProps {
@@ -52,6 +60,18 @@ interface SideNavProps {
   /** Account block and theme control, rendered in the panel footer. */
 
   footer: ReactNode
+
+  /** Where the wordmark links to. Defaults to the public site. */
+
+  brandHref?: string
+
+  /** Tints and outlines the whole panel as a distinct working mode. */
+
+  accent?: "cms"
+
+  /** Short label above the navigation list, e.g. "מצב עריכת תוכן". */
+
+  navLabel?: string
 }
 
 export default function SideNav({
@@ -59,7 +79,11 @@ export default function SideNav({
   secondaryItems,
   chip,
   footer,
+  brandHref = "/",
+  accent,
+  navLabel,
 }: SideNavProps) {
+  const isCmsMode = accent === "cms"
   const [open, setOpen] = useState(false)
 
   const location = useLocation()
@@ -109,6 +133,7 @@ export default function SideNav({
 
   const renderLink = (item: SideNavItem) => {
     const active = location.pathname === item.path
+    const cms = item.variant === "cms"
 
     return (
       <Link
@@ -118,18 +143,36 @@ export default function SideNav({
         className="tap-target flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
         style={{
           background: active
-            ? "linear-gradient(90deg, rgba(212,160,48,0.16), rgba(212,160,48,0.05))"
-            : "transparent",
+            ? "linear-gradient(90deg, rgba(212,160,48,0.18), rgba(212,160,48,0.05))"
+            : cms
+              ? "linear-gradient(90deg, rgba(227,174,60,0.12), rgba(227,174,60,0.03))"
+              : "transparent",
 
-          color: active
-            ? "var(--color-primary)"
-            : "var(--color-muted-foreground)",
+          color:
+            active || cms
+              ? "var(--color-primary)"
+              : "var(--color-muted-foreground)",
 
-          boxShadow: active ? "inset 2px 0 0 var(--color-primary)" : "none",
+          boxShadow: cms
+            ? "inset 3px 0 0 var(--color-primary), inset 0 0 0 1px rgba(227,174,60,0.22)"
+            : active
+              ? "inset 2px 0 0 var(--color-primary)"
+              : "none",
         }}
       >
         <Icon name={item.icon} size={18} className="flex-shrink-0" />
         <span className="flex-1 truncate">{item.label}</span>
+        {item.tag && (
+          <span
+            className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
+            style={{
+              background: "rgba(227,174,60,0.18)",
+              color: "var(--color-primary)",
+            }}
+          >
+            {item.tag}
+          </span>
+        )}
         {item.badge !== undefined && item.badge > 0 && (
           <span
             className="min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center"
@@ -147,7 +190,7 @@ export default function SideNav({
   const logoSrc = c("global.logo") || logoImg
 
   const brand = (
-    <Link to="/" className="flex items-center gap-2.5">
+    <Link to={brandHref} className="flex items-center gap-2.5">
       <img src={logoSrc} alt="" className="w-8 h-8 rounded-lg object-cover" />
       <span
         dir="ltr"
@@ -198,11 +241,25 @@ export default function SideNav({
         data-open={open}
         className="drawer-panel safe-bottom fixed top-0 right-0 h-full w-60 max-w-[85vw] border-l flex flex-col z-50"
         style={{
-          background: "var(--color-card)",
-          borderColor: "var(--color-border)",
+          background: isCmsMode
+            ? "linear-gradient(180deg, rgba(227,174,60,0.09), var(--color-card) 260px)"
+            : "var(--color-card)",
+          borderColor: isCmsMode
+            ? "rgba(227,174,60,0.3)"
+            : "var(--color-border)",
         }}
         aria-label="ניווט ראשי"
       >
+        {isCmsMode && (
+          <div
+            className="h-0.5 w-full flex-shrink-0"
+            style={{
+              background:
+                "linear-gradient(90deg, var(--color-primary), rgba(227,174,60,0.1))",
+            }}
+            aria-hidden="true"
+          />
+        )}
         <div
           className="p-6 border-b flex items-start justify-between gap-2"
           style={{ borderColor: "var(--color-border)" }}
@@ -222,6 +279,14 @@ export default function SideNav({
         </div>
 
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto overscroll-contain">
+          {navLabel && (
+            <p
+              className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: "var(--color-primary)" }}
+            >
+              {navLabel}
+            </p>
+          )}
           {items.map((item) => renderLink(item))}
 
           {secondaryItems && secondaryItems.length > 0 && (

@@ -62,6 +62,22 @@ const cardStyle: React.CSSProperties = {
 const focusBorder = "1px solid var(--color-primary)"
 const focusShadow = "0 0 0 2px rgba(227,174,60,0.15)"
 
+/** Inline live preview needs the third column; below this width it would
+ *  squeeze the fields pane to an unusable strip on tablets. */
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(query).matches,
+  )
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    const update = () => setMatches(media.matches)
+    update()
+    media.addEventListener("change", update)
+    return () => media.removeEventListener("change", update)
+  }, [query])
+  return matches
+}
+
 /** Auto-resizing textarea that grows with content. */
 function AutoTextarea({
   value,
@@ -625,6 +641,8 @@ export function ContentEditor() {
   )
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [resettingKey, setResettingKey] = useState<string | null>(null)
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [showSeo, setShowSeo] = useState(false)
   const [showModified, setShowModified] = useState(false)
@@ -632,10 +650,25 @@ export function ContentEditor() {
   const [previewKey, setPreviewKey] = useState(0)
   const draftRef = useRef(draft)
   draftRef.current = draft
+  /* A ref, not only state, so a double click or a keyboard shortcut cannot
+   * start two saves before React has re-rendered the disabled button. */
+  const savingRef = useRef(false)
+  const inlinePreviewAvailable = useMediaQuery("(min-width: 1280px)")
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
-    loadContent().finally(() => setLoading(false))
+    void loadContent()
+      .catch(() => {
+        if (!cancelled)
+          toast.error("טעינת התוכן נכשלה. בדקו את החיבור ונסו לרענן.")
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -690,49 +723,101 @@ export function ContentEditor() {
   const handleResetField = useCallback(
     async (key: string) => {
       const field = FIELD_MAP[key]
-      if (!field) return
-      const res = await maestro.content.reset([key])
-      if (res.error) {
-        toast.error(`שגיאה: ${res.error.message}`)
+      if (!field || resettingKey) return
+      if (
+        !window.confirm(
+          `לשחזר את "${field.label}" לברירת המחדל? הפעולה נשמרת מיד.`,
+        )
+      )
         return
+      setResettingKey(key)
+      try {
+        const res = await maestro.content.reset([key])
+        if (res.error) {
+          toast.error(`לא שוחזר: ${res.error.message}`)
+          return
+        }
+        toast.success(`שוחזר: ${field.label}`)
+        const next = { ...draftRef.current }
+        if (key in next) {
+          delete next[key]
+          setDraftState(next)
+          setDraft(next)
+        }
+        const newSaved = { ...getSaved() }
+        delete newSaved[key]
+        applySaved(newSaved, [key])
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? `לא שוחזר: ${err.message}`
+            : "השחזור נכשל. בדקו את החיבור ונסו שוב.",
+        )
+      } finally {
+        setResettingKey(null)
       }
-      toast.success(`שוחזר: ${field.label}`)
-      if (key in draft) {
-        const next = { ...draft }
-        delete next[key]
-        setDraftState(next)
-        setDraft(next)
-      }
-      const saved = getSaved()
-      const newSaved = { ...saved }
-      delete newSaved[key]
-      applySaved(newSaved, [key])
     },
-    [draft],
+    [resettingKey],
   )
 
   const handlePublish = useCallback(async () => {
-    if (!canPublish || !Object.keys(draft).length) return
+    if (!canPublish || savingRef.current) return
+    /* Snapshot the draft: edits made while the request is in flight must
+     * not be silently wiped when the save resolves. */
+    const snapshot = { ...draftRef.current }
+    const keys = Object.keys(snapshot)
+    if (!keys.length) return
+    const unknown = keys.filter((key) => !FIELD_MAP[key])
+    if (unknown.length) {
+      toast.error("הטיוטה מכילה שדות לא מוכרים. רעננו את העמוד ונסו שוב.")
+      return
+    }
+
+    savingRef.current = true
     setSaving(true)
     try {
-      const res = await maestro.content.saveMany(draft)
+      const res = await maestro.content.saveMany(snapshot)
       if (res.error) {
-        toast.error(`שגיאה: ${res.error.message}`)
+        toast.error(`לא נשמר: ${res.error.message || "שגיאה בשמירה."}`)
         return
       }
-      const count = Object.keys(draft).length
-      applySaved(draft)
-      setDraftState({})
-      setDraft({})
-      toast.success(`פורסמו ${count} שינויים בהצלחה`)
+      applySaved(snapshot)
+
+      /* Keep only values the admin changed after the save started. A key
+       * whose current draft now equals the snapshot was saved and is no
+       * longer pending; a key changed again stays a draft. */
+      const remaining = { ...draftRef.current }
+      for (const key of keys) {
+        if (JSON.stringify(remaining[key]) === JSON.stringify(snapshot[key]))
+          delete remaining[key]
+      }
+      setDraftState(remaining)
+      setDraft(remaining)
+      setLastSavedAt(new Date())
+
+      const pending = Object.keys(remaining).length
+      if (pending > 0) {
+        toast.info(
+          `נשמרו ${keys.length} שינויים · ${pending} שינויים חדשים נשמרו כטיוטה`,
+        )
+      } else {
+        toast.success(`פורסמו ${keys.length} שינויים בהצלחה`)
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? `לא נשמר: ${err.message}`
+          : "השמירה נכשלה. בדקו את החיבור ונסו שוב.",
+      )
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
-  }, [draft, canPublish])
+  }, [canPublish])
 
   const handleDiscard = useCallback(() => {
-    if (!hasDraft()) return
-    if (!confirm("לבטל את כל השינויים שלא פורסמו?")) return
+    if (savingRef.current || !hasDraft()) return
+    if (!window.confirm("לבטל את כל השינויים שלא פורסמו?")) return
     setDraftState({})
     setDraft({})
     toast.info("הטיוטה נמחקה")
@@ -750,10 +835,10 @@ export function ContentEditor() {
   }, [previewPath, previewKey])
 
   useEffect(() => {
-    if (!showPreview || draftCount === 0) return
+    if (!showPreview || !inlinePreviewAvailable || draftCount === 0) return
     const timer = setTimeout(() => setPreviewKey((k) => k + 1), 800)
     return () => clearTimeout(timer)
-  }, [draft, showPreview, draftCount])
+  }, [draft, showPreview, inlinePreviewAvailable, draftCount])
 
   const handlePreview = useCallback(() => {
     const url = new URL(previewPath, window.location.origin)
@@ -822,25 +907,58 @@ export function ContentEditor() {
         >
           {activeGroupLabel}
         </span>
-        {draftCount > 0 && (
-          <span
-            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-            style={{
-              background: "rgba(227,174,60,0.1)",
-              color: "var(--color-primary)",
-            }}
-          >
-            {draftCount} שינויים שלא פורסמו
-          </span>
-        )}
+        <span
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+          style={{
+            background: saving
+              ? "rgba(227,174,60,0.16)"
+              : draftCount > 0
+                ? "rgba(227,174,60,0.1)"
+                : "rgba(34,197,94,0.1)",
+            color: saving
+              ? "var(--color-primary)"
+              : draftCount > 0
+                ? "var(--color-primary)"
+                : "var(--color-success)",
+          }}
+        >
+          {saving ? (
+            <>
+              <span className="h-2.5 w-2.5 rounded-full border border-current border-t-transparent animate-spin" />
+              שומר…
+            </>
+          ) : draftCount > 0 ? (
+            <>
+              <Icon name="pen" size={10} />
+              {draftCount} שינויים שלא פורסמו
+            </>
+          ) : lastSavedAt ? (
+            <>
+              <Icon name="checkCircle" size={10} />
+              נשמר לאחרונה{" "}
+              {lastSavedAt.toLocaleTimeString("he-IL", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </>
+          ) : (
+            <>
+              <Icon name="checkCircle" size={10} />
+              כל השינויים שמורים
+            </>
+          )}
+        </span>
       </div>
       <button
-        onClick={() => navigate("/admin/cms/content-editor/content")}
+        onClick={() => navigate("/admin/cms/content-editor")}
         className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-70"
         style={{ color: "var(--color-muted-foreground)" }}
       >
         <Icon name="arrowRight" size={13} />
-        חזרה לניהול התוכן
+        חזרה ללוח הבקרה
       </button>
     </div>
   )
@@ -851,10 +969,11 @@ export function ContentEditor() {
       <div
         className="flex h-[calc(100vh-9rem)] rounded-xl overflow-hidden"
         style={{ border: "1px solid var(--color-border)" }}
+        aria-busy={loading || saving}
       >
         {/* Group sidebar */}
         <div
-          className="w-56 overflow-auto flex-shrink-0"
+          className="hidden md:block w-56 overflow-auto flex-shrink-0"
           style={{
             background: "var(--color-card)",
             borderLeft: "1px solid var(--color-border)",
@@ -866,11 +985,11 @@ export function ContentEditor() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="חיפוש קבוצה…"
+                placeholder="חיפוש שדות…"
                 className="w-full rounded-lg py-2 pe-3 ps-8 text-xs"
                 style={inputStyle}
                 dir="rtl"
-                aria-label="חיפוש קבוצת תוכן"
+                aria-label="חיפוש שדות בקבוצה הפעילה"
               />
               <span
                 className="absolute top-1/2 -translate-y-1/2 start-2.5 pointer-events-none"
@@ -992,7 +1111,13 @@ export function ContentEditor() {
           className="flex-1 overflow-auto p-4"
           style={{ background: "var(--color-background)" }}
         >
-          <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+          <div
+            className="sticky top-0 z-20 -mx-4 -mt-4 mb-4 flex items-center justify-between flex-wrap gap-2 border-b px-4 pt-4 pb-3"
+            style={{
+              background: "var(--color-background)",
+              borderColor: "var(--color-border)",
+            }}
+          >
             <div className="flex items-center gap-3">
               <h2
                 className="text-lg font-bold"
@@ -1057,7 +1182,7 @@ export function ContentEditor() {
               )}
               <button
                 onClick={() => setShowPreview(!showPreview)}
-                className={btnBase}
+                className={`${btnBase} hidden xl:inline-flex items-center`}
                 style={{
                   border: "1px solid var(--color-border)",
                   background: showPreview
@@ -1093,7 +1218,8 @@ export function ContentEditor() {
                 <>
                   <button
                     onClick={handleDiscard}
-                    className={btnBase}
+                    disabled={saving}
+                    className={`${btnBase} disabled:opacity-50`}
                     style={{
                       border: "1px solid var(--color-border)",
                       background: "var(--color-card)",
@@ -1132,6 +1258,32 @@ export function ContentEditor() {
                 </span>
               )}
             </div>
+          </div>
+
+          <div className="mb-4 md:hidden">
+            <label
+              htmlFor="cms-group-picker"
+              className="mb-1 block text-xs font-medium"
+              style={{ color: "var(--color-muted-foreground)" }}
+            >
+              קבוצת תוכן
+            </label>
+            <select
+              id="cms-group-picker"
+              value={activeGroup}
+              onChange={(e) => {
+                setActiveGroup(e.target.value)
+                setShowSeo(false)
+              }}
+              className="w-full rounded-lg px-3 py-2 text-sm"
+              style={inputStyle}
+            >
+              {EDITABLE_GROUPS.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {showSeo && hasSeo && (
@@ -1192,11 +1344,14 @@ export function ContentEditor() {
                     {modified && (
                       <button
                         onClick={() => handleResetField(field.key)}
-                        className="text-xs transition-opacity hover:opacity-70"
+                        disabled={resettingKey !== null}
+                        className="text-xs transition-opacity hover:opacity-70 disabled:opacity-40"
                         style={{ color: "var(--color-muted-foreground)" }}
                         title="שחזור לברירת המחדל"
                       >
-                        שחזר ברירת מחדל
+                        {resettingKey === field.key
+                          ? "משחזר…"
+                          : "שחזר ברירת מחדל"}
                       </button>
                     )}
                   </div>
@@ -1238,14 +1393,17 @@ export function ContentEditor() {
               >
                 {showModified
                   ? "אין שדות ששונו בקבוצה זו."
-                  : "אין שדות לקבוצה זו."}
+                  : searchQuery
+                    ? "לא נמצאו שדות תואמים."
+                    : "אין שדות לקבוצה זו."}
               </p>
             )}
           </div>
         </div>
 
-        {/* Live preview pane */}
-        {showPreview && (
+        {/* Live preview pane — desktop only; tablets use the new-tab
+         * preview so the field editor keeps a usable width. */}
+        {showPreview && inlinePreviewAvailable && (
           <div
             className="flex-shrink-0 flex flex-col overflow-hidden"
             style={{

@@ -86,18 +86,26 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
   return (
     <div>
       <div
-        className="flex items-center justify-between px-4 py-2 text-sm"
+        className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm"
         style={{
           background: "var(--color-card)",
           borderBottom: "1px solid var(--color-border)",
         }}
       >
-        <span className="flex items-center gap-2" style={{ color: "var(--color-muted-foreground)" }}>
-          <Icon name="sparkles" size={14} />
-          מחובר כ-<strong style={{ color: "var(--color-foreground)" }}>{user?.email}</strong>
+        <span
+          className="flex min-w-0 flex-wrap items-center gap-2"
+          style={{ color: "var(--color-muted-foreground)" }}
+        >
+          <Icon name="sparkles" size={14} className="flex-shrink-0" />
+          <span className="min-w-0 truncate">
+            מחובר כ-
+            <strong style={{ color: "var(--color-foreground)" }}>
+              {user?.email}
+            </strong>
+          </span>
           {adminRole && (
             <span
-              className="rounded-full px-2 py-0.5 text-xs font-bold"
+              className="flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-bold"
               style={{ background: "rgba(227,174,60,0.15)", color: "var(--color-primary)" }}
             >
               {ROLE_LABEL[adminRole]}
@@ -109,7 +117,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
             logout();
             window.location.href = "/";
           }}
-          className="flex items-center gap-1 text-xs transition-opacity hover:opacity-70"
+          className="flex flex-shrink-0 items-center gap-1 text-xs transition-opacity hover:opacity-70"
           style={{ color: "var(--color-danger)" }}
         >
           <Icon name="logout" size={12} />

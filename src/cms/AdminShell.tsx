@@ -54,15 +54,22 @@ function MaestroLayout() {
       </a>
       <SideNav
         items={NAV_ITEMS}
+        brandHref="/admin/cms/content-editor"
+        accent="cms"
+        navLabel="מצב עריכת תוכן"
         secondaryItems={[
           { path: "/admin", label: "חזרה לניהול", icon: "arrowRight" },
         ]}
         chip={
           <span
             className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full"
-            style={{ background: "rgba(227,174,60,0.15)", color: "var(--color-primary)" }}
+            style={{
+              background: "rgba(227,174,60,0.16)",
+              color: "var(--color-primary)",
+              boxShadow: "inset 0 0 0 1px rgba(227,174,60,0.22)",
+            }}
           >
-            <Icon name="layers" size={12} /> Maestro CMS
+            <Icon name="layers" size={12} /> Maestro CMS · עריכת תוכן
           </span>
         }
         footer={
