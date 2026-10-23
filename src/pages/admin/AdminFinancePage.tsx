@@ -6,6 +6,7 @@ import { SECURITY_NOTE } from "../../lib/sensitive"
 import type { InquiryStatus } from "../../types"
 import AccessDenied from "../../components/AccessDenied"
 import Icon, { type IconName } from "../../components/icons"
+import PageHeader from "../../components/ui/PageHeader"
 
 /**
  * Finance dashboard for a one-time digital-book purchase model.
@@ -36,23 +37,20 @@ function StatCard({
   icon: IconName
 }) {
   return (
-    <div className="card-glow p-5">
+    <div className="app-surface p-4 sm:p-5 min-w-0">
       <div
         className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
         style={{
-          background: "rgba(212,160,48,0.12)",
+          background:
+            "color-mix(in srgb, var(--color-primary) 12%, transparent)",
           color: "var(--color-primary)",
         }}
+        aria-hidden="true"
       >
         <Icon name={icon} size={17} />
       </div>
-      <p
-        className="text-xs tracking-wider mb-1"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        {label}
-      </p>
-      <p className="font-display text-3xl font-semibold mb-0" style={{ color: "var(--color-foreground)" }}>
+      <p className="text-xs font-semibold app-muted mb-1">{label}</p>
+      <p className="font-display text-2xl sm:text-3xl font-semibold">
         {value}
       </p>
     </div>
@@ -96,27 +94,24 @@ export default function AdminFinancePage() {
     .slice(0, 10)
 
   return (
-    <div className="max-w-6xl mx-auto page-enter">
-      <div className="mb-8 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-4xl font-semibold mb-1">כספים</h1>
-          <p style={{ color: "var(--color-muted-foreground)" }}>
-            תמונת מצב כספית לרכישות חד-פעמיים של הספר הדיגיטלי.
-          </p>
-        </div>
-        {can(adminRole, "orders") && (
-          <Link
-            to="/admin/orders"
-            className="text-xs hover:opacity-70"
-            style={{ color: "var(--color-primary)" }}
-          >
-            ← לכל ההזמנות
-          </Link>
-        )}
-      </div>
+    <div className="page-enter">
+      <PageHeader
+        eyebrow="ניהול · כספים"
+        title="כספים"
+        description="תמונת מצב כספית לרכישות חד-פעמיים של הספר הדיגיטלי."
+        breadcrumbs={[{ label: "ניהול", to: "/admin" }, { label: "כספים" }]}
+        actions={
+          can(adminRole, "orders") ? (
+            <Link to="/admin/orders" className="app-btn-secondary">
+              <Icon name="receipt" size={15} />
+              לכל ההזמנות
+            </Link>
+          ) : undefined
+        }
+      />
 
       {/* ---- Four summary metrics ---- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard
           icon="card"
           label="סה״מ רכישות מוצלחות"
@@ -140,48 +135,56 @@ export default function AdminFinancePage() {
       </div>
 
       {/* ---- Detail tables ---- */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="space-y-6">
         {/* Failed purchases */}
-        <div className="card-glow overflow-hidden">
-          <div
-            className="flex items-center justify-between px-5 py-4 border-b"
-            style={{ borderColor: "var(--color-border)" }}
-          >
-            <h2 className="font-semibold text-sm">רכישות שנכשלו</h2>
+        <section
+          className="app-surface"
+          aria-labelledby="failed-purchases-title"
+        >
+          <div className="app-surface-head">
+            <h2 id="failed-purchases-title" className="app-section-title">
+              רכישות שנכשלו
+            </h2>
+            <span className="app-badge app-badge--neutral">
+              {failedOrders.length}
+            </span>
           </div>
           {recentFailed.length === 0 ? (
-            <p
-              className="px-5 py-8 text-sm text-center"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
+            <div className="app-surface-body flex items-center justify-center gap-2 py-6 text-sm app-muted">
+              <Icon
+                name="checkCircle"
+                size={16}
+                style={{ color: "var(--color-success)" }}
+              />
               אין רכישות נכשלות.
-            </p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="app-table-wrap" style={{ border: 0, borderRadius: 0 }}>
+              <table className="app-table">
                 <thead>
                   <tr>
-                    <th className="text-right">מספר הזמנה</th>
-                    <th className="text-right">לקוח</th>
-                    <th className="text-right">סכום</th>
-                    <th className="text-right">תאריך</th>
+                    <th scope="col">מספר הזמנה</th>
+                    <th scope="col">לקוח</th>
+                    <th scope="col">סכום</th>
+                    <th scope="col">תאריך</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentFailed.map((order) => (
                     <tr key={order.order_id}>
                       <td
-                        className="font-mono text-xs"
+                        className="font-mono text-xs app-muted whitespace-nowrap"
                         dir="ltr"
-                        style={{ color: "var(--color-muted-foreground)" }}
                       >
                         {order.order_number}
                       </td>
                       <td>
                         {order.customer_first_name} {order.customer_last_name}
                       </td>
-                      <td>₪{(order.total_amount ?? 0).toLocaleString()}</td>
-                      <td>
+                      <td className="whitespace-nowrap">
+                        ₪{(order.total_amount ?? 0).toLocaleString()}
+                      </td>
+                      <td className="text-xs whitespace-nowrap app-muted">
                         {formatIsraelDateTime(order.created_at) || "—"}
                       </td>
                     </tr>
@@ -190,56 +193,62 @@ export default function AdminFinancePage() {
               </table>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Open refund tickets */}
-        <div className="card-glow overflow-hidden">
-          <div
-            className="flex items-center justify-between px-5 py-4 border-b"
-            style={{ borderColor: "var(--color-border)" }}
-          >
-            <h2 className="font-semibold text-sm">בקשות החזר פתוחות</h2>
-            {can(adminRole, "support") && (
-              <Link
-                to="/admin/support"
-                className="text-xs hover:opacity-70"
-                style={{ color: "var(--color-primary)" }}
-              >
-                ← לכל הפניות
-              </Link>
-            )}
+        <section
+          className="app-surface"
+          aria-labelledby="open-refunds-title"
+        >
+          <div className="app-surface-head">
+            <h2 id="open-refunds-title" className="app-section-title">
+              בקשות החזר פתוחות
+            </h2>
+            <div className="flex items-center gap-3">
+              <span className="app-badge app-badge--neutral">
+                {refundTicketsOpen.length}
+              </span>
+              {can(adminRole, "support") && (
+                <Link to="/admin/support" className="app-btn-ghost">
+                  לכל הפניות ←
+                </Link>
+              )}
+            </div>
           </div>
-          {refundTicketsOpen.length === 0 ? (
-            <p
-              className="px-5 py-8 text-sm text-center"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
+          {recentOpenRefunds.length === 0 ? (
+            <div className="app-surface-body flex items-center justify-center gap-2 py-6 text-sm app-muted">
+              <Icon
+                name="checkCircle"
+                size={16}
+                style={{ color: "var(--color-success)" }}
+              />
               אין בקשות החזר פתוחות.
-            </p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="app-table-wrap" style={{ border: 0, borderRadius: 0 }}>
+              <table className="app-table">
                 <thead>
                   <tr>
-                    <th className="text-right">כרטיס תמיכה</th>
-                    <th className="text-right">נושא</th>
-                    <th className="text-right">לקוח</th>
-                    <th className="text-right">תאריך</th>
+                    <th scope="col">כרטיס תמיכה</th>
+                    <th scope="col">נושא</th>
+                    <th scope="col">לקוח</th>
+                    <th scope="col">תאריך</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentOpenRefunds.map((ticket) => (
                     <tr key={ticket.inquiry_id}>
                       <td
-                        className="font-mono text-xs"
+                        className="font-mono text-xs app-muted whitespace-nowrap"
                         dir="ltr"
-                        style={{ color: "var(--color-muted-foreground)" }}
                       >
                         {ticket.ticket_number}
                       </td>
-                      <td>{ticket.subject}</td>
-                      <td>{ticket.customer_name}</td>
-                      <td>
+                      <td className="truncate max-w-[18rem]" title={ticket.subject}>
+                        {ticket.subject}
+                      </td>
+                      <td className="whitespace-nowrap">{ticket.customer_name}</td>
+                      <td className="text-xs whitespace-nowrap app-muted">
                         {formatIsraelDateTime(ticket.created_at) || "—"}
                       </td>
                     </tr>
@@ -248,14 +257,11 @@ export default function AdminFinancePage() {
               </table>
             </div>
           )}
-        </div>
+        </section>
       </div>
 
-      <p
-        className="mt-6 text-xs flex items-start gap-1.5"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        <Icon name="shield" size={12} />
+      <p className="mt-6 text-xs flex items-start gap-1.5 app-muted">
+        <Icon name="shield" size={12} className="flex-shrink-0 mt-0.5" />
         {SECURITY_NOTE}
       </p>
     </div>

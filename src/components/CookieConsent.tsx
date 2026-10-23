@@ -131,36 +131,26 @@ export default function CookieConsent() {
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-consent-desc"
     >
-      <div
-        className="max-w-2xl mx-auto rounded-2xl border p-6 shadow-2xl"
-        style={{
-          background: "var(--color-card)",
-          borderColor: "var(--color-border)",
-        }}
-      >
-        <h2 id="cookie-consent-title" className="font-display text-lg font-bold mb-3 flex items-center gap-2">
-          <Icon name="lock" size={18} style={{ color: "var(--color-primary)" }} />
+      <div className="consent-panel max-w-2xl mx-auto rounded-2xl border p-4 sm:p-6">
+        <h2 id="cookie-consent-title" className="font-display text-lg font-bold mb-2 flex items-center gap-2">
+          <Icon name="lock" size={18} style={{ color: "#DE9A60" }} />
           פרטיות ואחסון נתונים
         </h2>
 
-        <div id="cookie-consent-desc" className="text-sm mb-4 space-y-2" style={{ color: "var(--color-foreground)" }}>
+        <div id="cookie-consent-desc" className="text-sm mb-3 space-y-2" style={{ color: "#ded4c6" }}>
           <p>
-            האתר משתמש ב-<strong>localStorage</strong> של הדפדפן לאחסון נתונים.
-            חלק מהנתונים חיוניים לתפעול האתר (כגון התחברות ורכישה), ואחרים
-            משמשים לשיפור החוויה (העדפות נגישות, ערכת נושא).
-          </p>
-          <p>
-            האתר <strong>אינו משתמש ב-Cookies של צד שלישי</strong> למעט
-            Google Analytics (אם הופעל). לא נאסף מידע אישי לצורכי פרסום או
-            שיווק ללא הסכמתך.
+            האתר משתמש ב-<strong>localStorage</strong> חיוני לתפעול (התחברות
+            ורכישה) ובהעדפות אופציונליות (נגישות וערכת נושא). אין שימוש
+            ב-<strong>Cookies של צד שלישי</strong> למעט Google Analytics, אם
+            הופעל, ולא נאסף מידע לפרסום ללא הסכמתך.
           </p>
           {detailed && (
-            <div className="mt-3 space-y-3 p-3 rounded-lg" style={{ background: "var(--color-secondary)" }}>
+            <div className="consent-detail mt-3 space-y-3 p-3 rounded-lg">
               <div className="flex items-start gap-3">
-                <span className="w-3 h-3 rounded-full mt-1 flex-shrink-0" style={{ background: "var(--color-success)" }} />
+                <span className="w-3 h-3 rounded-full mt-1 flex-shrink-0" style={{ background: "#8FBF7F" }} />
                 <div>
                   <p className="font-semibold text-sm">חיוני (תמיד פעיל)</p>
-                  <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                  <p className="consent-muted text-xs">
                     סשן התחברות, שמירת רכישה במהלך אימות דוא"ל. לא ניתן לבטל.
                   </p>
                 </div>
@@ -171,11 +161,11 @@ export default function CookieConsent() {
                     type="checkbox"
                     checked={consent?.functional ?? true}
                     onChange={(e) => setConsent((prev) => prev ? { ...prev, functional: e.target.checked } : prev)}
-                    className="mt-1 w-4 h-4 flex-shrink-0 accent-[#D4A030]"
+                    className="consent-checkbox mt-1 w-4 h-4 flex-shrink-0"
                   />
                   <div>
                     <p className="font-semibold text-sm">פונקציונלי</p>
-                    <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                    <p className="consent-muted text-xs">
                       העדפות נגישות, ערכת נושא, מטמון תוכן. משפר את חוויית השימוש.
                     </p>
                   </div>
@@ -187,11 +177,11 @@ export default function CookieConsent() {
                     type="checkbox"
                     checked={consent?.analytics ?? false}
                     onChange={(e) => setConsent((prev) => prev ? { ...prev, analytics: e.target.checked } : prev)}
-                    className="mt-1 w-4 h-4 flex-shrink-0 accent-[#D4A030]"
+                    className="consent-checkbox mt-1 w-4 h-4 flex-shrink-0"
                   />
                   <div>
                     <p className="font-semibold text-sm">אנליטיקה (Google Analytics)</p>
-                    <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                    <p className="consent-muted text-xs">
                       סטטיסטיקה אנונימית על ביקורים באתר. מופעל רק אם האתר מפעיל את השירות.
                     </p>
                   </div>
@@ -201,26 +191,24 @@ export default function CookieConsent() {
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-wrap items-stretch gap-2.5">
           {!detailed ? (
             <>
               <button
                 onClick={handleAcceptAll}
-                className="btn-gradient px-6 py-2.5 rounded-full font-bold text-sm flex-1 sm:flex-none"
+                className="consent-primary min-h-[44px] px-5 py-2.5 rounded-full font-bold text-sm flex-1"
               >
                 קבל הכל
               </button>
               <button
                 onClick={handleEssentialOnly}
-                className="px-6 py-2.5 rounded-full border text-sm font-medium transition-all"
-                style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                className="consent-secondary min-h-[44px] px-5 py-2.5 rounded-full text-sm font-medium flex-1"
               >
                 חיוני בלבד
               </button>
               <button
                 onClick={() => setDetailed(true)}
-                className="text-sm font-medium transition-opacity hover:opacity-70 px-2"
-                style={{ color: "var(--color-muted-foreground)" }}
+                className="consent-muted min-h-[44px] w-full text-sm font-medium transition-opacity hover:opacity-70 px-2"
               >
                 התאמה אישית
               </button>
@@ -229,14 +217,13 @@ export default function CookieConsent() {
             <>
               <button
                 onClick={handleSavePreferences}
-                className="btn-gradient px-6 py-2.5 rounded-full font-bold text-sm flex-1 sm:flex-none"
+                className="consent-primary min-h-[44px] px-5 py-2.5 rounded-full font-bold text-sm flex-1"
               >
                 שמור העדפות
               </button>
               <button
                 onClick={() => setDetailed(false)}
-                className="px-6 py-2.5 rounded-full border text-sm font-medium transition-all"
-                style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                className="consent-secondary min-h-[44px] px-5 py-2.5 rounded-full text-sm font-medium flex-1"
               >
                 חזרה
               </button>
@@ -244,12 +231,11 @@ export default function CookieConsent() {
           )}
         </div>
 
-        <p className="text-xs mt-4" style={{ color: "var(--color-muted-foreground)" }}>
+        <p className="consent-muted text-xs mt-4">
           למידע נוסף, ראה את{" "}
           <a
             href="/privacy-policy"
-            className="underline transition-opacity hover:opacity-70"
-            style={{ color: "var(--color-primary)" }}
+            className="consent-link underline transition-colors"
           >
             מדיניות הפרטיות
           </a>{" "}

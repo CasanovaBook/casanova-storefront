@@ -12,6 +12,7 @@ import { FIELDS, GROUPS, fieldsOfGroup } from "@/content/registry";
 import { getSaved, loadContent } from "@/content/store";
 import type { AuditEntry } from "@/maestro/core/types";
 import Icon from "@/components/icons";
+import PageHeader from "@/components/ui/PageHeader";
 
 const ENTITY_LABELS: Record<string, string> = {
   content: "תוכן",
@@ -28,10 +29,10 @@ const ACTION_LABELS: Record<string, string> = {
   delete: "מחיקה",
 };
 
-const ACTION_COLORS: Record<string, { bg: string; fg: string }> = {
-  create: { bg: "rgba(34,197,94,0.12)", fg: "var(--color-success)" },
-  update: { bg: "rgba(227,174,60,0.12)", fg: "var(--color-primary)" },
-  delete: { bg: "rgba(239,68,68,0.12)", fg: "var(--color-danger)" },
+const ACTION_BADGE: Record<string, string> = {
+  create: "app-badge--success",
+  update: "app-badge--accent",
+  delete: "app-badge--danger",
 };
 
 function timeAgo(dateStr: string): string {
@@ -46,12 +47,6 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(hours / 24);
   return `לפני ${days} ימים`;
 }
-
-const cardStyle: React.CSSProperties = {
-  background: "var(--color-card)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-lg)",
-};
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -86,101 +81,148 @@ export function AdminDashboard() {
     return { ...g, total: fields.length, modified };
   });
 
+  const pageGroupCount = GROUPS.filter((g) => g.section === "pages").length;
+  const legalGroupCount = GROUPS.filter((g) => g.section === "legal").length;
+
+  const quickLinks = [
+    { href: "/admin/cms/content-editor/content", label: "עריכת תוכן", icon: "layers" as const, desc: "שנה טקסטים ותמונות" },
+    { href: "/admin/cms/content-editor/products", label: "ניהול מוצרים", icon: "target" as const, desc: "מוצרים ומחירים" },
+    { href: "/admin/cms/content-editor/pages", label: "עמודים", icon: "bookOpen" as const, desc: "עמודים וקטגוריות" },
+    { href: "/admin/cms/content-editor/backup", label: "גיבוי", icon: "box" as const, desc: "ייצוא וייבוא" },
+    { href: "/admin/cms/content-editor/audit", label: "יומן שינויים", icon: "list" as const, desc: "היסטוריית עריכות" },
+    { href: "/admin/cms/content-editor/media", label: "ספריית מדיה", icon: "inbox" as const, desc: "תמונות וקבצים" },
+  ];
+
   return (
     <div dir="rtl">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, rgba(227,174,60,0.2), rgba(227,174,60,0.05))" }}
-          >
-            <Icon name="layers" size={20} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>
-              Maestro CMS
-            </h1>
-            <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-              ניהול תוכן האתר
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => navigate("/admin/cms/content-editor/content")}
-          className="rounded-xl px-5 py-2.5 text-sm font-bold transition-all hover:opacity-90"
-          style={{ background: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
-        >
-          <span className="flex items-center gap-2">
+      <PageHeader
+        eyebrow="Maestro CMS"
+        title="לוח בקרה"
+        description="ניהול תוכן האתר, מעקב אחר מצב המערכת וגישה מהירה למסכי העריכה."
+        actions={
+          <Link to="/admin/cms/content-editor/content" className="app-btn">
             <Icon name="pen" size={14} />
             עריכת תוכן
-          </span>
-        </button>
-      </div>
+          </Link>
+        }
+      />
 
       {/* Top stats */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 mb-6">
-        <div className="p-4" style={cardStyle}>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-6">
+        <div className="app-surface p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(227,174,60,0.1)" }}>
+            <span
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "color-mix(in srgb, var(--color-primary) 12%, transparent)", color: "var(--color-primary)" }}
+              aria-hidden="true"
+            >
               <Icon name="zap" size={14} />
-            </div>
-            <h3 className="text-xs font-medium" style={{ color: "var(--color-muted-foreground)" }}>Connector</h3>
+            </span>
+            <h2 className="text-xs font-medium app-muted">Connector</h2>
           </div>
-          <p className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>{connectorName || "…"}</p>
-          <p className="text-xs mt-1" style={{ color: shared ? "var(--color-success)" : "var(--color-muted-foreground)", opacity: shared ? 1 : 0.6 }}>
+          <p className="text-lg font-semibold truncate" title={connectorName || undefined}>
+            {connectorName || "…"}
+          </p>
+          <p
+            className="text-xs mt-1"
+            style={{ color: shared ? "var(--color-success)" : "var(--color-muted-foreground)" }}
+          >
             {shared ? "Supabase · מחובר" : "מקומי (localStorage)"}
           </p>
         </div>
 
-        <div className="p-4" style={cardStyle}>
+        <div className="app-surface p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: healthy === true ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)" }}>
+            <span
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{
+                background:
+                  healthy === true
+                    ? "color-mix(in srgb, var(--color-success) 12%, transparent)"
+                    : "color-mix(in srgb, var(--color-danger) 12%, transparent)",
+                color: healthy === true ? "var(--color-success)" : "var(--color-danger)",
+              }}
+              aria-hidden="true"
+            >
               <Icon name="shield" size={14} />
-            </div>
-            <h3 className="text-xs font-medium" style={{ color: "var(--color-muted-foreground)" }}>מצב מערכת</h3>
+            </span>
+            <h2 className="text-xs font-medium app-muted">מצב מערכת</h2>
           </div>
           <p
-            className="text-lg font-bold"
-            style={{ color: healthy === true ? "var(--color-success)" : healthy === false ? "var(--color-danger)" : "var(--color-muted-foreground)" }}
+            className="text-lg font-semibold"
+            style={{
+              color:
+                healthy === true
+                  ? "var(--color-success)"
+                  : healthy === false
+                    ? "var(--color-danger)"
+                    : "var(--color-muted-foreground)",
+            }}
           >
-            {healthy === true ? "תקין ✓" : healthy === false ? "שגיאה ✗" : "בודק…"}
+            {healthy === true ? "תקין" : healthy === false ? "שגיאה" : "בודק…"}
+          </p>
+          <p className="text-xs mt-1 app-muted">
+            {healthy === true ? "החיבור למסד הנתונים פעיל" : healthy === false ? "לא ניתן לאמת את החיבור" : "בודק את החיבור…"}
           </p>
         </div>
 
-        <div className="p-4" style={cardStyle}>
+        <div className="app-surface p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(227,174,60,0.1)" }}>
+            <span
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "color-mix(in srgb, var(--color-primary) 12%, transparent)", color: "var(--color-primary)" }}
+              aria-hidden="true"
+            >
               <Icon name="pen" size={14} />
-            </div>
-            <h3 className="text-xs font-medium" style={{ color: "var(--color-muted-foreground)" }}>שדות שנערכו</h3>
+            </span>
+            <h2 className="text-xs font-medium app-muted">שדות שנערכו</h2>
           </div>
-          <p className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>{savedCount}</p>
-          <div className="mt-1.5 flex items-center gap-2">
-            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--color-secondary)" }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${editPct}%`, background: "var(--color-primary)" }} />
+          <p className="text-lg font-semibold" style={{ color: "var(--color-primary)" }}>
+            {savedCount}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div
+              className="flex-1 h-1.5 rounded-full overflow-hidden"
+              style={{ background: "var(--color-muted)" }}
+              role="progressbar"
+              aria-valuenow={editPct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${editPct}% מהשדות נערכו`}
+            >
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${editPct}%`, background: "var(--color-primary)" }}
+              />
             </div>
-            <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>{editPct}%</span>
+            <span className="text-xs app-muted">{editPct}%</span>
           </div>
         </div>
 
-        <div className="p-4" style={cardStyle}>
+        <div className="app-surface p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(227,174,60,0.1)" }}>
+            <span
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "color-mix(in srgb, var(--color-primary) 12%, transparent)", color: "var(--color-primary)" }}
+              aria-hidden="true"
+            >
               <Icon name="layers" size={14} />
-            </div>
-            <h3 className="text-xs font-medium" style={{ color: "var(--color-muted-foreground)" }}>קבוצות תוכן</h3>
+            </span>
+            <h2 className="text-xs font-medium app-muted">קבוצות תוכן</h2>
           </div>
-          <p className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>{editableGroups.length}</p>
-          <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)", opacity: 0.6 }}>
-            {GROUPS.filter((g) => g.section === "pages").length} עמודים · {GROUPS.filter((g) => g.section === "legal").length} משפטי
+          <p className="text-lg font-semibold">{editableGroups.length}</p>
+          <p className="text-xs mt-1 app-muted">
+            {pageGroupCount} עמודים · {legalGroupCount} משפטי
           </p>
         </div>
       </div>
 
       {/* Group cards — direct edit links */}
-      <div className="mb-6">
-        <h2 className="mb-3 text-base font-bold flex items-center gap-2 px-1" style={{ color: "var(--color-foreground)" }}>
+      <section className="mb-6" aria-labelledby="dashboard-groups-title">
+        <h2
+          id="dashboard-groups-title"
+          className="mb-3 flex items-center gap-2 px-1 font-display text-lg font-semibold"
+        >
           <Icon name="grid" size={16} />
           עריכה לפי עמוד
         </h2>
@@ -190,16 +232,24 @@ export function AdminDashboard() {
             return (
               <button
                 key={g.id}
+                type="button"
                 onClick={() => navigate(`/admin/cms/content-editor/content`, { state: { group: g.id } })}
-                className="p-4 text-right transition-all hover:scale-[1.01] hover:shadow-lg"
-                style={{ ...cardStyle, cursor: "pointer" }}
+                className="app-surface p-4 text-start transition-colors hover:border-[var(--color-primary)]"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-bold" style={{ color: "var(--color-foreground)" }}>{g.label}</span>
-                  <Icon name="arrowLeft" size={14} />
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="text-sm font-semibold min-w-0 truncate">{g.label}</span>
+                  <Icon name="arrowLeft" size={14} className="flex-shrink-0 app-muted" />
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--color-secondary)" }}>
+                  <div
+                    className="flex-1 h-2 rounded-full overflow-hidden"
+                    style={{ background: "var(--color-muted)" }}
+                    role="progressbar"
+                    aria-valuenow={pct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${g.label}: ${g.modified} מתוך ${g.total} שדות שונו`}
+                  >
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
@@ -208,12 +258,19 @@ export function AdminDashboard() {
                       }}
                     />
                   </div>
-                  <span className="text-xs font-medium flex-shrink-0" style={{ color: pct > 0 ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
+                  <span
+                    className="text-xs font-medium flex-shrink-0"
+                    style={{ color: pct > 0 ? "var(--color-primary)" : "var(--color-muted-foreground)" }}
+                  >
                     {g.modified}/{g.total}
                   </span>
                 </div>
                 {g.path && (
-                  <p className="mt-2 text-xs font-mono" dir="ltr" style={{ color: "var(--color-muted-foreground)", opacity: 0.5 }}>
+                  <p
+                    className="mt-2 text-xs font-mono text-start truncate"
+                    dir="ltr"
+                    style={{ color: "var(--color-muted-foreground)" }}
+                  >
                     {g.path}
                   </p>
                 )}
@@ -221,80 +278,83 @@ export function AdminDashboard() {
             );
           })}
         </div>
-      </div>
+      </section>
 
       {/* Quick links + Recent activity */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="p-5" style={cardStyle}>
-          <h2 className="mb-4 text-base font-bold flex items-center gap-2" style={{ color: "var(--color-foreground)" }}>
-            <Icon name="link" size={16} />
-            קישורים מהירים
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { href: "/admin/cms/content-editor/content", label: "עריכת תוכן", icon: "layers" as const, desc: "שנה טקסטים ותמונות" },
-              { href: "/admin/cms/content-editor/products", label: "ניהול מוצרים", icon: "target" as const, desc: "מוצרים ומחירים" },
-              { href: "/admin/cms/content-editor/pages", label: "עמודים", icon: "bookOpen" as const, desc: "עמודים וקטגוריות" },
-              { href: "/admin/cms/content-editor/backup", label: "גיבוי", icon: "box" as const, desc: "ייצוא וייבוא" },
-              { href: "/admin/cms/content-editor/audit", label: "יומן שינויים", icon: "list" as const, desc: "היסטוריית עריכות" },
-              { href: "/admin/cms/content-editor/media", label: "ספריית מדיה", icon: "inbox" as const, desc: "תמונות וקבצים" },
-            ].map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className="flex flex-col gap-1 rounded-xl p-3 text-right transition-all hover:scale-[1.02]"
-                style={{ background: "var(--color-secondary)", border: "1px solid var(--color-border)" }}
-              >
-                <span className="flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--color-primary)" }}>
-                  <Icon name={link.icon} size={14} />
-                  {link.label}
-                </span>
-                <span className="text-xs" style={{ color: "var(--color-muted-foreground)", opacity: 0.7 }}>{link.desc}</span>
-              </Link>
-            ))}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section className="app-surface" aria-labelledby="dashboard-links-title">
+          <div className="app-surface-head">
+            <h2 id="dashboard-links-title" className="app-section-title flex items-center gap-2">
+              <Icon name="link" size={16} />
+              קישורים מהירים
+            </h2>
           </div>
-        </div>
-
-        <div className="p-5" style={cardStyle}>
-          <h2 className="mb-4 text-base font-bold flex items-center gap-2" style={{ color: "var(--color-foreground)" }}>
-            <Icon name="clock" size={16} />
-            פעילות אחרונה
-          </h2>
-          {!recentAudit.length ? (
-            <div className="text-center py-8">
-              <Icon name="inbox" size={32} />
-              <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>אין פעילות עדיין.</p>
-              <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)", opacity: 0.6 }}>
-                עריכות שאתה מבצע יופיעו כאן.
-              </p>
+          <div className="app-surface-body">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {quickLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className="flex flex-col gap-1 rounded-lg p-3 text-start transition-colors hover:border-[var(--color-primary)]"
+                  style={{ background: "var(--color-secondary)", border: "1px solid var(--color-border)" }}
+                >
+                  <span className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--color-primary)" }}>
+                    <Icon name={link.icon} size={14} className="flex-shrink-0" />
+                    {link.label}
+                  </span>
+                  <span className="text-xs app-muted">{link.desc}</span>
+                </Link>
+              ))}
             </div>
-          ) : (
-            <div className="space-y-2.5">
-              {recentAudit.slice(0, 8).map((entry, i) => {
-                const colors = ACTION_COLORS[entry.action] ?? { bg: "var(--color-muted)", fg: "var(--color-muted-foreground)" };
-                return (
-                  <div key={i} className="flex items-center gap-2.5 text-sm">
-                    <span
-                      className="rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap"
-                      style={{ background: colors.bg, color: colors.fg }}
-                    >
+          </div>
+        </section>
+
+        <section className="app-surface" aria-labelledby="dashboard-activity-title">
+          <div className="app-surface-head">
+            <h2 id="dashboard-activity-title" className="app-section-title flex items-center gap-2">
+              <Icon name="clock" size={16} />
+              פעילות אחרונה
+            </h2>
+          </div>
+          <div className="app-surface-body">
+            {!recentAudit.length ? (
+              <div className="py-8 text-center">
+                <span
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full"
+                  style={{ background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}
+                  aria-hidden="true"
+                >
+                  <Icon name="inbox" size={20} />
+                </span>
+                <p className="mt-3 text-sm font-medium">אין פעילות עדיין</p>
+                <p className="mt-1 text-xs app-muted">עריכות שתבצעו יופיעו כאן.</p>
+              </div>
+            ) : (
+              <ul className="space-y-2.5">
+                {recentAudit.slice(0, 8).map((entry, i) => (
+                  <li key={`${entry.created_at}-${i}`} className="flex items-center gap-2.5 text-sm min-w-0">
+                    <span className={`app-badge flex-shrink-0 ${ACTION_BADGE[entry.action] ?? "app-badge--neutral"}`}>
                       {ACTION_LABELS[entry.action] ?? entry.action}
                     </span>
-                    <span className="font-medium" style={{ color: "var(--color-foreground)" }}>
+                    <span className="font-medium flex-shrink-0">
                       {ENTITY_LABELS[entry.entity] ?? entry.entity}
                     </span>
-                    <span className="text-xs truncate flex-1 font-mono" dir="ltr" style={{ color: "var(--color-muted-foreground)", opacity: 0.5 }}>
+                    <span
+                      className="text-xs truncate flex-1 min-w-0 font-mono text-start"
+                      dir="ltr"
+                      style={{ color: "var(--color-muted-foreground)" }}
+                    >
                       {entry.entity_id}
                     </span>
-                    <span className="text-xs whitespace-nowrap" style={{ color: "var(--color-muted-foreground)", opacity: 0.5 }}>
+                    <span className="text-xs whitespace-nowrap flex-shrink-0 app-muted">
                       {timeAgo(entry.created_at)}
                     </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

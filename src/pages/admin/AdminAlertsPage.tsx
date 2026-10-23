@@ -10,26 +10,50 @@ import type { SystemAlert } from "../../types"
 
 import AccessDenied from "../../components/AccessDenied"
 
+import Alert from "../../components/ui/Alert"
+
+import EmptyState from "../../components/ui/EmptyState"
+
+import PageHeader from "../../components/ui/PageHeader"
+
 import Icon from "../../components/icons"
 
-const SEVERITY_META: Record<SystemAlert["severity"], {
-  label: string
-  color: string
-  bg: string
-}> = {
-  CRITICAL: { label: "קריטי", color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
+const SEVERITY_META: Record<
+  SystemAlert["severity"],
+  { label: string; color: string; badge: string }
+> = {
+  CRITICAL: {
+    label: "קריטי",
+    color: "var(--color-danger)",
+    badge: "app-badge--danger",
+  },
 
-  HIGH: { label: "גבוה", color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
+  HIGH: {
+    label: "גבוה",
+    color: "var(--color-primary)",
+    badge: "app-badge--warning",
+  },
 
-  MEDIUM: { label: "בינוני", color: "#38BDF8", bg: "rgba(56,189,248,0.12)" },
+  MEDIUM: {
+    label: "בינוני",
+    color: "var(--color-foreground)",
+    badge: "app-badge--neutral",
+  },
 
-  LOW: { label: "נמוך", color: "#6B7280", bg: "rgba(107,114,128,0.12)" },
+  LOW: {
+    label: "נמוך",
+    color: "var(--color-muted-foreground)",
+    badge: "app-badge--neutral",
+  },
 }
 
-const TYPE_LINK: Record<SystemAlert["related_type"], {
-  href: string
-  label: string
-}> = {
+const TYPE_LINK: Record<
+  SystemAlert["related_type"],
+  {
+    href: string
+    label: string
+  }
+> = {
   ORDER: { href: "/admin/orders", label: "מעבר להזמנות" },
 
   USER: { href: "/admin/users", label: "מעבר למשתמשים" },
@@ -55,6 +79,8 @@ export default function AdminAlertsPage() {
 
   const [showDismissed, setShowDismissed] = useState(false)
 
+  const [feedback, setFeedback] = useState("")
+
   if (!can(adminRole, "alerts")) return <AccessDenied page="התראות ותקלות" />
 
   const visible = showDismissed ? alerts : openAlerts
@@ -62,173 +88,177 @@ export default function AdminAlertsPage() {
   const countBySeverity = (sev: SystemAlert["severity"]) =>
     openAlerts.filter((a) => a.severity === sev).length
 
+  const handleDismiss = (alertId: string) => {
+    const result = dismissAlert(alertId)
+
+    setFeedback(result.ok ? "" : result.error)
+  }
+
   return (
-    <div className="max-w-4xl mx-auto page-enter">
-      <div className="mb-8">
-        <h1 className="font-display text-4xl font-semibold mb-1">
-          התראות ותקלות
-        </h1>
-        <p style={{ color: "var(--color-muted-foreground)" }}>
-          המערכת סורקת באופן שוטף אי־התאמות: תשלום ללא גישה, חשבונית חסרה,
-          מיילים שנכשלו, מנויים בפיגור ועוד.
-        </p>
-      </div>
+    <div className="page-enter">
+      <PageHeader
+        eyebrow="בקרה"
+        title="התראות ותקלות"
+        description="המערכת סורקת באופן שוטף אי־התאמות: תשלום ללא גישה, חשבונית חסרה, מיילים שנכשלו, מנויים בפיגור ועוד."
+        actions={
+          dismissedAlerts.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowDismissed((v) => !v)}
+              className="app-btn-secondary"
+              aria-pressed={showDismissed}
+            >
+              <Icon name={showDismissed ? "eye" : "list"} size={14} />
+              {showDismissed
+                ? "הצגת פתוחות בלבד"
+                : `הצגת הכול (${dismissedAlerts.length} טופלו)`}
+            </button>
+          ) : undefined
+        }
+      />
 
-      {/* Severity summary */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {(Object.keys(SEVERITY_META) as SystemAlert["severity"][]).map(
-          (sev) => (
-            <div key={sev} className="card-glow p-4 text-center">
-              <p
-                className="font-display text-3xl font-semibold mb-1"
-                style={{ color: SEVERITY_META[sev].color }}
+      {feedback && (
+        <div className="mb-4">
+          <Alert tone="error">
+            <div className="flex items-start justify-between gap-3">
+              <span>{feedback}</span>
+              <button
+                type="button"
+                onClick={() => setFeedback("")}
+                aria-label="סגירת הודעה"
+                className="app-icon-btn"
+                style={{ width: "1.75rem", height: "1.75rem", minHeight: "1.75rem" }}
               >
-                {countBySeverity(sev)}
-              </p>
-              <p
-                className="text-xs"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {SEVERITY_META[sev].label}
-              </p>
+                <Icon name="x" size={13} />
+              </button>
             </div>
-          ),
-        )}
-      </div>
+          </Alert>
+        </div>
+      )}
 
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-semibold">
+      <section aria-label="סיכום התראות לפי חומרה" className="mb-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {(Object.keys(SEVERITY_META) as SystemAlert["severity"][]).map(
+            (sev) => {
+              const meta = SEVERITY_META[sev]
+
+              return (
+                <div key={sev} className="app-surface p-4">
+                  <p
+                    className="font-display text-3xl font-semibold leading-none tabular-nums"
+                    style={{ color: meta.color }}
+                  >
+                    {countBySeverity(sev)}
+                  </p>
+                  <span className={`app-badge ${meta.badge} mt-3`}>
+                    {meta.label}
+                  </span>
+                </div>
+              )
+            },
+          )}
+        </div>
+      </section>
+
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+        <h2 className="app-section-title">
           {showDismissed
             ? `כל ההתראות (${alerts.length})`
             : `התראות פתוחות (${openAlerts.length})`}
-        </p>
-        {dismissedAlerts.length > 0 && (
-          <button
-            onClick={() => setShowDismissed((v) => !v)}
-            className="text-xs px-3 py-1.5 rounded-full border"
-            style={{
-              borderColor: "var(--color-border)",
-              color: "var(--color-muted-foreground)",
-            }}
-          >
-            {showDismissed
-              ? "הצגת פתוחות בלבד"
-              : `הצגת הכול (${dismissedAlerts.length} טופלו)`}
-          </button>
-        )}
+        </h2>
       </div>
 
-      <div className="space-y-3">
-        {visible.length === 0 && (
-          <div className="card-glow p-12 text-center">
-            <span
-              className="w-12 h-12 rounded-full inline-flex items-center justify-center mb-3"
-              style={{
-                background: "rgba(34,197,94,0.15)",
-                color: "var(--color-success)",
-              }}
-            >
-              <Icon name="checkCircle" size={22} />
-            </span>
-            <p className="font-semibold">הכול תקין</p>
-            <p
-              className="text-sm mt-1"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              אין תקלות פתוחות הדורשות טיפול.
-            </p>
-          </div>
-        )}
-        {visible.map((alert) => {
-          const meta = SEVERITY_META[alert.severity]
+      {visible.length === 0 ? (
+        <EmptyState
+          icon="checkCircle"
+          title="הכול תקין"
+          description="אין תקלות פתוחות הדורשות טיפול."
+        />
+      ) : (
+        <div className="space-y-3">
+          {visible.map((alert) => {
+            const meta = SEVERITY_META[alert.severity]
 
-          const dismissed = dismissedAlerts.includes(alert.alert_id)
+            const dismissed = dismissedAlerts.includes(alert.alert_id)
 
-          const link = TYPE_LINK[alert.related_type]
+            const link = TYPE_LINK[alert.related_type]
 
-          return (
-            <div
-              key={alert.alert_id}
-              className="card-glow p-5"
-              style={{
-                borderRight: `3px solid ${meta.color}`,
-                opacity: dismissed ? 0.55 : 1,
-              }}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: meta.bg, color: meta.color }}
-                    >
-                      {meta.label}
-                    </span>
-                    <span
-                      className="text-[10px] px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "var(--color-secondary)",
-                        color: "var(--color-muted-foreground)",
-                      }}
-                    >
-                      {alert.related_type} ·{" "}
-                      <span className="font-mono" dir="ltr">
+            return (
+              <article
+                key={alert.alert_id}
+                className="app-surface p-4 sm:p-5"
+                style={{ borderInlineStart: `3px solid ${meta.color}` }}
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`app-badge ${meta.badge}`}>
+                        {meta.label}
+                      </span>
+                      <span className="app-badge app-badge--neutral">
+                        {alert.related_type}
+                      </span>
+                      <span
+                        className="font-mono text-[10px] app-muted"
+                        dir="ltr"
+                        style={{ overflowWrap: "anywhere" }}
+                      >
                         {alert.related_id}
                       </span>
-                    </span>
-                    {dismissed && (
-                      <span
-                        className="text-[10px]"
-                        style={{ color: "var(--color-muted-foreground)" }}
+                      {dismissed && (
+                        <span className="app-badge app-badge--success">
+                          טופל
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-sm mt-2.5">
+                      {alert.title}
+                    </h3>
+                    <p className="text-sm app-muted mt-1 leading-relaxed">
+                      {alert.description}
+                    </p>
+                    <p className="text-xs app-muted mt-2">
+                      זוהה בתאריך:{" "}
+                      {new Date(alert.created_at).toLocaleString("he-IL")}
+                    </p>
+                  </div>
+
+                  {!dismissed && (
+                    <div className="flex flex-wrap gap-2 sm:flex-col sm:flex-none flex-shrink-0">
+                      <Link
+                        to={link.href}
+                        className="app-btn-secondary flex-1 sm:flex-none"
+                        style={{
+                          minHeight: "2.35rem",
+                          padding: "0.45rem 0.95rem",
+                          fontSize: "0.78rem",
+                        }}
                       >
-                        טופל ✓
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-semibold text-sm mb-1">{alert.title}</h3>
-                  <p
-                    className="text-sm"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    {alert.description}
-                  </p>
-                  <p
-                    className="text-xs mt-2"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    זוהה בתאריך:{" "}
-                    {new Date(alert.created_at).toLocaleString("he-IL")}
-                  </p>
+                        {link.label}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDismiss(alert.alert_id)}
+                        className="app-btn-secondary flex-1 sm:flex-none"
+                        style={{
+                          minHeight: "2.35rem",
+                          padding: "0.45rem 0.95rem",
+                          fontSize: "0.78rem",
+                          color: "var(--color-success)",
+                          borderColor:
+                            "color-mix(in srgb, var(--color-success) 40%, var(--color-border))",
+                        }}
+                      >
+                        סומן כטופל
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {!dismissed && (
-                  <div className="flex flex-col gap-2 flex-shrink-0">
-                    <Link
-                      to={link.href}
-                      className="text-xs px-3 py-1.5 rounded-full border text-center"
-                      style={{
-                        borderColor: "var(--color-border)",
-                        color: "var(--color-foreground)",
-                      }}
-                    >
-                      {link.label}
-                    </Link>
-                    <button
-                      onClick={() => dismissAlert(alert.alert_id)}
-                      className="text-xs px-3 py-1.5 rounded-full border"
-                      style={{
-                        borderColor: "rgba(34,197,94,0.3)",
-                        color: "var(--color-success)",
-                      }}
-                    >
-                      סומן כטופל
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

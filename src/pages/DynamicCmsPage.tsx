@@ -6,144 +6,175 @@
  * created through Maestro CMS → "עמודים וקטגוריות".
  */
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router";
-import { maestro } from "@/maestro";
-import type { GenericRecord } from "@/maestro/connectors/MaestroConnector";
-import Icon from "@/components/icons";
+import { useEffect, useState } from "react"
+import { Link, useParams } from "react-router"
+import { maestro } from "@/maestro"
+import Icon from "@/components/icons"
+import PageHeader from "@/components/ui/PageHeader"
+import Spinner from "@/components/ui/Spinner"
+import { Md } from "@/content/render"
 
 interface CmsPage {
-  id: string;
-  title: string;
-  slug: string;
-  content: string;
-  excerpt: string;
-  cover_image: string;
-  seo_title: string | null;
-  seo_description: string | null;
-  status: string;
-  created_at: string;
-  updated_at: string;
+  id: string
+  title: string
+  slug: string
+  content: string
+  excerpt: string
+  cover_image: string
+  seo_title: string | null
+  seo_description: string | null
+  status: string
+  created_at: string
+  updated_at: string
 }
 
-/** Lightweight Markdown → HTML (matches the editor preview). */
-function renderMarkdown(md: string): string {
-  return md
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:var(--color-primary)">$1</a>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:12px;margin:12px 0" />')
-    .replace(/^- (.+)$/gm, "<li>$1</li>")
-    .replace(/((?:<li>.*<\/li>\n?)+)/g, "<ul>$1</ul>")
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/^(?!<[hulo])(.+)$/gm, (m) => (m.startsWith("<") ? m : `<p>${m}</p>`));
+interface LoadedPage {
+  slug: string
+  page: CmsPage | null
+}
+
+/** Only render cover images from a scheme that is safe in an img element. */
+function safeImageUrl(url: string | null | undefined): string {
+  const value = url?.trim() ?? ""
+  return /^(https?:\/\/|\/\/|\/|data:image\/)/i.test(value) ? value : ""
 }
 
 export default function DynamicCmsPage() {
-  const { slug } = useParams<{ slug: string }>();
-  const [page, setPage] = useState<CmsPage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const { slug } = useParams<{ slug: string }>()
+  const [loaded, setLoaded] = useState<LoadedPage | null>(null)
 
   useEffect(() => {
-    if (!slug) return;
-    setLoading(true);
+    if (!slug) return
+
+    let active = true
+
     maestro.cms_pages
       .list({ filter: { slug, status: "ACTIVE" }, limit: 1 })
       .then((res) => {
-        const rows = (res.data ?? []) as unknown as CmsPage[];
-        if (rows.length) {
-          setPage(rows[0]);
-        } else {
-          setNotFound(true);
-        }
+        if (!active) return
+        const rows = (res.data ?? []) as unknown as CmsPage[]
+        setLoaded({ slug, page: rows[0] ?? null })
       })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [slug]);
+      .catch(() => {
+        if (!active) return
+        setLoaded({ slug, page: null })
+      })
 
-  const html = useMemo(() => (page ? renderMarkdown(page.content) : ""), [page]);
-
-  // Update document title
-  useEffect(() => {
-    if (page) {
-      document.title = page.seo_title || page.title;
-      // Update meta description
-      let meta = document.querySelector('meta[name="description"]');
-      if (!meta) {
-        meta = document.createElement("meta");
-        meta.setAttribute("name", "description");
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute("content", page.seo_description || page.excerpt || "");
+    return () => {
+      active = false
     }
-  }, [page]);
+  }, [slug])
+
+  // A result belongs to the slug that produced it, so a previous page can
+  // never be shown (or a previous 404 kept) after the route slug changes.
+  const current = slug && loaded?.slug === slug ? loaded : null
+  const page = current?.page ?? null
+  const loading = Boolean(slug) && !current
+  const notFound = !slug || Boolean(current && !current.page)
+
+  // Update document title and meta description for the CMS page.
+  useEffect(() => {
+    if (!page) return
+    document.title = page.seo_title || page.title
+
+    let meta = document.querySelector('meta[name="description"]')
+    if (!meta) {
+      meta = document.createElement("meta")
+      meta.setAttribute("name", "description")
+      document.head.appendChild(meta)
+    }
+    meta.setAttribute("content", page.seo_description || page.excerpt || "")
+  }, [page])
 
   if (loading) {
     return (
-      <div className="min-h-[40vh] flex items-center justify-center" style={{ color: "var(--color-muted-foreground)" }}>
-        <span className="w-6 h-6 rounded-full border-2 animate-spin"
-          style={{ borderColor: "var(--color-border)", borderTopColor: "var(--color-primary)" }} />
-        <span className="ms-3 text-sm">טוען…</span>
+      <div className="app-page app-page--content px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <Spinner label="טוען את העמוד…" />
       </div>
-    );
+    )
   }
 
   if (notFound || !page) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-4 text-center" dir="rtl">
-        <Icon name="inbox" size={40} />
-        <h1 className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>העמוד לא נמצא</h1>
-        <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-          העמוד שחיפשתם לא קיים או הוסר.
-        </p>
-        <a href="/" className="rounded-lg px-4 py-2 text-sm font-medium"
-          style={{ background: "var(--color-primary)", color: "#000" }}>
-          חזרה לבית
-        </a>
+      <div className="app-page app-page--narrow px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <PageHeader
+          eyebrow="404"
+          title="העמוד לא נמצא"
+          description="העמוד שחיפשתם לא קיים או הוסר."
+          breadcrumbs={[
+            { label: "דף הבית", to: "/" },
+            { label: "העמוד לא נמצא" },
+          ]}
+          actions={
+            <Link to="/" className="app-btn">
+              <Icon name="home" size={16} />
+              חזרה לבית
+            </Link>
+          }
+        />
       </div>
-    );
+    )
   }
 
+  const coverSrc = safeImageUrl(page.cover_image)
+  const updated = new Date(page.updated_at)
+  const updatedLabel = Number.isNaN(updated.getTime())
+    ? null
+    : updated.toLocaleDateString("he-IL")
+
   return (
-    <article className="mx-auto max-w-3xl px-4 py-10" dir="rtl">
-      {/* Cover image */}
-      {page.cover_image && (
-        <div className="mb-8 overflow-hidden rounded-2xl" style={{ border: "1px solid var(--color-border)" }}>
-          <img src={page.cover_image} alt={page.title} className="w-full object-cover" style={{ maxHeight: 400 }} />
-        </div>
-      )}
-
-      {/* Title */}
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold leading-tight sm:text-4xl" style={{ color: "var(--color-foreground)" }}>
-          {page.title}
-        </h1>
-        {page.excerpt && (
-          <p className="mt-3 text-lg leading-relaxed" style={{ color: "var(--color-muted-foreground)" }}>
-            {page.excerpt}
-          </p>
-        )}
-        <div className="mt-4 flex items-center gap-3 text-xs" style={{ color: "var(--color-muted-foreground)", opacity: 0.6 }}>
-          <span className="flex items-center gap-1">
-            <Icon name="calendar" size={12} />
-            {new Date(page.updated_at).toLocaleDateString("he-IL")}
+    <div className="app-page app-page--content px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <PageHeader
+        eyebrow={
+          <span dir="ltr" lang="en">
+            CASANOVA
           </span>
-        </div>
-      </header>
-
-      {/* Content */}
-      <div
-        className="cms-page-content text-base leading-relaxed"
-        style={{ color: "var(--color-foreground)" }}
-        dangerouslySetInnerHTML={{ __html: html }}
+        }
+        title={page.title}
+        description={page.excerpt || undefined}
+        breadcrumbs={[{ label: "דף הבית", to: "/" }, { label: page.title }]}
       />
-    </article>
-  );
+
+      <article className="app-surface overflow-hidden">
+        {coverSrc && (
+          <div
+            className="border-b"
+            style={{ borderColor: "var(--color-border)" }}
+          >
+            <img
+              src={coverSrc}
+              alt={page.title}
+              className="w-full object-cover"
+              style={{ maxHeight: 400 }}
+            />
+          </div>
+        )}
+
+        <div className="app-surface-body">
+          {updatedLabel && (
+            <div
+              className="mb-6 flex flex-wrap items-center gap-2 border-b pb-4 text-xs"
+              style={{
+                borderColor: "var(--color-border)",
+                color: "var(--color-muted-foreground)",
+              }}
+            >
+              <Icon name="calendar" size={13} />
+              <span>
+                עודכן לאחרונה:{" "}
+                <time dateTime={page.updated_at}>{updatedLabel}</time>
+              </span>
+            </div>
+          )}
+
+          <div
+            className="break-words text-[0.98rem] leading-[1.9]"
+            style={{ color: "var(--color-foreground)" }}
+          >
+            <Md text={page.content ?? ""} />
+          </div>
+        </div>
+      </article>
+    </div>
+  )
 }

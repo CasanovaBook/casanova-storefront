@@ -13,12 +13,8 @@ import { maestro } from "@/maestro";
 import { useApp } from "@/context/AppContext";
 import { can } from "@/lib/permissions";
 import Icon from "@/components/icons";
-
-const cardStyle: React.CSSProperties = {
-  background: "var(--color-card)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-lg)",
-};
+import PageHeader from "@/components/ui/PageHeader";
+import Alert from "@/components/ui/Alert";
 
 export function BackupPage() {
   const { adminRole } = useApp();
@@ -120,72 +116,96 @@ export function BackupPage() {
     }
   }, [confirmReset]);
 
-  const btnBase = "rounded-lg px-4 py-2 text-sm font-medium transition-all";
+  const statRows = [
+    { label: "שדות ברישום", value: totalFields },
+    { label: "שדות שנערכו", value: savedCount, accent: true },
+    { label: "ברירות מחדל", value: totalFields - savedCount },
+  ];
 
   return (
     <div dir="rtl">
-      <div className="mb-6 flex items-center gap-3">
-        <Icon name="box" size={24} />
-        <h1 className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>גיבוי ושחזור</h1>
-      </div>
+      <PageHeader
+        eyebrow="Maestro CMS"
+        title="גיבוי ושחזור"
+        description="ייצוא וייבוא של תוכן האתר כקובץ JSON, ואיפוס מבוקר של כל השדות שנערכו."
+      />
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
         {/* Stats */}
-        <div className="p-4" style={cardStyle}>
-          <h3 className="mb-3 text-sm font-medium flex items-center gap-2" style={{ color: "var(--color-muted-foreground)" }}>
-            <Icon name="chart" size={14} />
-            מצב נוכחי
-          </h3>
-          <div className="space-y-2">
-            {[
-              { label: "שדות ברישום", value: totalFields },
-              { label: "שדות שנערכו", value: savedCount, accent: true },
-              { label: "ברירות מחדל", value: totalFields - savedCount },
-            ].map((row) => (
-              <div key={row.label} className="flex justify-between text-sm">
-                <span style={{ color: "var(--color-muted-foreground)" }}>{row.label}</span>
-                <span className="font-bold" style={{ color: row.accent ? "var(--color-primary)" : "var(--color-foreground)" }}>
-                  {row.value}
-                </span>
-              </div>
-            ))}
+        <section className="app-surface" aria-labelledby="backup-status-title">
+          <div className="app-surface-head">
+            <h2 id="backup-status-title" className="app-section-title flex items-center gap-2">
+              <Icon name="chart" size={16} />
+              מצב נוכחי
+            </h2>
+            <span className="app-badge app-badge--neutral">{savedCount} שדות שנערכו</span>
           </div>
-        </div>
+          <div className="app-surface-body">
+            <dl className="space-y-2.5">
+              {statRows.map((row) => (
+                <div key={row.label} className="flex items-center justify-between gap-3 text-sm">
+                  <dt className="app-muted">{row.label}</dt>
+                  <dd
+                    className="font-semibold"
+                    style={{ color: row.accent ? "var(--color-primary)" : "var(--color-foreground)" }}
+                  >
+                    {row.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
 
         {/* Export */}
-        <div className="p-4" style={cardStyle}>
-          <h3 className="mb-2 text-sm font-medium flex items-center gap-2" style={{ color: "var(--color-muted-foreground)" }}>
-            <Icon name="download" size={14} />
-            ייצוא
-          </h3>
-          <p className="mb-3 text-xs" style={{ color: "var(--color-muted-foreground)", opacity: 0.6 }}>
-            הורדת כל התוכן כקובץ JSON. מתאים לגיבוי או להעברה בין סביבות.
-          </p>
-          <button
-            onClick={handleExport}
-            disabled={exporting || !savedCount}
-            className={btnBase}
-            style={{ background: "var(--color-primary)", color: "var(--color-primary-foreground)", opacity: exporting || !savedCount ? 0.5 : 1 }}
-          >
-            {exporting ? "מייצא…" : `ייצוא ${savedCount} שדות`}
-          </button>
-        </div>
+        <section className="app-surface" aria-labelledby="backup-export-title">
+          <div className="app-surface-head">
+            <h2 id="backup-export-title" className="app-section-title flex items-center gap-2">
+              <Icon name="download" size={16} />
+              ייצוא
+            </h2>
+          </div>
+          <div className="app-surface-body">
+            <p className="text-sm app-muted mb-4">
+              הורדת כל התוכן כקובץ JSON. מתאים לגיבוי או להעברה בין סביבות.
+            </p>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={exporting || !savedCount}
+              className="app-btn"
+            >
+              <Icon name="download" size={14} />
+              {exporting ? "מייצא…" : `ייצוא ${savedCount} שדות`}
+            </button>
+            {!savedCount && (
+              <p className="app-hint mt-2">אין תוכן שנערך לייצוא — כל השדות כבר בברירת המחדל.</p>
+            )}
+          </div>
+        </section>
 
         {/* Import */}
-        <div className="p-4" style={cardStyle}>
-          <h3 className="mb-2 text-sm font-medium flex items-center gap-2" style={{ color: "var(--color-muted-foreground)" }}>
-            <Icon name="upload" size={14} />
-            ייבוא
-          </h3>
-          <p className="mb-3 text-xs" style={{ color: "var(--color-muted-foreground)", opacity: 0.6 }}>
-            ייבוא תוכן מקובץ JSON. מפתחות לא מוכרים ידולגו.
-            {canPublish ? "" : " (צריך הרשאת פרסום)"}
-          </p>
-          <label
-            className="inline-block cursor-pointer rounded-lg px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
-            style={{ background: "var(--color-success)", color: "#fff", opacity: importing || !canPublish ? 0.5 : 1 }}
-          >
-            {importing ? "מייבא…" : "בחר קובץ JSON"}
+        <section className="app-surface" aria-labelledby="backup-import-title">
+          <div className="app-surface-head">
+            <h2 id="backup-import-title" className="app-section-title flex items-center gap-2">
+              <Icon name="upload" size={16} />
+              ייבוא
+            </h2>
+            {!canPublish && <span className="app-badge app-badge--warning">נדרשת הרשאת פרסום</span>}
+          </div>
+          <div className="app-surface-body">
+            <p className="text-sm app-muted mb-4">
+              ייבוא תוכן מקובץ JSON. מפתחות לא מוכרים ידולגו.
+            </p>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={importing || !canPublish}
+              className="app-btn-secondary"
+            >
+              <Icon name="upload" size={14} />
+              {importing ? "מייבא…" : "בחירת קובץ JSON"}
+            </button>
             <input
               ref={fileRef}
               type="file"
@@ -193,59 +213,91 @@ export function BackupPage() {
               onChange={handleImport}
               disabled={importing || !canPublish}
               className="hidden"
+              aria-label="קובץ JSON לייבוא"
             />
-          </label>
-          {importResult && (
-            <div
-              className="mt-3 rounded-lg p-2.5 text-sm"
-              style={{
-                background: importResult.error ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)",
-                color: importResult.error ? "var(--color-danger)" : "var(--color-success)",
-              }}
-            >
-              {importResult.error && <p>{importResult.error}</p>}
-              {importResult.ok > 0 && <p>יובאו {importResult.ok} שדות בהצלחה.</p>}
-              {importResult.skipped.length > 0 && (
-                <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                  דילוג על {importResult.skipped.length} מפתחות לא מוכרים
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+            {!canPublish && (
+              <p className="app-hint mt-2">ייבוא מחייב הרשאת פרסום (cms:edit_live).</p>
+            )}
+
+            {importResult && (
+              <div className="mt-4">
+                {importResult.error ? (
+                  <Alert tone="error" title="הייבוא נכשל">
+                    {importResult.error}
+                    {importResult.skipped.length > 0 && (
+                      <p className="mt-1 text-xs">
+                        דילוג על {importResult.skipped.length} מפתחות לא מוכרים
+                      </p>
+                    )}
+                  </Alert>
+                ) : (
+                  <Alert tone="success" title="הייבוא הושלם">
+                    יובאו {importResult.ok} שדות בהצלחה.
+                    {importResult.skipped.length > 0 && (
+                      <p className="mt-1 text-xs">
+                        דילוג על {importResult.skipped.length} מפתחות לא מוכרים
+                      </p>
+                    )}
+                  </Alert>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Reset */}
-        <div className="p-4" style={{ ...cardStyle, borderColor: "rgba(239,68,68,0.2)" }}>
-          <h3 className="mb-2 text-sm font-medium flex items-center gap-2" style={{ color: "var(--color-danger)" }}>
-            <Icon name="alertTriangle" size={14} />
-            איפוס כללי
-          </h3>
-          <p className="mb-3 text-xs" style={{ color: "var(--color-muted-foreground)", opacity: 0.6 }}>
-            מחיקת כל התוכן שנערך ושחזור ברירות המחדל. פעולה בלתי הפיכה.
-          </p>
-          <button
-            onClick={handleResetAll}
-            disabled={resetting || !savedCount || !canPublish}
-            className={btnBase}
-            style={{
-              background: confirmReset ? "var(--color-danger)" : "rgba(239,68,68,0.8)",
-              color: "#fff",
-              opacity: resetting || !savedCount || !canPublish ? 0.5 : 1,
-              animation: confirmReset ? "pulse 2s infinite" : "none",
-            }}
-          >
-            {confirmReset ? "לחץ שוב לאישור" : resetting ? "מאפס…" : "איפוס הכל"}
-          </button>
-          {confirmReset && (
-            <button
-              onClick={() => setConfirmReset(false)}
-              className="mr-2 rounded-lg px-3 py-2 text-sm transition-all hover:opacity-80"
-              style={{ border: "1px solid var(--color-border)", color: "var(--color-muted-foreground)" }}
+        <section
+          className="app-surface"
+          aria-labelledby="backup-reset-title"
+          style={{ borderColor: "color-mix(in srgb, var(--color-danger) 30%, var(--color-border))" }}
+        >
+          <div className="app-surface-head">
+            <h2
+              id="backup-reset-title"
+              className="app-section-title flex items-center gap-2"
+              style={{ color: "var(--color-danger)" }}
             >
-              ביטול
-            </button>
-          )}
-        </div>
+              <Icon name="alertTriangle" size={16} />
+              איפוס כללי
+            </h2>
+            <span className="app-badge app-badge--danger">פעולה בלתי הפיכה</span>
+          </div>
+          <div className="app-surface-body">
+            <p className="text-sm app-muted mb-4">
+              מחיקת כל התוכן שנערך ושחזור ברירות המחדל.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetAll}
+                disabled={resetting || !savedCount || !canPublish}
+                className="app-btn-danger"
+              >
+                <Icon name="refresh" size={14} />
+                {confirmReset ? "לחצו שוב לאישור" : resetting ? "מאפס…" : "איפוס הכל"}
+              </button>
+              {confirmReset && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmReset(false)}
+                  className="app-btn-secondary"
+                >
+                  ביטול
+                </button>
+              )}
+            </div>
+            {confirmReset && (
+              <div className="mt-3">
+                <Alert tone="warning" title="נדרש אישור נוסף">
+                  לחיצה נוספת תמחק את כל {savedCount} השדות שנערכו. אין דרך לשחזר פעולה זו.
+                </Alert>
+              </div>
+            )}
+            {!canPublish && (
+              <p className="app-hint mt-2">איפוס מחייב הרשאת פרסום (cms:edit_live).</p>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

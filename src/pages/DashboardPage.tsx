@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router"
+import { Link } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useStore } from "../data/store"
 import { claimFirstLogin } from "../lib/first-login"
@@ -13,8 +13,18 @@ import {
 } from "../lib/api-security"
 import type { ProductSnapshot } from "../types"
 import Icon, { type IconName } from "../components/icons"
+import PageHeader from "../components/ui/PageHeader"
+import EmptyState from "../components/ui/EmptyState"
+import Alert from "../components/ui/Alert"
 
 const FALLBACK_COVER: [string, string] = ["#1A1A2E", "#2A2A3E"]
+
+const ACCESS_LABEL: Record<string, string> = {
+  ACTIVE: "פעיל",
+  EXPIRED: "פג תוקף",
+  REVOKED: "נשלל",
+  SUSPENDED: "מושעה",
+}
 
 /** Renders the cover stored on the entitlement, so it survives product edits. */
 function MiniCover({ snapshot }: { snapshot: ProductSnapshot }) {
@@ -22,52 +32,18 @@ function MiniCover({ snapshot }: { snapshot: ProductSnapshot }) {
     return (
       <img
         src={snapshot.image_url}
-        alt={snapshot.name}
-        className="w-10 h-14 rounded-md flex-shrink-0 shadow-lg object-cover"
+        alt=""
+        className="w-12 h-[4.5rem] rounded-md flex-shrink-0 shadow-lg object-cover"
       />
     )
   }
   const [from, to] = snapshot.cover_colors ?? FALLBACK_COVER
   return (
     <div
-      className="w-10 h-14 rounded-md flex-shrink-0 shadow-lg"
+      className="w-12 h-[4.5rem] rounded-md flex-shrink-0 shadow-lg"
       style={{ background: `linear-gradient(160deg, ${from}, ${to})` }}
+      aria-hidden="true"
     />
-  )
-}
-
-function ProgressRing({
-  percent,
-  size = 48,
-}: {
-  percent: number
-  size?: number
-}) {
-  const r = (size - 6) / 2
-  const circ = 2 * Math.PI * r
-  const offset = circ - (percent / 100) * circ
-  return (
-    <svg width={size} height={size} className="rotate-[-90deg]">
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="var(--color-muted)"
-        strokeWidth={3}
-      />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="var(--color-primary)"
-        strokeWidth={3}
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-      />
-    </svg>
   )
 }
 
@@ -133,111 +109,68 @@ function ConnectedDevicesCard() {
   }
 
   return (
-    <div className="card-glow p-5">
-      <div className="flex items-start justify-between gap-4">
+    <section className="app-surface" aria-labelledby="devices-title">
+      <div className="app-surface-head">
         <div className="flex items-center gap-3 min-w-0">
-          <div
+          <span
             className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{
-              background: "rgba(227,174,60,0.12)",
+              background: "color-mix(in srgb, var(--color-primary) 12%, transparent)",
               color: "var(--color-primary)",
             }}
+            aria-hidden="true"
           >
             <Icon name="smartphone" size={19} />
-          </div>
+          </span>
           <div className="min-w-0">
-            <h3 className="font-semibold">מכשירים מחוברים</h3>
-            <p
-              className="text-xs"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
+            <h2 id="devices-title" className="app-section-title">
+              מכשירים מחוברים
+            </h2>
+            <p className="text-xs app-muted mt-0.5">
               הקריאה מוגבלת ל־{cap} מכשירים בו־זמנית
             </p>
           </div>
         </div>
         <span
-          className="text-xs font-mono font-bold px-2.5 py-1 rounded-full flex-shrink-0"
-          style={{
-            background: full ? "rgba(239,68,68,0.12)" : "rgba(227,174,60,0.12)",
-            color: full ? "var(--color-danger)" : "var(--color-primary)",
-          }}
+          className={`app-badge ${
+            full ? "app-badge--danger" : "app-badge--accent"
+          }`}
+          aria-label={`${open.length} מתוך ${cap} מקומות מכשיר בשימוש`}
         >
           {open.length} / {cap}
         </span>
       </div>
 
-      {message && (
-        <p
-          className="text-xs mt-3 px-3 py-2 rounded-lg"
-          style={{
-            background:
-              message.tone === "ok"
-                ? "rgba(34,197,94,0.1)"
-                : "rgba(239,68,68,0.1)",
-            color:
-              message.tone === "ok"
-                ? "var(--color-success)"
-                : "var(--color-danger)",
-          }}
-        >
-          {message.text}
-        </p>
-      )}
+      <div className="app-surface-body">
+        {message && (
+          <div className="mb-4">
+            <Alert tone={message.tone === "ok" ? "success" : "error"}>
+              {message.text}
+            </Alert>
+          </div>
+        )}
 
-      {open.length === 0 ? (
-        <p
-          className="text-xs mt-3"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          אין מכשירים רשומים. המכשיר הראשון יירשם אוטומטית כשתפתחו ספר לקריאה.
-        </p>
-      ) : (
-        <div className="mt-4 space-y-2">
-          {open.map((session) => {
-            const mine = session.device_fingerprint === thisDevice
-            const expired = isSessionExpired(session, policy)
-            return (
-              <div
-                key={session.session_id}
-                className="rounded-xl border p-3"
-                style={{
-                  borderColor: "var(--color-border)",
-                  background: "rgba(255,255,255,0.02)",
-                }}
-              >
-                {pending === session.session_id ? (
-                  <div>
-                    <p
-                      className="text-xs mb-3"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      לשחרר את {mine ? "המכשיר הזה" : session.device_name}? אם
-                      ספר פתוח שם כרגע, הקריאה בו תינעל.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => release(session.session_id)}
-                        className="tap-target text-xs font-semibold px-4 py-1.5 rounded-full"
-                        style={{
-                          background: "var(--color-danger)",
-                          color: "#FFFFFF",
-                        }}
-                      >
-                        שחרור
-                      </button>
-                      <button
-                        onClick={() => setPending(null)}
-                        className="tap-target text-xs px-4 py-1.5 rounded-full border"
-                        style={{
-                          borderColor: "var(--color-border)",
-                          color: "var(--color-muted-foreground)",
-                        }}
-                      >
-                        ביטול
-                      </button>
-                    </div>
-                  </div>
-                ) : (
+        {open.length === 0 ? (
+          <p className="text-xs app-muted">
+            אין מכשירים רשומים. המכשיר הראשון יירשם אוטומטית כשתפתחו ספר
+            לקריאה.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {open.map((session) => {
+              const mine = session.device_fingerprint === thisDevice
+              const expired = isSessionExpired(session, policy)
+              const isPending = pending === session.session_id
+              const confirmId = `release-${session.session_id}`
+              return (
+                <li
+                  key={session.session_id}
+                  className="rounded-lg border p-3"
+                  style={{
+                    borderColor: "var(--color-border)",
+                    background: "var(--color-muted)",
+                  }}
+                >
                   <div className="flex items-center gap-3">
                     <Icon
                       name={session.platform === "WEB" ? "grid" : "smartphone"}
@@ -249,62 +182,74 @@ function ConnectedDevicesCard() {
                       <p className="text-sm truncate flex items-center gap-2">
                         <span className="truncate">{session.device_name}</span>
                         {mine && (
-                          <span
-                            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                            style={{
-                              background: "rgba(227,174,60,0.15)",
-                              color: "var(--color-primary)",
-                            }}
-                          >
+                          <span className="app-badge app-badge--accent flex-shrink-0">
                             המכשיר הזה
                           </span>
                         )}
                       </p>
-                      <p
-                        className="text-[11px]"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
+                      <p className="text-[11px] app-muted">
                         {expired
                           ? "פג תוקף — יתחדש אוטומטית בפתיחת הספר"
                           : `פעילות אחרונה ${lastSeen(session.last_seen_at)}`}
                       </p>
                     </div>
                     <button
+                      type="button"
                       onClick={() => {
                         setMessage(null)
-                        setPending(session.session_id)
+                        setPending(isPending ? null : session.session_id)
                       }}
-                      className="tap-target text-xs font-medium px-3 py-1.5 rounded-full border flex-shrink-0 transition-colors hover:bg-white/5"
-                      style={{
-                        borderColor: "var(--color-border)",
-                        color: "var(--color-muted-foreground)",
-                      }}
+                      aria-expanded={isPending}
+                      aria-controls={confirmId}
+                      className="app-btn-secondary flex-shrink-0"
+                      style={{ minHeight: 44 }}
                     >
                       שחרור
                     </button>
                   </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
 
-      {full && (
-        <p
-          className="text-[11px] mt-3"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          המכסה מלאה. שחררו מכשיר שלא בשימוש כדי לפתוח ספר במכשיר חדש.
-        </p>
-      )}
-    </div>
+                  {isPending && (
+                    <div id={confirmId} className="mt-3">
+                      <p className="text-xs app-muted mb-3">
+                        לשחרר את {mine ? "המכשיר הזה" : session.device_name}? אם
+                        ספר פתוח שם כרגע, הקריאה בו תינעל.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => release(session.session_id)}
+                          className="app-btn-danger"
+                        >
+                          שחרור
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPending(null)}
+                          className="app-btn-secondary"
+                        >
+                          ביטול
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        {full && (
+          <p className="text-[11px] app-muted mt-3">
+            המכסה מלאה. שחררו מכשיר שלא בשימוש כדי לפתוח ספר במכשיר חדש.
+          </p>
+        )}
+      </div>
+    </section>
   )
 }
 
 export default function DashboardPage() {
   const { user, userProducts, readingProgress } = useApp()
-  const navigate = useNavigate()
 
   /* The claim is a network round-trip, so it cannot be read during
    * render. Start at the value the profile already carries — a profile
@@ -378,262 +323,255 @@ export default function DashboardPage() {
         )
       : 0
 
+  const lastActivityIso = user?.last_activity_at ?? user?.last_login_at
+  const lastActivity = lastActivityIso
+    ? new Date(lastActivityIso).toLocaleDateString("he-IL", {
+        day: "numeric",
+        month: "short",
+      })
+    : "—"
+
+  const displayName =
+    [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim() ||
+    "האזור האישי"
+
+  const stats: { icon: IconName, label: string, value: string | number }[] = [
+    { icon: "library", label: "ספרים ברשותכם", value: totalBooks },
+    {
+      icon: "trendUp",
+      label: "התקדמות ממוצעת",
+      value: readableBooks.length > 0 ? `${avgProgress}%` : "—",
+    },
+    { icon: "clock", label: "פעילות אחרונה", value: lastActivity },
+  ]
+
   return (
     <div className="max-w-3xl mx-auto page-enter">
-      {/* Greeting */}
-      <div className="mb-10">
-        <p
-          className="text-sm mb-1"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          {/* `null` = the claim is still in flight. Show the returning
-              greeting rather than flashing "ברוך הבא" and correcting it
-              a moment later. */}
-          {isFirstLogin ? "ברוך הבא," : "ברוך שובך,"}
-        </p>
-        <h1 className="font-display text-4xl font-semibold">
-          {user?.first_name} {user?.last_name}
-        </h1>
-      </div>
+      <PageHeader
+        eyebrow={isFirstLogin ? "ברוך הבא" : "ברוך שובך"}
+        title={displayName}
+        metaTitle="סקירה כללית"
+        description="שמחים לראות אתכם. הספרים, ההתקדמות והמכשירים שלכם — במקום אחד ושקט."
+      />
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-10">
-        {([
-          { icon: "library", label: "ספרים ברשותכם", value: totalBooks },
-          {
-            icon: "trendUp",
-            label: "התקדמות ממוצעת",
-            value: `${avgProgress}%`,
-          },
-          {
-            icon: "clock",
-            label: "פעילות אחרונה",
-            value: user?.last_login_at
-              ? new Date(user.last_login_at).toLocaleDateString("he-IL", {
-                  day: "numeric",
-                  month: "short",
-                })
-              : "היום",
-          },
-        ] as { icon: IconName, label: string, value: string | number }[]).map(
-          ({ icon, label, value }) => (
-            <div key={label} className="card-glow p-5">
-              <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
+      {/* Real account figures only: titles held, average progress across
+       * readable titles, and the last recorded activity. On a phone they
+       * become full-width rows instead of three squeezed columns. */}
+      <section aria-label="סיכום החשבון" className="app-surface mb-10 overflow-hidden">
+        <div className="grid sm:grid-cols-3">
+          {stats.map(({ icon, label, value }, index) => (
+            <div
+              key={label}
+              className={`flex items-center gap-3 p-4 sm:flex-col sm:items-start sm:p-5 ${
+                index > 0 ? "border-t sm:border-t-0 sm:border-s" : ""
+              }`}
+              style={
+                index > 0 ? { borderColor: "var(--color-border)" } : undefined
+              }
+            >
+              <span
+                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{
-                  background: "rgba(227,174,60,0.12)",
+                  background:
+                    "color-mix(in srgb, var(--color-primary) 12%, transparent)",
                   color: "var(--color-primary)",
                 }}
+                aria-hidden="true"
               >
                 <Icon name={icon} size={17} />
+              </span>
+              <div className="min-w-0">
+                <p className="font-display text-2xl font-semibold leading-tight tabular-nums">
+                  {value}
+                </p>
+                <p className="text-xs app-muted mt-0.5">{label}</p>
               </div>
-              <p
-                className="font-display text-3xl font-semibold mb-1"
-                style={{ color: "var(--color-primary)" }}
-              >
-                {value}
-              </p>
-              <p
-                className="text-xs"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {label}
-              </p>
             </div>
-          ),
-        )}
-      </div>
+          ))}
+        </div>
+      </section>
 
       {/* Currently reading */}
-      <div className="mb-10">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold">המשיכו לקרוא</h2>
-          <Link
-            to="/dashboard/library"
-            className="text-sm hover:opacity-70"
-            style={{ color: "var(--color-primary)" }}
-          >
-            לצפייה בספרייה ←
-          </Link>
+      <section className="mb-10" aria-labelledby="continue-title">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 id="continue-title" className="app-section-title">
+            המשיכו לקרוא
+          </h2>
+          {totalBooks > 0 && (
+            <Link
+              to="/dashboard/library"
+              className="tap-target inline-flex items-center gap-1 text-sm app-muted hover:text-[var(--color-foreground)]"
+            >
+              לכל הספרייה
+              <Icon name="arrowLeft" size={14} />
+            </Link>
+          )}
         </div>
 
         {currentlyReading.length === 0 ? (
-          <div className="card-glow p-8 text-center">
-            <div
-              className="flex justify-center mb-3"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              <Icon name="inbox" size={32} />
-            </div>
-            <p
-              className="mb-3"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              הספרייה שלך ריקה.
-            </p>
-            <Link
-              to="/dashboard/store"
-              className="text-sm font-medium"
-              style={{ color: "var(--color-primary)" }}
-            >
-              גלוש לחנות ←
-            </Link>
-          </div>
+          <EmptyState
+            icon="library"
+            title="הספרייה שלכם ריקה"
+            description="עדיין לא נוסף ספר לאוסף. הספרים שתרכשו יופיעו כאן, עם התקדמות הקריאה."
+            actions={
+              <Link to="/dashboard/store" className="app-btn">
+                לחנות הספרים
+              </Link>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {currentlyReading.slice(0, 2).map(({ up, progress }) => {
               const isActive = up.access_status === "ACTIVE"
+              const totalPages = up.product_snapshot.total_pages
+              const percent = progress
+                ? Math.min(100, Math.max(0, Math.round(progress.progress_percent)))
+                : 0
               return (
-              <div
-                key={up.user_product_id}
-                /* A non-ACTIVE entitlement is displayed, not openable:
-                 * the card loses its pointer and click handler, and the
-                 * button becomes a status chip. Authorization itself is
-                 * enforced server-side — this only aligns the UI. */
-                className={`card-glow flex items-center gap-5 p-4 transition-all ${
-                  isActive ? "cursor-pointer" : "opacity-75"
-                }`}
-                onClick={() => {
-                  if (isActive) navigate(`/read/${up.product_id}`)
-                }}
-              >
-                <MiniCover snapshot={up.product_snapshot} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="font-semibold text-sm truncate">
-                      {up.product_snapshot.name}
-                    </p>
-                    {!isActive && (
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0"
-                        style={{
-                          background:
-                            up.access_status === "SUSPENDED"
-                              ? "rgba(245,158,11,0.12)"
-                              : "rgba(239,68,68,0.12)",
-                          color:
-                            up.access_status === "SUSPENDED"
-                              ? "#F59E0B"
-                              : "var(--color-danger)",
-                        }}
+                <article key={up.user_product_id} className="app-surface p-4 sm:p-5">
+                  <div className="flex items-start gap-4">
+                    <div style={{ opacity: isActive ? 1 : 0.55 }}>
+                      <MiniCover snapshot={up.product_snapshot} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <h3 className="font-semibold text-sm leading-snug">
+                          {up.product_snapshot.name}
+                        </h3>
+                        {!isActive && (
+                          <span
+                            className={`app-badge ${
+                              up.access_status === "REVOKED"
+                                ? "app-badge--danger"
+                                : "app-badge--warning"
+                            }`}
+                          >
+                            {ACCESS_LABEL[up.access_status] ?? "לא פעיל"}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs app-muted mt-1">
+                        {progress
+                          ? totalPages
+                            ? `עמוד ${progress.current_page} מתוך ${totalPages}`
+                            : `עמוד ${progress.current_page}`
+                          : "עוד לא התחלתם"}
+                      </p>
+                      {progress && (
+                        <div
+                          className="h-1.5 rounded-full mt-2.5 overflow-hidden"
+                          style={{ background: "var(--color-muted)" }}
+                          role="progressbar"
+                          aria-label={`התקדמות בקריאה של ${up.product_snapshot.name}`}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={percent}
+                          aria-valuetext={`${percent}% מהספר`}
+                        >
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${percent}%`,
+                              background:
+                                "linear-gradient(90deg, #DE9A60, #96552D)",
+                            }}
+                          />
+                        </div>
+                      )}
+                      {!isActive && (
+                        <p className="text-xs app-muted mt-2">
+                          הגישה לספר אינה פעילה כרגע, ולכן הקריאה חסומה.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-xs app-muted tabular-nums">
+                      {progress
+                        ? `${percent}% הושלמו`
+                        : totalPages
+                          ? `${totalPages} עמודים`
+                          : "טרם נקבע מספר עמודים"}
+                    </span>
+                    {isActive ? (
+                      <Link
+                        to={`/read/${up.product_id}`}
+                        className="app-btn w-full sm:w-auto"
                       >
-                        {up.access_status === "SUSPENDED"
-                          ? "חסימה"
-                          : up.access_status === "REVOKED"
-                            ? "שלילה"
-                            : "לא פעיל"}
+                        {progress ? "המשך קריאה" : "התחילו לקרוא"}
+                      </Link>
+                    ) : (
+                      <span className="app-badge app-badge--neutral">
+                        אין גישה לקריאה
                       </span>
                     )}
                   </div>
-                  <p
-                    className="text-xs mb-2"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    {progress
-                      ? up.product_snapshot.total_pages
-                        ? `עמוד ${progress.current_page} מתוך ${up.product_snapshot.total_pages}`
-                        : `עמוד ${progress.current_page}`
-                      : "עוד לא התחלתם"}
-                  </p>
-                  {progress && (
-                    <div
-                      className="h-1 rounded-full"
-                      style={{ background: "var(--color-muted)" }}
-                    >
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${progress.progress_percent}%`,
-                          background:
-                            "linear-gradient(90deg, #E7B94C, #B8862A)",
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-                {progress && (
-                  <div className="relative flex items-center justify-center flex-shrink-0">
-                    <ProgressRing percent={progress.progress_percent} />
-                    <span
-                      className="absolute text-xs font-mono font-bold"
-                      style={{ color: "var(--color-primary)" }}
-                    >
-                      {Math.round(progress.progress_percent)}%
-                    </span>
-                  </div>
-                )}
-                {isActive ? (
-                  <button
-                    className="btn-gradient text-xs font-semibold px-4 py-2 rounded-full flex-shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigate(`/read/${up.product_id}`)
-                    }}
-                  >
-                    {progress ? "המשך קריאה" : "התחילו לקרוא"}
-                  </button>
-                ) : (
-                  <span
-                    className="text-xs font-semibold px-4 py-2 rounded-full flex-shrink-0 border"
-                    style={{
-                      borderColor: "var(--color-border)",
-                      color: "var(--color-muted-foreground)",
-                    }}
-                  >
-                    אין גישה
-                  </span>
-                )}
-              </div>
+                </article>
               )
             })}
           </div>
         )}
-      </div>
+      </section>
 
       {/* Quick links */}
-      <div className="grid grid-cols-2 gap-4">
-        <Link to="/dashboard/library" className="card-glow p-5 group">
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
-            style={{
-              background: "rgba(227,174,60,0.12)",
-              color: "var(--color-primary)",
-            }}
+      <section className="mb-4" aria-labelledby="quick-links-title">
+        <h2 id="quick-links-title" className="app-section-title mb-4">
+          קיצורי דרך
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link
+            to="/dashboard/library"
+            className="app-surface p-5 group transition-colors hover:border-[color:var(--color-primary)]"
           >
-            <Icon name="library" size={19} />
-          </div>
-          <h3 className="font-semibold mb-1">הספרייה שלי</h3>
-          <p
-            className="text-xs"
-            style={{ color: "var(--color-muted-foreground)" }}
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <span
+                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+                  color: "var(--color-primary)",
+                }}
+                aria-hidden="true"
+              >
+                <Icon name="library" size={19} />
+              </span>
+              <span className="app-badge app-badge--neutral">{totalBooks}</span>
+            </div>
+            <h3 className="font-semibold mb-1">הספרייה שלי</h3>
+            <p className="text-xs app-muted">
+              {totalBooks > 0
+                ? "כל הספרים שרכשתם, עם מצב הגישה וההתקדמות."
+                : "הספרים שתרכשו יופיעו כאן."}
+            </p>
+          </Link>
+          <Link
+            to="/dashboard/store"
+            className="app-surface p-5 group transition-colors hover:border-[color:var(--color-primary)]"
           >
-            כל {totalBooks} הספרים שלך במקום אחד.
-          </p>
-        </Link>
-        <Link to="/dashboard/store" className="card-glow p-5">
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
-            style={{
-              background: "rgba(227,174,60,0.12)",
-              color: "var(--color-primary)",
-            }}
-          >
-            <Icon name="bag" size={19} />
-          </div>
-          <h3 className="font-semibold mb-1">החנות</h3>
-          <p
-            className="text-xs"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            גלה ספרים חדשים והרחב את הספרייה שלך.
-          </p>
-        </Link>
-      </div>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <span
+                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+                  color: "var(--color-primary)",
+                }}
+                aria-hidden="true"
+              >
+                <Icon name="bag" size={19} />
+              </span>
+            </div>
+            <h3 className="font-semibold mb-1">החנות</h3>
+            <p className="text-xs app-muted">
+              גלו ספרים חדשים והרחיבו את הספרייה שלכם.
+            </p>
+          </Link>
+        </div>
+      </section>
 
       {/* Connected devices */}
-      <div className="mt-4">
-        <ConnectedDevicesCard />
-      </div>
+      <ConnectedDevicesCard />
     </div>
   )
 }

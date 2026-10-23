@@ -44,6 +44,7 @@ import { detectPlatform, toEmbedUrl, PLATFORM_LABEL } from "../../lib/media"
 import AccessDenied from "../../components/AccessDenied"
 import Modal from "../../components/Modal"
 import Icon from "../../components/icons"
+import PageHeader from "../../components/ui/PageHeader"
 
 const STATUS_LABEL: Record<ProductStatus, string> = {
   ACTIVE: "פעיל",
@@ -92,18 +93,17 @@ const inputStyle = {
 
 const inputClass = "w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
 
+const STATUS_BADGE: Record<ProductStatus, string> = {
+  ACTIVE: "app-badge--success",
+  INACTIVE: "app-badge--danger",
+  DRAFT: "app-badge--warning",
+  ARCHIVED: "app-badge--neutral",
+}
+
 function StatusBadge({ status }: { status: ProductStatus }) {
-  const styles: Record<string, { bg: string, color: string }> = {
-    ACTIVE: { bg: "rgba(34,197,94,0.1)", color: "var(--color-success)" },
-    INACTIVE: { bg: "rgba(239,68,68,0.1)", color: "var(--color-danger)" },
-    DRAFT: { bg: "rgba(245,158,11,0.1)", color: "#F59E0B" },
-    ARCHIVED: { bg: "rgba(107,114,128,0.1)", color: "#6B7280" },
-  }
-  const s = styles[status] ?? styles.ACTIVE
   return (
     <span
-      className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap"
-      style={{ background: s.bg, color: s.color }}
+      className={`app-badge ${STATUS_BADGE[status] ?? "app-badge--neutral"}`}
     >
       {STATUS_LABEL[status] ?? status}
     </span>
@@ -185,13 +185,13 @@ function resolveContent(
   }
 }
 
-const CONTENT_TONE: Record<ContentTone, { bg: string; color: string }> = {
-  available: { bg: "rgba(34,197,94,0.12)", color: "var(--color-success)" },
-  recorded: { bg: "rgba(34,197,94,0.08)", color: "var(--color-success)" },
-  linked: { bg: "rgba(59,130,246,0.12)", color: "#3B82F6" },
-  missing: { bg: "rgba(239,68,68,0.1)", color: "var(--color-danger)" },
-  unverified: { bg: "rgba(148,163,184,0.14)", color: "var(--color-muted-foreground)" },
-  na: { bg: "transparent", color: "var(--color-muted-foreground)" },
+const CONTENT_BADGE: Record<ContentTone, string | null> = {
+  available: "app-badge--success",
+  recorded: "app-badge--success",
+  linked: "app-badge--accent",
+  missing: "app-badge--danger",
+  unverified: "app-badge--neutral",
+  na: null,
 }
 
 function ContentStatusPill({
@@ -202,14 +202,20 @@ function ContentStatusPill({
   status: ContentStatus | undefined
 }) {
   const view = resolveContent(product, status)
-  const tone = CONTENT_TONE[view.tone]
+  const badge = CONTENT_BADGE[view.tone]
+  if (!badge) {
+    return (
+      <span className="text-xs app-muted" title={view.hint}>
+        {view.label}
+      </span>
+    )
+  }
   return (
     <span
-      className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full whitespace-nowrap"
-      style={{ background: tone.bg, color: tone.color }}
+      className={`app-badge ${badge}`}
       title={view.hint}
     >
-      {view.tone !== "na" && <Icon name={view.icon} size={12} />}
+      <Icon name={view.icon} size={12} />
       {view.label}
     </span>
   )
@@ -672,7 +678,7 @@ function ProductModal({
           <p
             className="text-xs px-3 py-2 rounded-lg mb-4"
             style={{
-              background: "rgba(239,68,68,0.1)",
+              background: "rgba(167,70,54,0.1)",
               color: "var(--color-danger)",
             }}
           >
@@ -1223,7 +1229,7 @@ function ProductModal({
                     onClick={() => contentInputRef.current?.click()}
                     className="text-xs px-3 py-1.5 rounded-full border flex-shrink-0"
                     style={{
-                      borderColor: "rgba(239,68,68,0.3)",
+                      borderColor: "rgba(167,70,54,0.3)",
                       color: "var(--color-danger)",
                     }}
                   >
@@ -1531,7 +1537,7 @@ function CategoryModal({
           <p
             className="text-xs px-3 py-2 rounded-lg mb-4"
             style={{
-              background: "rgba(239,68,68,0.1)",
+              background: "rgba(167,70,54,0.1)",
               color: "var(--color-danger)",
             }}
           >
@@ -1588,14 +1594,22 @@ function CategoryModal({
                   </p>
                 </div>
                 <button
+                  type="button"
+                  aria-label={`מחיקת הקטגוריה ${c.name}`}
                   onClick={() => {
+                    if (
+                      !window.confirm(
+                        `למחוק את הקטגוריה "${c.name}"? הפעולה אינה ניתנת לביטול.`,
+                      )
+                    )
+                      return
                     void deleteCategory(c.category_id).then((result) => {
                       if (!result.ok) onNotice(result.error)
                     })
                   }}
                   className="text-xs px-3 py-1 rounded-full border"
                   style={{
-                    borderColor: "rgba(239,68,68,0.3)",
+                    borderColor: "rgba(167,70,54,0.3)",
                     color: "var(--color-danger)",
                   }}
                 >
@@ -1757,46 +1771,49 @@ export default function AdminProductsPage() {
 
   return (
     <div className="max-w-6xl mx-auto page-enter">
-      <div className="flex items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="font-display text-4xl font-semibold mb-1">
-            מוצרים ותוכן
-          </h1>
-          <p style={{ color: "var(--color-muted-foreground)" }}>
-            {products.length} מוצרים בקטלוג ·{" "}
+      <PageHeader
+        eyebrow="ניהול · קטלוג"
+        title="מוצרים ותוכן"
+        description={
+          <>
+            {products.length === 1 ? "מוצר אחד בקטלוג" : `${products.length} מוצרים בקטלוג`} ·{" "}
             {usingHostedCatalogue
               ? "נטען מהקטלוג שבשרת"
               : catalogLoading
-                ? "טוען את הקטלוג..."
+                ? "טוען את הקטלוג…"
                 : "קטלוג מקומי — Supabase אינו מחובר"}{" "}
-            · ניהול מחירים, קבצי תוכן, עטיפות, קטגוריות וחבילות
-          </p>
-        </div>
-        <div className="flex gap-2 flex-shrink-0">
-          <button
-            onClick={() => setShowCategories(true)}
-            className="px-5 py-2.5 rounded-full border text-sm transition-colors hover:bg-white/5"
-            style={{
-              borderColor: "var(--color-border)",
-              color: "var(--color-foreground)",
-            }}
-          >
-            קטגוריות
-          </button>
-          <button
-            onClick={() => setEditing(null)}
-            className="btn-gradient px-5 py-2.5 rounded-full font-semibold text-sm"
-          >
-            + מוצר חדש
-          </button>
-        </div>
-      </div>
+            · מחירים, קבצי תוכן, עטיפות, קטגוריות וחבילות
+          </>
+        }
+        breadcrumbs={[
+          { label: "ניהול", to: "/admin" },
+          { label: "מוצרים ותוכן" },
+        ]}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowCategories(true)}
+              className="app-btn-secondary"
+            >
+              קטגוריות
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              className="app-btn"
+            >
+              + מוצר חדש
+            </button>
+          </>
+        }
+      />
 
       {notice && (
         <p
           className="text-xs px-4 py-2.5 rounded-lg mb-4 flex items-center justify-between gap-3"
           style={{
-            background: "rgba(239,68,68,0.1)",
+            background: "rgba(167,70,54,0.1)",
             color: "var(--color-danger)",
           }}
         >
@@ -1883,12 +1900,9 @@ export default function AdminProductsPage() {
           </p>
         </div>
       ) : (
-        <div
-          className="rounded-lg border overflow-x-auto"
-          style={{ borderColor: "var(--color-border)" }}
-        >
+        <div className="app-table-wrap">
           <table
-            className="w-full text-sm"
+            className="app-table"
             style={{ tableLayout: "fixed", minWidth: "56rem" }}
           >
             <caption className="sr-only">
@@ -2166,7 +2180,7 @@ export default function AdminProductsPage() {
                           aria-label={`מחיקת ${product.name} לצמיתות`}
                           className="text-[11px] px-2.5 py-1 rounded-md border transition-colors hover:bg-red-500/10"
                           style={{
-                            borderColor: "rgba(239,68,68,0.35)",
+                            borderColor: "rgba(167,70,54,0.35)",
                             color: "var(--color-danger)",
                           }}
                         >

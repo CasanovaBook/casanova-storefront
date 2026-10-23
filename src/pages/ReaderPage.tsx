@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import usePageTitle from "../lib/usePageTitle"
 import { useParams, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
@@ -57,6 +58,69 @@ const ZOOM_STEPS = [75, 100, 125, 150, 200, 250, 300, 400]
 const ZOOM_FIT = 0
 
 /**
+ * Reader chrome palette.
+ *
+ * The reader keeps its own dark/light reading choice, independent of the
+ * account theme, so its toolbars and overlays use both brand modes directly
+ * rather than the theme-dependent CSS variables. The values mirror the
+ * black / cream / camel tokens: warm black chrome in dark mode, cream chrome
+ * in light mode, with camel as the single accent.
+ */
+const READER_PALETTE = {
+  dark: {
+    background: "#11100e",
+    chrome: "#191612",
+    text: "#f4eee4",
+    muted: "#b7ac9e",
+    border: "#3a332b",
+    accent: "#de9a60",
+    accentSoft: "rgba(222, 154, 96, 0.12)",
+  },
+  light: {
+    background: "#f4eee4",
+    chrome: "#fbf8f2",
+    text: "#191612",
+    muted: "#625a51",
+    border: "#d9cfc2",
+    accent: "#96552d",
+    accentSoft: "rgba(150, 85, 45, 0.10)",
+  },
+} as const
+
+/**
+ * Page-turn shortcuts are global, so they must never steal keys from a
+ * field the reader is typing in. Walk the target (and the focused element,
+ * which can differ when the event starts at <body>) up to the nearest form
+ * or editable node.
+ */
+function isEditableTarget(target: EventTarget | null): boolean {
+  const element =
+    target instanceof HTMLElement
+      ? target
+      : document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+  if (!element) return false
+  if (element.isContentEditable) return true
+  const tag = element.tagName
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true
+  return Boolean(
+    element.closest(
+      "input, textarea, select, [contenteditable]:not([contenteditable='false']), [role='textbox']",
+    ),
+  )
+}
+
+/** A dialog or the floating accessibility panel owns the keyboard while open. */
+function hasOpenDialog(): boolean {
+  return Boolean(
+    document.querySelector(
+      '[role="dialog"], [aria-modal="true"], .a11y-panel',
+    ),
+  )
+}
+
+/**
  * The reader renders the content file attached to the product in the CMS.
  * Nothing is synthesised here: if no file has been uploaded the page says so
  * instead of inventing text. Progress is tracked against the page count
@@ -109,6 +173,8 @@ export default function ReaderPage() {
   const snapshot = entitlement?.product_snapshot
 
   const title = product?.name ?? snapshot?.name ?? ""
+
+  usePageTitle(title ? `קריאה — ${title}` : "קריאה")
   /* The CMS count is a hint only; the document itself is authoritative.
    * A mistyped count used to break the progress bar (a 148-page PDF
    * against "3" rendered 300%) and clamp navigation early. PdfCanvas
@@ -463,7 +529,9 @@ export default function ReaderPage() {
    * behind "blocking reset my page". */
   const navigated = useRef(false)
   const [darkMode, setDarkMode] = useState(true)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  /* This is a roomier reading canvas, not the browser Fullscreen API, so
+   * both the state name and the visible label say "immersive reading". */
+  const [immersiveMode, setImmersiveMode] = useState(false)
   /* Session-scoped, not persisted with the reading progress. Zoom is a
    * property of the screen in front of the reader right now — a phone held
    * at arm's length wants a different size from the same account on a
@@ -568,9 +636,19 @@ export default function ReaderPage() {
   // Keyboard navigation (RTL: left arrow = forward)
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return
+      /* Leave browser and assistive-technology shortcuts alone: modified
+       * arrows select text or navigate the OS, not the book. */
+      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return
+      if (isEditableTarget(e.target)) return
+      /* A dialog (including the global accessibility panel) borrows the
+       * keyboard while it is open; arrows inside it must keep working. */
+      if (hasOpenDialog()) return
+
       if (e.key === "ArrowLeft" || e.key === "ArrowDown") goTo(currentPage + 1)
-      if (e.key === "ArrowRight" || e.key === "ArrowUp") goTo(currentPage - 1)
-      if (e.key === "Escape") setIsFullscreen(false)
+      else if (e.key === "ArrowRight" || e.key === "ArrowUp")
+        goTo(currentPage - 1)
+      else if (e.key === "Escape") setImmersiveMode(false)
     },
     [currentPage, goTo],
   )
@@ -676,11 +754,14 @@ export default function ReaderPage() {
     }
   }
 
-  const bg = darkMode ? "#07070E" : "#FAFAF5"
-  const textColor = darkMode ? "#EDE8DF" : "#1A1A1A"
-  const panelBg = darkMode ? "#0D0D1C" : "#F0EFE8"
-  const borderColor = darkMode ? "#1E1E2E" : "#E0DDD0"
-  const mutedColor = darkMode ? "#7A7589" : "#888"
+  const palette = darkMode ? READER_PALETTE.dark : READER_PALETTE.light
+  const bg = palette.background
+  const textColor = palette.text
+  const panelBg = palette.chrome
+  const borderColor = palette.border
+  const mutedColor = palette.muted
+  const accentColor = palette.accent
+  const accentSoft = palette.accentSoft
 
   return (
     <div
@@ -700,7 +781,7 @@ export default function ReaderPage() {
 
       {/* Top bar */}
       <header
-        className="safe-top fixed top-0 left-0 right-0 z-50 border-b flex items-center justify-between px-3 sm:px-5 h-14 sm:h-12"
+        className="safe-top fixed inset-x-0 top-0 z-50 border-b flex items-center justify-between gap-2 px-3 sm:px-5 h-14 sm:h-12"
         style={{
           background: panelBg,
           borderColor,
@@ -709,9 +790,12 @@ export default function ReaderPage() {
       >
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <button
+            type="button"
             onClick={() => navigate("/dashboard/library")}
             className="tap-target text-sm flex items-center gap-1.5 transition-opacity hover:opacity-70"
             style={{ color: mutedColor }}
+            aria-label="חזרה לספרייה"
+            title="חזרה לספרייה"
           >
             <Icon name="arrowRight" size={14} />
             <span className="hidden sm:inline">לספרייה</span>
@@ -731,30 +815,36 @@ export default function ReaderPage() {
             (
               <span
                 className="hidden sm:flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded border"
-                style={{ borderColor, color: mutedColor }}
+                style={{
+                  borderColor,
+                  color: mutedColor,
+                  background: accentSoft,
+                }}
                 title={`העותק מסומן בשם: ${watermark}`}
               >
-                <Icon name="shield" size={12} /> עותק אישי מסומן
+                <Icon name="shield" size={12} style={{ color: accentColor }} />{" "}
+                עותק אישי מסומן
               </span>
             )}
 
-          {/* Text size. Offered only for a PDF: these controls work through
-           * the PDF open-parameter fragment, and a non-PDF content URL goes to
-           * the iframe untouched, so there would be nothing for them to act on.
+          {/* Display size. Offered only for a PDF: these controls repaint the
+           * canvas at a new scale, and a non-PDF content URL goes to the
+           * iframe untouched, so there would be nothing for them to act on.
            * Showing a control that cannot work is worse than not showing it. */}
           {isPdf && (
             <div
               className="flex items-center gap-1"
               role="group"
-              aria-label="גודל הטקסט"
+              aria-label="גודל התצוגה"
             >
               <button
+                type="button"
                 onClick={() => stepZoom(-1)}
                 disabled={!canZoomOut}
                 className="tap-target flex items-center justify-center rounded border transition-opacity hover:opacity-70 disabled:opacity-30 disabled:hover:opacity-30"
                 style={{ borderColor, color: mutedColor }}
-                aria-label="הקטנת הטקסט"
-                title="הקטנת הטקסט"
+                aria-label="הקטנת התצוגה"
+                title="הקטנת התצוגה"
               >
                 <Icon name="zoomOut" size={15} />
               </button>
@@ -766,46 +856,62 @@ export default function ReaderPage() {
                * reset — and the fixed min-width stops the bar from jumping
                * sideways every time the label changes shape. */}
               <button
+                type="button"
                 onClick={resetZoom}
                 disabled={!zoomedIn}
                 className="tap-target flex items-center justify-center gap-1 px-1 text-[11px] tabular-nums rounded border transition-opacity hover:opacity-70 disabled:opacity-40 disabled:hover:opacity-40"
                 style={{ borderColor, color: mutedColor, minWidth: "2.9rem" }}
-                aria-label="התאמת העמוד לרוחב המסך"
+                aria-label={
+                  zoomedIn
+                    ? `איפוס התצוגה לרוחב המסך (${zoom}%)`
+                    : "התאמת העמוד לרוחב המסך"
+                }
                 title="התאמה לרוחב המסך"
               >
                 {zoomedIn ? `${zoom}%` : <Icon name="fitWidth" size={14} />}
               </button>
 
               <button
+                type="button"
                 onClick={() => stepZoom(1)}
                 disabled={!canZoomIn}
                 className="tap-target flex items-center justify-center rounded border transition-opacity hover:opacity-70 disabled:opacity-30 disabled:hover:opacity-30"
                 style={{ borderColor, color: mutedColor }}
-                aria-label="הגדלת הטקסט"
-                title="הגדלת הטקסט"
+                aria-label="הגדלת התצוגה"
+                title="הגדלת התצוגה"
               >
                 <Icon name="zoomIn" size={15} />
               </button>
             </div>
           )}
 
-          {/* Dark mode */}
+          {/* Dark mode. The label names the state, and aria-pressed says
+           * whether that state is on — the tooltip names the action. */}
           <button
+            type="button"
             onClick={() => setDarkMode((d) => !d)}
             className="tap-target flex items-center justify-center rounded border transition-opacity hover:opacity-70"
             style={{ borderColor, color: mutedColor }}
-            aria-label={darkMode ? "מצב בהיר" : "מצב כהה"}
+            aria-pressed={darkMode}
+            aria-label="מצב קריאה כהה"
+            title={darkMode ? "מעבר למצב קריאה בהיר" : "מעבר למצב קריאה כהה"}
           >
             <Icon name={darkMode ? "sun" : "moon"} size={15} />
           </button>
 
+          {/* A wider reading canvas, not browser fullscreen. */}
           <button
-            onClick={() => setIsFullscreen((f) => !f)}
+            type="button"
+            onClick={() => setImmersiveMode((f) => !f)}
             className="tap-target flex items-center justify-center rounded border transition-opacity hover:opacity-70"
             style={{ borderColor, color: mutedColor }}
-            aria-label="מסך מלא"
+            aria-pressed={immersiveMode}
+            aria-label="מצב קריאה ממוקד"
+            title={
+              immersiveMode ? "חזרה לתצוגת הקריאה הרגילה" : "הרחבת אזור הקריאה"
+            }
           >
-            <Icon name="layers" size={15} />
+            <Icon name="maximize" size={15} />
           </button>
         </div>
       </header>
@@ -813,105 +919,126 @@ export default function ReaderPage() {
       {/* Main reading area */}
       <main id="main" className="flex-1 pt-14 sm:pt-12 pb-24 sm:pb-20">
         {contentUrl && !locked ? (
-          <div
-            className="relative mx-auto px-1.5 sm:px-2 py-2"
-            style={{
-              maxWidth: "72rem",
-              height: isFullscreen
-                ? "calc(100dvh - 3rem)"
-                : "calc(100dvh - 8.5rem)",
-            }}
-          >
-            {/* A scroll container rather than a replaced element: the canvas
-             * pages render at natural height and the reader scrolls inside
-             * the same shell, so the header, bar and watermark never move. */}
-            <div
-              className="h-full overflow-auto rounded-lg border"
-              style={{ borderColor, background: "#fff" }}
+          <>
+            {/* The toolbar is too narrow for a visible title on a phone, but
+             * the book must still be identifiable as the page heading. */}
+            <h1 className="sr-only">{title || "קריאה"}</h1>
+            {/* Page turns are a visual change; announce them once each time
+             * the page really changes. Screen readers hear the same wording
+             * the bottom bar displays. */}
+            <p
+              className="sr-only"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
             >
-              {isPdf ? (
-                <PdfCanvas
-                  signedUrl={contentUrl}
-                  page={currentPage}
-                  zoom={zoom === ZOOM_FIT ? 1 : zoom / 100}
-                  watermark={policy.watermark_enabled ? watermark : undefined}
-                  onTotalPages={setDocTotalPages}
-                />
-              ) : (
-                <iframe
-                  src={contentUrl}
-                  title={title}
-                  className="h-full w-full"
-                  style={{ background: "#fff" }}
-                />
+              {knownTotal
+                ? `עמוד ${currentPage} מתוך ${totalPages}`
+                : `עמוד ${currentPage}`}
+            </p>
+            <div
+              className="relative mx-auto px-1.5 sm:px-2 py-2"
+              style={{
+                maxWidth: "72rem",
+                height: immersiveMode
+                  ? "calc(100dvh - 3rem)"
+                  : "calc(100dvh - 8.5rem)",
+              }}
+            >
+              {/* A scroll container rather than a replaced element: the canvas
+               * pages render at natural height and the reader scrolls inside
+               * the same shell, so the header, bar and watermark never move. */}
+              <div
+                className="h-full overflow-auto rounded-lg border"
+                style={{ borderColor, background: "#fff" }}
+              >
+                {isPdf ? (
+                  <PdfCanvas
+                    signedUrl={contentUrl}
+                    page={currentPage}
+                    zoom={zoom === ZOOM_FIT ? 1 : zoom / 100}
+                    watermark={policy.watermark_enabled ? watermark : undefined}
+                    onTotalPages={setDocTotalPages}
+                  />
+                ) : (
+                  <iframe
+                    src={contentUrl}
+                    title={title}
+                    className="h-full w-full"
+                    style={{ background: "#fff" }}
+                  />
+                )}
+              </div>
+
+              {canStep && (
+                <>
+                  {/* Edge gesture strips. Deliberately narrow and on the
+                   * sides only, so the document in the centre keeps its own
+                   * scrolling and pinch-zoom. Logical insets keep the previous
+                   * page at the reading-start edge in RTL. */}
+                  <div
+                    className="swipe-zone absolute top-0 bottom-0 z-30 flex items-center justify-center"
+                    style={{
+                      insetInlineStart: 0,
+                      width: "clamp(44px, 11vw, 88px)",
+                      touchAction: "pan-y",
+                    }}
+                    onPointerDown={beginGesture}
+                    onPointerUp={(e) => endGesture(e, "prev")}
+                    onPointerCancel={cancelGesture}
+                    onPointerLeave={cancelGesture}
+                    role="button"
+                    tabIndex={-1}
+                    aria-label="העמוד הקודם — החליקו או הקישו"
+                  >
+                    <Icon
+                      name="chevronRight"
+                      size={22}
+                      className="swipe-hint"
+                      style={{ color: mutedColor }}
+                    />
+                  </div>
+                  <div
+                    className="swipe-zone absolute top-0 bottom-0 z-30 flex items-center justify-center"
+                    style={{
+                      insetInlineEnd: 0,
+                      width: "clamp(44px, 11vw, 88px)",
+                      touchAction: "pan-y",
+                    }}
+                    onPointerDown={beginGesture}
+                    onPointerUp={(e) => endGesture(e, "next")}
+                    onPointerCancel={cancelGesture}
+                    onPointerLeave={cancelGesture}
+                    role="button"
+                    tabIndex={-1}
+                    aria-label="העמוד הבא — החליקו או הקישו"
+                  >
+                    <Icon
+                      name="chevronLeft"
+                      size={22}
+                      className="swipe-hint"
+                      style={{ color: mutedColor }}
+                    />
+                  </div>
+                </>
               )}
             </div>
-
-            {canStep && (
-              <>
-                {/* Edge gesture strips. Deliberately narrow and on the
-                 * sides only, so the document in the centre keeps its own
-                 * scrolling and pinch-zoom. */}
-                <div
-                  className="swipe-zone absolute top-0 bottom-0 right-0 z-30 flex items-center justify-center"
-                  style={{
-                    width: "clamp(44px, 11vw, 88px)",
-                    touchAction: "pan-y",
-                  }}
-                  onPointerDown={beginGesture}
-                  onPointerUp={(e) => endGesture(e, "prev")}
-                  onPointerCancel={cancelGesture}
-                  onPointerLeave={cancelGesture}
-                  role="button"
-                  tabIndex={-1}
-                  aria-label="העמוד הקודם — החליקו או הקישו"
-                >
-                  <Icon
-                    name="chevronRight"
-                    size={22}
-                    className="swipe-hint"
-                    style={{ color: mutedColor }}
-                  />
-                </div>
-                <div
-                  className="swipe-zone absolute top-0 bottom-0 left-0 z-30 flex items-center justify-center"
-                  style={{
-                    width: "clamp(44px, 11vw, 88px)",
-                    touchAction: "pan-y",
-                  }}
-                  onPointerDown={beginGesture}
-                  onPointerUp={(e) => endGesture(e, "next")}
-                  onPointerCancel={cancelGesture}
-                  onPointerLeave={cancelGesture}
-                  role="button"
-                  tabIndex={-1}
-                  aria-label="העמוד הבא — החליקו או הקישו"
-                >
-                  <Icon
-                    name="chevronLeft"
-                    size={22}
-                    className="swipe-hint"
-                    style={{ color: mutedColor }}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+          </>
         ) : (
           <div className="max-w-lg mx-auto px-6 py-24 text-center">
             <div
               className="w-16 h-16 rounded-full mx-auto mb-5 flex items-center justify-center"
               style={{
-                background: "rgba(212,160,48,0.1)",
-                color: "var(--color-primary)",
+                background: accentSoft,
+                color: accentColor,
               }}
             >
               {contentVerdict === "checking" ? (
                 <div
                   className="w-6 h-6 rounded-full border-2 animate-spin"
                   style={{
-                    borderColor: "rgba(212,160,48,0.25)",
-                    borderTopColor: "var(--color-primary)",
+                    borderColor: borderColor,
+                    borderTopColor: accentColor,
                   }}
                 />
               ) : (
@@ -994,19 +1121,30 @@ export default function ReaderPage() {
       {/* Bottom navigation bar */}
       {canStep && !locked && (
         <div
-          className="safe-bottom fixed bottom-0 left-0 right-0 z-50 border-t"
+          className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t"
           style={{ background: panelBg, borderColor }}
         >
           {/* Progress bar. Only when the total is known: a bar that cannot
            * know its own denominator is not a progress bar, it is a decoration
-           * stuck at zero. */}
+           * stuck at zero. It also carries the ARIA value, so the current
+           * page is available without relying on the visual width. */}
           {knownTotal && (
-            <div className="h-0.5" style={{ background: borderColor }}>
+            <div
+              className="h-0.5"
+              style={{ background: borderColor }}
+              role="progressbar"
+              aria-label="התקדמות בקריאה"
+              aria-valuemin={1}
+              aria-valuemax={totalPages}
+              aria-valuenow={Math.min(Math.max(currentPage, 1), totalPages)}
+              aria-valuetext={`עמוד ${currentPage} מתוך ${totalPages}`}
+              aria-orientation="horizontal"
+            >
               <div
                 className="h-full transition-all"
                 style={{
                   width: `${progressPercent}%`,
-                  background: "var(--color-primary)",
+                  background: accentColor,
                 }}
               />
             </div>
@@ -1014,6 +1152,7 @@ export default function ReaderPage() {
 
           <div className="flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5">
             <button
+              type="button"
               onClick={() => goTo(currentPage - 1)}
               disabled={currentPage <= 1}
               className="tap-target flex items-center gap-1.5 text-sm font-medium px-4 py-2.5 rounded-lg border disabled:opacity-30 transition-opacity hover:opacity-70"
@@ -1043,6 +1182,7 @@ export default function ReaderPage() {
             </div>
 
             <button
+              type="button"
               onClick={() => goTo(currentPage + 1)}
               disabled={knownTotal && currentPage >= totalPages}
               className="tap-target flex items-center gap-1.5 text-sm font-medium px-4 py-2.5 rounded-lg border disabled:opacity-30 transition-opacity hover:opacity-70"
@@ -1103,7 +1243,7 @@ export default function ReaderPage() {
           <Icon
             name={revoked ? "lock" : "clock"}
             size={34}
-            style={{ color: "var(--color-primary)" }}
+            style={{ color: accentColor }}
           />
           <h2 className="font-display text-xl font-semibold">
             {revoked
@@ -1153,7 +1293,7 @@ export default function ReaderPage() {
           <Icon
             name="shield"
             size={36}
-            style={{ color: "var(--color-primary)" }}
+            style={{ color: accentColor }}
           />
           <p className="text-sm text-center" style={{ color: mutedColor }}>
             התוכן מוסתר להגנה על זכויות יוצרים.

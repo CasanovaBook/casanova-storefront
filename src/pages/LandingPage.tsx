@@ -308,7 +308,7 @@ export default function LandingPage() {
           <div
             className="rounded-2xl overflow-hidden border"
             style={{
-              borderColor: "rgba(212,160,48,0.3)",
+              borderColor: "rgba(196,122,67,0.3)",
               boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
             }}
           >
@@ -453,7 +453,7 @@ export default function LandingPage() {
         className="hero-shell relative flex items-center overflow-hidden"
         style={{
           background:
-            "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(227,174,60,0.16), transparent), linear-gradient(135deg, var(--color-background) 0%, var(--color-card) 50%, var(--color-background) 100%)",
+            "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(222,154,96,0.16), transparent), linear-gradient(135deg, var(--color-background) 0%, var(--color-card) 50%, var(--color-background) 100%)",
         }}
       >
         {/* subtle grid texture */}
@@ -461,7 +461,7 @@ export default function LandingPage() {
           className="absolute inset-0 opacity-5"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(212,160,48,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(212,160,48,0.3) 1px, transparent 1px)",
+              "linear-gradient(rgba(196,122,67,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(196,122,67,0.3) 1px, transparent 1px)",
             backgroundSize: "60px 60px",
           }}
         />
@@ -473,7 +473,7 @@ export default function LandingPage() {
         />
         <div
           className="absolute bottom-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none"
-          style={{ background: "#4A148C", opacity: 0.08 }}
+          style={{ background: "#6B4A3A", opacity: 0.08 }}
         />
 
         <div className="relative max-w-6xl mx-auto px-6 py-32 grid md:grid-cols-2 gap-16 items-center">
@@ -482,9 +482,9 @@ export default function LandingPage() {
               <div
                 className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full border text-xs font-bold"
                 style={{
-                  borderColor: "rgba(212,160,48,0.3)",
+                  borderColor: "rgba(196,122,67,0.3)",
                   color: "var(--color-primary)",
-                  background: "rgba(212,160,48,0.07)",
+                  background: "rgba(196,122,67,0.07)",
                 }}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
@@ -503,7 +503,7 @@ export default function LandingPage() {
                     <span
                       style={{
                         background:
-                          "linear-gradient(90deg, #E7B94C, #D4A030 60%, #B8862A)",
+                          "linear-gradient(90deg, #DE9A60, #C47A43 60%, #96552D)",
                         WebkitBackgroundClip: "text",
                         WebkitTextFillColor: "transparent",
                       }}
@@ -595,7 +595,7 @@ export default function LandingPage() {
               {/* floating badge */}
               <div
                 className="absolute -bottom-4 -left-4 px-5 py-3.5 rounded-2xl border glass shadow-2xl float-slower"
-                style={{ borderColor: "rgba(212,160,48,0.3)" }}
+                style={{ borderColor: "rgba(196,122,67,0.3)" }}
               >
                 <p
                   className="text-xs mb-1"
@@ -698,7 +698,7 @@ export default function LandingPage() {
                         <span
                           className="text-xs font-bold px-2 py-0.5 rounded-full"
                           style={{
-                            background: "rgba(212,160,48,0.1)",
+                            background: "rgba(196,122,67,0.1)",
                             color: "var(--color-primary)",
                           }}
                         >
@@ -708,7 +708,7 @@ export default function LandingPage() {
                           <span
                             className="text-xs font-bold px-2 py-0.5 rounded-full"
                             style={{
-                              background: "rgba(239,68,68,0.12)",
+                              background: "rgba(167,70,54,0.12)",
                               color: "var(--color-danger)",
                             }}
                           >
@@ -826,8 +826,8 @@ export default function LandingPage() {
                 style={{
                   background:
                     "linear-gradient(160deg, var(--color-secondary), var(--color-card))",
-                  borderColor: "rgba(212,160,48,0.4)",
-                  boxShadow: "0 12px 48px rgba(212,160,48,0.12)",
+                  borderColor: "rgba(196,122,67,0.4)",
+                  boxShadow: "0 12px 48px rgba(196,122,67,0.12)",
                 }}
               >
                 {/* The ribbon reads the bundle's own subtitle, an existing
@@ -838,7 +838,7 @@ export default function LandingPage() {
                   <div
                     className="absolute top-5 left-5 flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full shadow-lg"
                     style={{
-                      background: "linear-gradient(135deg, #E7B94C, #B8862A)",
+                      background: "linear-gradient(135deg, #DE9A60, #96552D)",
                       color: "var(--color-primary-foreground)",
                     }}
                   >
@@ -892,7 +892,7 @@ export default function LandingPage() {
                 <div
                   className="w-12 h-12 rounded-xl mb-6 flex items-center justify-center shadow-inner"
                   style={{
-                    background: "rgba(212,160,48,0.1)",
+                    background: "rgba(196,122,67,0.1)",
                     color: "var(--color-primary)",
                   }}
                 >
@@ -996,7 +996,7 @@ export default function LandingPage() {
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-md"
                     style={{
-                      background: "rgba(212,160,48,0.15)",
+                      background: "rgba(196,122,67,0.15)",
                       color: "var(--color-primary)",
                     }}
                   >
@@ -1045,7 +1045,7 @@ export default function LandingPage() {
                   style={{
                     borderColor:
                       openFaq === i
-                        ? "rgba(212,160,48,0.4)"
+                        ? "rgba(196,122,67,0.4)"
                         : "var(--color-border)",
                     background:
                       openFaq === i ? "var(--color-card)" : "transparent",
@@ -1091,7 +1091,7 @@ export default function LandingPage() {
           className="py-24 text-center relative overflow-hidden"
           style={{
             background:
-              "radial-gradient(ellipse 60% 80% at 50% 120%, rgba(212,160,48,0.15), transparent), var(--color-card)",
+              "radial-gradient(ellipse 60% 80% at 50% 120%, rgba(196,122,67,0.15), transparent), var(--color-card)",
           }}
         >
           <div className="max-w-2xl mx-auto px-6 relative">

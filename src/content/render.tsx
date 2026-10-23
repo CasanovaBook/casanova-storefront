@@ -1,26 +1,43 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type AriaAttributes, type ReactNode } from "react";
 import { Link } from "react-router";
 
 /** Link that understands internal routes, #anchors and external URLs. */
-export function SmartLink({ to, children, className, style, onClick }: { to: string; children: ReactNode; className?: string; style?: React.CSSProperties; onClick?: () => void }) {
+export function SmartLink({
+  to,
+  children,
+  className,
+  style,
+  onClick,
+  "aria-current": ariaCurrent,
+}: {
+  to: string;
+  children: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  onClick?: () => void;
+  "aria-current"?: AriaAttributes["aria-current"];
+}) {
   if (/^https?:\/\//i.test(to) || to.startsWith("mailto:") || to.startsWith("tel:")) {
     const external = /^https?:\/\//i.test(to);
     return (
-      <a href={to} className={className} style={style} onClick={onClick} {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>
+      <a href={to} className={className} style={style} onClick={onClick} aria-current={ariaCurrent} {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>
         {children}
         {external && <span className="sr-only"> (נפתח בלשונית חדשה)</span>}
       </a>
     );
   }
-  if (to.startsWith("#")) {
+  /* A cross-page section link (e.g. "/#about") is deliberately a normal
+   * anchor: the destination is rendered by another route, so the browser
+   * must perform the navigation and the hash scroll together. */
+  if (to.startsWith("#") || to.startsWith("/#")) {
     return (
-      <a href={to} className={className} style={style} onClick={onClick}>
+      <a href={to} className={className} style={style} onClick={onClick} aria-current={ariaCurrent}>
         {children}
       </a>
     );
   }
   return (
-    <Link to={to} className={className} style={style} onClick={onClick}>
+    <Link to={to} className={className} style={style} onClick={onClick} aria-current={ariaCurrent}>
       {children}
     </Link>
   );

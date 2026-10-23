@@ -6,6 +6,8 @@ import { can } from "../../lib/permissions"
 import { RANGE_LABEL, type RangePreset } from "../../lib/analytics"
 import type { SystemAlert } from "../../types"
 import Icon, { type IconName } from "../../components/icons"
+import PageHeader from "../../components/ui/PageHeader"
+import Alert from "../../components/ui/Alert"
 
 function StatCard({
   label,
@@ -22,33 +24,37 @@ function StatCard({
 }) {
   return (
     <div
-      className="card-glow p-5"
+      className="app-surface p-4 sm:p-5 min-w-0"
       style={
         accent
           ? {
-              background: "rgba(212,160,48,0.07)",
-              borderColor: "rgba(212,160,48,0.3)",
+              background:
+                "color-mix(in srgb, var(--color-primary) 5%, var(--color-card))",
+              borderColor:
+                "color-mix(in srgb, var(--color-primary) 30%, var(--color-border))",
             }
           : undefined
       }
     >
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
-        style={{
-          background: "rgba(227,174,60,0.12)",
-          color: "var(--color-primary)",
-        }}
-      >
-        <Icon name={icon} size={17} />
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <span
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{
+            background:
+              "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+            color: "var(--color-primary)",
+          }}
+          aria-hidden="true"
+        >
+          <Icon name={icon} size={17} />
+        </span>
+        {accent && (
+          <span className="app-badge app-badge--accent">נטו</span>
+        )}
       </div>
+      <p className="text-xs font-semibold app-muted mb-1">{label}</p>
       <p
-        className="text-xs tracking-wider mb-1"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        {label}
-      </p>
-      <p
-        className="font-display text-3xl font-semibold mb-0.5"
+        className="font-display text-2xl sm:text-3xl font-semibold mb-0.5"
         style={{
           color: accent ? "var(--color-primary)" : "var(--color-foreground)",
         }}
@@ -56,12 +62,7 @@ function StatCard({
         {value}
       </p>
       {sub && (
-        <p
-          className="text-xs"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          {sub}
-        </p>
+        <p className="text-xs app-muted leading-relaxed">{sub}</p>
       )}
     </div>
   )
@@ -79,10 +80,7 @@ function RevenueChart({
 }) {
   if (series.length === 0) {
     return (
-      <p
-        className="px-5 py-8 text-sm text-center"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
+      <p className="px-5 py-8 text-sm text-center app-muted">
         אין נתוני הכנסה זמינים לטווח שנבחר.
       </p>
     )
@@ -90,7 +88,7 @@ function RevenueChart({
   const max = Math.max(...series.map((d) => d.revenue), 1)
   return (
     <div className="p-5">
-      <div className="flex items-end gap-1 h-32">
+      <div className="flex items-end gap-1 h-32" role="img" aria-label="הכנסות לפי יום בטווח שנבחר">
         {series.map((d, i) => (
           <div
             key={`${d.label}-${i}`}
@@ -102,7 +100,7 @@ function RevenueChart({
                 height: `${Math.max((d.revenue / max) * 100, d.revenue > 0 ? 3 : 0)}%`,
                 background:
                   d.revenue > 0
-                    ? "linear-gradient(180deg, #E7B94C, #B8862A)"
+                    ? "linear-gradient(180deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, var(--color-foreground)))"
                     : "var(--color-secondary)",
               }}
               title={`${d.label} — ₪${d.revenue.toLocaleString()} · ${d.orders} הזמנות`}
@@ -110,10 +108,7 @@ function RevenueChart({
           </div>
         ))}
       </div>
-      <div
-        className="flex justify-between mt-2 text-[10px]"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
+      <div className="flex justify-between mt-2 text-[10px] app-muted">
         <span>{series[0].label}</span>
         <span>{series[series.length - 1].label}</span>
       </div>
@@ -121,11 +116,11 @@ function RevenueChart({
   )
 }
 
-const SEVERITY_COLOR: Record<SystemAlert["severity"], string> = {
-  CRITICAL: "#EF4444",
-  HIGH: "#F59E0B",
-  MEDIUM: "#38BDF8",
-  LOW: "#6B7280",
+const SEVERITY_BADGE: Record<SystemAlert["severity"], string> = {
+  CRITICAL: "app-badge--danger",
+  HIGH: "app-badge--warning",
+  MEDIUM: "app-badge--neutral",
+  LOW: "app-badge--neutral",
 }
 
 const SEVERITY_LABEL: Record<SystemAlert["severity"], string> = {
@@ -135,12 +130,12 @@ const SEVERITY_LABEL: Record<SystemAlert["severity"], string> = {
   LOW: "נמוך",
 }
 
-const ORDER_STATUS_COLOR: Record<string, string> = {
-  PAID: "var(--color-success)",
-  PENDING: "#F59E0B",
-  FAILED: "var(--color-danger)",
-  REFUNDED: "#6B7280",
-  CANCELLED: "#6B7280",
+const ORDER_STATUS_BADGE: Record<string, string> = {
+  PAID: "app-badge--success",
+  PENDING: "app-badge--warning",
+  FAILED: "app-badge--danger",
+  REFUNDED: "app-badge--neutral",
+  CANCELLED: "app-badge--neutral",
 }
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
@@ -259,45 +254,50 @@ export default function AdminDashboardPage() {
   }[]).filter((a) => can(adminRole, a.perm))
 
   return (
-    <div className="max-w-6xl mx-auto page-enter">
-      <div className="mb-8 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-4xl font-semibold mb-1">לוח בקרה</h1>
-          <p style={{ color: "var(--color-muted-foreground)" }}>
-            תמונת מצב מלאה של המערכת —{" "}
-            {new Date().toLocaleDateString("he-IL", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {RANGE_OPTIONS.map((p) => (
-            <button
-              key={p}
-              onClick={() => setPreset(p)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
-              style={{
-                background:
-                  preset === p ? "var(--color-primary)" : "transparent",
-                color:
-                  preset === p
-                    ? "var(--color-primary-foreground)"
-                    : "var(--color-muted-foreground)",
-                borderColor:
-                  preset === p ? "var(--color-primary)" : "var(--color-border)",
-              }}
+    <div className="page-enter">
+      <PageHeader
+        eyebrow="ניהול · תמונת מצב"
+        title="לוח בקרה"
+        description={`תמונת מצב מלאה של המערכת — ${new Date().toLocaleDateString(
+          "he-IL",
+          {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          },
+        )}`}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs app-muted">טווח:</span>
+            <div
+              role="group"
+              aria-label="טווח תאריכים"
+              className="flex flex-wrap gap-1.5"
             >
-              {RANGE_LABEL[p]}
-            </button>
-          ))}
-        </div>
-      </div>
+              {RANGE_OPTIONS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPreset(p)}
+                  aria-pressed={preset === p}
+                  className={preset === p ? "app-btn" : "app-btn-secondary"}
+                  style={{
+                    minHeight: "2.2rem",
+                    padding: "0.35rem 0.8rem",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  {RANGE_LABEL[p]}
+                </button>
+              ))}
+            </div>
+          </div>
+        }
+      />
 
       {/* Key metrics — derived from transactions in the selected period */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <StatCard
           icon="money"
           label="הכנסה נטו"
@@ -346,52 +346,54 @@ export default function AdminDashboardPage() {
       </div>
 
       {!rev.has_data && (
-        <div
-          className="card-glow p-6 mb-6 text-center text-sm"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          אין נתוני הכנסה זמינים לטווח {RANGE_LABEL[preset]}. סכומי כל הזמנים: ₪
-          {Math.round(lifetime.net).toLocaleString()} ברוטו מתוכם ₪
-          {Math.round(lifetime.refunded).toLocaleString()} הוחזרו.
+        <div className="mb-6">
+          <Alert tone="warning">
+            אין נתוני הכנסה זמינים לטווח {RANGE_LABEL[preset]}. סכומי כל הזמנים:
+            ₪{Math.round(lifetime.net).toLocaleString()} ברוטו מתוכם ₪
+            {Math.round(lifetime.refunded).toLocaleString()} הוחזרו.
+          </Alert>
         </div>
       )}
 
       {/* Revenue over time */}
       {can(adminRole, "finance") && (
-        <div className="card-glow mb-6 overflow-hidden">
-          <div
-            className="px-5 py-4 border-b"
-            style={{ borderColor: "var(--color-border)" }}
-          >
-            <h2 className="font-semibold text-sm">
+        <section className="app-surface mb-6" aria-labelledby="revenue-title">
+          <div className="app-surface-head">
+            <h2 id="revenue-title" className="app-section-title">
               הכנסות לאורך זמן · {RANGE_LABEL[preset]}
             </h2>
           </div>
           <RevenueChart series={rev.by_day} />
-        </div>
+        </section>
       )}
 
       {/* Issues requiring attention */}
-      <div
-        className="card-glow mb-8 overflow-hidden"
+      <section
+        className="app-surface mb-6"
+        aria-labelledby="alerts-title"
         style={
           openAlerts.length > 0
-            ? { borderColor: "rgba(239,68,68,0.35)" }
+            ? {
+                borderColor:
+                  "color-mix(in srgb, var(--color-danger) 35%, var(--color-border))",
+              }
             : undefined
         }
       >
-        <div
-          className="flex items-center justify-between px-5 py-4 border-b"
-          style={{ borderColor: "var(--color-border)" }}
-        >
-          <h2 className="font-semibold text-sm flex items-center gap-2">
+        <div className="app-surface-head">
+          <h2
+            id="alerts-title"
+            className="app-section-title flex items-center gap-2"
+          >
             <Icon
               name="zap"
               size={15}
               className="flex-shrink-0"
               style={{
                 color:
-                  openAlerts.length > 0 ? "#EF4444" : "var(--color-success)",
+                  openAlerts.length > 0
+                    ? "var(--color-danger)"
+                    : "var(--color-success)",
               }}
             />
             תקלות שדורשות טיפול ({openAlerts.length})
@@ -399,119 +401,97 @@ export default function AdminDashboardPage() {
           {can(adminRole, "alerts") && (
             <Link
               to="/admin/alerts"
-              className="text-xs hover:opacity-70"
-              style={{ color: "var(--color-primary)" }}
+              className="app-btn-ghost"
+              style={{ minHeight: "2.2rem", padding: "0.35rem 0.8rem" }}
             >
               לכל ההתראות ←
             </Link>
           )}
         </div>
         {openAlerts.length === 0 ? (
-          <p
-            className="px-5 py-6 text-sm text-center"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
+          <div className="app-surface-body flex items-center justify-center gap-2 py-6 text-sm app-muted">
+            <Icon
+              name="checkCircle"
+              size={16}
+              style={{ color: "var(--color-success)" }}
+            />
             הכול תקין — אין תקלות פתוחות כרגע.
-          </p>
+          </div>
         ) : (
-          <div
-            className="divide-y"
-            style={{ borderColor: "var(--color-border)" }}
-          >
+          <div className="divide-y" style={{ borderColor: "var(--color-border)" }}>
             {openAlerts.slice(0, 5).map((alert) => (
               <div
                 key={alert.alert_id}
                 className="flex items-center gap-3 px-5 py-3"
               >
                 <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                  style={{
-                    background: `${SEVERITY_COLOR[alert.severity]}22`,
-                    color: SEVERITY_COLOR[alert.severity],
-                  }}
+                  className={`app-badge ${SEVERITY_BADGE[alert.severity]} flex-shrink-0`}
                 >
                   {SEVERITY_LABEL[alert.severity]}
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{alert.title}</p>
-                  <p
-                    className="text-xs truncate"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
+                  <p className="text-xs app-muted truncate">
                     {alert.description}
                   </p>
                 </div>
               </div>
             ))}
             {openAlerts.length > 5 && (
-              <p
-                className="px-5 py-2.5 text-xs text-center"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
+              <p className="px-5 py-2.5 text-xs text-center app-muted">
                 + {openAlerts.length - 5} תקלות נוספות
               </p>
             )}
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="grid md:grid-cols-[1fr_320px] gap-6">
-        <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="space-y-6 min-w-0">
           {/* Recent orders */}
-          <div className="card-glow overflow-hidden">
-            <div
-              className="flex items-center justify-between px-5 py-4 border-b"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              <h2 className="font-semibold text-sm">הזמנות אחרונות</h2>
+          <section className="app-surface" aria-labelledby="recent-orders-title">
+            <div className="app-surface-head">
+              <h2 id="recent-orders-title" className="app-section-title">
+                הזמנות אחרונות
+              </h2>
               {can(adminRole, "orders") && (
                 <Link
                   to="/admin/orders"
-                  className="text-xs hover:opacity-70"
-                  style={{ color: "var(--color-primary)" }}
+                  className="app-btn-ghost"
+                  style={{ minHeight: "2.2rem", padding: "0.35rem 0.8rem" }}
                 >
                   להצגת הכול ←
                 </Link>
               )}
             </div>
             {recentOrders.length === 0 ? (
-              <p
-                className="px-5 py-6 text-sm text-center"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
+              <p className="px-5 py-6 text-sm text-center app-muted">
                 אין עדיין הזמנות.
               </p>
             ) : (
-              <div
-                className="divide-y"
-                style={{ borderColor: "var(--color-border)" }}
-              >
+              <div className="divide-y" style={{ borderColor: "var(--color-border)" }}>
                 {recentOrders.map((order) => (
                   <div
                     key={order.order_id}
-                    className="flex items-center justify-between px-5 py-3"
+                    className="flex items-center justify-between gap-3 px-5 py-3"
                   >
-                    <div>
-                      <p className="text-sm font-medium">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
                         {order.customer_first_name} {order.customer_last_name}
                       </p>
-                      <p
-                        className="text-xs font-mono"
-                        dir="ltr"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
+                      <p className="text-xs font-mono app-muted" dir="ltr">
                         {order.order_number}
                       </p>
                     </div>
-                    <div className="text-left">
+                    <div className="text-left flex-shrink-0">
                       <p className="text-sm font-semibold">
                         ₪{order.total_amount.toLocaleString()}
                       </p>
                       <span
-                        className="text-xs"
-                        style={{
-                          color: ORDER_STATUS_COLOR[order.order_status],
-                        }}
+                        className={`app-badge ${
+                          ORDER_STATUS_BADGE[order.order_status] ??
+                          "app-badge--neutral"
+                        }`}
                       >
                         {ORDER_STATUS_LABEL[order.order_status] ??
                           order.order_status}
@@ -521,39 +501,32 @@ export default function AdminDashboardPage() {
                 ))}
               </div>
             )}
-          </div>
+          </section>
         </div>
 
-        <div>
+        <div className="space-y-4 min-w-0">
           {/* Recent users */}
-          <div className="card-glow mb-4 overflow-hidden">
-            <div
-              className="flex items-center justify-between px-5 py-4 border-b"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              <h2 className="font-semibold text-sm">משתמשים אחרונים</h2>
+          <section className="app-surface" aria-labelledby="recent-users-title">
+            <div className="app-surface-head">
+              <h2 id="recent-users-title" className="app-section-title">
+                משתמשים אחרונים
+              </h2>
               {can(adminRole, "users") && (
                 <Link
                   to="/admin/users"
-                  className="text-xs hover:opacity-70"
-                  style={{ color: "var(--color-primary)" }}
+                  className="app-btn-ghost"
+                  style={{ minHeight: "2.2rem", padding: "0.35rem 0.8rem" }}
                 >
                   להצגת הכול ←
                 </Link>
               )}
             </div>
             {recentUsers.length === 0 ? (
-              <p
-                className="px-5 py-6 text-sm text-center"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
+              <p className="px-5 py-6 text-sm text-center app-muted">
                 אין עדיין משתמשים רשומים.
               </p>
             ) : (
-              <div
-                className="divide-y"
-                style={{ borderColor: "var(--color-border)" }}
-              >
+              <div className="divide-y" style={{ borderColor: "var(--color-border)" }}>
                 {recentUsers.map((u) => (
                   <div
                     key={u.user_id}
@@ -562,39 +535,31 @@ export default function AdminDashboardPage() {
                     <div
                       className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                       style={{
-                        background: "rgba(212,160,48,0.12)",
+                        background:
+                          "color-mix(in srgb, var(--color-primary) 12%, transparent)",
                         color: "var(--color-primary)",
                       }}
                     >
                       {initialOf(u)}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">
                         {nameOf(u)}
                       </p>
-                      <p
-                        className="text-xs truncate"
-                        dir="ltr"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
+                      <p className="text-xs truncate app-muted" dir="ltr">
                         {u.email}
                       </p>
-                      <p
-                        className="text-xs truncate"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
+                      <p className="text-xs truncate app-muted">
                         התחברות אחרונה:{" "}
                         {formatIsraelDateTime(u.last_login_at) || "מעולם"}
                       </p>
                     </div>
                     <span
-                      className="text-xs mr-auto flex-shrink-0"
-                      style={{
-                        color:
-                          u.account_status === "ACTIVE"
-                            ? "var(--color-success)"
-                            : "var(--color-danger)",
-                      }}
+                      className={`app-badge ${
+                        u.account_status === "ACTIVE"
+                          ? "app-badge--success"
+                          : "app-badge--danger"
+                      } flex-shrink-0`}
                     >
                       {u.account_status === "ACTIVE" ? "פעיל" : "מושעה"}
                     </span>
@@ -602,12 +567,16 @@ export default function AdminDashboardPage() {
                 ))}
               </div>
             )}
-          </div>
+          </section>
 
           {/* Subscriptions snapshot */}
-          <div className="card-glow mb-4 p-5">
-            <h2 className="font-semibold text-sm mb-3">מנויים</h2>
-            <div className="space-y-2 text-sm">
+          <section className="app-surface" aria-labelledby="subscriptions-title">
+            <div className="app-surface-head">
+              <h2 id="subscriptions-title" className="app-section-title">
+                מנויים
+              </h2>
+            </div>
+            <div className="app-surface-body space-y-2 text-sm">
               {([
                 {
                   label: "פעילים",
@@ -636,53 +605,56 @@ export default function AdminDashboardPage() {
               ] as const).map((row) => (
                 <div
                   key={row.label}
-                  className="flex items-center justify-between"
+                  className="flex items-center justify-between gap-3"
                 >
-                  <span style={{ color: "var(--color-muted-foreground)" }}>
-                    {row.label}
-                  </span>
+                  <span className="app-muted">{row.label}</span>
                   <span className="font-semibold" style={{ color: row.color }}>
                     {row.value}
                   </span>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
           {/* Quick actions */}
           {quickActions.length > 0 && (
-            <div className="card-glow p-5">
-              <h2 className="font-semibold text-sm mb-4">פעולות מהירות</h2>
-              <div className="space-y-2">
+            <section className="app-surface" aria-labelledby="quick-actions-title">
+              <div className="app-surface-head">
+                <h2 id="quick-actions-title" className="app-section-title">
+                  פעולות מהירות
+                </h2>
+              </div>
+              <div className="app-surface-body space-y-2">
                 {quickActions.map(({ icon, label, href }) => (
                   <Link
                     key={href}
                     to={href}
-                    className="flex items-center justify-between text-sm px-3 py-2 rounded-lg border transition-colors hover:bg-white/5"
+                    className="flex items-center justify-between gap-2 text-sm px-3 py-2 rounded-lg border transition-colors hover:bg-[var(--color-muted)] focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
                     style={{
                       borderColor: "var(--color-border)",
                       color: "var(--color-foreground)",
                     }}
                   >
-                    <span className="flex items-center gap-2.5">
+                    <span className="flex items-center gap-2.5 min-w-0">
                       <span
                         className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
                         style={{
-                          background: "rgba(227,174,60,0.12)",
+                          background:
+                            "color-mix(in srgb, var(--color-primary) 12%, transparent)",
                           color: "var(--color-primary)",
                         }}
                       >
                         <Icon name={icon} size={14} />
                       </span>
-                      {label}
+                      <span className="truncate">{label}</span>
                     </span>
-                    <span style={{ color: "var(--color-muted-foreground)" }}>
+                    <span className="app-muted flex-shrink-0" aria-hidden="true">
                       ←
                     </span>
                   </Link>
                 ))}
               </div>
-            </div>
+            </section>
           )}
         </div>
       </div>

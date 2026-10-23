@@ -9,8 +9,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { maestro } from "@/maestro";
 import Icon from "@/components/icons";
+import PageHeader from "@/components/ui/PageHeader";
 import { toast } from "./toast";
 import type { GenericRecord } from "@/maestro/connectors/MaestroConnector";
 
@@ -24,10 +26,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
-  ACTIVE: { bg: "rgba(34,197,94,0.12)", fg: "var(--color-success)" },
+  ACTIVE: { bg: "rgba(79,122,79,0.12)", fg: "var(--color-success)" },
   INACTIVE: { bg: "rgba(107,114,128,0.15)", fg: "var(--color-muted-foreground)" },
-  DRAFT: { bg: "rgba(227,174,60,0.12)", fg: "var(--color-primary)" },
-  ARCHIVED: { bg: "rgba(239,68,68,0.10)", fg: "var(--color-danger)" },
+  DRAFT: { bg: "rgba(222,154,96,0.12)", fg: "var(--color-primary)" },
+  ARCHIVED: { bg: "rgba(167,70,54,0.10)", fg: "var(--color-danger)" },
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -115,7 +117,7 @@ const btnGhost: React.CSSProperties = {
 const btnDanger: React.CSSProperties = {
   ...btnGhost,
   color: "var(--color-danger)",
-  borderColor: "rgba(239,68,68,0.3)",
+  borderColor: "rgba(167,70,54,0.3)",
 };
 
 const fieldLabel: React.CSSProperties = {
@@ -469,39 +471,44 @@ export function MaestroProductsPage() {
 
   return (
     <div dir="rtl">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, rgba(227,174,60,0.2), rgba(227,174,60,0.05))" }}
-          >
-            <Icon name="target" size={20} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>
-              ניהול מוצרים
-            </h1>
-            <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-              יצירה, עריכה וניהול קטלוג המוצרים
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => load()} style={btnGhost} disabled={loading}>
-            <Icon name="refresh" size={14} />
-            רענון
-          </button>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="rounded-xl px-5 py-2.5 text-sm font-bold transition-all hover:opacity-90"
-            style={{ background: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
-          >
-            <span className="flex items-center gap-2">
-              <span className="text-lg leading-none">+</span>
-              מוצר חדש
-            </span>
-          </button>
+      <PageHeader
+        eyebrow="Maestro CMS"
+        title="ניהול מוצרים"
+        description="יצירה, עריכה וניהול קטלוג המוצרים."
+        breadcrumbs={[
+          { label: "Maestro CMS", to: "/admin/cms/content-editor" },
+          { label: "ניהול מוצרים" },
+        ]}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => load()}
+              className="app-btn-secondary"
+              disabled={loading}
+            >
+              <Icon name="refresh" size={14} />
+              רענון
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="app-btn"
+            >
+              + מוצר חדש
+            </button>
+          </>
+        }
+      />
+
+      <div className="app-alert app-alert--warning mb-5">
+        <Icon name="alertTriangle" size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+        <div>
+          ניהול הקטלוג המחייב מתבצע במסך{" "}
+          <Link to="/admin/products" className="underline underline-offset-4">
+            מוצרים ותוכן
+          </Link>
+          . המסך הזה הוא כלי Maestro ואינו מחליף אותו.
         </div>
       </div>
 
@@ -556,7 +563,7 @@ export function MaestroProductsPage() {
       {selected.size > 0 && (
         <div
           className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-xl"
-          style={{ background: "rgba(227,174,60,0.08)", border: "1px solid rgba(227,174,60,0.2)" }}
+          style={{ background: "rgba(222,154,96,0.08)", border: "1px solid rgba(222,154,96,0.2)" }}
         >
           <span className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>
             {selected.size} נבחרו
@@ -582,7 +589,7 @@ export function MaestroProductsPage() {
       {error && (
         <div
           className="mb-4 flex items-center gap-2 rounded-lg px-4 py-3 text-sm"
-          style={{ background: "rgba(239,68,68,0.10)", color: "var(--color-danger)", border: "1px solid rgba(239,68,68,0.2)" }}
+          style={{ background: "rgba(167,70,54,0.10)", color: "var(--color-danger)", border: "1px solid rgba(167,70,54,0.2)" }}
         >
           <Icon name="alertTriangle" size={16} />
           {error}
@@ -693,7 +700,7 @@ export function MaestroProductsPage() {
                       </button>
                     </h3>
                     {p.featured && (
-                      <span className="rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ background: "rgba(227,174,60,0.12)", color: "var(--color-primary)" }}>
+                      <span className="rounded-full px-1.5 py-0.5 text-[10px] font-medium" style={{ background: "rgba(222,154,96,0.12)", color: "var(--color-primary)" }}>
                         מודגש
                       </span>
                     )}
@@ -792,7 +799,7 @@ export function MaestroProductsPage() {
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
           <div className="w-full max-w-md p-6 my-auto" style={{ ...cardStyle, background: "var(--color-card)" }}>
             <div className="flex items-center gap-2 mb-5">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(227,174,60,0.15)" }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(222,154,96,0.15)" }}>
                 <span className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>+</span>
               </div>
               <h2 className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>מוצר חדש</h2>
@@ -936,7 +943,7 @@ function DetailPanel({
               onClick={() => setTab(t.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
               style={{
-                background: tab === t.id ? "rgba(227,174,60,0.1)" : "transparent",
+                background: tab === t.id ? "rgba(222,154,96,0.1)" : "transparent",
                 color: tab === t.id ? "var(--color-primary)" : "var(--color-muted-foreground)",
               }}
             >
@@ -1193,7 +1200,7 @@ function PricingTab({
       </div>
 
       {discount > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(34,197,94,0.08)" }}>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(79,122,79,0.08)" }}>
           <Icon name="tag" size={14} />
           <span className="text-sm font-bold" style={{ color: "var(--color-success)" }}>
             הנחה {discount}% — חיסכון {formatPrice(price - salePrice!, draft.currency ?? "ILS")}

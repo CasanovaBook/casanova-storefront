@@ -22,7 +22,7 @@ export default function CmsHint({ what }: { what: string }) {
     <p
       className="text-xs px-4 py-3 rounded-lg border border-dashed"
       style={{
-        borderColor: "rgba(212,160,48,0.45)",
+        borderColor: "rgba(196,122,67,0.45)",
         color: "var(--color-muted-foreground)",
       }}
     >

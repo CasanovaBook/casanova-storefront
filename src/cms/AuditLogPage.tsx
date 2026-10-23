@@ -9,6 +9,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { maestro } from "@/maestro";
 import type { AuditEntry } from "@/maestro/core/types";
 import Icon from "@/components/icons";
+import PageHeader from "@/components/ui/PageHeader";
+import EmptyState from "@/components/ui/EmptyState";
+import Spinner from "@/components/ui/Spinner";
 
 const ENTITY_LABELS: Record<string, string> = {
   content: "תוכן",
@@ -32,11 +35,13 @@ const ACTION_LABELS: Record<string, string> = {
   get: "קריאה",
 };
 
-const ACTION_COLORS: Record<string, { bg: string; fg: string }> = {
-  create: { bg: "rgba(34,197,94,0.12)", fg: "var(--color-success)" },
-  update: { bg: "rgba(227,174,60,0.12)", fg: "var(--color-primary)" },
-  delete: { bg: "rgba(239,68,68,0.12)", fg: "var(--color-danger)" },
+const ACTION_BADGE: Record<string, string> = {
+  create: "app-badge--success",
+  update: "app-badge--accent",
+  delete: "app-badge--danger",
 };
+
+const COLUMNS = ["זמן", "פעולה", "סוג", "מזהה", "מבצע", "פרטים"];
 
 function timeAgo(dateStr: string): string {
   const now = Date.now();
@@ -51,13 +56,6 @@ function timeAgo(dateStr: string): string {
   if (days < 7) return `לפני ${days} ימים`;
   return new Date(dateStr).toLocaleDateString("he-IL");
 }
-
-const inputStyle: React.CSSProperties = {
-  background: "var(--color-secondary)",
-  border: "1px solid var(--color-border)",
-  color: "var(--color-foreground)",
-  borderRadius: "var(--radius)",
-};
 
 export function AuditLogPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
@@ -108,138 +106,193 @@ export function AuditLogPage() {
     [entries],
   );
 
+  const hasActiveFilters = Boolean(filter || entityFilter);
+
+  const resetFilters = () => {
+    setFilter("");
+    setEntityFilter("");
+    setPage(0);
+  };
+
   return (
     <div dir="rtl">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Icon name="list" size={24} />
-          <h1 className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>יומן שינויים</h1>
-        </div>
-        <button
-          onClick={fetchAudit}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all hover:opacity-80"
-          style={{ border: "1px solid var(--color-border)", color: "var(--color-muted-foreground)" }}
-        >
-          <Icon name="refresh" size={14} />
-          רענון
-        </button>
-      </div>
+      <PageHeader
+        eyebrow="Maestro CMS"
+        title="יומן שינויים"
+        description="מעקב אחר מי שינה מה ומתי — רשומות קריאה מתוך יומן הביקורת של המערכת."
+        actions={
+          <button
+            type="button"
+            onClick={fetchAudit}
+            className="app-btn-secondary"
+            disabled={loading}
+          >
+            <Icon name="refresh" size={14} />
+            רענון
+          </button>
+        }
+      />
 
       {/* Filters */}
-      <div className="mb-4 flex gap-3 flex-wrap">
-        <input
-          type="text"
-          value={filter}
-          onChange={(e) => { setFilter(e.target.value); setPage(0); }}
-          placeholder="חיפוש לפי אימייל, מפתח או פרטים…"
-          className="flex-1 min-w-[200px] px-3 py-1.5 text-sm"
-          style={inputStyle}
-          dir="rtl"
-        />
-        <select
-          value={entityFilter}
-          onChange={(e) => { setEntityFilter(e.target.value); setPage(0); }}
-          className="rounded-lg px-3 py-1.5 text-sm"
-          style={inputStyle}
-        >
-          <option value="">כל הסוגים</option>
-          {uniqueEntities.map((ent) => (
-            <option key={ent} value={ent}>{ENTITY_LABELS[ent] ?? ent}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Stats */}
-      <p className="mb-3 text-xs" style={{ color: "var(--color-muted-foreground)", opacity: 0.6 }}>
-        {filtered.length} רשומות {entityFilter ? `ב-${ENTITY_LABELS[entityFilter] ?? entityFilter}` : ""}
-      </p>
+      <section className="app-surface mb-4" aria-labelledby="audit-filters-title">
+        <div className="app-surface-head">
+          <h2 id="audit-filters-title" className="app-section-title flex items-center gap-2">
+            <Icon name="search" size={16} />
+            סינון
+          </h2>
+          <p className="text-xs app-muted" role="status" aria-live="polite">
+            {filtered.length} רשומות
+            {entityFilter ? ` ב${ENTITY_LABELS[entityFilter] ?? entityFilter}` : ""}
+          </p>
+        </div>
+        <div className="app-surface-body">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="relative flex-1 min-w-0">
+              <span
+                className="absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none app-muted"
+                aria-hidden="true"
+              >
+                <Icon name="search" size={16} />
+              </span>
+              <label htmlFor="audit-search" className="sr-only">
+                חיפוש ביומן השינויים
+              </label>
+              <input
+                id="audit-search"
+                type="search"
+                value={filter}
+                onChange={(e) => {
+                  setFilter(e.target.value);
+                  setPage(0);
+                }}
+                placeholder="חיפוש לפי אימייל, מפתח או פרטים…"
+                className="w-full ps-9 pe-3"
+                dir="rtl"
+              />
+            </div>
+            <div className="sm:w-56">
+              <label htmlFor="audit-entity" className="sr-only">
+                סינון לפי סוג ישות
+              </label>
+              <select
+                id="audit-entity"
+                value={entityFilter}
+                onChange={(e) => {
+                  setEntityFilter(e.target.value);
+                  setPage(0);
+                }}
+                className="w-full px-3"
+              >
+                <option value="">כל הסוגים</option>
+                {uniqueEntities.map((ent) => (
+                  <option key={ent} value={ent}>
+                    {ENTITY_LABELS[ent] ?? ent}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {hasActiveFilters && (
+              <button type="button" onClick={resetFilters} className="app-btn-ghost">
+                <Icon name="x" size={14} />
+                ניקוי סינון
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Table */}
       {loading ? (
-        <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>טוען…</p>
-      ) : !paged.length ? (
-        <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>אין רשומות להצגה.</p>
+        <Spinner label="טוען את יומן השינויים…" />
+      ) : !filtered.length ? (
+        <EmptyState
+          icon="list"
+          title={entries.length ? "לא נמצאו רשומות מתאימות" : "אין רשומות להצגה"}
+          description={
+            entries.length
+              ? "שנו את מונח החיפוש או נקו את הסינון כדי לראות את כל הרשומות."
+              : "רשומות ביקורת יופיעו כאן לאחר ביצוע פעולות עריכה במערכת."
+          }
+          actions={
+            hasActiveFilters ? (
+              <button type="button" onClick={resetFilters} className="app-btn-secondary">
+                ניקוי סינון
+              </button>
+            ) : undefined
+          }
+        />
       ) : (
-        <div className="overflow-auto rounded-xl" style={{ border: "1px solid var(--color-border)" }}>
-          <table className="w-full text-sm">
-            <thead style={{ background: "var(--color-card)" }}>
-              <tr>
-                {["זמן", "פעולה", "סוג", "מזהה", "מבצע", "פרטים"].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3 py-2.5 text-right text-xs font-medium"
-                    style={{ color: "var(--color-muted-foreground)", borderBottom: "1px solid var(--color-border)" }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {paged.map((entry, i) => {
-                const colors = ACTION_COLORS[entry.action] ?? { bg: "var(--color-muted)", fg: "var(--color-muted-foreground)" };
-                return (
-                  <tr
-                    key={i}
-                    className="transition-colors"
-                    style={{ borderBottom: "1px solid var(--color-border)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-secondary)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <td className="px-3 py-2 whitespace-nowrap text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                      {timeAgo(entry.created_at)}
+        <>
+          <p className="mb-3 text-xs app-muted">
+            מציג {page * perPage + 1}–{Math.min((page + 1) * perPage, filtered.length)} מתוך {filtered.length}
+          </p>
+          <div className="app-table-wrap">
+            <table className="app-table" aria-label="יומן שינויים">
+              <thead>
+                <tr>
+                  {COLUMNS.map((h) => (
+                    <th key={h} scope="col">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paged.map((entry, i) => (
+                  <tr key={`${entry.created_at}-${i}`}>
+                    <td className="whitespace-nowrap text-xs app-muted">
+                      <time dateTime={entry.created_at} title={new Date(entry.created_at).toLocaleString("he-IL")}>
+                        {timeAgo(entry.created_at)}
+                      </time>
                     </td>
-                    <td className="px-3 py-2">
-                      <span
-                        className="rounded-full px-2 py-0.5 text-xs font-medium"
-                        style={{ background: colors.bg, color: colors.fg }}
-                      >
+                    <td>
+                      <span className={`app-badge ${ACTION_BADGE[entry.action] ?? "app-badge--neutral"}`}>
                         {ACTION_LABELS[entry.action] ?? entry.action}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-sm" style={{ color: "var(--color-foreground)" }}>
+                    <td className="text-sm whitespace-nowrap">
                       {ENTITY_LABELS[entry.entity] ?? entry.entity}
                     </td>
-                    <td className="px-3 py-2 text-xs font-mono" dir="ltr" style={{ color: "var(--color-muted-foreground)", opacity: 0.6 }}>
+                    <td className="text-xs font-mono max-w-[14rem] truncate" dir="ltr" title={entry.entity_id ?? undefined}>
                       {entry.entity_id}
                     </td>
-                    <td className="px-3 py-2 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                    <td className="text-xs max-w-[14rem] truncate" dir="ltr" title={entry.actor_email ?? undefined}>
                       {entry.actor_email}
                     </td>
-                    <td className="px-3 py-2 text-xs max-w-[200px] truncate" style={{ color: "var(--color-muted-foreground)", opacity: 0.6 }}>
+                    <td className="text-xs app-muted max-w-[18rem] truncate" title={entry.detail ?? undefined}>
                       {entry.detail}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
+        <nav className="mt-4 flex items-center justify-center gap-2 flex-wrap" aria-label="עימוד יומן השינויים">
           <button
+            type="button"
             onClick={() => setPage(Math.max(0, page - 1))}
             disabled={page === 0}
-            className="rounded-lg px-3 py-1.5 text-sm transition-all disabled:opacity-30"
-            style={{ border: "1px solid var(--color-border)", color: "var(--color-muted-foreground)" }}
+            className="app-btn-secondary"
           >
             הקודם
           </button>
-          <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+          <span className="text-sm app-muted" aria-live="polite">
             עמוד {page + 1} מתוך {totalPages}
           </span>
           <button
+            type="button"
             onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
             disabled={page >= totalPages - 1}
-            className="rounded-lg px-3 py-1.5 text-sm transition-all disabled:opacity-30"
-            style={{ border: "1px solid var(--color-border)", color: "var(--color-muted-foreground)" }}
+            className="app-btn-secondary"
           >
             הבא
           </button>
-        </div>
+        </nav>
       )}
     </div>
   );

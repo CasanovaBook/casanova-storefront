@@ -1,6 +1,8 @@
+import { useEffect, useRef } from "react"
 import { Link, isRouteErrorResponse, useRouteError } from "react-router"
 
 import Icon from "./icons"
+import usePageTitle from "../lib/usePageTitle"
 
 /**
  * What a failed route looks like.
@@ -8,75 +10,189 @@ import Icon from "./icons"
  * Shared by the error boundary and the catch-all, because "this address does
  * not exist" and "this screen threw" are the same screen with different words:
  * both need a way out, and neither needs a stack trace.
+ *
+ * `RouteError` is rendered by the router outside PublicRoot, so its standalone
+ * variant supplies the document chrome (skip link, `main#main`, brand header
+ * and footer). `NotFoundPage` is a child of PublicRoot and must not duplicate
+ * those landmarks.
  */
 
-function RouteErrorView({ missing }: { missing: boolean }) {
-  return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center px-6 py-16 text-center gap-4">
-      <span
-        className="w-16 h-16 rounded-full flex items-center justify-center shrink-0"
-        style={{
-          background: missing
-            ? "rgba(212,175,55,0.14)"
-            : "rgba(239,68,68,0.15)",
+function RouteErrorView({
+  missing,
+  status,
+  standalone = false,
+}: {
+  missing: boolean
+  status?: number | null
+  standalone?: boolean
+}) {
+  usePageTitle(missing ? "הדף לא נמצא" : "המסך לא הצליח להיטען")
 
-          color: missing ? "var(--color-primary)" : "#F87171",
-        }}
-      >
-        <Icon name={missing ? "search" : "shield"} size={28} />
-      </span>
+  const headingRef = useRef<HTMLHeadingElement>(null)
 
-      <h1
-        className="font-display text-3xl md:text-4xl font-bold"
-        style={{ color: "var(--color-foreground)" }}
-      >
-        {missing ? "הדף לא נמצא" : "המסך לא הצליח להיטען"}
-      </h1>
+  useEffect(() => {
+    headingRef.current?.focus()
+  }, [])
 
-      <p
-        className="text-sm md:text-base max-w-md"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        {missing
-          ? "הכתובת שביקשתם אינה קיימת, או שהקישור השתנה מאז ששותף."
-          : "קרתה תקלה בלתי צפויה במסך הזה. רענון אחד פותר את זה כמעט תמיד — ואם לא, נשמח לשמוע מכם ונתקן."}
-      </p>
+  const eyebrow = missing
+    ? "שגיאה 404"
+    : status
+      ? `שגיאה ${status}`
+      : "תקלה זמנית"
 
-      <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
-        {missing ? (
-          <Link
-            to="/store"
-            className="btn-gradient tap-target px-6 py-3 rounded-full text-sm font-semibold"
+  const card = (
+    <div className="mx-auto w-full max-w-xl">
+      <div className="app-surface overflow-hidden">
+        <div style={{ height: 3, background: "var(--color-primary)" }} />
+
+        <div className="flex flex-col items-center gap-3 px-6 py-8 text-center sm:px-10 sm:py-11">
+          <span
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
+            style={{
+              background: missing
+                ? "color-mix(in srgb, var(--color-primary) 12%, transparent)"
+                : "color-mix(in srgb, var(--color-danger) 12%, transparent)",
+              border: missing
+                ? "1px solid color-mix(in srgb, var(--color-primary) 28%, transparent)"
+                : "1px solid color-mix(in srgb, var(--color-danger) 28%, transparent)",
+              color: missing ? "var(--color-primary)" : "var(--color-danger)",
+            }}
           >
+            <Icon name={missing ? "search" : "alertTriangle"} size={26} />
+          </span>
+
+          <p className="app-eyebrow" style={{ margin: 0 }}>
+            {eyebrow}
+          </p>
+
+          <h1
+            id="route-error-title"
+            ref={headingRef}
+            tabIndex={-1}
+            className="app-title break-words"
+          >
+            {missing ? "הדף לא נמצא" : "המסך לא הצליח להיטען"}
+          </h1>
+
+          <p className="app-subtitle" style={{ marginTop: 0 }}>
+            {missing
+              ? "הכתובת שביקשתם אינה קיימת, או שהקישור השתנה מאז ששותף."
+              : "קרתה תקלה בלתי צפויה במסך הזה. רענון אחד פותר את זה כמעט תמיד — ואם לא, נשמח לשמוע מכם ונתקן."}
+          </p>
+
+          <div className="mt-3 flex w-full flex-wrap items-center justify-center gap-2.5">
+            {missing ? (
+              <Link to="/" className="app-btn">
+                <Icon name="home" size={16} />
+                לדף הבית
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="app-btn"
+              >
+                <Icon name="refresh" size={16} />
+                טעינה מחדש
+              </button>
+            )}
+
+            {missing ? (
+              <Link to="/store" className="app-btn app-btn-secondary">
+                לחנות
+              </Link>
+            ) : (
+              <Link to="/" className="app-btn app-btn-secondary">
+                <Icon name="home" size={16} />
+                לדף הבית
+              </Link>
+            )}
+
+            <Link to="/support" className="app-btn app-btn-ghost">
+              <Icon name="message" size={16} />
+              פנייה לתמיכה
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  if (!standalone) {
+    return (
+      <div className="app-page app-page--narrow px-4 py-6 sm:px-6 sm:py-12">
+        {card}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="flex min-h-screen flex-col"
+      style={{
+        background: "var(--color-background)",
+        color: "var(--color-foreground)",
+      }}
+    >
+      <a href="#main" className="skip-link">
+        דלג לתוכן הראשי
+      </a>
+
+      <header
+        className="border-b"
+        style={{ borderColor: "var(--color-border)" }}
+      >
+        <div className="site-container flex flex-wrap items-center justify-between gap-3 py-4">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2.5 no-underline"
+            style={{ color: "var(--color-foreground)" }}
+            aria-label="Casanova — דף הבית"
+          >
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-full"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+                border:
+                  "1px solid color-mix(in srgb, var(--color-primary) 28%, transparent)",
+                color: "var(--color-primary)",
+              }}
+            >
+              <Icon name="bookOpen" size={17} />
+            </span>
+            <span
+              className="font-brand text-lg tracking-[0.16em]"
+              dir="ltr"
+              lang="en"
+            >
+              CASANOVA
+            </span>
+          </Link>
+
+          <Link to="/store" className="app-btn app-btn-secondary">
             לחנות
           </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="btn-gradient tap-target px-6 py-3 rounded-full text-sm font-semibold inline-flex items-center gap-2"
-          >
-            <Icon name="refresh" size={16} />
-            טעינה מחדש
-          </button>
-        )}
-        <Link
-          to="/"
-          className="tap-target px-6 py-3 rounded-full text-sm font-semibold inline-flex items-center gap-2"
-          style={{
-            border: "1px solid var(--color-border)",
-            color: "var(--color-foreground)",
-          }}
-        >
-          <Icon name="home" size={16} />
-          לדף הבית
-        </Link>
-      </div>
+        </div>
+      </header>
 
-      {/* Deliberately no error text, no component stack and no source frames.
-          React Router already logs the real error to the console, which is
-          where a developer can read it; repeating it into the DOM would hand
-          internals to anyone who manages to trigger a bug. */}
+      <main
+        id="main"
+        tabIndex={-1}
+        aria-labelledby="route-error-title"
+        className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 sm:py-16"
+      >
+        {card}
+      </main>
+
+      <footer
+        className="border-t"
+        style={{ borderColor: "var(--color-border)" }}
+      >
+        <div className="site-container app-muted py-5 text-center text-xs">
+          © {new Date().getFullYear()} Casanova. כל הזכויות שמורות.
+        </div>
+      </footer>
     </div>
   )
 }
@@ -92,14 +208,13 @@ function RouteErrorView({ missing }: { missing: boolean }) {
 
 export default function RouteError() {
   const error = useRouteError()
+  const status = isRouteErrorResponse(error) ? error.status : null
 
-  const missing = isRouteErrorResponse(error) && error.status === 404
-
-  return <RouteErrorView missing={missing} />
+  return <RouteErrorView missing={status === 404} status={status} standalone />
 }
 
 /** Catch-all for addresses the route table does not define. */
 
 export function NotFoundPage() {
-  return <RouteErrorView missing />
+  return <RouteErrorView missing status={404} />
 }

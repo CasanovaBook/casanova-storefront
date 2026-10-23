@@ -1,73 +1,97 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Outlet, Link, useLocation, useNavigate } from "react-router"
 import { useApp } from "../../context/AppContext"
-import { useCms } from "../../context/CmsContext"
 import { fmt, useContent } from "../../content/useContent"
+import { SmartLink } from "../../content/render"
 import Icon from "../icons"
 import ThemeToggle from "../ThemeToggle"
 import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
 import { loadContent } from "../../content/store"
 import useFavicon from "../useFavicon"
-import logoImg from "../../assets/main_photo.jpg"
+import logoImg from "../../assets/casanova-portrait.webp"
 
 /**
- * Public shell: header, navigation and the routed page.
+ * Public storefront shell.
  *
- * All visible text is editable through Maestro CMS:
- *  - Brand name: global.brand
- *  - Navigation: global.nav (list of label+link)
- *  - Account actions: nav.login, nav.logout, etc.
- *  - Footer: global.footerTagline, global.footerCopyright
+ * The approved homepage runs without this shell; every other public route
+ * (store, checkout, support, legal pages, recovery) shares it. Dark chrome
+ * and a cream content canvas carry the same brand as the homepage without
+ * turning informational pages into marketing posters.
  */
 export default function PublicRoot() {
   const { isAuthenticated, isAdmin, user, logout } = useApp()
-  const { publishedProducts, activeSections, faqs } = useCms()
   const c = useContent()
   useFavicon()
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null)
 
-  // Load content from the database on every public page load so the site
-  // always renders the latest Maestro CMS edits (not just the localStorage cache).
-  // Re-load on every route change so edits made in Maestro appear immediately
-  // when the user navigates to a different page.
   useEffect(() => {
     loadContent().catch(() => {})
   }, [location.pathname])
 
-  // A menu left open must not follow the visitor to the next screen.
   useEffect(() => {
     setMenuOpen(false)
   }, [location.pathname])
 
-  const hasCatalog = publishedProducts.length > 0
-  const hasPricing =
-    publishedProducts.some((p) => p.product_type === "BUNDLE") &&
-    publishedProducts.some((p) => p.product_type === "SUBSCRIPTION")
-  const hasFaq =
-    activeSections.some((s) => s.type === "FAQ") && faqs.some((f) => f.active)
+  useEffect(() => {
+    if (!menuOpen) return
 
-  // Editable nav from the content store; falls back to the registry defaults.
-  const navItems = c.list<{ label: string; to: string }>("global.nav")
+    const panel = menuRef.current
+    const previousOverflow = document.body.style.overflow
+
+    document.body.style.overflow = "hidden"
+
+    const focusable = () =>
+      Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter((element) => element.getAttribute("aria-hidden") !== "true")
+
+    focusable()[0]?.focus()
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        setMenuOpen(false)
+        return
+      }
+
+      if (event.key !== "Tab") return
+
+      const items = focusable()
+      if (items.length === 0) return
+
+      const first = items[0]
+      const last = items[items.length - 1]
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown)
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown)
+      document.body.style.overflow = previousOverflow
+      menuButtonRef.current?.focus()
+    }
+  }, [menuOpen])
+
+  const navItems = c
+    .list<{ label: string; to: string }>("global.nav")
+    .filter((item) => item.label.trim() && item.to.trim())
   const brand = c("global.brand") || "Casanova"
   const logoSrc = c("global.logo") || logoImg
 
-  const anchors = [
-    { href: "#catalog", label: "קטלוג", show: hasCatalog },
-    { href: "#pricing", label: "מחירים", show: hasPricing },
-    { href: "#faq", label: "שאלות נפוצות", show: hasFaq },
-  ].filter((item) => item.show)
-
-  const onLanding = location.pathname === "/"
-  const sectionHref = (hash: string) => (onLanding ? hash : `/${hash}`)
-
-  const handleLogout = () => {
-    logout()
-    navigate("/")
-  }
-
-  // Editable account action labels
   const loginLabel = c("ui.nav.login") || "התחברות"
   const logoutLabel = c("ui.nav.logout") || "התנתקות"
   const adminLabel = c("ui.nav.admin") || "ניהול"
@@ -75,234 +99,251 @@ export default function PublicRoot() {
   const ctaLabel = c("ui.nav.cta") || "קבלו גישה"
   const greetingPrefix = c("ui.nav.greeting") || "שלום"
 
-  const accountActions = isAuthenticated ? (
+  useEffect(() => {
+    document.documentElement.dataset.appShell = "true"
+    return () => { delete document.documentElement.dataset.appShell }
+  }, [])
+
+  const footerTagline =
+    c("global.footerTagline") || "כל הספרים שלכם, במקום אחד."
+  const footerCopyright = fmt(
+    c("global.footerCopyright") ||
+      `© ${new Date().getFullYear()} Casanova. כל הזכויות שמורות.`,
+    { year: new Date().getFullYear() },
+  )
+
+  const showStoreCta = !["/store", "/checkout", "/checkout/success"].includes(
+    location.pathname,
+  )
+
+  const handleLogout = () => {
+    setMenuOpen(false)
+    logout()
+    navigate("/")
+  }
+
+  const isNavActive = (to: string) => {
+    const [path, hash] = to.split("#")
+    if (hash) {
+      return location.pathname === path && location.hash === `#${hash}`
+    }
+    return location.pathname === path
+  }
+
+  const desktopAccount = isAuthenticated ? (
     <>
       <Link
         to={isAdmin ? "/admin" : "/dashboard"}
-        className="tap-target text-sm font-medium px-4 py-2 rounded-full border transition-colors hover:bg-white/5"
-        style={{
-          borderColor: "var(--color-border)",
-          color: "var(--color-foreground)",
-        }}
+        className="site-account-link"
       >
         {isAdmin ? adminLabel : libraryLabel}
       </Link>
       <button
+        type="button"
         onClick={handleLogout}
-        className="tap-target text-sm font-medium transition-opacity hover:opacity-70 px-2"
-        style={{ color: "var(--color-muted-foreground)" }}
+        className="site-account-link"
       >
         {logoutLabel}
       </button>
     </>
   ) : (
     <>
-      <Link
-        to="/login"
-        className="tap-target inline-flex items-center justify-center text-sm font-medium transition-opacity hover:opacity-70 px-2 py-2"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
+      <Link to="/login" className="site-account-link">
         {loginLabel}
       </Link>
+      {showStoreCta && (
+        <Link to="/store" className="app-btn">
+          {ctaLabel}
+        </Link>
+      )}
+    </>
+  )
+
+  const mobileAccount = isAuthenticated ? (
+    <>
       <Link
-        to="/checkout"
-        className="btn-gradient tap-target inline-flex items-center justify-center text-sm font-bold px-5 py-2 rounded-full"
+        to={isAdmin ? "/admin" : "/dashboard"}
+        className="app-btn app-btn-secondary"
+        onClick={() => setMenuOpen(false)}
       >
-        {ctaLabel}
+        {isAdmin ? adminLabel : libraryLabel}
+      </Link>
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="app-btn app-btn-ghost"
+      >
+        {logoutLabel}
+      </button>
+    </>
+  ) : (
+    <>
+      {showStoreCta ? (
+        <Link
+          to="/store"
+          className="app-btn"
+          onClick={() => setMenuOpen(false)}
+        >
+          {ctaLabel}
+        </Link>
+      ) : null}
+      <Link
+        to="/login"
+        className="app-btn app-btn-secondary"
+        onClick={() => setMenuOpen(false)}
+      >
+        {loginLabel}
       </Link>
     </>
   )
 
-
-  // Editable footer text
-  const footerTagline = c("global.footerTagline") || "כל הספרים שלכם, במקום אחד."
-  // The editable string may carry a {year} placeholder (the registry default
-  // does); fill it in at render so the year is always the current one.
-  const footerCopyright = fmt(
-    c("global.footerCopyright") || `© ${new Date().getFullYear()} Casanova. כל הזכויות שמורות.`,
-    { year: new Date().getFullYear() },
-  )
-
   return (
-    <div
-      className="min-h-full flex flex-col"
-      style={{ background: "var(--color-background)" }}
-    >
-      <a href="#main" className="skip-link">דלג לתוכן הראשי</a>
-      <header
-        className="safe-top fixed left-0 right-0 z-50 glass border-b transition-all top-0"
-        style={{ borderColor: "rgba(30,30,46,0.8)" }}
-      >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-2.5 group min-w-0">
-            <img
-              src={logoSrc}
-              alt=""
-              className="w-8 h-8 rounded-lg object-cover shadow-lg flex-shrink-0"
-            />
-            <span
-              dir="ltr"
-              className="font-display text-xl font-bold tracking-wide truncate"
-              style={{ color: "var(--color-primary)" }}
-            >
+    <div className="public-shell">
+      <a href="#main" className="skip-link">
+        דלג לתוכן הראשי
+      </a>
+
+      <header className="site-header">
+        <div className="site-container site-header-inner">
+          <Link to="/" className="site-brand" aria-label={`${brand} — דף הבית`}>
+            <img src={logoSrc} alt="" />
+            <span className="site-brand-word" dir="ltr" lang="en">
               {brand}
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
-            {anchors.map((item) => (
-              <a
-                key={item.href}
-                href={sectionHref(item.href)}
-                className="text-sm font-medium transition-colors hover:opacity-80"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {item.label}
-              </a>
-            ))}
-            {/* Editable nav links from the content store */}
+          <nav className="site-nav" aria-label="ניווט ראשי">
             {navItems.map((item) => (
-              <Link
-                key={item.to}
+              <SmartLink
+                key={`${item.label}-${item.to}`}
                 to={item.to}
-                className="text-sm font-medium transition-colors hover:opacity-80"
-                style={{ color: "var(--color-muted-foreground)" }}
+                className="site-nav-link"
+                aria-current={isNavActive(item.to) ? "page" : undefined}
               >
                 {item.label}
-              </Link>
+              </SmartLink>
             ))}
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="site-header-actions">
             {isAuthenticated && (
-              <span
-                className="text-sm hidden lg:block"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
+              <span className="site-account-link">
                 {greetingPrefix}, {user?.first_name}
               </span>
             )}
-            <div className="hidden md:flex items-center gap-3">
-              <ThemeToggle />
-              {accountActions}
+            <div className="hidden md:flex items-center gap-2">
+              <span className="site-theme-toggle">
+                <ThemeToggle />
+              </span>
+              {desktopAccount}
             </div>
-            <div className="md:hidden flex items-center gap-1">
+            <span className="site-theme-toggle md:hidden">
               <ThemeToggle />
-              <button
-                onClick={() => setMenuOpen((open) => !open)}
-                className="tap-target flex items-center justify-center rounded-lg border"
-                style={{
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-foreground)",
-                }}
-                aria-label={menuOpen ? "סגירת תפריט" : "פתיחת תפריט"}
-                aria-expanded={menuOpen}
-              >
-                <Icon name={menuOpen ? "x" : "menu"} size={18} />
-              </button>
-            </div>
+            </span>
+            <button
+              ref={menuButtonRef}
+              type="button"
+              className="site-menu-btn"
+              onClick={() => setMenuOpen(true)}
+              aria-expanded={menuOpen}
+              aria-controls="site-mobile-menu"
+              aria-label="פתיחת תפריט"
+            >
+              <Icon name="menu" size={18} />
+            </button>
           </div>
         </div>
-
-        {/* Mobile menu */}
-        {menuOpen && (
-          <div
-            className="md:hidden border-t px-4 py-3 space-y-1"
-            style={{
-              borderColor: "var(--color-border)",
-              background: "var(--color-card)",
-            }}
-          >
-            {anchors.map((item) => (
-              <a
-                key={item.href}
-                href={sectionHref(item.href)}
-                className="tap-target block px-3 py-2.5 rounded-lg text-sm font-medium"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {item.label}
-              </a>
-            ))}
-            {navItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className="tap-target block px-3 py-2.5 rounded-lg text-sm font-medium"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {item.label}
-              </Link>
-            ))}
-            <div
-              className="pt-2 mt-2 border-t flex items-center gap-3"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              {accountActions}
-            </div>
-          </div>
-        )}
       </header>
 
-      <main id="main" className="flex-1 pt-16">
+      {menuOpen && (
+        <div
+          ref={menuRef}
+          id="site-mobile-menu"
+          className="site-mobile-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="site-mobile-title"
+        >
+          <h2 id="site-mobile-title" className="sr-only">
+            ניווט
+          </h2>
+
+          <div className="site-mobile-head">
+            <span className="site-brand-word" dir="ltr" lang="en">
+              {brand}
+            </span>
+            <button
+              type="button"
+              className="site-mobile-close"
+              onClick={() => setMenuOpen(false)}
+              aria-label="סגירת התפריט"
+            >
+              <Icon name="x" size={18} />
+            </button>
+          </div>
+
+          <nav className="site-mobile-nav" aria-label="ניווט ראשי">
+            {navItems.map((item) => (
+              <SmartLink
+                key={`${item.label}-${item.to}`}
+                to={item.to}
+                className="site-mobile-link"
+                onClick={() => setMenuOpen(false)}
+              >
+                {item.label}
+                <Icon name="arrowLeft" size={15} />
+              </SmartLink>
+            ))}
+          </nav>
+
+          <div className="site-mobile-actions">{mobileAccount}</div>
+
+          <p className="site-mobile-note">CASANOVA · תוכן למבוגרים · 18+</p>
+        </div>
+      )}
+
+      <main id="main" className="public-main app-main">
         <Outlet />
       </main>
 
-      {/* ── FOOTER ────────────────────────────────────────────── */}
-      <footer
-        className="border-t py-8"
-        style={{ borderColor: "var(--color-border)" }}
-      >
-        <p
-          className="max-w-6xl mx-auto px-6 pb-5 text-sm text-center whitespace-pre-line"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          {footerTagline}
-        </p>
-        <div
-          className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          <div className="flex items-center gap-2">
-            <img
-              src={logoSrc}
-              alt=""
-              className="w-6 h-6 rounded object-cover"
-            />
-            <span
-              className="font-display font-bold tracking-wide"
-              style={{ color: "var(--color-primary)" }}
-            >
-              {brand}
-            </span>
+      <footer className="site-footer">
+        <div className="site-container">
+          <div className="site-footer-top">
+            <div>
+              <span className="site-brand-word" dir="ltr" lang="en">
+                {brand}
+              </span>
+              <p className="site-footer-tagline">{footerTagline}</p>
+            </div>
+
+            <div>
+              <nav className="site-footer-nav" aria-label="ניווט בפוטר">
+                {navItems.map((item) => (
+                  <SmartLink key={`${item.label}-${item.to}`} to={item.to}>
+                    {item.label}
+                  </SmartLink>
+                ))}
+                <Link to="/login">{loginLabel}</Link>
+              </nav>
+
+              <div className="site-footer-legal">
+                <Link to="/terms-and-conditions">תנאי שימוש</Link>
+                <Link to="/privacy-policy">מדיניות פרטיות</Link>
+                <Link to="/cancellation-and-refund-policy">
+                  ביטול והחזרים
+                </Link>
+                <Link to="/accessibility-statement">הצהרת נגישות</Link>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            {navItems.map((item) => (
-              <Link key={item.to} to={item.to} className="hover:opacity-80 transition-opacity">
-                {item.label}
-              </Link>
-            ))}
-            <Link to="/login" className="hover:opacity-80 transition-opacity">
-              {loginLabel}
-            </Link>
-            {/* Always available, and the way back if the floating button was
-             * hidden. See AccessibilityFooterLink. */}
-            <AccessibilityFooterLink />
+
+          <div className="site-footer-bottom">
+            <div className="site-footer-utility">
+              <AccessibilityFooterLink />
+            </div>
+            <p>{footerCopyright}</p>
+            <span style={{ color: "#de9a60" }}>תוכן למבוגרים · 18+</span>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
-            <Link to="/terms-and-conditions" className="hover:opacity-80 transition-opacity">
-              תנאי שימוש
-            </Link>
-            <Link to="/privacy-policy" className="hover:opacity-80 transition-opacity">
-              מדיניות פרטיות
-            </Link>
-            <Link to="/cancellation-and-refund-policy" className="hover:opacity-80 transition-opacity">
-              מדיניות ביטולים
-            </Link>
-            <Link to="/accessibility-statement" className="hover:opacity-80 transition-opacity">
-              הצהרת נגישות
-            </Link>
-          </div>
-          <p>{footerCopyright}</p>
         </div>
       </footer>
     </div>

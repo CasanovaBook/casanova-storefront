@@ -165,13 +165,13 @@ export default function Modal({
       aria-modal="true"
       aria-label={ariaLabel ?? (typeof title === "string" ? title : undefined)}
       className={`fixed inset-0 flex items-start justify-center overflow-y-auto overscroll-contain p-4 sm:p-6 ${overlayClassName}`}
-      style={{ background: "rgba(0,0,0,0.7)", zIndex }}
+      style={{ background: "var(--app-overlay)", zIndex }}
       onClick={closeOnOverlayClick ? onClose : undefined}
     >
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={`card-glow w-full ${SIZE_CLASS[size]} p-6 ${
+        className={`app-surface app-modal w-full ${SIZE_CLASS[size]} ${
           align === "center" ? "my-auto" : "my-4"
         } ${panelClassName}`}
         onClick={
@@ -181,26 +181,22 @@ export default function Modal({
         }
       >
         {showHeader && (
-          <div className="flex items-center justify-between gap-3 mb-5">
+          <div className="app-modal-header">
             <div className="min-w-0">
-              <h2
-                className={`font-display text-xl font-semibold ${titleClassName}`}
-              >
-                {title}
-              </h2>
-              {subtitle}
+              <h2 className={`app-section-title ${titleClassName}`}>{title}</h2>
+              {subtitle && <div className="app-muted mt-1 text-sm">{subtitle}</div>}
             </div>
             <button
+              type="button"
               onClick={onClose}
-              aria-label="סגירה"
-              className="shrink-0"
-              style={{ color: "var(--color-muted-foreground)" }}
+              aria-label="סגירת החלון"
+              className="app-modal-close"
             >
               <Icon name="x" size={16} />
             </button>
           </div>
         )}
-        {children}
+        <div className="app-modal-body">{children}</div>
       </div>
     </div>,
     document.body,

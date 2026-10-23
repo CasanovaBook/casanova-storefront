@@ -122,8 +122,8 @@ export const UI: Record<string, [string, string]> = {
   // auth
   "auth.loginTitle": ["כותרת התחברות", "התחברות"],
   "auth.registerTitle": ["כותרת הרשמה", "יצירת חשבון"],
-  "auth.loginSubtitle": ["תיאור התחברות", "גש לספרייה ולהתקדמות הקריאה שלך."],
-  "auth.registerSubtitle": ["תיאור הרשמה", "החשבון ישמש אותך לרכישה, לספרייה ולמעקב אחרי ההזמנות."],
+  "auth.loginSubtitle": ["תיאור התחברות", "גישה לספרייה, לרכישות ולמשך הקריאה שלכם."],
+  "auth.registerSubtitle": ["תיאור הרשמה", "החשבון ישמש אתכם לרכישה, לספרייה ולמעקב אחרי ההזמנות."],
   "auth.firstName": ["שדה שם פרטי", "שם פרטי"],
   "auth.lastName": ["שדה שם משפחה", "שם משפחה"],
   "auth.emailLabel": ["שדה אימייל", "אימייל"],

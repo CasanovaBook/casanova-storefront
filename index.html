@@ -7,8 +7,27 @@
          notched phone; the reader and the navigation drawers pad against it. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#0B0D16" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#F7F5F0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#11100E" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F4EEE4" media="(prefers-color-scheme: light)" />
+    <meta name="rating" content="adult" />
+    <script>
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem('casanova_theme') === 'dark' ? 'dark' : 'light'
+      } catch (error) {
+        document.documentElement.dataset.theme = 'light'
+      }
+    </script>
+    <link rel="canonical" href="https://casanova-books.com/" />
+    <link
+      rel="preload"
+      as="image"
+      type="image/webp"
+      href="/covers/hi-kodem-cover-1024.webp"
+      imagesrcset="/covers/hi-kodem-cover-640.webp 640w, /covers/hi-kodem-cover-1024.webp 1024w"
+      imagesizes="(max-width: 900px) 68vw, 370px"
+      fetchpriority="high"
+    />
     <!-- Reveal only the origin when navigating away, never the reader URL,
          which carries the product id of a purchased book. -->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -28,7 +47,37 @@
          itself and renders transparency as black. -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <title>Casanova — ספרייה דיגיטלית פרטית</title>
+    <title>CASANOVA | ספר דיגיטלי על מיניות, משיכה ואינטימיות</title>
+    <meta
+      name="description"
+      content="הכירו את CASANOVA — המדריך הדיגיטלי ״היא קודם״ על תשוקה, משיכה ואינטימיות. קראו על הספר, הציצו בתוכן ובדקו את פרטי הרכישה."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="he_IL" />
+    <meta property="og:site_name" content="CASANOVA" />
+    <meta property="og:url" content="https://casanova-books.com/" />
+    <meta property="og:title" content="CASANOVA | ספר דיגיטלי על מיניות, משיכה ואינטימיות" />
+    <meta
+      property="og:description"
+      content="הכירו את CASANOVA — המדריך הדיגיטלי ״היא קודם״ על תשוקה, משיכה ואינטימיות. קראו על הספר, הציצו בתוכן ובדקו את פרטי הרכישה."
+    />
+    <meta
+      property="og:image"
+      content="https://casanova-books.com/covers/hi-kodem-cover-1024.webp"
+    />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="1536" />
+    <meta property="og:image:alt" content="עטיפת הספר היא קודם של CASANOVA" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CASANOVA | ספר דיגיטלי על מיניות, משיכה ואינטימיות" />
+    <meta
+      name="twitter:description"
+      content="הכירו את CASANOVA — המדריך הדיגיטלי ״היא קודם״ על תשוקה, משיכה ואינטימיות."
+    />
+    <meta
+      name="twitter:image"
+      content="https://casanova-books.com/covers/hi-kodem-cover-1024.webp"
+    />
     <!-- figma:head-end -->
   </head>
   <body>

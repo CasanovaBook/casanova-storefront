@@ -8,57 +8,38 @@
  * ───────────────────────────────────────────────────────────── */
 
 import { useEffect, useState } from "react"
-
-import { Link, useNavigate } from "react-router"
-
+import { useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
-
 import {
   PASSWORD_CHAR_RULE,
   hasHebrewChars,
   hasInvalidPasswordChars,
   passwordProblem,
 } from "../lib/auth"
-
 import Icon from "../components/icons"
-
-import ThemeToggle from "../components/ThemeToggle"
-
-import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
-
-import logoImg from "../assets/main_photo.jpg"
+import Alert from "../components/ui/Alert"
+import AuthShell from "../components/layout/AuthShell"
 
 export default function SetupPage() {
   const { setupAdmin, bootstrapRequired } = useApp()
-
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
     first_name: "",
-
     last_name: "",
-
     email: "",
-
     password: "",
-
     confirm: "",
   })
 
   const [error, setError] = useState("")
-
   const [busy, setBusy] = useState(false)
-
   const [hebrewWarning, setHebrewWarning] = useState(false)
-
   const [emailHebrewWarning, setEmailHebrewWarning] = useState(false)
-
   const [showPassword, setShowPassword] = useState(false)
-
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Check for Hebrew characters in password and email
-
   const handleFormChange = (key: keyof typeof form, value: string) => {
     setForm({ ...form, [key]: value })
 
@@ -80,7 +61,6 @@ export default function SetupPage() {
   }
 
   // Once an administrator exists this page has no purpose any more.
-
   useEffect(() => {
     if (!bootstrapRequired) navigate("/login", { replace: true })
   }, [bootstrapRequired, navigate])
@@ -91,12 +71,10 @@ export default function SetupPage() {
     setError("")
 
     // Disallow Hebrew in email
-
     if (hasHebrewChars(form.email)) {
       setError(
         "כתובת האימייל אינה יכולה להכיל אותיות בעברית. יש להזין כתובת באנגלית בלבד.",
       )
-
       return
     }
 
@@ -104,13 +82,11 @@ export default function SetupPage() {
 
     if (problem) {
       setError(problem)
-
       return
     }
 
     if (form.password !== form.confirm) {
       setError("אימות הסיסמה אינו תואם.")
-
       return
     }
 
@@ -118,11 +94,8 @@ export default function SetupPage() {
 
     const result = await setupAdmin({
       first_name: form.first_name.trim(),
-
       last_name: form.last_name.trim(),
-
       email: form.email.trim(),
-
       password: form.password,
     })
 
@@ -130,7 +103,6 @@ export default function SetupPage() {
 
     if (!result.ok) {
       setError(result.error ?? "ההתקנה נכשלה.")
-
       return
     }
 
@@ -139,17 +111,6 @@ export default function SetupPage() {
 
   if (!bootstrapRequired) return null
 
-  const inputClass =
-    "w-full px-4 py-3 rounded-lg border text-sm outline-none transition-all"
-
-  const inputStyle = {
-    background: "var(--color-secondary)",
-
-    borderColor: "var(--color-border)",
-
-    color: "var(--color-foreground)",
-  }
-
   const fields: {
     key: keyof typeof form
     label: string
@@ -157,120 +118,66 @@ export default function SetupPage() {
     ltr?: boolean
   }[] = [
     { key: "first_name", label: "שם פרטי", type: "text" },
-
     { key: "last_name", label: "שם משפחה", type: "text" },
-
     { key: "email", label: "אימייל", type: "email", ltr: true },
-
     { key: "password", label: "סיסמה", type: "password" },
-
     { key: "confirm", label: "אימות סיסמה", type: "password" },
   ]
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden"
-      style={{ background: "var(--color-background)" }}
+    <AuthShell
+      eyebrow="הפעלה ראשונה"
+      title="התקנה ראשונית"
+      description="המערכת ריקה — אין בה עדיין אף חשבון. צור את חשבון המנהל הראשון כדי לפתוח את אזור הניהול."
     >
-      <div
-        className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(212,160,48,0.09) 0%, transparent 70%)",
-          top: "-140px",
-          right: "-120px",
-        }}
-      />
-      <div className="absolute top-5 left-5 z-10">
-        <ThemeToggle />
-      </div>
+      <div className="space-y-5">
+        <Alert tone="warning">
+          החשבון שתיצור כאן יקבל הרשאות מנהל־על. המסך הזה ננעל לצמיתות לאחר
+          יצירת המנהל הראשון.
+        </Alert>
 
-      <main id="main" className="w-full max-w-md page-enter relative">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <img
-              src={logoImg}
-              alt=""
-              className="w-9 h-9 rounded-lg object-cover"
-            />
-            <span
-              dir="ltr"
-              className="font-display text-xl font-bold tracking-wide"
-              style={{ color: "var(--color-primary)" }}
-            >
-              Casanova
-            </span>
-          </Link>
-          <h1 className="font-display text-3xl font-semibold mb-2">
-            התקנה ראשונית
-          </h1>
-          <p
-            className="text-sm"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            המערכת ריקה — אין בה עדיין אף חשבון. צור את חשבון המנהל הראשון כדי
-            לפתוח את אזור הניהול.
-          </p>
-        </div>
+        {error && <Alert tone="error">{error}</Alert>}
 
-        <div className="card-glow p-6">
-          <p
-            className="text-xs px-3 py-2.5 rounded-lg mb-5 flex items-start gap-2"
-            style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}
-          >
-            <Icon name="shield" size={14} className="flex-shrink-0 mt-0.5" />
-            החשבון שתיצור כאן יקבל הרשאות מנהל־על. המסך הזה ננעל לצמיתות לאחר
-            יצירת המנהל הראשון.
-          </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {fields.map(({ key, label, type, ltr }) => {
+            const revealed =
+              key === "password"
+                ? showPassword
+                : key === "confirm"
+                  ? showConfirmPassword
+                  : false
+            const warningId =
+              key === "email"
+                ? "setup-field-email-warning"
+                : key === "password"
+                  ? "setup-field-password-warning"
+                  : undefined
+            const hasWarning =
+              (key === "email" && emailHebrewWarning) ||
+              (key === "password" && hebrewWarning)
 
-          {error && (
-            <p
-              role="alert"
-              className="text-xs px-3 py-2.5 rounded-lg mb-4"
-              style={{
-                background: "rgba(239,68,68,0.1)",
-                color: "var(--color-danger)",
-              }}
-            >
-              {error}
-            </p>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {fields.map(({ key, label, type, ltr }) => (
-              <div key={key}>
-                <label
-                  htmlFor={`setup-field-${key}`}
-                  className="block text-xs font-medium mb-1.5"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
+            return (
+              <div key={key} className="app-field">
+                <label htmlFor={`setup-field-${key}`} className="app-label">
                   {label}
                 </label>
                 {type === "password" ? (
                   <div dir="ltr" className="relative">
                     <input
                       id={`setup-field-${key}`}
-                      type={
-                        key === "password"
-                          ? showPassword
-                            ? "text"
-                            : "password"
-                          : key === "confirm"
-                            ? showConfirmPassword
-                              ? "text"
-                              : "password"
-                            : type
-                      }
+                      type={revealed ? "text" : "password"}
                       dir="ltr"
-                      className={
-                        inputClass +
-                        " pe-14 " +
-                        "text-left"
+                      className="w-full py-3 ps-4 pe-12 text-left"
+                      style={
+                        hasWarning
+                          ? { borderColor: "var(--color-danger)" }
+                          : undefined
                       }
-                      style={inputStyle}
                       value={form[key]}
                       placeholder="••••••••"
                       onChange={(e) => handleFormChange(key, e.target.value)}
+                      aria-invalid={hasWarning || undefined}
+                      aria-describedby={hasWarning ? warningId : undefined}
                     />
                     <button
                       type="button"
@@ -281,45 +188,15 @@ export default function SetupPage() {
                           setShowConfirmPassword(!showConfirmPassword)
                         }
                       }}
-                      className="tap-target absolute end-3 top-1/2 transform -translate-y-1/2 inline-flex items-center justify-center transition-colors hover:opacity-100"
+                      className="app-icon-btn absolute end-1 top-1/2 -translate-y-1/2"
                       style={{
-                        color: (
-                          key === "password"
-                            ? showPassword
-                            : showConfirmPassword
-                        )
-                          ? "#FFFFFF"
+                        color: revealed
+                          ? "var(--color-primary)"
                           : "var(--color-muted-foreground)",
-
-                        opacity: (
-                          key === "password"
-                            ? showPassword
-                            : showConfirmPassword
-                        )
-                          ? 1
-                          : 0.5,
                       }}
-                      aria-label={
-                        (
-                          key === "password"
-                            ? showPassword
-                            : showConfirmPassword
-                        )
-                          ? "הסתרת הסיסמה"
-                          : "הצגת הסיסמה"
-                      }
-                      aria-pressed={
-                        key === "password" ? showPassword : showConfirmPassword
-                      }
-                      title={
-                        (
-                          key === "password"
-                            ? showPassword
-                            : showConfirmPassword
-                        )
-                          ? "הסתר סיסמה"
-                          : "הצג סיסמה"
-                      }
+                      aria-label={revealed ? "הסתרת הסיסמה" : "הצגת הסיסמה"}
+                      aria-pressed={revealed}
+                      title={revealed ? "הסתר סיסמה" : "הצג סיסמה"}
                     >
                       <Icon name="eye" size={16} />
                     </button>
@@ -329,30 +206,34 @@ export default function SetupPage() {
                     id={`setup-field-${key}`}
                     type={type}
                     dir={ltr ? "ltr" : undefined}
-                    className={inputClass + (ltr ? " text-left" : "")}
-                    style={inputStyle}
+                    className={"w-full px-4 py-3" + (ltr ? " text-left" : "")}
+                    style={
+                      hasWarning
+                        ? { borderColor: "var(--color-danger)" }
+                        : undefined
+                    }
                     value={form[key]}
                     onChange={(e) => handleFormChange(key, e.target.value)}
+                    aria-invalid={hasWarning || undefined}
+                    aria-describedby={hasWarning ? warningId : undefined}
                   />
                 )}
                 {key === "email" && emailHebrewWarning && (
                   <div
-                    className="flex items-center gap-2 mt-1.5 px-3 py-2 rounded-md"
-                    style={{
-                      background: "rgba(245,158,11,0.1)",
-                      borderColor: "rgba(245,158,11,0.3)",
-                      border: "1px solid rgba(245,158,11,0.3)",
-                    }}
+                    id="setup-field-email-warning"
+                    role="status"
+                    className="app-alert app-alert--warning"
                   >
                     <Icon
-                      name="alert-triangle"
-                      className="w-4 h-4 flex-shrink-0"
-                      style={{ color: "rgb(245,158,11)" }}
+                      name="alertTriangle"
+                      size={17}
+                      style={{
+                        flexShrink: 0,
+                        marginTop: 2,
+                        color: "var(--color-primary)",
+                      }}
                     />
-                    <span
-                      className="text-xs"
-                      style={{ color: "rgb(245,158,11)" }}
-                    >
+                    <span className="text-xs">
                       כתובת האימייל חייבת להכיל אותיות באנגלית בלבד (ללא אותיות
                       בעברית)
                     </span>
@@ -360,44 +241,53 @@ export default function SetupPage() {
                 )}
                 {key === "password" && hebrewWarning && (
                   <div
-                    className="flex items-center gap-2 mt-1.5 px-3 py-2 rounded-md"
-                    style={{
-                      background: "rgba(245,158,11,0.1)",
-                      borderColor: "rgba(245,158,11,0.3)",
-                    }}
+                    id="setup-field-password-warning"
+                    role="status"
+                    className="app-alert app-alert--warning"
                   >
                     <Icon
-                      name="alert-triangle"
-                      className="w-4 h-4"
-                      style={{ color: "rgb(245,158,11)" }}
+                      name="alertTriangle"
+                      size={17}
+                      style={{
+                        flexShrink: 0,
+                        marginTop: 2,
+                        color: "var(--color-primary)",
+                      }}
                     />
-                    <span
-                      className="text-xs"
-                      style={{ color: "rgb(245,158,11)" }}
-                    >
-                      {PASSWORD_CHAR_RULE}
-                    </span>
+                    <span className="text-xs">{PASSWORD_CHAR_RULE}</span>
                   </div>
                 )}
               </div>
-            ))}
+            )
+          })}
 
-            <button
-              type="submit"
-              disabled={busy}
-              className="btn-gradient w-full py-3 rounded-full font-semibold text-sm disabled:opacity-40"
-            >
-              {busy ? "יוצר את החשבון…" : "יצירת חשבון המנהל הראשון"}
-            </button>
-          </form>
-
-          {/* Setup runs before any site chrome exists; the accessibility
-           * controls are reachable from the screen itself. */}
-          <div className="text-center mt-6 text-xs">
-            <AccessibilityFooterLink />
-          </div>
-        </div>
-      </main>
-    </div>
+          <button
+            type="submit"
+            disabled={busy}
+            aria-busy={busy || undefined}
+            className="app-btn w-full"
+          >
+            {busy ? (
+              <>
+                <span
+                  className="app-spinner"
+                  aria-hidden="true"
+                  style={{
+                    width: "1rem",
+                    height: "1rem",
+                    borderColor:
+                      "color-mix(in srgb, var(--color-primary-foreground) 35%, transparent)",
+                    borderTopColor: "var(--color-primary-foreground)",
+                  }}
+                />
+                יוצר את החשבון…
+              </>
+            ) : (
+              "יצירת חשבון המנהל הראשון"
+            )}
+          </button>
+        </form>
+      </div>
+    </AuthShell>
   )
 }

@@ -221,6 +221,10 @@ export const router = createBrowserRouter([
 
       { path: "support", Component: SupportPage },
 
+      /* Legacy customer-library URL. The real library lives inside the
+       * account shell; keep older links and CMS values resolving there. */
+      { path: "library", element: <Navigate to="/dashboard/library" replace /> },
+
       { path: "terms-and-conditions", Component: TermsPage },
 
       { path: "cancellation-and-refund-policy", Component: CancellationPolicyPage },
@@ -228,12 +232,6 @@ export const router = createBrowserRouter([
       { path: "privacy-policy", Component: PrivacyPage },
 
       { path: "accessibility-statement", Component: AccessibilityStatementPage },
-
-      { path: "setup-password", Component: SetupPasswordPage },
-
-      { path: "reset-password", Component: ResetPasswordPage },
-
-      { path: "forgot-password", Component: ForgotPasswordPage },
 
       {
         // Dynamic CMS pages created from Maestro. Fetches from cms_pages
@@ -275,6 +273,24 @@ export const router = createBrowserRouter([
   },
 
   {
+    path: "/forgot-password",
+    Component: ForgotPasswordPage,
+    errorElement: <RouteError />,
+  },
+
+  {
+    path: "/reset-password",
+    Component: ResetPasswordPage,
+    errorElement: <RouteError />,
+  },
+
+  {
+    path: "/setup-password",
+    Component: SetupPasswordPage,
+    errorElement: <RouteError />,
+  },
+
+  {
     // First-run installation: the screen that creates the very first admin.
 
     path: "/setup",
@@ -304,6 +320,10 @@ export const router = createBrowserRouter([
        * customer lost their navigation entirely. Same component, now
        * rendered under DashboardLayout. */
       { path: "support", Component: SupportPage },
+
+      /* Unknown account URLs recover inside the account shell rather than
+       * rendering an empty outlet. */
+      { path: "*", element: <Navigate to="/dashboard" replace /> },
     ],
   },
 
@@ -356,6 +376,9 @@ export const router = createBrowserRouter([
       { path: "security", Component: AdminSecurityPage },
 
       { path: "settings", Component: AdminSettingsPage },
+
+      /* Unknown staff URLs recover inside the admin shell. */
+      { path: "*", element: <Navigate to="/admin" replace /> },
     ],
   },
 

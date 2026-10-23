@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useNavigate } from "react-router"
+import { Link, useLocation, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import { useContent } from "../content/useContent"
@@ -8,6 +8,10 @@ import type { Product, ProductType } from "../types"
 import { effectivePrice, isOnSale } from "../types"
 import Icon from "../components/icons"
 import CmsHint from "../components/CmsHint"
+import PageHeader from "../components/ui/PageHeader"
+import EmptyState from "../components/ui/EmptyState"
+import Alert from "../components/ui/Alert"
+import Spinner from "../components/ui/Spinner"
 
 const TYPE_LABEL: Record<ProductType, string> = {
   EBOOK: "ספר דיגיטלי",
@@ -21,14 +25,105 @@ const TYPE_LABEL: Record<ProductType, string> = {
 
 const FALLBACK_COVER: [string, string] = ["#1A1A2E", "#2A2A3E"]
 
+function ProductTypeIcon({ type }: { type: ProductType }) {
+  if (type === "BUNDLE") return <Icon name="flame" size={12} />
+  if (type === "SUBSCRIPTION") return <Icon name="infinity" size={12} />
+  return null
+}
+
+function ProductCover({ product }: { product: Product }) {
+  const [from, to] = product.cover_colors ?? FALLBACK_COVER
+  const soldOut = product.availability === "OUT_OF_STOCK"
+  const { hasAccess } = useApp()
+  const owned = hasAccess(product.product_id)
+
+  return (
+    <div
+      className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-[var(--radius-md)] border shadow-lg sm:w-28"
+      style={{
+        borderColor: "var(--color-border)",
+        background: `linear-gradient(160deg, ${from}, ${to})`,
+      }}
+    >
+      {product.image_url ? (
+        <img
+          src={product.image_url}
+          alt={`עטיפת ${product.name}`}
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-2 text-center text-white/75"
+          aria-hidden="true"
+        >
+          <Icon name="bookOpen" size={24} />
+          <span className="text-[9px] font-semibold tracking-[0.18em]">
+            CASANOVA
+          </span>
+        </div>
+      )}
+
+      {/* Spine on the reading edge (the right in RTL). */}
+      <div
+        className="absolute inset-y-0 start-0 w-1.5"
+        style={{ background: "rgba(0,0,0,0.28)" }}
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)",
+        }}
+        aria-hidden="true"
+      />
+
+      {isOnSale(product) && (
+        <span
+          className="app-badge absolute start-2 top-2"
+          style={{
+            background: "var(--color-primary)",
+            borderColor: "transparent",
+            color: "var(--color-primary-foreground)",
+          }}
+        >
+          מבצע
+        </span>
+      )}
+
+      {soldOut && !owned && (
+        <div
+          className="absolute inset-0 flex items-center justify-center p-2 text-center text-[11px] font-bold text-white"
+          style={{ background: "rgba(0,0,0,0.64)" }}
+          aria-hidden="true"
+        >
+          אזל מהמלאי
+        </div>
+      )}
+    </div>
+  )
+}
+
 function BookCard({ product }: { product: Product }) {
   const { hasAccess, setSelectedProduct } = useApp()
   const { categoryName } = useCms()
   const navigate = useNavigate()
+
   const owned = hasAccess(product.product_id)
-  const [from, to] = product.cover_colors ?? FALLBACK_COVER
   const onSale = isOnSale(product)
   const soldOut = product.availability === "OUT_OF_STOCK"
+  const preorder = product.availability === "PREORDER" && !soldOut
+  const placeholderDescription = /^(.*\s)?תיאור (קצרצר|מלא)$/
+  const shortDescription = product.short_description?.trim() ?? ""
+  const description = placeholderDescription.test(shortDescription)
+    ? placeholderDescription.test(product.description?.trim() ?? "")
+      ? ""
+      : product.description.trim()
+    : shortDescription || product.description?.trim() || ""
+  const category = product.category_ids?.length
+    ? categoryName(product.category_ids[0])
+    : ""
 
   const handleAction = () => {
     if (owned) {
@@ -40,154 +135,134 @@ function BookCard({ product }: { product: Product }) {
     navigate("/checkout")
   }
 
+  const ctaLabel = owned
+    ? "לקריאה"
+    : soldOut
+      ? "אזל מהמלאי"
+      : preorder
+        ? "הזמנה מראש"
+        : "רכישת גישה"
+
+  const ctaAriaLabel = owned
+    ? `קריאה — ${product.name}`
+    : soldOut
+      ? `אזל מהמלאי — ${product.name}`
+      : preorder
+        ? `הזמנה מראש — ${product.name}`
+        : `רכישת גישה — ${product.name}`
+
   return (
-    <div className="card-glow flex flex-col p-5">
-      <div
-        className="w-full h-32 rounded-md mb-4 relative overflow-hidden shadow-lg"
-        style={{
-          background: product.image_url
-            ? undefined
-            : `linear-gradient(160deg, ${from}, ${to})`,
-        }}
-      >
-        {product.image_url && (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        )}
-        {/* Spine highlight */}
-        <div
-          className="absolute top-0 bottom-0 right-0 w-2"
-          style={{ background: "rgba(0,0,0,0.25)" }}
-        />
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)",
-          }}
-        />
-        {product.product_type === "BUNDLE" && (
-          <div
-            className="absolute top-2 left-2 flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
-            style={{
-              background: "var(--color-primary)",
-              color: "var(--color-primary-foreground)",
-            }}
-          >
-            <Icon name="flame" size={12} /> חבילה
-          </div>
-        )}
-        {product.product_type === "SUBSCRIPTION" && (
-          <div
-            className="absolute top-2 left-2 flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-            style={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}
-          >
-            <Icon name="infinity" size={12} /> מנוי
-          </div>
-        )}
-        {soldOut && (
-          <div
-            className="absolute inset-0 flex items-center justify-center text-xs font-bold"
-            style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}
-          >
-            אזל מהמלאי
-          </div>
-        )}
-      </div>
+    <article className="app-surface flex h-full flex-col overflow-hidden">
+      <div className="flex flex-1 gap-4 p-4 sm:p-5">
+        <ProductCover product={product} />
 
-      <div
-        className="text-xs mb-1"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        {TYPE_LABEL[product.product_type]}
-        {product.category_ids?.length
-          ? ` · ${categoryName(product.category_ids[0])}`
-          : ""}
-      </div>
-      <h3 className="font-display font-semibold mb-1 leading-snug">
-        {product.name}
-      </h3>
-      {product.book?.author_name && (
-        <p
-          className="text-xs mb-3"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          מאת {product.book.author_name}
-        </p>
-      )}
-      <p
-        className="text-xs leading-relaxed mb-4 flex-1"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        {product.short_description || product.description}
-      </p>
-
-      <div className="flex items-center justify-between mt-auto">
-        <div>
-          {onSale && (
-            <span
-              className="text-xs line-through ml-1"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              ₪{product.price.toLocaleString()}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <span className="app-badge app-badge--neutral">
+              <ProductTypeIcon type={product.product_type} />
+              {TYPE_LABEL[product.product_type]}
             </span>
+            {owned && (
+              <span className="app-badge app-badge--success">
+                <Icon name="check" size={11} /> ברשותכם
+              </span>
+            )}
+            {!owned && soldOut && (
+              <span className="app-badge app-badge--danger">אזל מהמלאי</span>
+            )}
+            {!owned && preorder && (
+              <span className="app-badge app-badge--warning">הזמנה מראש</span>
+            )}
+          </div>
+
+          <h3 className="line-clamp-2 font-display text-lg font-semibold leading-snug text-balance">
+            {product.name}
+          </h3>
+
+          {product.book?.author_name && (
+            <p className="mt-1 text-xs app-muted">
+              מאת {product.book.author_name}
+            </p>
+          )}
+
+          {category && <p className="mt-1 text-xs app-muted">{category}</p>}
+
+          {description && (
+            <p className="mt-2 line-clamp-3 text-sm leading-relaxed app-muted">
+              {description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:px-5"
+        style={{ borderColor: "var(--color-border)" }}
+      >
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          {onSale && (
+            <s
+              className="text-xs app-muted"
+              aria-label={`מחיר קודם: ₪${product.price.toLocaleString()}`}
+            >
+              <span dir="ltr">₪{product.price.toLocaleString()}</span>
+            </s>
           )}
           <span
-            className="font-display font-semibold"
+            className="font-display text-lg font-semibold"
             style={{ color: "var(--color-primary)" }}
           >
-            ₪{effectivePrice(product).toLocaleString()}
-            {product.product_type === "SUBSCRIPTION" && "/חודש"}
+            <span dir="ltr">₪{effectivePrice(product).toLocaleString()}</span>
           </span>
+          {product.product_type === "SUBSCRIPTION" && (
+            <span className="text-xs app-muted">לחודש</span>
+          )}
         </div>
+
         <button
+          type="button"
           onClick={handleAction}
           disabled={!owned && soldOut}
-          className={
-            owned
-              ? "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold"
-              : "btn-gradient px-4 py-1.5 rounded-full text-sm font-semibold disabled:opacity-50"
-          }
-          style={
-            owned
-              ? {
-                  background: "rgba(34,197,94,0.15)",
-                  color: "var(--color-success)",
-                }
-              : undefined
-          }
+          aria-label={ctaAriaLabel}
+          className={owned ? "app-btn-secondary" : "app-btn"}
         >
           {owned ? (
             <>
-              <Icon name="check" size={14} /> ברשותכם
+              <Icon name="bookOpen" size={14} />
+              {ctaLabel}
             </>
-          ) : product.availability === "PREORDER" ? (
-            "הזמנה מראש"
+          ) : soldOut ? (
+            ctaLabel
           ) : (
-            "רכישת גישה"
+            <>
+              {ctaLabel}
+              {!soldOut && <Icon name="arrowLeft" size={14} />}
+            </>
           )}
         </button>
       </div>
-    </div>
+    </article>
   )
 }
 
 export default function StorePage() {
-  const { publishedProducts, storefrontCategories, catalogLoading, catalogSource } =
-    useCms()
+  const {
+    publishedProducts,
+    storefrontCategories,
+    catalogLoading,
+    catalogError,
+    catalogSource,
+  } = useCms()
   const c = useContent()
+  const location = useLocation()
+  const inDashboard = location.pathname.startsWith("/dashboard")
+
   const [query, setQuery] = useState("")
   const [categoryId, setCategoryId] = useState("ALL")
   const [typeFilter, setTypeFilter] = useState<ProductType | "ALL">("ALL")
 
   const typesInCatalog = useMemo(
-    () =>
-      [
-        ...new Set(publishedProducts.map((p) => p.product_type)),
-      ] as ProductType[],
+    () => [...new Set(publishedProducts.map((p) => p.product_type))] as ProductType[],
     [publishedProducts],
   )
 
@@ -214,208 +289,277 @@ export default function StorePage() {
   const filtering =
     Boolean(query.trim()) || categoryId !== "ALL" || typeFilter !== "ALL"
 
-  const controlClass = "px-3 py-2 rounded-lg border text-sm outline-none"
-  const controlStyle = {
-    background: "var(--color-secondary)",
-    borderColor: "var(--color-border)",
-    color: "var(--color-foreground)",
+  const clearFilters = () => {
+    setQuery("")
+    setCategoryId("ALL")
+    setTypeFilter("ALL")
   }
 
+  const heroTitle = c("store.hero.title") || "חנות הספרים"
+  const plainTitle = heroTitle.replace(/\*/g, "").replace(/[.\s]+$/u, "")
+  const supportPath = inDashboard ? "/dashboard/support" : "/support"
+
   return (
-    /* Carries its own padding so it sits correctly in either shell: the
-     * public layout gives it none, the dashboard layout already does. */
-    <div className="max-w-4xl mx-auto px-6 py-10 md:py-12 page-enter">
-      <div className="mb-8">
-        <h1 className="font-display text-4xl font-semibold mb-2">
-          <Rich text={c("store.hero.title") || "חנות הספרים"} />
-        </h1>
-        <p style={{ color: "var(--color-muted-foreground)" }}>
-          {c("store.hero.lede") || "כל הכותרים שפורסמו ב־CMS מוצגים כאן אוטומטית."}
-        </p>
-      </div>
-
-      {/* Search & filters — all options come from the catalogue itself.
-       * The visible text of a filter is not a label, so each control carries
-       * its own accessible name; the search icon is decorative. */}
-      <div className="flex flex-wrap items-center gap-3 mb-8">
-        <div className="relative flex-1 min-w-56">
-          <span
-            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            <Icon name="search" size={15} />
-          </span>
-          <label htmlFor="store-search" className="sr-only">
-            חיפוש בקטלוג
-          </label>
-          <input
-            id="store-search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="חיפוש לפי שם, מחבר, תג או מק״ט"
-            className={controlClass + " w-full pr-9"}
-            style={controlStyle}
-          />
-        </div>
-        <select
-          aria-label="סינון לפי קטגוריה"
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className={controlClass}
-          style={controlStyle}
-        >
-          <option value="ALL">כל הקטגוריות</option>
-          {storefrontCategories.map((c) => (
-            <option key={c.category_id} value={c.category_id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="סינון לפי סוג מוצר"
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as ProductType | "ALL")}
-          className={controlClass}
-          style={controlStyle}
-        >
-          <option value="ALL">כל הסוגים</option>
-          {typesInCatalog.map((t) => (
-            <option key={t} value={t}>
-              {TYPE_LABEL[t]}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* While the hosted catalogue is in flight, "no products have been
-       * published" is not yet a fact worth stating — the read may be about to
-       * fill the grid. */}
-      {catalogLoading ? (
-        <div
-          className="rounded-2xl border p-12 flex flex-col items-center gap-3"
-          style={{
-            background: "var(--color-card)",
-            borderColor: "var(--color-border)",
-          }}
-          role="status"
-          aria-live="polite"
-        >
-          <span
-            className="w-6 h-6 rounded-full border-2 animate-spin"
-            style={{
-              borderColor: "var(--color-border)",
-              borderTopColor: "var(--color-primary)",
-            }}
-          />
-          <span
-            className="text-xs"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            טוען…
-          </span>
-        </div>
-      ) : publishedProducts.length === 0 ? (
-        <div
-          className="rounded-2xl border p-12 text-center"
-          style={{
-            background: "var(--color-card)",
-            borderColor: "var(--color-border)",
-          }}
-        >
-          <span
-            className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center"
-            style={{
-              background: "rgba(212,160,48,0.12)",
-              color: "var(--color-primary)",
-            }}
-          >
-            <Icon name="box" size={24} />
-          </span>
-          <h2 className="font-display text-xl font-bold mb-2">
-            {c("store.empty.title") || "טרם נוצרו מוצרים"}
-          </h2>
-          <p
-            className="text-sm"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            {c("store.empty.text") || "אין כרגע מוצרים שפורסמו בחנות. לאחר שיוגדרו מוצרים ב־CMS הם יופיעו כאן אוטומטית."}
-          </p>
-          {/* An empty storefront has two very different causes, and only
-           * an administrator can act on either. Say which one it is
-           * instead of leaving the page to be misread as a bug. */}
-          {catalogSource === "supabase" ? (
-            <div className="mt-4">
-              <CmsHint what="הקטלוג נקרא כעת מ־Supabase ואין בו מוצרים מפורסמים. מוצר שנוצר בממשק הניהול נשמר עדיין במסמך המקומי, ולכן אינו מופיע כאן עד להשלמת מעבר כתיבת הקטלוג." />
+    <div
+      className={
+        inDashboard
+          ? "page-enter"
+          : "page-enter px-5 py-10 sm:px-8 md:py-14 lg:px-12"
+      }
+    >
+      <div className="app-page app-page--content">
+        <PageHeader
+          eyebrow="CASANOVA · חנות"
+          title={<Rich text={heroTitle} />}
+          metaTitle={plainTitle}
+          description={
+            c("store.hero.lede") ||
+            "כל הכותרים שפורסמו ב־CMS מוצגים כאן אוטומטית."
+          }
+          breadcrumbs={
+            inDashboard
+              ? [
+                  { label: "לוח אישי", to: "/dashboard" },
+                  { label: plainTitle },
+                ]
+              : [
+                  { label: "דף הבית", to: "/" },
+                  { label: plainTitle },
+                ]
+          }
+          actions={
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {!catalogLoading && publishedProducts.length > 0 && (
+                <span className="app-badge app-badge--neutral">
+                  {publishedProducts.length === 1
+                    ? "כותר אחד"
+                    : `${publishedProducts.length} כותרים`}
+                </span>
+              )}
+              <Link to={supportPath} className="app-btn-secondary">
+                <Icon name="message" size={15} />
+                תמיכה
+              </Link>
             </div>
-          ) : null}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div
-          className="rounded-2xl border p-10 text-center"
-          style={{
-            background: "var(--color-card)",
-            borderColor: "var(--color-border)",
-          }}
+          }
+        />
+
+        {/* Search and filters. Every option is derived from the catalogue
+         * itself, and every control has a visible label in addition to its
+         * accessible name. */}
+        <section
+          className="app-surface mb-8"
+          aria-labelledby="store-filter-title"
         >
-          <h2 className="font-display text-lg font-bold mb-2">
-            לא נמצאו תוצאות
-          </h2>
-          <p
-            className="text-sm"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            אין מוצרים התואמים את החיפוש או הסינון שבחרתם.
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* E-books */}
-          <div className="mb-10">
-            <h2
-              className="text-sm font-semibold tracking-wide mb-4 flex items-center gap-2"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              <Icon name="book" size={15} /> ספרים דיגיטליים
-              <span className="text-xs">({ebooks.length})</span>
-            </h2>
-            {ebooks.length === 0 ? (
-              <p
-                className="text-sm"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {filtering
-                  ? "אין ספרים דיגיטליים בתוצאות הסינון."
-                  : "לא הוגדרו עדיין ספרים דיגיטליים."}
+          <div className="app-surface-head">
+            <div>
+              <h2 id="store-filter-title" className="app-section-title">
+                חיפוש וסינון
+              </h2>
+              <p className="app-hint mt-1">
+                מצאו כותר לפי שם, מחבר, קטגוריה או סוג מוצר.
               </p>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {ebooks.map((p) => (
-                  <BookCard key={p.product_id} product={p} />
-                ))}
-              </div>
+            </div>
+            {filtering && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="app-btn-ghost"
+              >
+                <Icon name="x" size={14} />
+                איפוס הסינון
+              </button>
             )}
           </div>
 
-          {/* Everything else */}
-          {offers.length > 0 && (
-            <div>
-              <h2
-                className="text-sm font-semibold tracking-wide mb-4 flex items-center gap-2"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                <Icon name="gift" size={15} /> חבילות, מנויים ומוצרים נוספים
-                <span className="text-xs">({offers.length})</span>
-              </h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {offers.map((p) => (
-                  <BookCard key={p.product_id} product={p} />
-                ))}
+          <div className="app-surface-body grid gap-4 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="app-field">
+              <label htmlFor="store-search" className="app-label">
+                חיפוש
+              </label>
+              <div className="relative">
+                <span
+                  className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 app-muted"
+                  aria-hidden="true"
+                >
+                  <Icon name="search" size={15} />
+                </span>
+                <input
+                  id="store-search"
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="שם, מחבר, תג או מק״ט"
+                  className="w-full ps-9"
+                  aria-controls="store-catalogue"
+                />
               </div>
             </div>
+
+            <div className="app-field">
+              <label htmlFor="store-category" className="app-label">
+                קטגוריה
+              </label>
+              <select
+                id="store-category"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="w-full"
+                aria-controls="store-catalogue"
+              >
+                <option value="ALL">כל הקטגוריות</option>
+                {storefrontCategories.map((category) => (
+                  <option key={category.category_id} value={category.category_id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="app-field">
+              <label htmlFor="store-type" className="app-label">
+                סוג מוצר
+              </label>
+              <select
+                id="store-type"
+                value={typeFilter}
+                onChange={(e) =>
+                  setTypeFilter(e.target.value as ProductType | "ALL")
+                }
+                className="w-full"
+                aria-controls="store-catalogue"
+              >
+                <option value="ALL">כל הסוגים</option>
+                {typesInCatalog.map((type) => (
+                  <option key={type} value={type}>
+                    {TYPE_LABEL[type]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <div id="store-catalogue">
+          {catalogError && !catalogLoading && (
+            <div className="mb-6">
+              <Alert tone="warning" title="הקטלוג לא עודכן מהשרת">
+                לא הצלחנו לרענן את הקטלוג. מוצג הקטלוג השמור במכשיר, אם קיים.
+              </Alert>
+            </div>
           )}
-        </>
-      )}
+
+          {catalogLoading ? (
+            <div className="app-surface">
+              <Spinner label="טוען את הקטלוג…" />
+            </div>
+          ) : publishedProducts.length === 0 ? (
+            <div>
+              <EmptyState
+                icon="box"
+                title={c("store.empty.title") || "טרם נוצרו מוצרים"}
+                description={
+                  c("store.empty.text") ||
+                  "אין כרגע מוצרים שפורסמו בחנות. לאחר שיוגדרו מוצרים ב־CMS הם יופיעו כאן אוטומטית."
+                }
+              />
+              {/* An empty storefront has two very different causes, and only
+               * an administrator can act on either. Say which one it is
+               * instead of leaving the page to be misread as a bug. */}
+              {catalogSource === "supabase" ? (
+                <div className="mt-4">
+                  <CmsHint what="הקטלוג נקרא כעת מ־Supabase ואין בו מוצרים מפורסמים. מוצר שנוצר בממשק הניהול נשמר עדיין במסמך המקומי, ולכן אינו מופיע כאן עד להשלמת מעבר כתיבת הקטלוג." />
+                </div>
+              ) : null}
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon="search"
+              title="לא נמצאו תוצאות"
+              description="אין מוצרים התואמים את החיפוש או הסינון שבחרתם."
+              actions={
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="app-btn-secondary"
+                >
+                  ניקוי הסינון
+                </button>
+              }
+            />
+          ) : (
+            <>
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm app-muted">
+                  {filtering
+                    ? `${filtered.length === 1 ? "תוצאה אחת" : `${filtered.length} תוצאות`} מתוך ${
+                        publishedProducts.length === 1
+                          ? "כותר אחד"
+                          : `${publishedProducts.length} כותרים`
+                      }`
+                    : publishedProducts.length === 1
+                      ? "כותר אחד בקטלוג"
+                      : `${publishedProducts.length} כותרים בקטלוג`}
+                </p>
+              </div>
+
+              <div className="space-y-10">
+                {ebooks.length > 0 && (
+                  <section aria-labelledby="store-ebooks-title">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <h2
+                        id="store-ebooks-title"
+                        className="flex items-center gap-2 font-display text-xl font-semibold"
+                      >
+                        <Icon
+                          name="book"
+                          size={17}
+                          style={{ color: "var(--color-primary)" }}
+                        />
+                        ספרים דיגיטליים
+                      </h2>
+                      <span className="app-badge app-badge--neutral">
+                        {ebooks.length}
+                      </span>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {ebooks.map((product) => (
+                        <BookCard key={product.product_id} product={product} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {offers.length > 0 && (
+                  <section aria-labelledby="store-offers-title">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <h2
+                        id="store-offers-title"
+                        className="flex items-center gap-2 font-display text-xl font-semibold"
+                      >
+                        <Icon
+                          name="gift"
+                          size={17}
+                          style={{ color: "var(--color-primary)" }}
+                        />
+                        חבילות, מנויים ומוצרים נוספים
+                      </h2>
+                      <span className="app-badge app-badge--neutral">
+                        {offers.length}
+                      </span>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {offers.map((product) => (
+                        <BookCard key={product.product_id} product={product} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

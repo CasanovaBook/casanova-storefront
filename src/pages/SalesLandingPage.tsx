@@ -1,21 +1,4 @@
-/* ────────────────────────────────────────────────────────────
- * Sales landing page — "היא קודם" · served at /
- *
- * A single-product long-form sales letter. No catalogue, no nav,
- * no distractions. The page reads every slot from the CMS first
- * (active sections with page === 'SALES') and falls back to the
- * bundled launch copy in `src/lib/sales-content.ts` when the CMS
- * has nothing for that slot — so the page renders complete copy
- * for any visitor even on a fresh install, and an administrator
- * can override any slot from /admin/cms/content-editor.
- *
- * The sticky mobile CTA bar and the exit-intent popup are
- * conversion chrome: they live in code because they are UI
- * behaviour, not copy, but their labels come from settings (with
- * bundled defaults) so they too are editable from /admin/settings.
- * ───────────────────────────────────────────────────────────── */
-
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 
 import { Link, useNavigate } from "react-router"
 
@@ -25,7 +8,7 @@ import { useCms } from "../context/CmsContext"
 
 import { fmt, useContent } from "../content/useContent"
 
-import { SALES_HERO_TRUST_DEFAULT } from "../content/registry"
+import { Rich, SmartLink } from "../content/render"
 
 import type { Product } from "../types"
 
@@ -38,37 +21,85 @@ import AccessibilityFooterLink from "../components/accessibility/AccessibilityFo
 
 import { loadContent } from "../content/store"
 
-import logoImg from "../assets/main_photo.jpg"
-
 import { getDb, mutate } from "../data/db"
 
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
+import portraitImg from "../assets/casanova-portrait.webp"
+
 import {
   BUNDLED_PRODUCT,
-  SALES_DEFAULTS,
-  SALES_FAQ_DEFAULTS,
   SALES_SETTINGS_DEFAULTS,
-  SALES_TESTIMONIAL_DEFAULTS,
-  type SalesSlot,
 } from "../lib/sales-content"
 
-import type { SectionType } from "../types"
+const EXIT_SEEN_KEY = "casanova_exit_seen_v2"
 
-const EXIT_SEEN_KEY = "casanova_exit_seen_v1"
+const NAV_LINKS = [
+  { label: "על הספר", href: "#about" },
+  { label: "מה בפנים", href: "#inside" },
+  { label: "רכישה", href: "#purchase" },
+  { label: "שאלות נפוצות", href: "#faq" },
+]
 
-/* The sales page can render its offer from BUNDLED_PRODUCT when the
- * catalogue has no `hya-kvdm` row. On an install without Supabase the local
- * document IS the catalogue, so the bundled row still has to be seeded there
- * before checkout can resolve it — that is the branch below. With Supabase
- * configured the catalogue is the database, and seeding a browser-local copy
- * would hand checkout a product no server row exists for: the exact parallel
- * catalogue this page used to create. In that case the bundled product is
- * display copy only, and checkout reports the missing row honestly. */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  ILS: "₪",
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+}
 
+const SCHEMA_ID = "casanova-landing-schema"
+
+function currencySymbol(currency: string): string {
+  return CURRENCY_SYMBOLS[currency] ?? currency
+}
+
+function formatNumber(value: number): string {
+  return value.toLocaleString("he-IL", { maximumFractionDigits: 2 })
+}
+
+function Price({
+  value,
+  currency,
+  className,
+}: {
+  value: number
+  currency: string
+  className?: string
+}) {
+  return (
+    <span dir="ltr" className={className}>
+      {currencySymbol(currency)}
+      {formatNumber(value)}
+    </span>
+  )
+}
+
+function useSalesProduct(): Product {
+  const { productBySlug } = useCms()
+
+  const real = productBySlug("hya-kvdm")
+
+  return useMemo(() => {
+    if (!real) return BUNDLED_PRODUCT
+
+    return {
+      ...real,
+      image_url: real.image_url || BUNDLED_PRODUCT.image_url,
+      cover_colors: real.cover_colors ?? BUNDLED_PRODUCT.cover_colors,
+      short_description:
+        real.short_description || BUNDLED_PRODUCT.short_description,
+    }
+  }, [real])
+}
+
+/* The checkout resolves products by id against the hosted catalogue. On an
+ * install without Supabase the local document is the catalogue, so the
+ * bundled row has to exist there before the first purchase click. With
+ * Supabase configured the bundled row is display copy only. */
 function selectProduct(
   product: Product,
-  setSelectedProduct: (p: Product | null) => void,
+  setSelectedProduct: (product: Product | null) => void,
 ) {
   if (!isSupabaseConfigured) {
     const exists = getDb().products.some(
@@ -85,1227 +116,1272 @@ function selectProduct(
   setSelectedProduct(product)
 }
 
-/** Maps a sales slot name to the SectionType that backs it in the CMS.
- *  Slots that share a SectionType (e.g. PROOF_STRIP, AGITATION, BRAND
- *  all use TEXT) are distinguished by their position in the sales page
- *  render order, not by a separate CMS type. */
+function setMetaContent(selector: string, content: string): () => void {
+  const element = document.head.querySelector<HTMLMetaElement>(selector)
 
-const SLOT_TYPE: Record<SalesSlot, SectionType> = {
-  HERO: "HERO",
+  if (!element) return () => {}
 
-  PROOF_STRIP: "TEXT",
+  const previous = element.getAttribute("content")
 
-  AGITATION: "TEXT",
+  element.setAttribute("content", content)
 
-  MECHANISM: "STEPS",
-
-  FEATURES: "FEATURES",
-
-  AUDIENCE: "AUDIENCE",
-
-  BRAND: "TEXT",
-
-  SOCIAL: "TESTIMONIALS",
-
-  OFFER: "OFFER",
-
-  FAQ: "FAQ",
-
-  FINAL_CTA: "CTA",
-}
-
-/* ── Slot resolver ─────────────────────────────────────── */
-
-function useSalesSlot(slot: SalesSlot) {
-  const { activeSections } = useCms()
-
-  const bundled = SALES_DEFAULTS[slot]
-
-  const sectionType = SLOT_TYPE[slot]
-
-  // CMS wins when an active SALES section of this type exists whose
-
-  // title matches the bundled default's title — that is how we tell
-
-  // apart multiple CMS sections that share a SectionType (e.g. three
-
-  // TEXT blocks for PROOF_STRIP, AGITATION and BRAND). A CMS section
-
-  // with a different title is treated as a different slot entirely.
-
-  const cms = activeSections.find(
-    (s) =>
-      s.page === "SALES" &&
-      s.type === sectionType &&
-      s.active &&
-      s.title.trim() === bundled.title.trim(),
-  )
-
-  return cms ?? bundled ?? null
-}
-
-function useSalesFaqs() {
-  const { faqs } = useCms()
-
-  const cms = faqs.filter((f) => f.active)
-
-  return cms.length > 0 ? cms : SALES_FAQ_DEFAULTS
-}
-
-function useSalesTestimonials() {
-  const { testimonials } = useCms()
-
-  const cms = testimonials.filter((t) => t.active)
-
-  return cms.length > 0 ? cms : SALES_TESTIMONIAL_DEFAULTS
-}
-
-function useSalesProduct(): Product {
-  const { productBySlug } = useCms()
-
-  const real = productBySlug("hya-kvdm")
-
-  if (!real) return BUNDLED_PRODUCT
-
-  /* A real catalogue row is authoritative: its price and sale price are what
-   * top of them made this page advertise a price the database did not hold.
-   * The bundled values below fill only fields the row leaves empty, and only
-   * for display — never a price. */
-  return {
-    ...real,
-
-    image_url: real.image_url || BUNDLED_PRODUCT.image_url,
-
-    cover_colors: real.cover_colors ?? BUNDLED_PRODUCT.cover_colors,
-
-    short_description:
-      real.short_description || BUNDLED_PRODUCT.short_description,
+  return () => {
+    if (previous === null) element.removeAttribute("content")
+    else element.setAttribute("content", previous)
   }
 }
 
-function useSalesSettings() {
-  const { settings } = useCms()
-  const c = useContent()
+function useLandingMeta({
+  title,
+  description,
+  image,
+  productName,
+  price,
+  currency,
+  availability,
+}: {
+  title: string
+  description: string
+  image: string
+  productName: string
+  price: number
+  currency: string
+  availability: Product["availability"]
+}) {
+  useEffect(() => {
+    const previousTitle = document.title
 
-  return {
-    sticky_cta:
-      c("sales.stickyCta") || settings.sales_sticky_cta || SALES_SETTINGS_DEFAULTS.sales_sticky_cta,
+    const absoluteImage = image
+      ? new URL(image, window.location.origin).href
+      : ""
 
-    exit_title:
-      settings.sales_exit_title || SALES_SETTINGS_DEFAULTS.sales_exit_title,
+    const restores = [
+      setMetaContent('meta[name="description"]', description),
+      setMetaContent('meta[property="og:url"]', `${window.location.origin}/`),
+      setMetaContent('meta[property="og:title"]', title),
+      setMetaContent('meta[property="og:description"]', description),
+      setMetaContent('meta[property="og:image"]', absoluteImage),
+      setMetaContent('meta[name="twitter:title"]', title),
+      setMetaContent('meta[name="twitter:description"]', description),
+      setMetaContent('meta[name="twitter:image"]', absoluteImage),
+    ]
 
-    exit_body:
-      settings.sales_exit_body || SALES_SETTINGS_DEFAULTS.sales_exit_body,
+    document.title = title
 
-    exit_cta:
-      c("sales.offer.cta") || settings.sales_exit_cta || SALES_SETTINGS_DEFAULTS.sales_exit_cta,
-  }
+    const schema = document.createElement("script")
+
+    schema.id = SCHEMA_ID
+    schema.type = "application/ld+json"
+    schema.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Book",
+      name: productName,
+      inLanguage: "he",
+      bookFormat: "https://schema.org/EBook",
+      description,
+      image: absoluteImage || undefined,
+      url: `${window.location.origin}/`,
+      offers: {
+        "@type": "Offer",
+        price,
+        priceCurrency: currency,
+        availability:
+          availability === "OUT_OF_STOCK"
+            ? "https://schema.org/OutOfStock"
+            : availability === "PREORDER"
+              ? "https://schema.org/PreOrder"
+              : "https://schema.org/InStock",
+        seller: {
+          "@type": "Organization",
+          name: "CASANOVA",
+        },
+      },
+    })
+
+    document.head.appendChild(schema)
+
+    return () => {
+      document.title = previousTitle
+      restores.forEach((restore) => restore())
+      schema.remove()
+    }
+  }, [
+    title,
+    description,
+    image,
+    productName,
+    price,
+    currency,
+    availability,
+  ])
 }
 
-/* ── Section helpers ──────────────────────────────────── */
+function useDialogFocus<T extends HTMLElement>(
+  open: boolean,
+  ref: RefObject<T | null>,
+  onClose: () => void,
+) {
+  const closeRef = useRef(onClose)
 
-function GoldRule() {
-  return <span className="gold-rule mb-4" />
+  closeRef.current = onClose
+
+  useEffect(() => {
+    if (!open) return
+
+    const node = ref.current
+
+    if (!node) return
+
+    const previousFocus = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
+
+    document.body.style.overflow = "hidden"
+
+    const focusable = () =>
+      Array.from(
+        node.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.getAttribute("aria-hidden") !== "true")
+
+    focusable()[0]?.focus()
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        closeRef.current()
+        return
+      }
+
+      if (event.key !== "Tab") return
+
+      const items = focusable()
+
+      if (items.length === 0) return
+
+      const first = items[0]
+      const last = items[items.length - 1]
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown)
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown)
+      document.body.style.overflow = previousOverflow
+
+      if (previousFocus?.isConnected) {
+        try {
+          previousFocus.focus()
+        } catch {
+          /* the opener may have unmounted after navigation */
+        }
+      }
+    }
+  }, [open, ref])
 }
 
-function SectionHeading({ title, blurb }: { title?: string, blurb?: string }) {
-  if (!title?.trim()) return null
+function useExitIntent(onExit: () => void) {
+  const handler = useRef(onExit)
 
-  return (
-    <div className="mb-8 md:mb-12">
-      <GoldRule />
-      <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold leading-tight whitespace-pre-line">
-        {title}
-      </h2>
-      {blurb?.trim() && (
-        <p
-          className="mt-4 text-base md:text-lg leading-relaxed whitespace-pre-line"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          {blurb}
-        </p>
-      )}
-    </div>
-  )
+  handler.current = onExit
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(EXIT_SEEN_KEY)) return
+    } catch {
+      return
+    }
+
+    let armed = false
+
+    const onEnter = () => {
+      if (!armed) return
+
+      try {
+        sessionStorage.setItem(EXIT_SEEN_KEY, "1")
+      } catch {
+        /* storage can be blocked; the dialog still opens once per mount */
+      }
+
+      handler.current()
+    }
+
+    const onMove = (event: MouseEvent) => {
+      if (event.clientY <= 8) armed = true
+    }
+
+    document.addEventListener("mouseenter", onEnter)
+    document.addEventListener("mousemove", onMove, { passive: true })
+
+    return () => {
+      document.removeEventListener("mouseenter", onEnter)
+      document.removeEventListener("mousemove", onMove)
+    }
+  }, [])
 }
 
-/* ─ Hero (A) ──────────────────────────────────────────── */
+function scrollToSection(id: string) {
+  const target = document.getElementById(id)
 
-function HeroSection({ product, c }: { product: Product, c: ReturnType<typeof useContent> }) {
-  const navigate = useNavigate()
+  if (!target) return
 
-  const { setSelectedProduct } = useApp()
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
-  const section = useSalesSlot("HERO")
+  target.scrollIntoView({
+    behavior: reduce ? "auto" : "smooth",
+    block: "start",
+  })
+}
 
-  const titleText = c("sales.hero.title") || section?.title || ""
-  const lines = titleText
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
+function CoverArt({ product }: { product: Product }) {
+  const bundledCover = product.image_url === "/covers/hi-kodem-cover.png"
 
-  const lead = lines[0] ?? ""
-
-  const accent = lines.slice(1)
-
-  /* Saved CMS content predates the third highlight, so a two-item list
-   * must still complete the row. Extra configured items are left alone. */
-  const configuredTrust = c.strings("sales.hero.trust")
-  const trust =
-    configuredTrust.length >= 3
-      ? configuredTrust
-      : [
-          ...configuredTrust,
-          ...SALES_HERO_TRUST_DEFAULT.slice(configuredTrust.length),
-        ]
-
-  const handleBuy = () => {
-    selectProduct(product, setSelectedProduct)
-
-    navigate("/checkout")
-  }
-
-  return (
-    <section
-      className="hero-shell hero-shell-tight relative flex items-center overflow-hidden"
-      style={{
-        background:
-          "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(227,174,60,0.14), transparent), linear-gradient(135deg, #0B0D16 0%, #1A0E14 50%, #0B0D16 100%)",
-      }}
-    >
-      <div
-        className="absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(212,160,48,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(212,160,48,0.4) 1px, transparent 1px)",
-
-          backgroundSize: "60px 60px",
-        }}
-      />
-      <div
-        className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none glow-pulse"
-        style={{ background: "#4A0E1C", opacity: 0.35 }}
-      />
-      <div
-        className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl pointer-events-none"
-        style={{ background: "var(--color-primary)", opacity: 0.08 }}
-      />
-
-      <div className="relative max-w-6xl mx-auto px-6 py-20 md:py-24 grid md:grid-cols-2 gap-16 items-center">
-        <div className="page-enter">
-          <div
-            className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full border text-xs font-bold tracking-wide"
-            style={{
-              borderColor: "rgba(212,160,48,0.3)",
-
-              color: "var(--color-primary)",
-
-              background: "rgba(212,160,48,0.07)",
-            }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-            {c("sales.hero.eyebrow") || "Casanova · מדריך לגבר"}
-          </div>
-
-          {lead && (
-            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] mb-6 whitespace-pre-line text-white">
-              {lead}
-              {accent.length > 0 && (
-                <>
-                  <br />
-                  <span
-                    style={{
-                      background:
-                        "linear-gradient(90deg, #E7B94C, #D4A030 60%, #B8862A)",
-
-                      WebkitBackgroundClip: "text",
-
-                      WebkitTextFillColor: "transparent",
-                    }}
-                  >
-                    {accent.join("\n")}
-                  </span>
-                </>
-              )}
-            </h1>
-          )}
-
-          {(c("sales.hero.lede") || section?.content) && (
-            <p
-              dir="rtl"
-              className="text-lg md:text-xl leading-relaxed mb-8 max-w-lg whitespace-pre-line text-right"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              {c("sales.hero.lede") || section.content}
-            </p>
-          )}
-
-          <div className="flex flex-wrap items-center gap-4 mb-8">
-            <button
-              onClick={handleBuy}
-              className="btn-gradient px-8 py-4 rounded-full font-bold text-base"
-            >
-              {c("sales.hero.cta") || "כן. אני רוצה את הספר"}
-            </button>
-          </div>
-
-          <div
-            className="flex flex-wrap items-center gap-6 text-sm"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            {trust.map((item) => (
-              <div key={item} className="flex items-center gap-2">
-                <Icon
-                  name="checkCircle"
-                  size={15}
-                  style={{ color: "var(--color-success)" }}
-                />{" "}
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="hidden md:flex justify-center items-center relative">
-          <div className="relative">
-            <div className="relative z-10 float-slow">
-              {/* The cover is the hero's visual anchor, so it grows with the
-                  display instead of shrinking relative to a widened shell. */}
-              <div className="w-56 h-80 3xl:w-64 3xl:h-[22rem] 4xl:w-72 4xl:h-[26rem] rounded-xl flex-shrink-0 relative overflow-hidden shadow-2xl">
-                {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background: `linear-gradient(160deg, ${product.cover_colors?.[0] ?? "#1A1A2E"}, ${product.cover_colors?.[1] ?? "#2A2A3E"})`,
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-            <div
-              className="absolute -bottom-4 -right-4 px-5 py-3.5 rounded-2xl border glass shadow-2xl float-slower"
-              style={{ borderColor: "rgba(212,160,48,0.3)" }}
-            >
-              <p
-                className="text-xs mb-1"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {c("sales.hero.priceLabel") || "מחיר"}
-              </p>
-              <p
-                className="font-display text-2xl font-bold"
-                style={{ color: "var(--color-primary)" }}
-              >
-                ₪{effectivePrice(product)}
-              </p>
-            </div>
-          </div>
-        </div>
+  if (!product.image_url) {
+    return (
+      <div className="cv-book-fallback" aria-label={`עטיפת הספר ${product.name}`}>
+        <span dir="ltr">CASANOVA</span>
+        <span>{product.name}</span>
       </div>
-    </section>
+    )
+  }
+
+  return (
+    <picture>
+      {bundledCover && (
+        <source
+          type="image/webp"
+          srcSet="/covers/hi-kodem-cover-640.webp 640w, /covers/hi-kodem-cover-1024.webp 1024w"
+          sizes="(max-width: 900px) 68vw, 370px"
+        />
+      )}
+      <img
+        src={product.image_url}
+        alt={`עטיפת הספר ״${product.name}״`}
+        width={1024}
+        height={1536}
+        loading="eager"
+        fetchPriority="high"
+        decoding="async"
+      />
+    </picture>
   )
 }
 
-/* ── Proof strip (B) ───────────────────────────────────── */
+function MobileMenu({
+  open,
+  onClose,
+  onBuy,
+  buyLabel,
+  loginLabel,
+  price,
+  currency,
+  productName,
+}: {
+  open: boolean
+  onClose: () => void
+  onBuy: () => void
+  buyLabel: string
+  loginLabel: string
+  price: number
+  currency: string
+  productName: string
+}) {
+  const panelRef = useRef<HTMLDivElement | null>(null)
 
-function ProofStrip({ c }: { c: ReturnType<typeof useContent> }) {
-  const section = useSalesSlot("PROOF_STRIP")
+  useDialogFocus(open, panelRef, onClose)
 
-  const title = c("sales.proof.title") || section?.title || ""
-  const content = c("sales.proof.content") || section?.content || ""
-  const regItems = c.list<{ title: string }>("sales.proof.items")
-  const items = regItems.length > 0 ? regItems.map((it, i) => ({ item_id: String(i), title: it.title, content: "", group: undefined })) : (section?.items ?? [])
+  if (!open) return null
 
-  if (!title && !content && items.length === 0) return null
+  const navigateTo = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    event.preventDefault()
+    onClose()
+
+    window.setTimeout(() => {
+      if (window.location.hash !== href) {
+        window.history.replaceState(null, "", href)
+      }
+
+      scrollToSection(href.replace("#", ""))
+    }, 80)
+  }
 
   return (
     <div
-      className="border-y"
-      style={{
-        borderColor: "var(--color-border)",
-        background: "var(--color-card)",
-      }}
+      ref={panelRef}
+      id="cv-mobile-menu"
+      className="cv-mobile-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cv-mobile-menu-title"
     >
-      <div className="max-w-6xl mx-auto px-6 py-6 text-center">
-        {title && (
-          <p className="text-lg md:text-xl font-display font-bold mb-2">
-            {title}
-          </p>
-        )}
-        {content && (
-          <p
-            className="text-base mb-6"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            {content}
-          </p>
-        )}
-        {items.length > 0 && (
-          <div
-            className="flex flex-wrap items-center justify-center gap-8 md:gap-12 text-sm"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            {items.map((it) => (
-              <div key={it.item_id} className="flex items-center gap-2">
-                <Icon
-                  name="checkCircle"
-                  size={16}
-                  style={{ color: "var(--color-success)" }}
-                />
-                <span className="font-medium">{it.title}</span>
-              </div>
-            ))}
-          </div>
-        )}
+      <h2 id="cv-mobile-menu-title" className="sr-only">
+        ניווט
+      </h2>
+
+      <div className="cv-mobile-head">
+        <span className="cv-brand-word" dir="ltr" lang="en">
+          CASANOVA
+        </span>
+        <button
+          type="button"
+          className="cv-mobile-close"
+          onClick={onClose}
+          aria-label="סגירת התפריט"
+        >
+          <Icon name="x" size={18} />
+        </button>
       </div>
+
+      <nav className="cv-mobile-links" aria-label="ניווט ראשי">
+        {NAV_LINKS.map((link, index) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className="cv-mobile-link"
+            onClick={(event) => navigateTo(event, link.href)}
+          >
+            {link.label}
+            <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+          </a>
+        ))}
+      </nav>
+
+      <div className="cv-mobile-actions">
+        <button type="button" className="cv-btn cv-btn--camel" onClick={onBuy}>
+          {buyLabel}
+          <span className="cv-btn-price" dir="ltr">
+            {currencySymbol(currency)}
+            {formatNumber(price)}
+          </span>
+          <Icon name="arrowLeft" size={16} />
+        </button>
+        <Link to="/login" className="cv-account-link" onClick={onClose}>
+          {loginLabel}
+        </Link>
+      </div>
+
+      <p className="cv-mobile-note">
+        {productName} · ספר דיגיטלי למבוגרים · 18+
+      </p>
     </div>
   )
 }
 
-/* ─ Agitation (C) ─────────────────────────────────────── */
-
-function AgitationSection({ c }: { c: ReturnType<typeof useContent> }) {
-  const section = useSalesSlot("AGITATION")
-  const title = c("sales.agitation.title") || section?.title || ""
-  const content = c("sales.agitation.content") || section?.content || ""
-
-  if (!title && !content) return null
-
-  return (
-    <section className="max-w-3xl mx-auto px-6 py-14 md:py-16">
-      <SectionHeading title={title} />
-      {content && (
-        <div
-          className="space-y-5 text-base md:text-lg leading-relaxed whitespace-pre-line"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          {content}
-        </div>
-      )}
-    </section>
-  )
-}
-
-/* ── Mechanism (D) ─────────────────────────────────────── */
-
-function MechanismSection({ c }: { c: ReturnType<typeof useContent> }) {
-  const section = useSalesSlot("MECHANISM")
-  const title = c("sales.mechanism.title") || section?.title || ""
-  const content = c("sales.mechanism.content") || section?.content || ""
-  const regSteps = c.list<{ title: string; content: string }>("sales.mechanism.steps")
-  const steps = regSteps.length > 0
-    ? regSteps.map((s, i) => ({ item_id: String(i), title: s.title, content: s.content, group: undefined }))
-    : (section?.items ?? [])
-
-  if (!title && !content && steps.length === 0) return null
-
-  return (
-    <section
-      className="border-y py-14 md:py-16"
-      style={{
-        borderColor: "var(--color-border)",
-        background: "var(--color-card)",
-      }}
-    >
-      <div className="max-w-4xl mx-auto px-6">
-        <SectionHeading title={title} blurb={content} />
-        {steps.length > 0 && (
-          <ol className="space-y-5">
-            {steps.map((step, idx) => (
-              <li key={step.item_id} className="flex gap-5 items-start">
-                <span
-                  className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-display font-bold text-lg"
-                  style={{
-                    background: "rgba(212,160,48,0.12)",
-                    color: "var(--color-primary)",
-                  }}
-                >
-                  {idx + 1}
-                </span>
-                <div>
-                  <p className="font-display text-lg font-bold mb-1">
-                    {step.title}
-                  </p>
-                  {step.content && (
-                    <p
-                      className="text-sm"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      {step.content}
-                    </p>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/*  Features / benefit cards (E) ──────────────────────── */
-
-function FeaturesSection({ c }: { c: ReturnType<typeof useContent> }) {
-  const section = useSalesSlot("FEATURES")
-  const title = c("sales.features.title") || section?.title || ""
-  const regItems = c.list<{ title: string; content: string }>("sales.features.items")
-  const items = regItems.length > 0
-    ? regItems.map((it, i) => ({ item_id: String(i), title: it.title, content: it.content, group: undefined }))
-    : (section?.items ?? [])
-
-  if (!title && items.length === 0) return null
-
-  return (
-    <section className="max-w-6xl mx-auto px-6 py-14 md:py-16">
-      <SectionHeading title={title} />
-      {items.length > 0 && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {items.map((it) => {
-            const hasContent = Boolean(it.content)
-            return (
-              <div key={it.item_id} className="card-glow p-6 rounded-2xl">
-                <h3
-                  className={`font-display text-lg font-bold${hasContent ? " mb-2" : ""}`}
-                >
-                  {it.title}
-                </h3>
-                {hasContent && (
-                  <p
-                    className="text-sm leading-relaxed"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    {it.content}
-                  </p>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </section>
-  )
-}
-
-/* ── Audience (F) ──────────────────────────────────────── */
-
-function AudienceSection({ c }: { c: ReturnType<typeof useContent> }) {
-  const section = useSalesSlot("AUDIENCE")
-  const title = c("sales.audience.title") || section?.title || ""
-  const regYes = c.list<{ title: string }>("sales.audience.yes")
-  const regNo = c.list<{ title: string }>("sales.audience.no")
-  const items = section?.items ?? []
-  const yes = regYes.length > 0
-    ? regYes.map((it, i) => ({ item_id: `y${i}`, title: it.title, content: "", group: "PRIMARY" as const }))
-    : items.filter((it) => it.group !== "SECONDARY")
-  const no = regNo.length > 0
-    ? regNo.map((it, i) => ({ item_id: `n${i}`, title: it.title, content: "", group: "SECONDARY" as const }))
-    : items.filter((it) => it.group === "SECONDARY")
-
-  if (!title && yes.length === 0 && no.length === 0) return null
-
-  return (
-    <section className="max-w-5xl mx-auto px-6 py-14 md:py-16">
-      <SectionHeading title={title} />
-      <div className="grid md:grid-cols-2 gap-6">
-        {yes.length > 0 && (
-          <div
-            className="p-6 rounded-2xl border"
-            style={{
-              borderColor: "rgba(34,197,94,0.3)",
-              background: "rgba(34,197,94,0.04)",
-            }}
-          >
-            <h3
-              className="font-display text-lg font-bold mb-4 flex items-center gap-2"
-              style={{ color: "var(--color-success)" }}
-            >
-              <Icon name="checkCircle" size={18} /> {c("sales.audience.yesTitle") || "למי כן"}
-            </h3>
-            <ul className="space-y-3">
-              {yes.map((it) => (
-                <li key={it.item_id} className="flex items-start gap-3 text-sm">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0"
-                    style={{ background: "var(--color-success)" }}
-                  />
-                  <span>{it.title}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {no.length > 0 && (
-          <div
-            className="p-6 rounded-2xl border"
-            style={{
-              borderColor: "rgba(239,68,68,0.25)",
-              background: "rgba(239,68,68,0.04)",
-            }}
-          >
-            <h3
-              className="font-display text-lg font-bold mb-4 flex items-center gap-2"
-              style={{ color: "var(--color-danger)" }}
-            >
-              <Icon name="x" size={18} /> {c("sales.audience.noTitle") || "למי לא"}
-            </h3>
-            <ul className="space-y-3">
-              {no.map((it) => (
-                <li key={it.item_id} className="flex items-start gap-3 text-sm">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0"
-                    style={{ background: "var(--color-danger)" }}
-                  />
-                  <span>{it.title}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/* ─ Brand story (G) ───────────────────────────────────── */
-
-function BrandSection({ c }: { c: ReturnType<typeof useContent> }) {
-  const section = useSalesSlot("BRAND")
-  const title = c("sales.brand.title") || section?.title || ""
-  const content = c("sales.brand.content") || section?.content || ""
-
-  if (!title && !content) return null
-
-  return (
-    <section
-      className="border-y py-14 md:py-16"
-      style={{
-        borderColor: "var(--color-border)",
-        background: "var(--color-card)",
-      }}
-    >
-      <div className="max-w-3xl mx-auto px-6">
-        <SectionHeading title={title} />
-        {content && (
-          <p
-            className="text-base md:text-lg leading-relaxed whitespace-pre-line"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            {content}
-          </p>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/* ─ Social proof (H) ──────────────────────────────────── */
-
-function SocialSection({ c }: { c: ReturnType<typeof useContent> }) {
-  const section = useSalesSlot("SOCIAL")
-  const title = c("sales.social.title") || section?.title || ""
-  const content = c("sales.social.content") || section?.content || ""
-
-  // Read testimonials from content store first, fall back to CMS/bundled
-  const regTestimonials = c.list<{ quote: string; name: string; title: string }>("sales.social.testimonials")
-  const cmsTestimonials = useSalesTestimonials()
-  const testimonials = regTestimonials.length > 0
-    ? regTestimonials.map((t, i) => ({ testimonial_id: String(i), quote: t.quote, name: t.name, title: t.title, avatar: t.name.charAt(0), active: true, display_order: i }))
-    : cmsTestimonials
-
-  if (!title && testimonials.length === 0) return null
-
-  return (
-    <section className="max-w-6xl mx-auto px-6 py-14 md:py-16">
-      <SectionHeading title={title} blurb={content} />
-      <div className="grid md:grid-cols-3 gap-6">
-        {testimonials.map((t) => (
-          <div key={t.testimonial_id} className="card-glow p-6 rounded-2xl">
-            <div className="flex gap-0.5 mb-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Icon
-                  key={i}
-                  name="star"
-                  size={14}
-                  style={{
-                    color: "var(--color-primary)",
-                    fill: "currentColor",
-                  }}
-                />
-              ))}
-            </div>
-            <p className="text-sm leading-relaxed mb-5 font-display">
-              {t.quote}
-            </p>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-md"
-                style={{
-                  background: "rgba(212,160,48,0.15)",
-                  color: "var(--color-primary)",
-                }}
-              >
-                {t.avatar}
-              </div>
-              <div>
-                <p className="text-sm font-bold">{t.name}</p>
-                <p
-                  className="text-xs"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
-                  {t.title}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-/* ─ Offer / price block (I) ───────────────────────────── */
-
-function OfferSection({ product, c }: { product: Product, c: ReturnType<typeof useContent> }) {
-  const navigate = useNavigate()
-
-  const { setSelectedProduct } = useApp()
-
-  const section = useSalesSlot("OFFER")
-  const offerTitle = c("sales.offer.title") || section?.title || ""
-  const offerContent = c("sales.offer.content") || section?.content || ""
-  const regBonuses = c.list<{ title: string; content: string }>("sales.offer.bonuses")
-  const bonuses = regBonuses.length > 0
-    ? regBonuses.map((b, i) => ({ item_id: String(i), title: b.title, content: b.content, group: undefined }))
-    : (section?.items ?? [])
-
-  const wasPrice = product.price
-
-  const nowPrice = effectivePrice(product)
-
-  const onSale = isOnSale(product)
-
-  const handleBuy = () => {
-    selectProduct(product, setSelectedProduct)
-
-    navigate("/checkout")
-  }
-
-  return (
-    <section
-      className="py-14 md:py-16 relative overflow-hidden"
-      style={{
-        background:
-          "radial-gradient(ellipse 60% 80% at 50% 120%, rgba(212,160,48,0.15), transparent), var(--color-card)",
-      }}
-    >
-      <div className="max-w-3xl mx-auto px-6 text-center relative">
-        <SectionHeading title={offerTitle} blurb={offerContent} />
-        <div className="mb-8">
-          {onSale && (
-            <p
-              className="text-lg line-through mb-2"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              {wasPrice.toLocaleString()}
-            </p>
-          )}
-          <p
-            className="font-display text-6xl md:text-7xl font-bold"
-            style={{ color: "var(--color-primary)" }}
-          >
-            ₪{nowPrice.toLocaleString()}
-          </p>
-          {onSale && (
-            <p
-              className="text-sm mt-2 font-bold"
-              style={{ color: "var(--color-success)" }}
-            >
-              {c("sales.offer.priceLabel") || "מחיר"}
-            </p>
-          )}
-        </div>
-        <button
-          onClick={handleBuy}
-          className="btn-gradient px-12 py-4 rounded-full font-bold text-lg mb-8"
-        >
-          {c("sales.offer.cta") || "לקחת את הספר עכשיו"} — ₪{nowPrice}
-        </button>
-        <p
-          className="text-sm mb-8"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          {c("sales.offer.subtext") || "גישה מיידית · אפשר לקרוא הערב"}
-        </p>
-        {bonuses.length > 0 && (
-          <div
-            className="max-w-lg mx-auto text-right p-6 rounded-2xl border"
-            style={{
-              borderColor: "rgba(212,160,48,0.3)",
-              background: "rgba(212,160,48,0.04)",
-            }}
-          >
-            <p
-              className="text-xs font-bold mb-3 tracking-wide"
-              style={{ color: "var(--color-primary)" }}
-            >
-              {c("sales.offer.bonusesLabel") || "בונוסים כלולים"}
-            </p>
-            <ul className="space-y-2">
-              {bonuses.map((b) => (
-                <li key={b.item_id} className="flex items-start gap-3 text-sm">
-                  <Icon
-                    name="gift"
-                    size={16}
-                    style={{ color: "var(--color-primary)", flexShrink: 0 }}
-                  />
-                  <div>
-                    <p className="font-medium">{b.title}</p>
-                    {b.content && (
-                      <p
-                        className="text-xs mt-0.5"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
-                        {b.content}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/* ── Guarantee (J) ─────────────────────────────────────── */
-
-/* ── FAQ (K) ───────────────────────────────────────────── */
-
-function FaqSection({ product, c }: { product: Product, c: ReturnType<typeof useContent> }) {
-  const section = useSalesSlot("FAQ")
-  const title = c("sales.faq.title") || section?.title || ""
-
-  // Read FAQs from content store first, fall back to CMS/bundled. A {price}
-  // token left in an editable question is filled from the authoritative
-  // product price — the same effectivePrice the storefront and checkout use.
-  const priceVars = { price: effectivePrice(product) }
-  const regFaqs = c.list<{ question: string; answer: string }>("sales.faq.items")
-  const cmsFaqs = useSalesFaqs()
-  const faqs = regFaqs.length > 0
-    ? regFaqs.map((f, i) => ({ faq_id: String(i), question: fmt(f.question, priceVars), answer: fmt(f.answer, priceVars), active: true, display_order: i }))
-    : cmsFaqs.map((f) => ({ ...f, question: fmt(f.question, priceVars), answer: fmt(f.answer ?? "", priceVars) }))
-
-  const [open, setOpen] = useState<number | null>(null)
-
-  if (!title && faqs.length === 0) return null
-
-  return (
-    <section
-      className="border-t py-14 md:py-16"
-      style={{ borderColor: "var(--color-border)" }}
-    >
-      <div className="max-w-3xl mx-auto px-6">
-        <SectionHeading title={title} />
-        <div className="space-y-3">
-          {faqs.map((item, i) => (
-            <div
-              key={item.faq_id}
-              className="border rounded-2xl overflow-hidden transition-all"
-              style={{
-                borderColor:
-                  open === i ? "rgba(212,160,48,0.4)" : "var(--color-border)",
-
-                background: open === i ? "var(--color-card)" : "transparent",
-              }}
-            >
-              <button
-                className="w-full flex items-center justify-between px-5 py-4 text-right transition-colors hover:bg-white/3"
-                onClick={() => setOpen(open === i ? null : i)}
-              >
-                <span className="font-bold text-sm">{item.question}</span>
-                <span
-                  className="mr-4 text-lg flex-shrink-0 transition-transform"
-                  style={{
-                    color: "var(--color-primary)",
-                    transform: open === i ? "rotate(45deg)" : "rotate(0)",
-                  }}
-                >
-                  +
-                </span>
-              </button>
-              {open === i && (
-                <div
-                  className="px-5 pb-4 text-sm leading-relaxed"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
-                  {item.answer}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ── Final CTA (L) ─────────────────────────────────────── */
-
-function FinalCtaSection({ product, c }: { product: Product, c: ReturnType<typeof useContent> }) {
-  const navigate = useNavigate()
-
-  const { setSelectedProduct } = useApp()
-
-  const section = useSalesSlot("FINAL_CTA")
-  const title = c("sales.final.title") || section?.title || ""
-  const content = fmt(c("sales.final.content") || section?.content || "", { price: effectivePrice(product) })
-
-  const handleBuy = () => {
-    selectProduct(product, setSelectedProduct)
-
-    navigate("/checkout")
-  }
-
-  return (
-    <section
-      className="py-16 md:py-20 text-center relative overflow-hidden"
-      style={{
-        background:
-          "radial-gradient(ellipse 60% 80% at 50% 120%, rgba(212,160,48,0.18), transparent), linear-gradient(180deg, var(--color-background) 0%, #1A0E14 100%)",
-      }}
-    >
-      <div className="max-w-3xl mx-auto px-6 relative">
-        {title && (
-          <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight whitespace-pre-line">
-            {title}
-          </h2>
-        )}
-        <button
-          onClick={handleBuy}
-          className="btn-gradient px-12 py-4 rounded-full font-bold text-lg mb-6"
-        >
-          {c("sales.final.cta") || "כן. אני רוצה את הספר"}
-        </button>
-        {content && (
-          <p
-            className="text-sm"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            {content}
-          </p>
-        )}
-      </div>
-    </section>
-  )
-}
-
-/* ── Sticky mobile CTA bar ────────────────────────────── */
-
-function StickyCta({ product, c }: { product: Product, c: ReturnType<typeof useContent> }) {
-  const navigate = useNavigate()
-
-  const { setSelectedProduct } = useApp()
-
-  const settings = useSalesSettings()
-
+function StickyCta({
+  product,
+  label,
+  onBuy,
+}: {
+  product: Product
+  label: string
+  onBuy: () => void
+}) {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 600)
+    const onScroll = () => setVisible(window.scrollY > 560)
 
+    onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
 
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  const handleBuy = () => {
-    selectProduct(product, setSelectedProduct)
-
-    navigate("/checkout")
-  }
-
   if (!visible) return null
 
+  const price = effectivePrice(product)
+
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden safe-bottom"
-      style={{
-        background: "rgba(11,13,22,0.95)",
-        backdropFilter: "blur(12px)",
-        borderTop: "1px solid rgba(212,160,48,0.3)",
-      }}
-    >
-      <div className="px-4 py-3 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-bold truncate">{product.name}</p>
-          <p
-            className="font-display text-lg font-bold"
-            style={{ color: "var(--color-primary)" }}
-          >
-            ₪{effectivePrice(product)}
+    <div className="cv-sticky">
+      <div className="cv-sticky-inner">
+        <div className="cv-sticky-meta">
+          <p className="cv-sticky-name">{product.name} · ספר דיגיטלי</p>
+          <p className="cv-sticky-price">
+            <Price value={price} currency={product.currency} />
           </p>
         </div>
-        <button
-          onClick={handleBuy}
-          className="btn-gradient px-6 py-3 rounded-full font-bold text-sm flex-shrink-0"
-        >
-          {fmt(c("sales.stickyCta") || settings.sticky_cta, { price: effectivePrice(product) })}
+        <button type="button" className="cv-btn cv-btn--camel" onClick={onBuy}>
+          {label}
+          <Icon name="arrowLeft" size={15} />
         </button>
       </div>
     </div>
   )
 }
 
-/* ── Exit-intent popup (once per session) ──────────────── */
-
-function ExitPopup({ product, c }: { product: Product, c: ReturnType<typeof useContent> }) {
-  const navigate = useNavigate()
-
-  const { setSelectedProduct } = useApp()
-
-  const settings = useSalesSettings()
-
-  const [show, setShow] = useState(false)
-
+function ExitDialog({
+  title,
+  body,
+  cta,
+  dismiss,
+  secondary,
+  price,
+  currency,
+  onBuy,
+}: {
+  title: string
+  body: string
+  cta: string
+  dismiss: string
+  secondary: string
+  price: number
+  currency: string
+  onBuy: () => void
+}) {
+  const [open, setOpen] = useState(false)
   const dialogRef = useRef<HTMLDivElement | null>(null)
-  const openerRef = useRef<HTMLElement | null>(null)
 
-  /* A promotional popup is still a dialog: it announces itself, takes focus,
-   * closes on Escape and hands focus back. Without this it was a mouse-only
-   * overlay that a keyboard user could not dismiss. */
-  useEffect(() => {
-    if (!show) return
-    openerRef.current = document.activeElement as HTMLElement | null
-    const previouslyFocused = openerRef.current
-    try {
-      dialogRef.current?.focus()
-    } catch {}
+  useExitIntent(() => setOpen(true))
+  useDialogFocus(open, dialogRef, () => setOpen(false))
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return
-      event.preventDefault()
-      setShow(false)
-    }
-    document.addEventListener("keydown", onKeyDown)
-    return () => {
-      document.removeEventListener("keydown", onKeyDown)
-      if (previouslyFocused?.isConnected) {
-        try {
-          previouslyFocused.focus()
-        } catch {}
-      }
-    }
-  }, [show])
+  if (!open) return null
 
-  useEffect(() => {
-    if (sessionStorage.getItem(EXIT_SEEN_KEY)) return
-
-    let armed = false
-
-    const onEnter = () => {
-      if (armed) {
-        setShow(true)
-
-        sessionStorage.setItem(EXIT_SEEN_KEY, "1")
-      }
-    }
-
-    const onMove = (e: MouseEvent) => {
-      if (e.clientY <= 10) armed = true
-    }
-
-    document.addEventListener("mouseenter", onEnter)
-
-    document.addEventListener("mousemove", onMove)
-
-    return () => {
-      document.removeEventListener("mouseenter", onEnter)
-
-      document.removeEventListener("mousemove", onMove)
-    }
-  }, [])
-
-  if (!show) return null
-
-  const handleBuy = () => {
-    selectProduct(product, setSelectedProduct)
-
-    navigate("/checkout")
+  const handleInside = () => {
+    setOpen(false)
+    window.setTimeout(() => scrollToSection("inside"), 80)
   }
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-      onClick={() => setShow(false)}
+      className="cv-modal-backdrop"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) setOpen(false)
+      }}
     >
       <div
         ref={dialogRef}
+        className="cv-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="sales-exit-title"
+        aria-labelledby="cv-exit-title"
+        aria-describedby="cv-exit-body"
         tabIndex={-1}
-        className="card-glow w-full max-w-md p-8 text-center"
-        onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="sales-exit-title" className="font-display text-3xl font-bold mb-3">
-          {c("sales.exit.title") || settings.exit_title}
-        </h3>
-        <p
-          className="text-base mb-6"
-          style={{ color: "var(--color-muted-foreground)" }}
+        <button
+          type="button"
+          className="cv-modal-close"
+          onClick={() => setOpen(false)}
+          aria-label={dismiss}
         >
-          {fmt(c("sales.exit.body") || settings.exit_body, { price: effectivePrice(product) })}
+          <Icon name="x" size={16} />
+        </button>
+
+        <p className="cv-modal-eyebrow" dir="ltr" lang="en">
+          CASANOVA
         </p>
-        <button
-          onClick={handleBuy}
-          className="btn-gradient w-full py-3.5 rounded-full font-bold mb-3"
-        >
-          {c("sales.exit.cta") || settings.exit_cta} — ₪{effectivePrice(product)}
-        </button>
-        <button
-          onClick={() => setShow(false)}
-          className="text-sm transition-opacity hover:opacity-70"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          {c("sales.exit.dismiss") || "לא, תודה"}
-        </button>
+        <h2 id="cv-exit-title" className="cv-modal-title">
+          {title}
+        </h2>
+        <p id="cv-exit-body" className="cv-modal-body">
+          {body}
+        </p>
+
+        <div className="cv-modal-actions">
+          <button type="button" className="cv-btn cv-btn--camel" onClick={onBuy}>
+            {cta}
+            <span className="cv-btn-price" dir="ltr">
+              {currencySymbol(currency)}
+              {formatNumber(price)}
+            </span>
+            <Icon name="arrowLeft" size={16} />
+          </button>
+          <button
+            type="button"
+            className="cv-btn cv-btn--outline-ink"
+            onClick={handleInside}
+          >
+            {secondary}
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
-/* ── Page ──────────────────────────────────────────────── */
-
 export default function SalesLandingPage() {
-  const product = useSalesProduct()
+  const navigate = useNavigate()
+
+  const { setSelectedProduct } = useApp()
+  const cms = useCms()
   const c = useContent()
 
-  // The sales page is a standalone route (NOT nested under PublicRoot),
-  // so it must load content from the database on its own.
-  // Without this, only the localStorage cache and registry defaults are used,
-  // and edits made in Maestro CMS never appear on the live page.
+  const product = useSalesProduct()
+  const price = effectivePrice(product)
+  const onSale = isOnSale(product)
+
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [openFaq, setOpenFaq] = useState(0)
+
   useEffect(() => {
     loadContent().catch(() => {})
   }, [])
 
-  const brand = c("global.brand") || "Casanova"
-  const logoSrc = c("global.logo") || logoImg
+  /* The floating accessibility control is global. On this page only, it
+   * moves clear of the mobile reading column and the sticky purchase bar;
+   * the reader and dashboard keep their own placement. */
+  useEffect(() => {
+    document.documentElement.dataset.cvLanding = "true"
+
+    return () => {
+      delete document.documentElement.dataset.cvLanding
+    }
+  }, [])
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 16)
+
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
+  const heroEyebrow = c("sales.hero.eyebrow")
+  const heroHeadline = c("sales.hero.headline")
+  const heroDescription = c("sales.hero.description")
+  const buyLabel = c("sales.hero.buyCta") || "לרכישת הספר"
+  const secondaryLabel = c("sales.hero.secondaryCta") || "מה יש בפנים"
+  const secondaryLink = c("sales.hero.secondaryLink") || "#inside"
+  const heroFacts = c.strings("sales.hero.facts")
+
+  const benefits = c.list<{ title: string; content: string }>(
+    "sales.benefits.items",
+  )
+
+  const aboutEyebrow = c("sales.about.eyebrow")
+  const aboutTitle = c("sales.about.title")
+  const aboutBody = c("sales.about.body")
+  const aboutBody2 = c("sales.about.body2")
+  const aboutQuote = c("sales.about.quote")
+  const aboutQuoteCaption = c("sales.about.quoteCaption")
+  const aboutThemes = c.list<{ title: string; content: string }>(
+    "sales.about.themes",
+  )
+
+  const quoteEyebrow = c("sales.quote.eyebrow")
+  const quoteText = c("sales.quote.text")
+
+  const insideEyebrow = c("sales.inside.eyebrow")
+  const insideTitle = c("sales.inside.title")
+  const insideBody = c("sales.inside.body")
+  const insideNote = c("sales.inside.note")
+  const insideTopics = c.list<{ title: string; content: string }>(
+    "sales.features.items",
+  )
+  const audienceTitle = c("sales.audience.title")
+  const audience = c.list<{ title: string }>("sales.audience.yes")
+
+  const offerEyebrow = c("sales.offer.eyebrow")
+  const offerTitle = c("sales.offer.title")
+  const offerContent = c("sales.offer.content")
+  const offerCta = c("sales.offer.cta") || "לרכישת הספר"
+  const offerSubtext = c("sales.offer.subtext")
+  const offerNote = c("sales.offer.note")
+  const offerDetails = c.strings("sales.offer.details")
+  const priceLabel = onSale
+    ? c("sales.offer.saleLabel") || "מחיר מוזל"
+    : c("sales.offer.priceLabel") || "מחיר"
+
+  const faqTitle = c("sales.faq.title")
+  const faqIntro = c("sales.faq.intro")
+  const faqSupportText = c("sales.faq.supportText")
+  const faqSupportCta = c("sales.faq.supportCta")
+
+  const footerCopyright = c("sales.footer.copyright")
+  const footerAge = c("sales.footer.age")
+  const footerPowered = c("sales.footer.powered")
+  const accountLabel = c("sales.header.login") || "האזור האישי"
+
+  const stickyLabel =
+    cms.settings.sales_sticky_cta?.trim() ||
+    c("sales.stickyCta") ||
+    SALES_SETTINGS_DEFAULTS.sales_sticky_cta
+
+  const exitTitle =
+    cms.settings.sales_exit_title?.trim() ||
+    c("sales.exit.title") ||
+    SALES_SETTINGS_DEFAULTS.sales_exit_title
+
+  const exitBody =
+    cms.settings.sales_exit_body?.trim() ||
+    c("sales.exit.body") ||
+    SALES_SETTINGS_DEFAULTS.sales_exit_body
+
+  const exitCta =
+    cms.settings.sales_exit_cta?.trim() ||
+    c("sales.exit.cta") ||
+    SALES_SETTINGS_DEFAULTS.sales_exit_cta
+
+  const cmsFaqs = [...cms.faqs]
+    .filter((faq) => faq.active)
+    .sort((a, b) => a.display_order - b.display_order)
+
+  const testimonials = [...cms.testimonials]
+    .filter((testimonial) => testimonial.active)
+    .sort((a, b) => a.display_order - b.display_order)
+
+  const priceVars = { price }
+
+  const faqs =
+    cmsFaqs.length > 0
+      ? cmsFaqs.map((faq) => ({
+          id: faq.faq_id,
+          question: fmt(faq.question, priceVars),
+          answer: fmt(faq.answer ?? "", priceVars),
+        }))
+      : c
+          .list<{ question: string; answer: string }>("sales.faq.items")
+          .map((faq, index) => ({
+            id: `faq-${index}`,
+            question: fmt(faq.question, priceVars),
+            answer: fmt(faq.answer, priceVars),
+          }))
+
+  const detailRows = offerDetails.map((line) => {
+    const separator = line.indexOf(":")
+
+    return separator >= 0
+      ? {
+          label: line.slice(0, separator).trim(),
+          value: line.slice(separator + 1).trim(),
+        }
+      : { label: line.trim(), value: "" }
+  })
+
+  const seoTitle =
+    c("sales.seo.title") ||
+    "CASANOVA | ספר דיגיטלי על מיניות, משיכה ואינטימיות"
+
+  const seoDescription =
+    c("sales.seo.description") ||
+    "הכירו את CASANOVA — המדריך הדיגיטלי ״היא קודם״ על תשוקה, משיכה ואינטימיות."
+
+  const seoImage = c("sales.seo.image") || "/covers/hi-kodem-cover-1024.webp"
+
+  useLandingMeta({
+    title: seoTitle,
+    description: seoDescription,
+    image: seoImage,
+    productName: product.name,
+    price,
+    currency: product.currency,
+    availability: product.availability,
+  })
+
+  const handleBuy = () => {
+    selectProduct(product, setSelectedProduct)
+    navigate("/checkout")
+  }
+
+  const handleMobileBuy = () => {
+    setMenuOpen(false)
+    handleBuy()
+  }
 
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        background: "var(--color-background)",
-        color: "var(--color-foreground)",
-      }}
-    >
-      {/* This page is its own shell without PublicRoot, so it carries its own
-       * skip link; see the layout note in index.css. */}
+    <div className="cv-page" id="top">
       <a href="#main" className="skip-link">
         דלג לתוכן הראשי
       </a>
-      <header
-        className="fixed left-0 right-0 z-30 glass border-b top-0"
-        style={{ borderColor: "rgba(30,30,46,0.8)" }}
-      >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img
-              src={logoSrc}
-              alt=""
-              className="w-7 h-7 rounded-lg object-cover shadow-lg flex-shrink-0"
-            />
-            <span
-              dir="ltr"
-              className="font-display text-lg font-bold tracking-wide"
-              style={{ color: "var(--color-primary)" }}
-            >
-              {brand}
+
+      <header className="cv-header" data-scrolled={scrolled}>
+        <div className="cv-shell cv-header-inner">
+          <Link to="/" className="cv-brand" aria-label="CASANOVA — דף הבית">
+            <span className="cv-brand-word" dir="ltr" lang="en">
+              CASANOVA
             </span>
-            <span
-              className="text-xs"
-              style={{ color: "var(--color-foreground)" }}
-            >
-              {c("sales.header.tagline") || "· היא קודם"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Link
-              to="/login"
-              className="btn-gradient tap-target inline-flex items-center justify-center text-sm font-bold px-5 py-2 rounded-full"
-            >
-              {c("sales.header.login") || "לאזור האישי"}
+          </Link>
+
+          <nav className="cv-nav" aria-label="ניווט ראשי">
+            {NAV_LINKS.map((link) => (
+              <a key={link.href} href={link.href} className="cv-nav-link">
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="cv-header-actions">
+            <Link to="/login" className="cv-account-link">
+              {accountLabel}
             </Link>
+
+            <button
+              type="button"
+              className="cv-btn cv-btn--camel cv-btn--sm cv-header-cta"
+              onClick={handleBuy}
+            >
+              {c("sales.header.cta") || "רכישת הספר"}
+              <Icon name="arrowLeft" size={15} />
+            </button>
+
+            <button
+              type="button"
+              className="cv-menu-btn"
+              onClick={(event) => {
+                event.currentTarget.focus()
+                setMenuOpen(true)
+              }}
+              aria-expanded={menuOpen}
+              aria-controls="cv-mobile-menu"
+              aria-label="פתיחת התפריט"
+            >
+              <Icon name="menu" size={18} />
+            </button>
           </div>
         </div>
       </header>
 
-      <main id="main" className="pt-14">
-        <HeroSection product={product} c={c} />
-        <ProofStrip c={c} />
-        <AgitationSection c={c} />
-        <MechanismSection c={c} />
-        <FeaturesSection c={c} />
-        <AudienceSection c={c} />
-        <BrandSection c={c} />
-        <SocialSection c={c} />
-        <OfferSection product={product} c={c} />
-        <FaqSection product={product} c={c} />
-        <FinalCtaSection product={product} c={c} />
+      <main id="main">
+        <section className="cv-hero">
+          <div className="cv-grain" aria-hidden="true" />
+
+          <div className="cv-shell cv-hero-grid">
+            <div className="cv-hero-copy">
+              {heroEyebrow && (
+                <p className="cv-eyebrow cv-eyebrow--dark">{heroEyebrow}</p>
+              )}
+
+              <h1
+                className="cv-hero-title"
+                aria-label={`CASANOVA — ${product.name}`}
+              >
+                <span className="cv-brand-display" dir="ltr" lang="en">
+                  CASANOVA
+                </span>
+                <span className="cv-hero-bookline" aria-hidden="true">
+                  <span>{product.name}</span>
+                  <span className="cv-hero-book-meta">מהדורה דיגיטלית</span>
+                </span>
+              </h1>
+
+              {heroHeadline && (
+                <p className="cv-hero-headline">
+                  <Rich text={heroHeadline} />
+                </p>
+              )}
+
+              {heroDescription && (
+                <p className="cv-hero-desc">{heroDescription}</p>
+              )}
+
+              <div className="cv-hero-ctas">
+                <button
+                  type="button"
+                  className="cv-btn cv-btn--camel"
+                  onClick={handleBuy}
+                >
+                  {buyLabel}
+                  <span className="cv-btn-price" dir="ltr">
+                    {currencySymbol(product.currency)}
+                    {formatNumber(price)}
+                  </span>
+                  <Icon name="arrowLeft" size={16} />
+                </button>
+
+                <SmartLink
+                  to={secondaryLink}
+                  className="cv-btn cv-btn--ghost-dark"
+                >
+                  {secondaryLabel}
+                  <Icon name="chevronDown" size={16} />
+                </SmartLink>
+              </div>
+
+              {heroFacts.length > 0 && (
+                <ul className="cv-facts">
+                  {heroFacts.map((fact) => (
+                    <li key={fact}>{fact}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="cv-hero-visual">
+              <div className="cv-book-halo" aria-hidden="true" />
+              <div className="cv-book">
+                <CoverArt product={product} />
+              </div>
+              <p className="cv-book-caption">
+                <span>{product.name}</span>
+                <span aria-hidden="true">·</span>
+                <span>18+</span>
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {benefits.length > 0 && (
+          <section className="cv-strip" aria-label="מידע על הספר והקריאה">
+            <div className="cv-shell cv-strip-grid">
+              {benefits.map((benefit, index) => (
+                <div key={benefit.title} className="cv-strip-item">
+                  <span className="cv-strip-icon" aria-hidden="true">
+                    {index === 0 ? (
+                      <Icon name="bookOpen" size={18} />
+                    ) : index === 1 ? (
+                      <Icon name="library" size={18} />
+                    ) : (
+                      <span className="cv-age-mark">18+</span>
+                    )}
+                  </span>
+                  <div>
+                    <p className="cv-strip-title">{benefit.title}</p>
+                    {benefit.content && (
+                      <p className="cv-strip-text">{benefit.content}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section id="about" className="cv-section cv-cream">
+          <div className="cv-shell cv-about-grid">
+            <div className="cv-about-copy">
+              {aboutEyebrow && <p className="cv-eyebrow">{aboutEyebrow}</p>}
+
+              {aboutTitle && (
+                <h2 className="cv-h2">
+                  <Rich text={aboutTitle} />
+                </h2>
+              )}
+
+              {aboutBody && <p className="cv-body">{aboutBody}</p>}
+              {aboutBody2 && <p className="cv-body">{aboutBody2}</p>}
+
+              {aboutThemes.length > 0 && (
+                <ol className="cv-principles">
+                  {aboutThemes.map((theme, index) => (
+                    <li key={theme.title}>
+                      <span className="cv-principles-num" aria-hidden="true">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <div>
+                        <h3 className="cv-principles-title">{theme.title}</h3>
+                        {theme.content && (
+                          <p className="cv-principles-text">{theme.content}</p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+
+            <div className="cv-about-visual">
+              <figure className="cv-about-frame">
+                <div className="cv-about-accent" aria-hidden="true" />
+                <div className="cv-about-photo">
+                  <img
+                    src={portraitImg}
+                    alt="איור CASANOVA — דיוקן בסגנון קלאסי"
+                    width={900}
+                    height={900}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              </figure>
+
+              {aboutQuote && (
+                <blockquote className="cv-about-quote">
+                  ״{aboutQuote}״
+                  {aboutQuoteCaption && (
+                    <span className="cv-about-quote-cite">
+                      {aboutQuoteCaption}
+                    </span>
+                  )}
+                </blockquote>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {quoteText && (
+          <section className="cv-quote-band cv-dark">
+            <div className="cv-grain" aria-hidden="true" />
+            <div className="cv-shell cv-quote-inner">
+              {quoteEyebrow && (
+                <p className="cv-eyebrow cv-eyebrow--dark">{quoteEyebrow}</p>
+              )}
+              <blockquote className="cv-quote">
+                <Rich text={quoteText} />
+              </blockquote>
+            </div>
+          </section>
+        )}
+
+        <section id="inside" className="cv-section cv-paper">
+          <div
+            className="cv-shell cv-inside-grid"
+            style={
+              insideTopics.length === 0
+                ? { gridTemplateColumns: "minmax(0, 1fr)" }
+                : undefined
+            }
+          >
+            <div className="cv-inside-copy">
+              {insideEyebrow && <p className="cv-eyebrow">{insideEyebrow}</p>}
+
+              {insideTitle && (
+                <h2 className="cv-h2">
+                  <Rich text={insideTitle} />
+                </h2>
+              )}
+
+              {insideBody && <p className="cv-body">{insideBody}</p>}
+
+              {audience.length > 0 && (
+                <div className="cv-audience">
+                  {audienceTitle && (
+                    <h3 className="cv-audience-title">{audienceTitle}</h3>
+                  )}
+                  <ul>
+                    {audience.map((item) => (
+                      <li key={item.title}>{item.title}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {insideNote && <p className="cv-note">{insideNote}</p>}
+
+              <button
+                type="button"
+                className="cv-btn cv-btn--outline-ink"
+                onClick={handleBuy}
+              >
+                {offerCta}
+                <span className="cv-btn-price" dir="ltr">
+                  {currencySymbol(product.currency)}
+                  {formatNumber(price)}
+                </span>
+                <Icon name="arrowLeft" size={16} />
+              </button>
+            </div>
+
+            {insideTopics.length > 0 && (
+              <div className="cv-toc-wrap">
+                <div className="cv-toc">
+                  <div className="cv-toc-head">
+                    <span>נושאי הספר</span>
+                    <span dir="ltr" lang="en">
+                      CASANOVA
+                    </span>
+                  </div>
+
+                  <ol className="cv-toc-list">
+                    {insideTopics.map((topic, index) => (
+                      <li key={topic.title} className="cv-toc-item">
+                        <span className="cv-toc-num" aria-hidden="true">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <div>
+                          <h3 className="cv-toc-title">{topic.title}</h3>
+                          {topic.content && (
+                            <p className="cv-toc-text">{topic.content}</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div className="cv-toc-foot">
+                    <span>{product.name}</span>
+                    <span>18+</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {testimonials.length > 0 && (
+          <section className="cv-section cv-cream cv-testimonials">
+            <div className="cv-shell">
+              <p className="cv-eyebrow">קוראים</p>
+              <h2 className="cv-h2">
+                מה מספרים <em>קוראים.</em>
+              </h2>
+
+              <div className="cv-testimonial-grid">
+                {testimonials.map((testimonial) => (
+                  <figure
+                    key={testimonial.testimonial_id}
+                    className="cv-testimonial"
+                  >
+                    <blockquote>״{testimonial.quote}״</blockquote>
+                    <figcaption>
+                      {testimonial.name}
+                      {testimonial.title ? ` · ${testimonial.title}` : ""}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section id="purchase" className="cv-section cv-purchase cv-dark">
+          <div className="cv-grain" aria-hidden="true" />
+
+          <div className="cv-shell cv-purchase-grid">
+            <div className="cv-purchase-copy">
+              {offerEyebrow && (
+                <p className="cv-eyebrow cv-eyebrow--dark">{offerEyebrow}</p>
+              )}
+
+              {offerTitle && (
+                <h2 className="cv-h2">
+                  <Rich text={offerTitle} />
+                </h2>
+              )}
+
+              {offerContent && (
+                <p className="cv-body cv-body--dark">{offerContent}</p>
+              )}
+
+              <div className="cv-price-block">
+                <span className="cv-price-label">{priceLabel}</span>
+                <span className="cv-price-now">
+                  <Price value={price} currency={product.currency} />
+                </span>
+                {onSale && (
+                  <span className="cv-price-was">
+                    במקום{" "}
+                    <s dir="ltr">
+                      {currencySymbol(product.currency)}
+                      {formatNumber(product.price)}
+                    </s>
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="cv-btn cv-btn--camel cv-btn--lg"
+                onClick={handleBuy}
+              >
+                {offerCta}
+                <span className="cv-btn-price" dir="ltr">
+                  {currencySymbol(product.currency)}
+                  {formatNumber(price)}
+                </span>
+                <Icon name="arrowLeft" size={17} />
+              </button>
+
+              {offerSubtext && <p className="cv-fine">{offerSubtext}</p>}
+            </div>
+
+            <aside className="cv-purchase-card">
+              <div className="cv-purchase-card-head">
+                <span className="cv-purchase-card-icon" aria-hidden="true">
+                  <Icon name="bookOpen" size={20} />
+                </span>
+                <div>
+                  <p className="cv-purchase-card-name">{product.name}</p>
+                  <p className="cv-purchase-card-sub">מהדורה דיגיטלית · 18+</p>
+                </div>
+              </div>
+
+              {detailRows.length > 0 && (
+                <dl className="cv-purchase-details">
+                  {detailRows.map((row) => (
+                    <div key={row.label}>
+                      <dt>{row.label}</dt>
+                      {row.value && <dd>{row.value}</dd>}
+                    </div>
+                  ))}
+                </dl>
+              )}
+
+              <div className="cv-purchase-card-foot">
+                <span>רכישה חד־פעמית</span>
+                <span>גישה אישית</span>
+              </div>
+            </aside>
+          </div>
+
+          {(offerNote || offerSubtext) && (
+            <div className="cv-shell cv-purchase-legal">
+              {offerNote && <p>{offerNote}</p>}
+              <div>
+                <Link to="/cancellation-and-refund-policy">
+                  ביטול והחזרים
+                </Link>
+                <Link to="/terms-and-conditions">תנאי שימוש</Link>
+                <Link to="/privacy-policy">מדיניות פרטיות</Link>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {faqs.length > 0 && (
+          <section id="faq" className="cv-section cv-cream">
+            <div className="cv-shell cv-faq-grid">
+              <div className="cv-faq-head">
+                <p className="cv-eyebrow">שאלות</p>
+
+                {faqTitle && (
+                  <h2 className="cv-h2">
+                    <Rich text={faqTitle} />
+                  </h2>
+                )}
+
+                {faqIntro && <p className="cv-body">{faqIntro}</p>}
+
+                {faqSupportText && (
+                  <p className="cv-support">
+                    {faqSupportText}{" "}
+                    <Link to="/support">
+                      {faqSupportCta || "לעמוד התמיכה"}
+                    </Link>
+                  </p>
+                )}
+              </div>
+
+              <div className="cv-faq-list">
+                {faqs.map((faq, index) => {
+                  const isOpen = openFaq === index
+                  const triggerId = `cv-faq-trigger-${index}`
+                  const panelId = `cv-faq-panel-${index}`
+
+                  return (
+                    <div key={faq.id} className="cv-faq-item">
+                      <h3>
+                        <button
+                          type="button"
+                          id={triggerId}
+                          className="cv-faq-trigger"
+                          aria-expanded={isOpen}
+                          aria-controls={panelId}
+                          onClick={() =>
+                            setOpenFaq(isOpen ? -1 : index)
+                          }
+                        >
+                          <span>{faq.question}</span>
+                          <span className="cv-faq-plus" aria-hidden="true" />
+                        </button>
+                      </h3>
+
+                      <div
+                        id={panelId}
+                        role="region"
+                        aria-labelledby={triggerId}
+                        className="cv-faq-answer"
+                        hidden={!isOpen}
+                      >
+                        <p>{faq.answer}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
-      <footer
-        className="border-t py-8"
-        style={{ borderColor: "var(--color-border)" }}
-      >
-        <div
-          className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          <span
-            className="flex items-center gap-2 font-display font-bold tracking-wide"
-            style={{ color: "var(--color-primary)" }}
-          >
-            <img
-              src={logoSrc}
-              alt=""
-              className="w-6 h-6 rounded-lg object-cover flex-shrink-0"
-            />
-            {brand}
-          </span>
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
-            <Link to="/terms-and-conditions" className="hover:opacity-80 transition-opacity">תנאי שימוש</Link>
-            <Link to="/privacy-policy" className="hover:opacity-80 transition-opacity">מדיניות פרטיות</Link>
-            <Link to="/cancellation-and-refund-policy" className="hover:opacity-80 transition-opacity">מדיניות ביטולים</Link>
-            <Link to="/accessibility-statement" className="hover:opacity-80 transition-opacity">הצהרת נגישות</Link>
+      <footer className="cv-footer">
+        <div className="cv-shell">
+          <div className="cv-footer-top">
+            <div>
+              <span className="cv-brand-word" dir="ltr" lang="en">
+                CASANOVA
+              </span>
+              <p className="cv-footer-tagline">
+                {product.name} · ספר דיגיטלי למבוגרים
+              </p>
+            </div>
+
+            <div>
+              <nav className="cv-footer-nav" aria-label="ניווט בפוטר">
+                {NAV_LINKS.map((link) => (
+                  <a key={link.href} href={link.href}>
+                    {link.label}
+                  </a>
+                ))}
+                <Link to="/login">{accountLabel}</Link>
+              </nav>
+
+              <div className="cv-footer-legal">
+                <Link to="/terms-and-conditions">תנאי שימוש</Link>
+                <Link to="/privacy-policy">מדיניות פרטיות</Link>
+                <Link to="/cancellation-and-refund-policy">
+                  ביטול והחזרים
+                </Link>
+                <Link to="/accessibility-statement">הצהרת נגישות</Link>
+                <Link to="/support">תמיכה</Link>
+              </div>
+            </div>
           </div>
-          <p>{fmt(c("sales.footer.copyright") || `© ${new Date().getFullYear()} Casanova. כל הזכויות שמורות.`, { year: new Date().getFullYear() })}</p>
-          <a
-            href="https://www.phantomthirdlabs.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs tracking-widest uppercase transition-opacity hover:opacity-70"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            {c("sales.footer.powered") || "Powered by Phantom Third Labs"}
-          </a>
-          <AccessibilityFooterLink className="text-xs" />
+
+          <div className="cv-footer-bottom">
+            <div className="cv-footer-utility">
+              <span className="cv-theme-toggle">
+                <ThemeToggle />
+              </span>
+              <AccessibilityFooterLink />
+            </div>
+
+            {footerCopyright && (
+              <p>{fmt(footerCopyright, { year: new Date().getFullYear() })}</p>
+            )}
+
+            {footerAge && <span className="cv-footer-age">{footerAge}</span>}
+
+            {footerPowered && (
+              <a
+                href="https://www.phantomthirdlabs.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {footerPowered}
+              </a>
+            )}
+          </div>
         </div>
       </footer>
 
-      <StickyCta product={product} c={c} />
-      <ExitPopup product={product} c={c} />
+      <MobileMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onBuy={handleMobileBuy}
+        buyLabel={buyLabel}
+        loginLabel={accountLabel}
+        price={price}
+        currency={product.currency}
+        productName={product.name}
+      />
+
+      {!menuOpen && (
+        <StickyCta
+          product={product}
+          label={fmt(stickyLabel, { price })}
+          onBuy={handleBuy}
+        />
+      )}
+
+      <ExitDialog
+        title={fmt(exitTitle, { price })}
+        body={fmt(exitBody, { price })}
+        cta={exitCta}
+        dismiss={c("sales.exit.dismiss") || "לא עכשיו"}
+        secondary={secondaryLabel}
+        price={price}
+        currency={product.currency}
+        onBuy={handleBuy}
+      />
     </div>
   )
 }

@@ -201,8 +201,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /* ── Theme ────────────────────────────────────────────── */
+  /* Cream is the application default; dark remains a deliberate choice. The
+   * same rule runs in the pre-hydration script in index.html, so the first
+   * paint and the React state cannot disagree. */
   const [theme, setTheme] = useState<"dark" | "light">(() =>
-    localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark",
+    localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light",
   )
 
   useEffect(() => {

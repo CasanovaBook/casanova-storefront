@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import Icon, { type IconName } from "../components/icons"
+import PageHeader from "../components/ui/PageHeader"
 
 /**
  * Reflects the order exactly as it was recorded. The copy changes with the
@@ -40,15 +41,15 @@ export default function CheckoutSuccessPage() {
       ? "var(--color-success)"
       : "var(--color-primary)"
   const accentSoft = failed
-    ? "rgba(239,68,68,0.12)"
+    ? "rgba(167,70,54,0.12)"
     : paid
-      ? "rgba(34,197,94,0.12)"
-      : "rgba(227,174,60,0.12)"
+      ? "rgba(79,122,79,0.12)"
+      : "rgba(222,154,96,0.12)"
   const accentBorder = failed
-    ? "rgba(239,68,68,0.35)"
+    ? "rgba(167,70,54,0.35)"
     : paid
-      ? "rgba(34,197,94,0.35)"
-      : "rgba(227,174,60,0.3)"
+      ? "rgba(79,122,79,0.35)"
+      : "rgba(222,154,96,0.3)"
 
   const heading = failed
     ? "ההזמנה נכשלה"
@@ -100,130 +101,188 @@ export default function CheckoutSuccessPage() {
           },
         ]
 
+  const statusIcon: IconName = failed
+    ? "x"
+    : paid
+      ? "checkCircle"
+      : "clock"
+
+  const statusBadgeClass = failed
+    ? "app-badge--danger"
+    : paid
+      ? "app-badge--success"
+      : "app-badge--warning"
+
+  const statusBadgeLabel = failed
+    ? "ההזמנה נכשלה"
+    : paid
+      ? isFree
+        ? "ללא חיוב"
+        : "שולם"
+      : "ממתין לאישור"
+
+  const paymentLabel = paid ? "שולם" : failed ? "נכשל" : "ממתין לאישור"
+
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden"
-      style={{ background: "var(--color-background)" }}
-    >
-      {/* Ambient glow */}
-      <div
-        className="absolute w-[480px] h-[480px] rounded-full pointer-events-none"
-        style={{
-          background: `radial-gradient(circle, ${accentSoft} 0%, transparent 70%)`,
-          top: "-120px",
-          left: "50%",
-          transform: "translateX(-50%)",
-        }}
-      />
-
-      <div className="max-w-lg w-full text-center page-enter relative">
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 glow-pulse"
-          style={{
-            background: accentSoft,
-            color: accent,
-            border: `1px solid ${accentBorder}`,
-            boxShadow: `0 0 40px ${accentSoft}`,
-          }}
-        >
-          <Icon
-            name={failed ? "x" : paid ? "checkCircle" : "clock"}
-            size={36}
-          />
-        </div>
-
-        <h1 className="font-display text-4xl font-semibold mb-3 flex items-center justify-center gap-3">
-          {heading}{" "}
-          {paid && (
-            <Icon
-              name="sparkles"
-              size={26}
-              style={{ color: "var(--color-primary)" }}
-            />
-          )}
-        </h1>
-        <p className="mb-2" style={{ color: "var(--color-muted-foreground)" }}>
-          {intro}
-        </p>
-        <p
-          className="text-sm mb-6 font-mono"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          מספר הזמנה: <span dir="ltr">{order.order_number}</span>
-        </p>
-
-        {/* Order summary — read straight from the recorded order */}
-        <div
-          className="rounded-2xl border p-5 mb-6 text-right text-sm"
-          style={{
-            background: "var(--color-card)",
-            borderColor: "var(--color-border)",
-            color: "var(--color-foreground)",
-          }}
-        >
-          <div className="space-y-2 mb-3">
-            {order.items.map((item) => (
-              <div
-                key={item.order_item_id}
-                className="flex justify-between gap-3"
-              >
-                <span style={{ color: "var(--color-muted-foreground)" }}>
-                  {item.product_name} × {item.quantity}
-                </span>
-                <span>₪{item.line_total.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between gap-3 font-bold text-base">
-            <span>סה״כ</span>
-            <span style={{ color: "var(--color-primary)" }}>
-              ₪{order.total_amount.toLocaleString()}
+    <div className="page-enter px-5 py-10 sm:px-8 md:py-14 lg:px-12">
+      <div className="app-page app-page--content">
+        <PageHeader
+          eyebrow="CASANOVA · אישור הזמנה"
+          title={heading}
+          description={intro}
+          breadcrumbs={[
+            { label: "דף הבית", to: "/" },
+            { label: "חנות הספרים", to: "/store" },
+            { label: "אישור הזמנה" },
+          ]}
+          actions={
+            <span className={`app-badge ${statusBadgeClass}`}>
+              <Icon name={statusIcon} size={12} aria-hidden="true" />
+              {statusBadgeLabel}
             </span>
-          </div>
-          <p
-            className="text-xs mt-3"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            סטטוס תשלום: {paid ? "שולם" : failed ? "נכשל" : "ממתין לאישור"}
-            {order.payment_provider ? ` · ספק: ${order.payment_provider}` : ""}
-          </p>
-        </div>
+          }
+        />
 
-        <div className="card-glow p-6 mb-8 text-right">
-          <h2
-            className="font-semibold mb-4 text-sm tracking-wide"
-            style={{ color: "var(--color-muted-foreground)" }}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start">
+          {/* Order summary — read straight from the recorded order */}
+          <section
+            className="app-surface"
+            aria-labelledby="checkout-success-order-title"
           >
-            מה קורה עכשיו?
-          </h2>
-          <div className="space-y-4">
-            {steps.map(({ step, icon, title, desc }) => (
-              <div key={step} className="flex gap-4">
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{
-                    background: accentSoft,
-                    border: `1px solid ${accentBorder}`,
-                    color: "var(--color-primary)",
-                  }}
+            <div className="app-surface-head">
+              <div className="min-w-0">
+                <h2
+                  id="checkout-success-order-title"
+                  className="app-section-title"
                 >
-                  <Icon name={icon} size={15} />
-                </div>
-                <div>
-                  <p className="font-medium text-sm mb-0.5">{title}</p>
-                  <p
-                    className="text-sm"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    {desc}
-                  </p>
-                </div>
+                  פרטי ההזמנה
+                </h2>
+                <p className="app-hint mt-1">
+                  מספר הזמנה:{" "}
+                  <span dir="ltr" className="font-mono">
+                    {order.order_number}
+                  </span>
+                </p>
               </div>
-            ))}
-          </div>
+              <span
+                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full"
+                style={{
+                  background: accentSoft,
+                  color: accent,
+                  border: `1px solid ${accentBorder}`,
+                }}
+                aria-hidden="true"
+              >
+                <Icon name={statusIcon} size={20} />
+              </span>
+            </div>
+
+            <div className="app-surface-body">
+              <ul className="space-y-3">
+                {order.items.map((item) => (
+                  <li
+                    key={item.order_item_id}
+                    className="flex items-start justify-between gap-4 border-b pb-3 last:border-b-0 last:pb-0"
+                    style={{ borderColor: "var(--color-border)" }}
+                  >
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-medium">
+                        {item.product_name}
+                      </p>
+                      <p className="app-hint mt-0.5">
+                        כמות: {item.quantity}
+                      </p>
+                    </div>
+                    <span
+                      dir="ltr"
+                      className="flex-shrink-0 text-sm"
+                    >
+                      ₪{item.line_total.toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <div
+                className="mt-4 flex items-center justify-between gap-3 border-t pt-4"
+                style={{ borderColor: "var(--color-border)" }}
+              >
+                <span className="font-semibold">סה״כ</span>
+                <span
+                  className="font-display text-lg font-semibold"
+                  style={{ color: "var(--color-primary)" }}
+                >
+                  <span dir="ltr">
+                    ₪{order.total_amount.toLocaleString()}
+                  </span>
+                </span>
+              </div>
+
+              <dl
+                className="mt-4 grid gap-1.5 border-t pt-4 text-xs"
+                style={{
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-muted-foreground)",
+                }}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <dt>סטטוס תשלום</dt>
+                  <dd style={{ color: accent }}>{paymentLabel}</dd>
+                </div>
+                {order.payment_provider && (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <dt>ספק תשלום</dt>
+                    <dd dir="ltr" className="text-start">
+                      {order.payment_provider}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          </section>
+
+          <section
+            className="app-surface"
+            aria-labelledby="checkout-success-next-title"
+          >
+            <div className="app-surface-head">
+              <h2
+                id="checkout-success-next-title"
+                className="app-section-title"
+              >
+                מה קורה עכשיו?
+              </h2>
+            </div>
+            <div className="app-surface-body">
+              <ol className="space-y-5">
+                {steps.map(({ step, icon, title, desc }) => (
+                  <li key={step} className="flex gap-3">
+                    <span
+                      className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                      style={{
+                        background: accentSoft,
+                        border: `1px solid ${accentBorder}`,
+                        color: accent,
+                      }}
+                      aria-hidden="true"
+                    >
+                      <Icon name={icon} size={15} />
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-medium">
+                        <span className="sr-only">שלב {step}. </span>
+                        {title}
+                      </h3>
+                      <p className="app-hint mt-0.5">{desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </section>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3 justify-center">
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           {canReadNow ? (
             <Link
               to={
@@ -231,26 +290,21 @@ export default function CheckoutSuccessPage() {
                   ? `/read/${singleProductId}`
                   : "/dashboard/library"
               }
-              className="btn-gradient w-full sm:w-auto px-8 py-3 rounded-full font-semibold text-center"
+              className="app-btn w-full sm:w-auto"
             >
+              <Icon name="bookOpen" size={15} aria-hidden="true" />
               {singleProductId ? "התחילו לקרוא עכשיו" : "לספרייה שלי"}
             </Link>
           ) : (
-            <Link
-              to="/login"
-              className="btn-gradient w-full sm:w-auto px-8 py-3 rounded-full font-semibold text-center"
-            >
+            <Link to="/login" className="app-btn w-full sm:w-auto">
               התחברות לספרייה שלי
             </Link>
           )}
           <Link
             to="/support"
-            className="w-full sm:w-auto px-8 py-3 rounded-full font-semibold text-center border transition-colors hover:bg-white/5"
-            style={{
-              borderColor: "var(--color-border)",
-              color: "var(--color-foreground)",
-            }}
+            className="app-btn-secondary w-full sm:w-auto"
           >
+            <Icon name="message" size={15} aria-hidden="true" />
             יש שאלה לגבי ההזמנה?
           </Link>
         </div>

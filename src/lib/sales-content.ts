@@ -1,50 +1,31 @@
 /* ────────────────────────────────────────────────────────────
- * Bundled launch copy for the "היא קודם" sales landing page.
+ * Bundled product fallback for the CASANOVA landing page.
  *
- * This module is the single source of truth for every word a visitor
- * reads on the main page (`/`) when no administrator has written anything
- * in the CMS. It exists because the platform's persistence layer is
- * localStorage — every visitor arrives with an empty database, and a
- * CMS-only page would therefore render blank for them.
- *
- * The CMS can override any slot: when an editor creates an active
- * SALES section of the same type, the page renders the CMS version
- * instead of the bundled one. Clearing the CMS slot reverts to the
- * bundled copy. This keeps the page fully editable from /admin/cms/content-editor
- * while still working for any visitor out of the box.
- *
- * The product below is also a fallback: if the catalogue has no
- * published EBOOK with slug "hya-kvdm", the sales page uses this
- * object for the offer block. Where the local document is the
- * catalogue (Supabase unconfigured) the first CTA click still seeds it
- * so checkout can resolve it. With Supabase configured the catalogue is
- * the database: the bundled row is never written anywhere, and shipping
- * a price or an id the catalogue does not hold would be a second source
- * of truth — checkout reports the missing product instead.
+ * The catalogue is the source of truth whenever Supabase is configured.
+ * This bundled row keeps the page and its purchase summary meaningful on an
+ * install with no hosted catalogue: with no Supabase the local document is
+ * the catalogue, so the first purchase click seeds this row before checkout
+ * resolves it. On a hosted install it is display copy only — the real
+ * `hya-kvdm` row wins, including its price.
  * ───────────────────────────────────────────────────────────── */
 
-import type { CmsSection, FaqItem, Product, Testimonial } from "../types"
-
-import { uid, nowIso } from "../data/db"
+import type { Product } from "../types"
+import { nowIso } from "../data/db"
 
 const at = nowIso()
 
 /**
  * Offline launch offer — the price `BUNDLED_PRODUCT` carries when there is
- * no hosted catalogue row to read from (a no-Supabase install). On a
- * Supabase-configured site the live `hya-kvdm` row wins and every marketing
- * price is resolved through the `{price}` token → `effectivePrice(product)`,
- * so these two numbers are the last-resort fallback default, NOT a second
- * marketing source. Kept in one place so they can never drift apart from
- * each other again.
+ * no hosted catalogue row to read from. With Supabase configured the live
+ * row wins, and every marketing price is resolved through `effectivePrice`.
+ * Kept in one place so the two values cannot drift apart.
  */
 const LAUNCH_PRICE = 99
 const LAUNCH_SALE_PRICE = 59
 
 /** The bundled product — used as the offer's source of truth when the
- *  catalogue is empty, and as a safety net when the real product is
- *  missing visual fields (cover image, short description). */
-
+ *  catalogue is empty, and as a safety net when the real product is missing
+ *  visual fields (cover image, cover colours). */
 export const BUNDLED_PRODUCT: Product = {
   product_id: "prd_hi_kodem_bundle",
 
@@ -89,390 +70,16 @@ export const BUNDLED_PRODUCT: Product = {
   updated_at: at,
 }
 
-/** The section types the sales page owns. Each key is a slot name the
- *  page resolves in order: CMS section first, bundled default second. */
-
-export type SalesSlot = "HERO" | "PROOF_STRIP" | "AGITATION" | "MECHANISM" | "FEATURES" | "AUDIENCE" | "BRAND" | "SOCIAL" | "OFFER" | "FAQ" | "FINAL_CTA"
-
-const i = (
-  title: string,
-  content: string,
-  group?: "PRIMARY" | "SECONDARY",
-) => ({
-  item_id: uid("it"),
-
-  title,
-
-  content,
-
-  group,
-})
-
-export const SALES_DEFAULTS: Record<SalesSlot, CmsSection> = {
-  HERO: {
-    section_id: uid("sec"),
-
-    type: "HERO",
-
-    page: "SALES",
-
-    title: "היא קודם.\nואז אתה כבר לא גבר ממוצע במיטה.",
-
-    content:
-      "המדריך הפרקטי לגבר שרוצה לדעת מה באמת קורה בגוף שלה, איך להוביל בלי למהר, ואיך לגרום לה לבקש עוד — בלי ניחושים.",
-
-    active: true,
-
-    display_order: 1,
-
-    updated_at: at,
-  },
-
-  PROOF_STRIP: {
-    section_id: uid("sec"),
-
-    type: "TEXT",
-
-    page: "SALES",
-
-    title: 'לא עוד "תחזיק יותר זמן".',
-
-    content: "שיטה אחת: היא קודם — והשאר מגיע אחריה.",
-
-    items: [
-      i("כתוב לגבר, בלי התנשאות", ""),
-
-      i("עובד בזוגיות ובדייט הראשון", ""),
-    ],
-
-    active: true,
-
-    display_order: 2,
-
-    updated_at: at,
-  },
-
-  AGITATION: {
-    section_id: uid("sec"),
-
-    type: "TEXT",
-
-    page: "SALES",
-
-    title: "אתה חושב שהיא נהנתה.\nהיא חושבת על משהו אחר.",
-
-    content:
-      'רוב הגברים מסיימים את הסקס בטוחים שהיה "טוב".\nהאישה מחייכת. לפעמים גם אומרת תודה.\nואז הולכת למקלחת — ואתה לא באמת יודע.\n\nכי למדת סקס ממסך.\nמשם למדת קצב, זווית, ושאורגזמה נשית נראית כמו בסרט.\nבמציאות הגוף שלה מדבר שפה אחרת.\nואם אתה לא קורא אותה — אתה מנגן לבד.\n\nזה לא עניין של גודל.\nזה לא עניין של כמה זמן אתה מחזיק.\nזה עניין של סדר עדיפויות.\n\nכל עוד אתה קודם — היא שנייה.\nואישה שמרגישה שנייה, לא נדלקת עד הסוף.\nגם אם היא נשארת.',
-
-    active: true,
-
-    display_order: 3,
-
-    updated_at: at,
-  },
-
-  MECHANISM: {
-    section_id: uid("sec"),
-
-    type: "STEPS",
-
-    page: "SALES",
-
-    title: "הכלל היחיד שקזנובה אמיתי חי לפיו",
-
-    content:
-      'קזנובה לא היה האגדה בגלל הכמות.\nהוא היה האגדה כי כל אישה יצאה מהחדר בתחושה שהיא הייתה היחידה בעולם.\n\nזה לא קסם. זו שיטה.\n\nהיא קודם זה לא "תהיה נחמד".\nזה סדר פעולות מדויק:\n\nכשאתה שם אותה קודם, קורה משהו הפוך ממה שגברים מפחדים ממנו:\nאתה לא מוותר על ההנאה שלך.\nאתה מגדיל אותה.\nכי אישה שפורצת — לוקחת אותך איתה.',
-
-    items: [
-      i("קודם הקשבה לגוף שלה", "לא לפורנו בראש שלך"),
-
-      i("קודם חימום נכון", "לפני שאתה חושב על חדירה"),
-
-      i("קודם העונג שלה", "ורק אז השחרור שלך"),
-
-      i("קודם נוכחות", "לא ביצוע"),
-    ],
-
-    active: true,
-
-    display_order: 4,
-
-    updated_at: at,
-  },
-
-  FEATURES: {
-    section_id: uid("sec"),
-
-    type: "FEATURES",
-
-    page: "SALES",
-
-    title: "מה תדע לעשות אחרי שתקרא את זה פעם אחת",
-
-    content: "",
-
-    items: [
-      i(
-        "הטעות של 'עוד קצת כוח'",
-        "למה 'חזק יותר' הוא כמעט תמיד הכיוון הלא נכון — ומה עובד במקום.",
-      ),
-
-      i(
-        "המשחק המקדים שכבר לא מרגיש כמו חובה",
-
-        "איך להפוך את עשר הדקות שלפני — לחלק שהיא מחכה לו.",
-      ),
-
-      i(
-        "הפה, הידיים, הקצב",
-        "לא רשימת טריקים. סדר עבודה. מתי לעצור. מתי להעמיק. מתי לשתוק.",
-      ),
-
-      i(
-        "איך לא לגמור מוקדם — בלי לספור כבשים",
-
-        "שליטה שבאה מתשומת לב אליה, לא ממלחמה בגוף שלך.",
-      ),
-
-      i(
-        "מה היא לא תגיד לך בקול",
-
-        "הסימנים הקטנים: נשימה, אגן, ידיים, שתיקה. לקרוא אותה בלי לחקור אותה.",
-      ),
-
-      i(
-        "אחרי",
-
-        "מה עושים אחרי שהאור נדלק. הרגע שבו גבר ממוצע הורס הכל — וגבר שמבין, נועל אותה אליו.",
-      ),
-    ],
-
-    active: true,
-
-    display_order: 5,
-
-    updated_at: at,
-  },
-
-  AUDIENCE: {
-    section_id: uid("sec"),
-
-    type: "AUDIENCE",
-
-    page: "SALES",
-
-    title: "למי זה. ולמי לא.",
-
-    content: "",
-
-    items: [
-      i("גבר שרוצה להיות טוב באמת.", "", "PRIMARY"),
-
-      i("גבר בזוגיות שמרגיש שהאש ירדה.", "", "PRIMARY"),
-
-      i("גבר שיוצא עם נשים ורוצה להפסיק לנחש.", "", "PRIMARY"),
-
-      i('גבר שמוכן ללמוד, לא רק "לקבל טיפ אחד מווידאו".', "", "PRIMARY"),
-
-      i("מי שמחפש קיצור דרך מלוכלך.", "", "SECONDARY"),
-
-      i('מי שרוצה "לכבוש" בלי לתת.', "", "SECONDARY"),
-
-      i("מי שחושב שאישה זו מכשיר.", "", "SECONDARY"),
-    ],
-
-    active: true,
-
-    display_order: 6,
-
-    updated_at: at,
-  },
-
-  BRAND: {
-    section_id: uid("sec"),
-
-    type: "TEXT",
-
-    page: "SALES",
-
-    title: "מי זה Casanova",
-
-    content:
-      "קזנובה נשאר שם נרדף למאהב — כי הוא הבין משהו שרוב הגברים מפספסים עד היום:\nאישה לא זוכרת כמה היית מהיר.\nהיא זוכרת איך הרגשת אותה.\n\nהיא קודם לוקח את העיקרון הזה ומוריד אותו לרצפה.\nבלי אגדות. בלי לטינית. עם הוראות לגבר ישראלי ב-2026.",
-
-    active: true,
-
-    display_order: 7,
-
-    updated_at: at,
-  },
-
-  SOCIAL: {
-    section_id: uid("sec"),
-
-    type: "TESTIMONIALS",
-
-    page: "SALES",
-
-    title: "מה קורה אחרי הקריאה",
-
-    content:
-      "נכתב מתוך שיחות עם גברים — ומתוך מה שנשים באמת אומרות כשאין גבר בחדר.",
-
-    active: true,
-
-    display_order: 8,
-
-    updated_at: at,
-  },
-
-  OFFER: {
-    section_id: uid("sec"),
-
-    type: "OFFER",
-
-    page: "SALES",
-
-    title: "מחיר",
-
-    content: "פחות מחשבון שתייה בבר. יותר מכל מה שלמדת מפורנו.",
-
-    items: [
-      i("רשימת בדיקה ללילה הראשון אחרי הקריאה", "PDF קצר שיוצא יחד עם הספר"),
-
-      i("7 טעויות שהורגות את העונג שלה", "רשימה ממוקדת שתחסוך לך ניסוי וטעייה"),
-    ],
-
-    active: true,
-
-    display_order: 9,
-
-    updated_at: at,
-  },
-
-  FAQ: {
-    section_id: uid("sec"),
-
-    type: "FAQ",
-
-    page: "SALES",
-
-    title: "שאלות נפוצות",
-
-    content: "",
-
-    active: true,
-
-    display_order: 11,
-
-    updated_at: at,
-  },
-
-  FINAL_CTA: {
-    section_id: uid("sec"),
-
-    type: "CTA",
-
-    page: "SALES",
-
-    title:
-      "הלילה הזה יכול להיות כמו תמיד.\nאו שהוא יכול להיות הלילה שבו היא הבינה שאתה לא כמו השאר.",
-
-    content: "Casanova · היא קודם · {price} ₪",
-
-    active: true,
-
-    display_order: 12,
-
-    updated_at: at,
-  },
-}
-
-/** Bundled FAQ items — shown when no CMS FAQ items exist for the sales page. */
-
-export const SALES_FAQ_DEFAULTS: FaqItem[] = [
-  {
-    faq_id: uid("faq"),
-
-    question: "זה מתאים גם אם אני כבר בזוגיות ארוכה?",
-
-    answer: "כן. במיוחד.",
-
-    active: true,
-
-    display_order: 1,
-  },
-
-  {
-    faq_id: uid("faq"),
-
-    question: "צריך ניסיון קודם?",
-
-    answer: "לא. צריך רצון להפסיק לנחש.",
-
-    active: true,
-
-    display_order: 2,
-  },
-
-  {
-    faq_id: uid("faq"),
-
-    question: "זה גס / משפיל?",
-
-    answer: "לא. זה ישיר. יש הבדל.",
-
-    active: true,
-
-    display_order: 3,
-  },
-
-  {
-    faq_id: uid("faq"),
-
-    question: "דיגיטלי או מודפס?",
-
-    answer: "ספר דיגיטלי — גישה מיידית אחרי הרכישה.",
-
-    active: true,
-
-    display_order: 4,
-  },
-
-  {
-    faq_id: uid("faq"),
-
-    question: "למה {price} ולא חינם באינטרנט?",
-
-    answer: "כי באינטרנט יש רעש. כאן יש סדר פעולות.",
-
-    active: true,
-
-    display_order: 5,
-  },
-]
-
-/** Bundled testimonials — EMPTY by design.
- *
- * Previous versions carried three testimonials with initials-only names
- * ("א.", "ד.", "מ.") that could not be verified as real customers.
- * Israeli consumer protection law prohibits fabricated reviews, so the
- * bundled defaults are now empty. The sales page falls back to this list
- * only when no CMS testimonials exist — an administrator can add real,
- * verified testimonials through Maestro CMS at any time.
- *
- * DO NOT add placeholder testimonials here. Every testimonial must come
- * from a verified customer with a documented source. */
-export const SALES_TESTIMONIAL_DEFAULTS: Testimonial[] = []
-
-/** Bundled conversion copy — used as fallback when settings fields are empty. */
-
+/** Bundled conversion copy — used as fallback when the settings fields are
+ *  empty. The landing page reads the CMS keys first, so an editor can
+ *  override any of these without a deploy. */
 export const SALES_SETTINGS_DEFAULTS = {
-  sales_sticky_cta: "לקחת את הספר · {price} ₪",
+  sales_sticky_cta: "לרכישת הספר",
 
-  sales_exit_title: "רגע.",
+  sales_exit_title: "רגע אחד.",
 
-  sales_exit_body: "{price} ₪ ואתה יודע מה לעשות הלילה.",
+  sales_exit_body:
+    "לפני שמחליטים, אפשר לראות בקצרה מה יש בספר ואיך מקבלים גישה.",
 
-  sales_exit_cta: "כן, אני לוקח",
+  sales_exit_cta: "לרכישת הספר",
 }

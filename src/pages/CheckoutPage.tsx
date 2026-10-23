@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
@@ -20,6 +20,10 @@ import {
 } from "../lib/checkout-intent"
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import Icon from "../components/icons"
+import PageHeader from "../components/ui/PageHeader"
+import EmptyState from "../components/ui/EmptyState"
+import Alert from "../components/ui/Alert"
+import Spinner from "../components/ui/Spinner"
 
 /* The red star already used for the confirmation field: every field the
  * customer cannot submit without carries it, on both screens that collect
@@ -33,21 +37,50 @@ const required = (
 
 const FALLBACK_COVER: [string, string] = ["#1A1A2E", "#2A2A3E"]
 
+const fieldClass = "px-3.5 py-2.5 text-sm outline-none"
+
+const fieldStyle = {
+  background: "var(--color-card)",
+  borderColor: "var(--color-border)",
+  color: "var(--color-foreground)",
+} as const
+
+const invalidFieldStyle = {
+  ...fieldStyle,
+  borderColor: "var(--color-danger)",
+} as const
+
 function BookCoverMini({ product }: { product: Product }) {
   const [from, to] = product.cover_colors ?? FALLBACK_COVER
   if (product.image_url) {
     return (
       <img
         src={product.image_url}
-        alt={product.name}
-        className="w-12 h-16 rounded-lg flex-shrink-0 shadow-lg object-cover"
+        alt=""
+        className="h-20 w-14 flex-shrink-0 rounded-md object-cover shadow-lg"
       />
     )
   }
   return (
     <div
-      className="w-12 h-16 rounded-lg flex-shrink-0 shadow-lg"
+      className="h-20 w-14 flex-shrink-0 rounded-md shadow-lg"
       style={{ background: `linear-gradient(160deg, ${from}, ${to})` }}
+      aria-hidden="true"
+    />
+  )
+}
+
+function CheckoutHeader() {
+  return (
+    <PageHeader
+      eyebrow="CASANOVA · רכישה"
+      title="השלמת רכישה"
+      description="שני שלבים קצרים: פרטי הלקוח, ואז אישור ההזמנה."
+      breadcrumbs={[
+        { label: "דף הבית", to: "/" },
+        { label: "חנות הספרים", to: "/store" },
+        { label: "השלמת רכישה" },
+      ]}
     />
   )
 }
@@ -313,828 +346,834 @@ export default function CheckoutPage() {
 
   const providerConfigured = Boolean(cms.settings.payment_provider)
 
-  const inputClass =
-    "w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all focus:border-[rgba(212,160,48,0.6)]"
-  const inputStyle = useMemo(
-    () => ({
-      background: "var(--color-secondary)",
-      borderColor: "var(--color-border)",
-      color: "var(--color-foreground)",
-    }),
-    [],
-  )
-
   if (!product) {
     /* Only a purchase that is actually being resumed holds the screen here;
      * a visitor who arrived with nothing selected gets the honest empty
      * state at once rather than a spinner that leads nowhere. */
     if (restorePending) {
       return (
-        <div
-          className="min-h-screen flex items-center justify-center px-6"
-          style={{ background: "var(--color-background)" }}
-          role="status"
-          aria-live="polite"
-        >
-          <span
-            className="w-6 h-6 rounded-full border-2 animate-spin"
-            style={{
-              borderColor: "var(--color-border)",
-              borderTopColor: "var(--color-primary)",
-            }}
-          />
-          <span className="sr-only">מאמת את ההזמנה…</span>
+        <div className="page-enter px-5 py-10 sm:px-8 md:py-14 lg:px-12">
+          <div className="app-page app-page--content">
+            <CheckoutHeader />
+            <div className="app-surface" role="status" aria-live="polite">
+              <Spinner label="מאמת את ההזמנה…" />
+            </div>
+          </div>
         </div>
       )
     }
 
     return (
-      <div
-        className="min-h-screen flex items-center justify-center px-6"
-        style={{ background: "var(--color-background)" }}
-      >
-        <div
-          className="max-w-md w-full rounded-2xl border p-10 text-center"
-          style={{
-            background: "var(--color-card)",
-            borderColor: "var(--color-border)",
-            color: "var(--color-foreground)",
-          }}
-        >
-          <span
-            className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center"
-            style={{
-              background: "rgba(212,160,48,0.12)",
-              color: "var(--color-primary)",
-            }}
-          >
-            <Icon name="cart" size={24} />
-          </span>
-          <h1 className="font-display text-2xl font-bold mb-2">לא נבחר מוצר</h1>
-          <p
-            className="text-sm mb-6"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            כדי להשלים רכישה יש לבחור תחילה מוצר מתוך החנות.
-          </p>
-          <button
-            onClick={() => navigate("/store")}
-            className="btn-gradient px-8 py-3 rounded-full font-bold text-sm"
-          >
-            לחנות
-          </button>
+      <div className="page-enter px-5 py-10 sm:px-8 md:py-14 lg:px-12">
+        <div className="app-page app-page--content">
+          <CheckoutHeader />
+          <EmptyState
+            icon="cart"
+            title="לא נבחר מוצר"
+            description="כדי להשלים רכישה יש לבחור תחילה מוצר מתוך החנות."
+            actions={
+              <button
+                type="button"
+                onClick={() => navigate("/store")}
+                className="app-btn"
+              >
+                לחנות הספרים
+              </button>
+            }
+          />
         </div>
       </div>
     )
   }
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: "var(--color-background)" }}
-    >
-      <div className="max-w-5xl mx-auto px-6 py-16">
-        <div className="mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-sm flex items-center gap-2 transition-opacity hover:opacity-70"
-            style={{ color: "var(--color-muted-foreground)" }}
+    <div className="page-enter px-5 py-10 sm:px-8 md:py-14 lg:px-12">
+      <div className="app-page app-page--content">
+        <CheckoutHeader />
+
+        {/* Progress steps */}
+        <ol
+          className="mb-6 flex flex-wrap items-center gap-3"
+          aria-label="שלבי הרכישה"
+        >
+          <li
+            className="flex items-center gap-2"
+            aria-current={step === "details" ? "step" : undefined}
           >
-            → חזרה
-          </button>
-        </div>
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold shadow-md"
+              style={{
+                background:
+                  step === "review"
+                    ? "var(--color-success)"
+                    : step === "details"
+                      ? "linear-gradient(135deg, #DE9A60, #96552D)"
+                      : "var(--color-muted)",
+                color:
+                  step === "review"
+                    ? "#fff"
+                    : step === "details"
+                      ? "var(--color-primary-foreground)"
+                      : "var(--color-muted-foreground)",
+              }}
+              aria-hidden="true"
+            >
+              {step === "review" ? <Icon name="check" size={14} /> : 1}
+            </span>
+            <span
+              className="text-sm font-semibold"
+              style={{
+                color:
+                  step === "details"
+                    ? "var(--color-foreground)"
+                    : "var(--color-muted-foreground)",
+              }}
+            >
+              פרטים
+            </span>
+            {step === "review" && <span className="sr-only">הושלם</span>}
+          </li>
 
-        <div className="grid md:grid-cols-[1fr_380px] gap-10">
-          {/* Form */}
-          <div>
-            {/* Progress steps */}
-            <div className="flex items-center gap-3 mb-8">
-              {["פרטים", "אישור הזמנה"].map((label, i) => {
-                const active =
-                  (i === 0 && step === "details") ||
-                  (i === 1 && step === "review")
-                const done = i === 0 && step === "review"
-                return (
-                  <div key={label} className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shadow-md"
-                        style={{
-                          background: done
-                            ? "var(--color-success)"
-                            : active
-                              ? "linear-gradient(135deg, #E7B94C, #B8862A)"
-                              : "var(--color-muted)",
-                          color:
-                            done || active
-                              ? "#000"
-                              : "var(--color-muted-foreground)",
-                        }}
-                      >
-                        {done ? <Icon name="check" size={14} /> : i + 1}
-                      </div>
-                      <span
-                        className="text-sm font-bold"
-                        style={{
-                          color: active
-                            ? "var(--color-foreground)"
-                            : "var(--color-muted-foreground)",
-                        }}
-                      >
-                        {label}
-                      </span>
-                    </div>
-                    {i < 1 && (
-                      <div
-                        className="w-8 h-px"
-                        style={{ background: "var(--color-border)" }}
-                      />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+          <li
+            className="h-px w-8"
+            style={{ background: "var(--color-border)" }}
+            aria-hidden="true"
+          />
 
+          <li
+            className="flex items-center gap-2"
+            aria-current={step === "review" ? "step" : undefined}
+          >
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold shadow-md"
+              style={{
+                background:
+                  step === "review"
+                    ? "linear-gradient(135deg, #DE9A60, #96552D)"
+                    : "var(--color-muted)",
+                color:
+                  step === "review"
+                    ? "var(--color-primary-foreground)"
+                    : "var(--color-muted-foreground)",
+              }}
+              aria-hidden="true"
+            >
+              2
+            </span>
+            <span
+              className="text-sm font-semibold"
+              style={{
+                color:
+                  step === "review"
+                    ? "var(--color-foreground)"
+                    : "var(--color-muted-foreground)",
+              }}
+            >
+              אישור הזמנה
+            </span>
+          </li>
+        </ol>
+
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-10">
+          <div className="min-w-0">
             {step === "details" && (
-              <div className="page-enter">
-                <h1 className="font-display text-3xl font-bold mb-1">
-                  הפרטים שלך
-                </h1>
-                <p
-                  className="text-sm mb-8"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
-                  {isSupabaseConfigured
-                    ? "הפרטים מאשרים את ההזמנה ואת שליחת הקבלה."
-                    : "משמשים ליצירת החשבון ולשליחת הקבלה."}
-                </p>
-
-                {/* Verified-User Gate Banner */}
-                {!user ? (
-                  <div
-                    className="p-5 rounded-2xl mb-8 border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-                    style={{
-                      background: "rgba(212,160,48,0.06)",
-                      borderColor: "rgba(212,160,48,0.3)",
-                    }}
-                  >
-                    <div className="space-y-1">
-                      <h3
-                        className="font-semibold text-sm"
-                        style={{ color: "var(--color-primary)" }}
-                      >
-                        חשבון משתמש נדרש לרכישה
-                      </h3>
-                      <p
-                        className="text-xs"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
-                        כדי להעניק לך גישה מיידית לספר בספרייה הדיגיטלית, יש להתחבר או להירשם.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => navigate("/login?redirect=/checkout")}
-                        className="px-4 py-2 rounded-lg text-xs font-semibold border transition-all"
-                        style={{
-                          borderColor: "var(--color-primary)",
-                          color: "var(--color-primary)",
-                        }}
-                      >
-                        התחברות
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => navigate("/register?redirect=/checkout")}
-                        className="btn-gradient px-4 py-2 rounded-lg text-xs font-semibold"
-                      >
-                        יצירת חשבון
-                      </button>
-                    </div>
-                  </div>
-                ) : isSupabaseConfigured && !user.email_confirmed_at ? (
-                  <div
-                    className="p-5 rounded-2xl mb-8 border space-y-3"
-                    style={{
-                      background: "rgba(239,68,68,0.06)",
-                      borderColor: "rgba(239,68,68,0.3)",
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Icon
-                        name="alertTriangle"
-                        size={18}
-                        className="shrink-0 text-red-500 mt-0.5"
-                      />
-                      <div>
-                        <h3 className="font-semibold text-sm text-red-500">
-                          נדרש אימות כתובת אימייל
-                        </h3>
-                        <p
-                          className="text-xs mt-0.5"
-                          style={{ color: "var(--color-muted-foreground)" }}
-                        >
-                          החשבון שלך ({user.email}) טרם אומת. יש ללחוץ על קישור האימות שנשלח לתיבת המייל שלך לפני שתוכל לבצע רכישה.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        disabled={cooldown > 0 || resending}
-                        onClick={() => handleResend(user.email)}
-                        className="px-3.5 py-1.5 rounded-lg border text-xs font-medium transition-all disabled:opacity-50"
-                        style={{
-                          borderColor: "var(--color-border)",
-                          color: "var(--color-foreground)",
-                        }}
-                      >
-                        {resending
-                          ? "שולח..."
-                          : cooldown > 0
-                          ? `שליחה חוזרת בעוד ${cooldown} שניות`
-                          : "שלח שוב אימייל אימות"}
-                      </button>
-                      {resendMessage && (
-                        <span
-                          className="text-xs"
-                          style={{ color: "var(--color-primary)" }}
-                        >
-                          {resendMessage}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        htmlFor="checkout-first-name"
-                        className="block text-xs font-bold mb-1.5"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
-                        שם פרטי{required}
-                      </label>
-                      <input
-                        id="checkout-first-name"
-                        className={inputClass}
-                        style={inputStyle}
-                        value={form.first_name}
-                        aria-invalid={errors.first_name ? true : undefined}
-                        aria-describedby={
-                          errors.first_name ? "checkout-first-name-error" : undefined
-                        }
-                        onChange={(e) =>
-                          setForm({ ...form, first_name: e.target.value })
-                        }
-                      />
-                      {errors.first_name && (
-                        <p
-                          id="checkout-first-name-error"
-                          role="alert"
-                          className="text-xs mt-1"
-                          style={{ color: "var(--color-danger)" }}
-                        >
-                          {errors.first_name}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="checkout-last-name"
-                        className="block text-xs font-bold mb-1.5"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
-                        שם משפחה{required}
-                      </label>
-                      <input
-                        id="checkout-last-name"
-                        className={inputClass}
-                        style={inputStyle}
-                        value={form.last_name}
-                        aria-invalid={errors.last_name ? true : undefined}
-                        aria-describedby={
-                          errors.last_name ? "checkout-last-name-error" : undefined
-                        }
-                        onChange={(e) =>
-                          setForm({ ...form, last_name: e.target.value })
-                        }
-                      />
-                      {errors.last_name && (
-                        <p
-                          id="checkout-last-name-error"
-                          role="alert"
-                          className="text-xs mt-1"
-                          style={{ color: "var(--color-danger)" }}
-                        >
-                          {errors.last_name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
+              <section
+                className="app-surface page-enter"
+                aria-labelledby="checkout-details-title"
+              >
+                <div className="app-surface-head">
                   <div>
-                    <label
-                      htmlFor="checkout-email"
-                      className="block text-xs font-bold mb-1.5"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      כתובת מייל{required}
-                    </label>
-                    <input
-                      id="checkout-email"
-                      type="email"
-                      dir="ltr"
-                      className={`${inputClass} text-left`}
-                      style={inputStyle}
-                      value={form.email}
-                      aria-invalid={errors.email ? true : undefined}
-                      aria-describedby={
-                        errors.email ? "checkout-email-error checkout-email-hint" : "checkout-email-hint"
-                      }
-                      onChange={(e) => handleEmailChange(e.target.value)}
-                      placeholder="you@example.com"
-                    />
-                    {errors.email && (
-                      <p
-                        id="checkout-email-error"
-                        role="alert"
-                        className="text-xs mt-1"
-                        style={{ color: "var(--color-danger)" }}
-                      >
-                        {errors.email}
-                      </p>
-                    )}
-                    <p
-                      id="checkout-email-hint"
-                      className="text-xs mt-1"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      {/* "החשבון שלך ייווצר עם הכתובת הזו" described a guest
-                       * checkout that the hosted flow does not have: a
-                       * purchase is only allowed for a signed-in, verified
-                       * account, so this address is not creating anything. */}
+                    <h2 id="checkout-details-title" className="app-section-title">
+                      הפרטים שלך
+                    </h2>
+                    <p className="app-hint mt-1">
                       {isSupabaseConfigured
-                        ? "כתובת החשבון המאומת. אליה תישלח הקבלה."
-                        : "החשבון ייווצר עם הכתובת הזו אם עדיין אין לך אחד."}
+                        ? "הפרטים מאשרים את ההזמנה ואת שליחת הקבלה."
+                        : "משמשים ליצירת החשבון ולשליחת הקבלה."}
                     </p>
                   </div>
+                  <span className="app-badge app-badge--neutral">
+                    שלב 1 מתוך 2
+                  </span>
+                </div>
 
-                  {/* Only shown when the address above was edited away from
-                   * the verified one — see needsEmailConfirmation. */}
-                  {needsEmailConfirmation && (
-                    <div>
-                      <label
-                        htmlFor="checkout-confirm-email"
-                        className="block text-xs font-bold mb-1.5"
-                        style={{ color: "var(--color-muted-foreground)" }}
+                <div className="app-surface-body">
+                  {/* Verified-User Gate Banner */}
+                  {!user ? (
+                    <div className="mb-5">
+                      <Alert
+                        tone="warning"
+                        title="חשבון משתמש נדרש לרכישה"
                       >
-                        אימות כתובת מייל{required}
+                        <p>
+                          כדי להעניק לך גישה מיידית לספר בספרייה הדיגיטלית, יש
+                          להתחבר או להירשם.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate("/login?redirect=/checkout")
+                            }
+                            className="app-btn-secondary"
+                          >
+                            התחברות
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate("/register?redirect=/checkout")
+                            }
+                            className="app-btn"
+                          >
+                            יצירת חשבון
+                          </button>
+                        </div>
+                      </Alert>
+                    </div>
+                  ) : isSupabaseConfigured && !user.email_confirmed_at ? (
+                    <div className="mb-5">
+                      <Alert
+                        tone="error"
+                        title="נדרש אימות כתובת אימייל"
+                      >
+                        <p>
+                          החשבון שלך ({user.email}) טרם אומת. יש ללחוץ על קישור
+                          האימות שנשלח לתיבת המייל שלך לפני שתוכל לבצע רכישה.
+                        </p>
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            disabled={cooldown > 0 || resending}
+                            onClick={() => handleResend(user.email)}
+                            className="app-btn-secondary"
+                          >
+                            {resending
+                              ? "שולח..."
+                              : cooldown > 0
+                                ? `שליחה חוזרת בעוד ${cooldown} שניות`
+                                : "שלח שוב אימייל אימות"}
+                          </button>
+                          {resendMessage && (
+                            <span
+                              className="app-hint"
+                              role="status"
+                              style={{ color: "var(--color-primary)" }}
+                            >
+                              {resendMessage}
+                            </span>
+                          )}
+                        </div>
+                      </Alert>
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-5">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="app-field">
+                        <label
+                          htmlFor="checkout-first-name"
+                          className="app-label"
+                        >
+                          שם פרטי{required}
+                        </label>
+                        <input
+                          id="checkout-first-name"
+                          className={`${fieldClass} w-full`}
+                          style={
+                            errors.first_name
+                              ? invalidFieldStyle
+                              : fieldStyle
+                          }
+                          value={form.first_name}
+                          autoComplete="given-name"
+                          aria-required="true"
+                          aria-invalid={errors.first_name ? true : undefined}
+                          aria-describedby={
+                            errors.first_name
+                              ? "checkout-first-name-error"
+                              : undefined
+                          }
+                          onChange={(e) =>
+                            setForm({ ...form, first_name: e.target.value })
+                          }
+                        />
+                        {errors.first_name && (
+                          <p
+                            id="checkout-first-name-error"
+                            role="alert"
+                            className="app-error"
+                          >
+                            {errors.first_name}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="app-field">
+                        <label
+                          htmlFor="checkout-last-name"
+                          className="app-label"
+                        >
+                          שם משפחה{required}
+                        </label>
+                        <input
+                          id="checkout-last-name"
+                          className={`${fieldClass} w-full`}
+                          style={
+                            errors.last_name ? invalidFieldStyle : fieldStyle
+                          }
+                          value={form.last_name}
+                          autoComplete="family-name"
+                          aria-required="true"
+                          aria-invalid={errors.last_name ? true : undefined}
+                          aria-describedby={
+                            errors.last_name
+                              ? "checkout-last-name-error"
+                              : undefined
+                          }
+                          onChange={(e) =>
+                            setForm({ ...form, last_name: e.target.value })
+                          }
+                        />
+                        {errors.last_name && (
+                          <p
+                            id="checkout-last-name-error"
+                            role="alert"
+                            className="app-error"
+                          >
+                            {errors.last_name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="app-field">
+                      <label htmlFor="checkout-email" className="app-label">
+                        כתובת מייל{required}
                       </label>
                       <input
-                        id="checkout-confirm-email"
+                        id="checkout-email"
                         type="email"
                         dir="ltr"
-                        className={`${inputClass} text-left`}
-                        style={inputStyle}
-                        value={confirmEmail}
-                        aria-invalid={confirmEmailError ? true : undefined}
+                        className={`${fieldClass} w-full text-start`}
+                        style={
+                          errors.email ? invalidFieldStyle : fieldStyle
+                        }
+                        value={form.email}
+                        autoComplete="email"
+                        aria-required="true"
+                        aria-invalid={errors.email ? true : undefined}
                         aria-describedby={
-                          confirmEmailError
-                            ? "checkout-confirm-email-error"
-                            : "checkout-confirm-email-status"
+                          errors.email
+                            ? "checkout-email-error checkout-email-hint"
+                            : "checkout-email-hint"
                         }
-                        onChange={(e) =>
-                          handleConfirmEmailChange(e.target.value)
-                        }
-                        /* Typing, not pasting, is the point of a field that
-                         * exists to catch a mistyped address. It only appears
-                         * in the one case where that risk is real. */
-                        onPaste={(e) => e.preventDefault()}
-                        placeholder="הקלד שוב את כתובת המייל"
+                        onChange={(e) => handleEmailChange(e.target.value)}
+                        placeholder="you@example.com"
                       />
-                      {confirmEmailError ? (
+                      {errors.email && (
                         <p
-                          id="checkout-confirm-email-error"
+                          id="checkout-email-error"
                           role="alert"
-                          className="text-xs mt-1"
-                          style={{ color: "var(--color-danger)" }}
+                          className="app-error"
                         >
-                          {confirmEmailError}
-                        </p>
-                      ) : confirmEmail.trim() &&
-                        confirmEmail.trim().toLowerCase() === typedEmail ? (
-                        <p
-                          id="checkout-confirm-email-status"
-                          className="text-xs mt-1 flex items-center gap-1"
-                          style={{ color: "var(--color-success)" }}
-                        >
-                          <Icon name="checkCircle" size={13} /> הכתובות תואמות —
-                          הקבלה והגישה יישלחו לכתובת זו.
-                        </p>
-                      ) : (
-                        <p
-                          id="checkout-confirm-email-status"
-                          className="text-xs mt-1"
-                          style={{ color: "var(--color-muted-foreground)" }}
-                        >
-                          כתובת זו שונה מהכתובת המאומתת של החשבון. אימות בהקלדה
-                          שוב שומר שהקבלה לא תישלח לכתובת שגויה.
+                          {errors.email}
                         </p>
                       )}
+                      <p id="checkout-email-hint" className="app-hint">
+                        {/* "החשבון שלך ייווצר עם הכתובת הזו" described a guest
+                         * checkout that the hosted flow does not have: a
+                         * purchase is only allowed for a signed-in, verified
+                         * account, so this address is not creating anything. */}
+                        {isSupabaseConfigured
+                          ? "כתובת החשבון המאומת. אליה תישלח הקבלה."
+                          : "החשבון ייווצר עם הכתובת הזו אם עדיין אין לך אחד."}
+                      </p>
+                    </div>
+
+                    {/* Only shown when the address above was edited away from
+                     * the verified one — see needsEmailConfirmation. */}
+                    {needsEmailConfirmation && (
+                      <div className="app-field">
+                        <label
+                          htmlFor="checkout-confirm-email"
+                          className="app-label"
+                        >
+                          אימות כתובת מייל{required}
+                        </label>
+                        <input
+                          id="checkout-confirm-email"
+                          type="email"
+                          dir="ltr"
+                          className={`${fieldClass} w-full text-start`}
+                          style={
+                            confirmEmailError
+                              ? invalidFieldStyle
+                              : fieldStyle
+                          }
+                          value={confirmEmail}
+                          aria-required="true"
+                          autoComplete="off"
+                          aria-invalid={
+                            confirmEmailError ? true : undefined
+                          }
+                          aria-describedby={
+                            confirmEmailError
+                              ? "checkout-confirm-email-error"
+                              : "checkout-confirm-email-status"
+                          }
+                          onChange={(e) =>
+                            handleConfirmEmailChange(e.target.value)
+                          }
+                          /* Typing, not pasting, is the point of a field that
+                           * exists to catch a mistyped address. It only appears
+                           * in the one case where that risk is real. */
+                          onPaste={(e) => e.preventDefault()}
+                          placeholder="הקלד שוב את כתובת המייל"
+                        />
+                        {confirmEmailError ? (
+                          <p
+                            id="checkout-confirm-email-error"
+                            role="alert"
+                            className="app-error"
+                          >
+                            {confirmEmailError}
+                          </p>
+                        ) : confirmEmail.trim() &&
+                          confirmEmail.trim().toLowerCase() === typedEmail ? (
+                          <p
+                            id="checkout-confirm-email-status"
+                            className="flex items-center gap-1 text-xs"
+                            style={{ color: "var(--color-success)" }}
+                          >
+                            <Icon
+                              name="checkCircle"
+                              size={13}
+                              aria-hidden="true"
+                            />
+                            הכתובות תואמות — הקבלה והגישה יישלחו לכתובת זו.
+                          </p>
+                        ) : (
+                          <p
+                            id="checkout-confirm-email-status"
+                            className="app-hint"
+                          >
+                            כתובת זו שונה מהכתובת המאומתת של החשבון. אימות
+                            בהקלדה שוב שומר שהקבלה לא תישלח לכתובת שגויה.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="app-field">
+                      <label htmlFor="checkout-phone" className="app-label">
+                        מספר טלפון{required}
+                      </label>
+                      <div className="flex gap-2" dir="rtl">
+                        {/* Phone number input - on the right side (RTL) */}
+                        <input
+                          id="checkout-phone"
+                          type="tel"
+                          dir="ltr"
+                          aria-required="true"
+                          aria-invalid={errors.phone ? true : undefined}
+                          aria-describedby={
+                            errors.phone
+                              ? "checkout-phone-error"
+                              : "checkout-phone-hint"
+                          }
+                          className={`${fieldClass} min-w-0 flex-1 text-start`}
+                          style={
+                            errors.phone ? invalidFieldStyle : fieldStyle
+                          }
+                          value={phoneParts.number}
+                          onChange={(e) =>
+                            setPhoneParts((prev) => ({
+                              ...prev,
+                              number: e.target.value
+                                .replace(/[^\d]/g, "")
+                                .slice(0, PHONE_NUMBER_DIGITS),
+                            }))
+                          }
+                          onKeyPress={(e) => {
+                            // Block non-numeric characters
+                            if (
+                              !/[0-9]/.test(e.key) &&
+                              ![
+                                "Backspace",
+                                "Delete",
+                                "Tab",
+                                "Escape",
+                                "Enter",
+                              ].includes(e.key)
+                            ) {
+                              e.preventDefault()
+                            }
+                          }}
+                          placeholder="1234567"
+                          autoComplete="tel-national"
+                          maxLength={PHONE_NUMBER_DIGITS}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                        />
+                        {/* Phone prefix dropdown - on the left side (RTL) */}
+                        <select
+                          aria-label="קידומת הטלפון"
+                          value={phoneParts.prefix}
+                          onChange={(e) =>
+                            setPhoneParts((prev) => ({
+                              ...prev,
+                              prefix: e.target.value,
+                            }))
+                          }
+                          className={`${fieldClass} w-20 shrink-0 text-center`}
+                          style={fieldStyle}
+                          dir="ltr"
+                        >
+                          {PHONE_PREFIXES.map((prefix) => (
+                            <option key={prefix} value={prefix}>
+                              {prefix}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {errors.phone ? (
+                        <p
+                          id="checkout-phone-error"
+                          role="alert"
+                          className="app-error"
+                        >
+                          {errors.phone}
+                        </p>
+                      ) : (
+                        <p id="checkout-phone-hint" className="app-hint">
+                          חובה לרכישה — לצורכי יצירת קשר על ההזמנה.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="checkout-age-confirm"
+                        className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-md)] border p-4 transition-colors"
+                        style={{
+                          borderColor: ageError
+                            ? "rgba(167,70,54,0.4)"
+                            : "var(--color-border)",
+                          background: "var(--color-secondary)",
+                        }}
+                      >
+                        <input
+                          id="checkout-age-confirm"
+                          type="checkbox"
+                          checked={ageConfirmed}
+                          aria-required="true"
+                          aria-invalid={ageError ? true : undefined}
+                          aria-describedby={
+                            ageError ? "checkout-age-error" : undefined
+                          }
+                          onChange={(e) => {
+                            setAgeConfirmed(e.target.checked)
+                            if (e.target.checked) setAgeError("")
+                          }}
+                          className="mt-0.5 h-4 w-4 flex-shrink-0"
+                        />
+                        <span className="text-sm leading-relaxed">
+                          אני מאשר כי אני בן 18 ומעלה וכי אני רשאי על פי דין
+                          לצפות ולרכוש תוכן המיועד למבוגרים. קראתי את{" "}
+                          <Link
+                            to="/terms-and-conditions"
+                            className="font-medium underline transition-opacity hover:opacity-70"
+                            style={{ color: "var(--color-primary)" }}
+                          >
+                            תנאי השימוש
+                          </Link>{" "}
+                          ואת{" "}
+                          <Link
+                            to="/privacy-policy"
+                            className="font-medium underline transition-opacity hover:opacity-70"
+                            style={{ color: "var(--color-primary)" }}
+                          >
+                            מדיניות הפרטיות
+                          </Link>{" "}
+                          ואני מסכים להם.
+                        </span>
+                      </label>
+                      {ageError && (
+                        <p
+                          id="checkout-age-error"
+                          role="alert"
+                          className="app-error mt-1"
+                        >
+                          {ageError}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {submitError && (
+                    <div className="mt-5">
+                      <Alert tone="error">{submitError}</Alert>
                     </div>
                   )}
 
-                  <div>
-                    <label
-                      htmlFor="checkout-phone"
-                      className="block text-xs font-bold mb-1.5"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      מספר טלפון{required}
-                    </label>
-                    <div className="flex gap-2" dir="rtl">
-                      {/* Phone number input - on the right side (RTL) */}
-                      <input
-                        id="checkout-phone"
-                        type="tel"
-                        dir="ltr"
-                        aria-invalid={errors.phone ? true : undefined}
-                        aria-describedby={
-                          errors.phone
-                            ? "checkout-phone-error"
-                            : "checkout-phone-hint"
-                        }
-                        className={`${inputClass} text-left flex-1`}
-                        style={inputStyle}
-                        value={phoneParts.number}
-                        onChange={(e) =>
-                          setPhoneParts((prev) => ({
-                            ...prev,
-                            number: e.target.value
-                              .replace(/[^\d]/g, "")
-                              .slice(0, PHONE_NUMBER_DIGITS),
-                          }))
-                        }
-                        onKeyPress={(e) => {
-                          // Block non-numeric characters
-                          if (
-                            !/[0-9]/.test(e.key) &&
-                            ![
-                              "Backspace",
-                              "Delete",
-                              "Tab",
-                              "Escape",
-                              "Enter",
-                            ].includes(e.key)
-                          ) {
-                            e.preventDefault()
-                          }
-                        }}
-                        placeholder="1234567"
-                        autoComplete="tel-national"
-                        maxLength={PHONE_NUMBER_DIGITS}
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                      />
-                      {/* Phone prefix dropdown - on the left side (RTL) */}
-                      <select
-                        aria-label="קידומת הטלפון"
-                        value={phoneParts.prefix}
-                        onChange={(e) =>
-                          setPhoneParts((prev) => ({
-                            ...prev,
-                            prefix: e.target.value,
-                          }))
-                        }
-                        className={`${inputClass} text-center flex-shrink-0`}
-                        style={{ ...inputStyle, width: "80px" }}
-                        dir="ltr"
-                      >
-                        {PHONE_PREFIXES.map((prefix) => (
-                          <option key={prefix} value={prefix}>
-                            {prefix}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {errors.phone ? (
-                      <p
-                        id="checkout-phone-error"
-                        role="alert"
-                        className="text-xs mt-1"
-                        style={{ color: "var(--color-danger)" }}
-                      >
-                        {errors.phone}
-                      </p>
-                    ) : (
-                      <p
-                        id="checkout-phone-hint"
-                        className="text-xs mt-1"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
-                        חובה לרכישה — לצורכי יצירת קשר על ההזמנה.
-                      </p>
-                    )}
-                  </div>
+                  <p className="app-hint mt-5">{required} שדות חובה</p>
 
-                  <div>
-                    <label
-                      className="flex items-start gap-3 cursor-pointer rounded-xl border p-4 transition-colors"
-                      style={{
-                        borderColor: ageError
-                          ? "rgba(239,68,68,0.4)"
-                          : "var(--color-border)",
-                        background: "var(--color-secondary)",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={ageConfirmed}
-                        onChange={(e) => {
-                          setAgeConfirmed(e.target.checked)
-                          if (e.target.checked) setAgeError("")
-                        }}
-                        className="mt-0.5 w-4 h-4 flex-shrink-0 accent-[#D4A030]"
-                      />
-                      <span
-                        className="text-sm leading-relaxed"
-                        style={{ color: "var(--color-foreground)" }}
-                      >
-                        אני מאשר כי אני בן 18 ומעלה וכי אני רשאי על פי דין
-                        לצפות ולרכוש תוכן המיועד למבוגרים. קראתי את{" "}
-                        <Link
-                          to="/terms-and-conditions"
-                          className="underline font-medium transition-opacity hover:opacity-70"
-                          style={{ color: "var(--color-primary)" }}
-                        >
-                          תנאי השימוש
-                        </Link>{" "}
-                        ואת{" "}
-                        <Link
-                          to="/privacy-policy"
-                          className="underline font-medium transition-opacity hover:opacity-70"
-                          style={{ color: "var(--color-primary)" }}
-                        >
-                          מדיניות הפרטיות
-                        </Link>{" "}
-                        ואני מסכים להם.
-                      </span>
-                    </label>
-                    {ageError && (
-                      <p
-                        className="text-xs mt-1"
-                        style={{ color: "var(--color-danger)" }}
-                      >
-                        {ageError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {submitError && (
-                  <div
-                    role="alert"
-                    className="mt-6 px-4 py-3 rounded-xl border text-sm"
-                    style={{
-                      background: "rgba(239,68,68,0.08)",
-                      borderColor: "rgba(239,68,68,0.3)",
-                      color: "var(--color-danger)",
-                    }}
+                  <button
+                    type="button"
+                    onClick={handleDetailsNext}
+                    className="app-btn mt-5 w-full py-3.5"
                   >
-                    {submitError}
-                  </div>
-                )}
-
-                <button
-                  onClick={handleDetailsNext}
-                  className="btn-gradient mt-8 w-full py-3.5 rounded-full font-bold"
-                >
-                  המשך לאישור ההזמנה
-                </button>
-              </div>
+                    המשך לאישור ההזמנה
+                    <Icon name="arrowLeft" size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              </section>
             )}
 
             {step === "review" && (
-              <div className="page-enter">
-                <h1 className="font-display text-3xl font-bold mb-1">
-                  אישור ההזמנה
-                </h1>
-                <p
-                  className="text-sm mb-8"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
-                  בדוק את הפרטים לפני שליחת ההזמנה.
-                </p>
-
-                <div
-                  className="p-5 rounded-xl border mb-4"
-                  style={{
-                    background: "var(--color-secondary)",
-                    borderColor: "var(--color-border)",
-                  }}
-                >
-                  <h2
-                    className="text-xs font-bold mb-3"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    פרטי הלקוח
-                  </h2>
-                  <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                    <p>
-                      {form.first_name} {form.last_name}
-                    </p>
-                    <p dir="ltr" className="text-left">
-                      {form.email}
-                    </p>
-                    <p dir="ltr" className="text-left">
-                      {phone}
+              <section
+                className="app-surface page-enter"
+                aria-labelledby="checkout-review-title"
+              >
+                <div className="app-surface-head">
+                  <div>
+                    <h2 id="checkout-review-title" className="app-section-title">
+                      אישור ההזמנה
+                    </h2>
+                    <p className="app-hint mt-1">
+                      בדקו את הפרטים לפני שליחת ההזמנה.
                     </p>
                   </div>
-                  <button
-                    onClick={() => setStep("details")}
-                    className="mt-4 text-xs font-bold transition-opacity hover:opacity-70"
-                    style={{ color: "var(--color-primary)" }}
-                  >
-                    עריכת הפרטים
-                  </button>
+                  <span className="app-badge app-badge--neutral">
+                    שלב 2 מתוך 2
+                  </span>
                 </div>
 
-                {/* Payment handling — stated truthfully, never simulated */}
-                <div
-                  className="p-4 rounded-xl border flex items-start gap-3 mb-4"
-                  style={{
-                    background: providerConfigured
-                      ? "rgba(212,160,48,0.06)"
-                      : "rgba(34,197,94,0.08)",
-                    borderColor: providerConfigured
-                      ? "rgba(212,160,48,0.3)"
-                      : "rgba(34,197,94,0.3)",
-                  }}
-                >
-                  <Icon
-                    name={providerConfigured ? "lock" : "checkCircle"}
-                    size={16}
-                    style={{
-                      color: providerConfigured
-                        ? "var(--color-primary)"
-                        : "var(--color-success)",
-                    }}
-                  />
+                <div className="app-surface-body">
                   <div
-                    className="text-sm"
-                    style={{ color: "var(--color-muted-foreground)" }}
+                    className="mb-4 rounded-[var(--radius-md)] border p-4"
+                    style={{
+                      background: "var(--color-secondary)",
+                      borderColor: "var(--color-border)",
+                    }}
                   >
-                    {providerConfigured ? (
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="app-label">פרטי הלקוח</h3>
+                      <button
+                        type="button"
+                        onClick={() => setStep("details")}
+                        className="text-xs font-semibold underline underline-offset-4 transition-opacity hover:opacity-70"
+                        style={{ color: "var(--color-primary)" }}
+                      >
+                        עריכת הפרטים
+                      </button>
+                    </div>
+                    <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="sr-only">שם</dt>
+                        <dd>
+                          {form.first_name} {form.last_name}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="sr-only">אימייל</dt>
+                        <dd dir="ltr" className="break-all text-start">
+                          {form.email}
+                        </dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="sr-only">טלפון</dt>
+                        <dd dir="ltr" className="text-start">
+                          {phone}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  {/* Payment handling — stated truthfully, never simulated */}
+                  <div
+                    className={`app-alert ${providerConfigured ? "" : "app-alert--success"}`}
+                  >
+                    <Icon
+                      name={providerConfigured ? "lock" : "checkCircle"}
+                      size={17}
+                      style={{
+                        flexShrink: 0,
+                        marginTop: 2,
+                        color: providerConfigured
+                          ? "var(--color-primary)"
+                          : "var(--color-success)",
+                      }}
+                      aria-hidden="true"
+                    />
+                    <div className="text-sm">
+                      {providerConfigured ? (
+                        <>
+                          התשלום יועבר דרך הספק{" "}
+                          {cms.settings.payment_provider}.
+                        </>
+                      ) : (
+                        <>
+                          <strong style={{ color: "var(--color-foreground)" }}>
+                            הרכישה מאושרת מיידית.
+                          </strong>{" "}
+                          כיוון שטרם הוגדר ספק תשלומים, ההזמנה תאושר אוטומטית
+                          עם השליחה — החשבון ייפתח, הגישה למוצר תינתן מיד
+                          ותוכלו להתחיל לקרוא ללא המתנה.
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {submitError && (
+                    <div className="mt-4">
+                      <Alert tone="error">{submitError}</Alert>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleSubmitOrder}
+                    disabled={isProcessing}
+                    aria-busy={isProcessing}
+                    className="app-btn mt-5 flex w-full items-center justify-center gap-2 py-3.5"
+                  >
+                    {isProcessing ? (
                       <>
-                        התשלום יועבר דרך הספק {cms.settings.payment_provider}.
+                        <span
+                          className="app-spinner"
+                          style={{
+                            width: "1rem",
+                            height: "1rem",
+                            borderColor: "rgba(20,17,14,0.3)",
+                            borderTopColor: "var(--color-primary-foreground)",
+                          }}
+                          aria-hidden="true"
+                        />
+                        שולח הזמנה...
                       </>
                     ) : (
                       <>
-                        <strong style={{ color: "var(--color-foreground)" }}>
-                          הרכישה מאושרת מיידית.
-                        </strong>{" "}
-                        כיוון שטרם הוגדר ספק תשלומים, ההזמנה תאושר אוטומטית עם
-                        השליחה — החשבון ייפתח, הגישה למוצר תינתן מיד ותוכלו
-                        להתחיל לקרוא ללא המתנה.
+                        שליחת הזמנה ·{" "}
+                        <span dir="ltr">₪{finalPrice.toLocaleString()}</span>
+                        <Icon name="arrowLeft" size={16} aria-hidden="true" />
                       </>
                     )}
-                  </div>
-                </div>
+                  </button>
 
-                {submitError && (
-                  <div
-                    role="alert"
-                    className="mb-4 px-4 py-3 rounded-xl border text-sm"
-                    style={{
-                      background: "rgba(239,68,68,0.08)",
-                      borderColor: "rgba(239,68,68,0.3)",
-                      color: "var(--color-danger)",
-                    }}
+                  <button
+                    type="button"
+                    onClick={() => setStep("details")}
+                    disabled={isProcessing}
+                    className="app-btn-ghost mt-2 w-full"
                   >
-                    {submitError}
-                  </div>
-                )}
-
-                <button
-                  onClick={handleSubmitOrder}
-                  disabled={isProcessing}
-                  className="btn-gradient mt-4 w-full py-3.5 rounded-full font-bold disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                      שולח הזמנה...
-                    </>
-                  ) : (
-                    `שליחת הזמנה · ₪${finalPrice.toLocaleString()}`
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setStep("details")}
-                  disabled={isProcessing}
-                  className="mt-3 w-full text-sm transition-opacity hover:opacity-70 disabled:opacity-30"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
-                  → חזרה לפרטים
-                </button>
-              </div>
+                    <Icon name="arrowRight" size={15} aria-hidden="true" />
+                    חזרה לפרטים
+                  </button>
+                </div>
+              </section>
             )}
           </div>
 
           {/* Order summary */}
-          <div>
-            <div className="card-glow rounded-2xl p-6 sticky top-24">
-              <h2
-                className="font-bold mb-4 text-sm"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                סיכום הזמנה
-              </h2>
-
-              <div
-                className="flex gap-4 mb-6 pb-6 border-b"
-                style={{ borderColor: "var(--color-border)" }}
-              >
-                <BookCoverMini product={product} />
-                <div>
-                  <p className="font-bold text-sm leading-snug mb-1">
-                    {product.name}
-                  </p>
-                  {product.book?.author_name && (
-                    <p
-                      className="text-xs"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      מאת {product.book.author_name}
-                    </p>
-                  )}
-                  <p
-                    className="text-xs mt-1"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    גישה מיידית עם אישור התשלום
-                  </p>
-                </div>
+          <aside className="min-w-0">
+            <div className="app-surface lg:sticky lg:top-24">
+              <div className="app-surface-head">
+                <h2
+                  id="checkout-summary-title"
+                  className="app-section-title"
+                >
+                  סיכום הזמנה
+                </h2>
+                <span className="app-badge app-badge--neutral">מוצר אחד</span>
               </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span style={{ color: "var(--color-muted-foreground)" }}>
-                    סכום ביניים
-                  </span>
-                  <span className="flex items-baseline gap-2">
-                    {isOnSale(product) && (
-                      <span
-                        className="text-xs line-through"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
-                        ₪{product.price.toLocaleString()}
-                      </span>
-                    )}
-                    ₪{subtotal.toLocaleString()}
-                  </span>
-                </div>
+              <div className="app-surface-body">
                 <div
-                  className="border-t pt-2 flex justify-between font-bold text-base"
+                  className="mb-5 flex gap-4 border-b pb-5"
                   style={{ borderColor: "var(--color-border)" }}
                 >
-                  <span>סה״כ לתשלום</span>
-                  <span style={{ color: "var(--color-primary)" }}>
-                    ₪{finalPrice.toLocaleString()}
-                  </span>
+                  <BookCoverMini product={product} />
+                  <div className="min-w-0">
+                    <p className="mb-1 font-display text-base font-semibold leading-snug">
+                      {product.name}
+                    </p>
+                    {product.book?.author_name && (
+                      <p className="text-xs app-muted">
+                        מאת {product.book.author_name}
+                      </p>
+                    )}
+                    <p className="app-hint mt-1.5">
+                      {providerConfigured
+                        ? "הגישה תיפתח לאחר אישור התשלום."
+                        : "ההזמנה תאושר עם השליחה."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="app-muted">סכום ביניים</span>
+                    <span className="flex items-baseline gap-2">
+                      {isOnSale(product) && (
+                        <s
+                          className="text-xs app-muted"
+                          aria-label={`מחיר קודם: ₪${product.price.toLocaleString()}`}
+                        >
+                          <span dir="ltr">
+                            ₪{product.price.toLocaleString()}
+                          </span>
+                        </s>
+                      )}
+                      <span dir="ltr">₪{subtotal.toLocaleString()}</span>
+                    </span>
+                  </div>
+                  <div
+                    className="flex items-center justify-between gap-3 border-t pt-2 text-base font-semibold"
+                    style={{ borderColor: "var(--color-border)" }}
+                  >
+                    <span>סה״כ לתשלום</span>
+                    <span
+                      className="font-display text-lg"
+                      style={{ color: "var(--color-primary)" }}
+                    >
+                      <span dir="ltr">₪{finalPrice.toLocaleString()}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className="mt-5 space-y-2 border-t pt-4 text-xs"
+                  style={{
+                    borderColor: "var(--color-border)",
+                    color: "var(--color-muted-foreground)",
+                  }}
+                >
+                  {[
+                    isSupabaseConfigured
+                      ? "ההזמנה נרשמת לחשבון המאומת שלך"
+                      : "החשבון נוצר אוטומטית לפי כתובת המייל",
+                    "ההזמנה נשמרת במערכת עם מספר הזמנה למעקב",
+                  ].map((item) => (
+                    <div key={item} className="flex items-start gap-2">
+                      <Icon
+                        name="checkCircle"
+                        size={14}
+                        style={{
+                          color: "var(--color-success)",
+                          flexShrink: 0,
+                          marginTop: 2,
+                        }}
+                        aria-hidden="true"
+                      />
+                      <span>{item}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div
-                className="mt-6 pt-4 border-t space-y-2 text-xs"
-                style={{
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-muted-foreground)",
-                }}
-              >
-                {[
-                  isSupabaseConfigured
-                    ? "ההזמנה נרשמת לחשבון המאומת שלך"
-                    : "החשבון נוצר אוטומטית לפי כתובת המייל",
-                  "ההזמנה נשמרת במערכת עם מספר הזמנה למעקב",
-                ].map((item) => (
-                  <div key={item} className="flex items-center gap-2">
-                    <Icon
-                      name="checkCircle"
-                      size={14}
-                      style={{ color: "var(--color-success)" }}
-                    />{" "}
-                    {item}
-                  </div>
-                ))}
-              </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </div>

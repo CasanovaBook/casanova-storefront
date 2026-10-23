@@ -36,6 +36,7 @@ import AccessDenied from "../../components/AccessDenied"
 import Modal from "../../components/Modal"
 
 import Icon, { type IconName } from "../../components/icons"
+import PageHeader from "../../components/ui/PageHeader"
 
 const STATUS_ORDER: InquiryStatus[] = [
   "NEW",
@@ -54,15 +55,15 @@ const STATUS_ORDER: InquiryStatus[] = [
 const STATUS_STYLE: Record<InquiryStatus, { bg: string, color: string }> = {
   NEW: { bg: "rgba(59,130,246,0.12)", color: "#3B82F6" },
 
-  OPEN: { bg: "rgba(245,158,11,0.12)", color: "#F59E0B" },
+  OPEN: { bg: "rgba(201,138,74,0.12)", color: "#C98A4A" },
 
   IN_PROGRESS: { bg: "rgba(168,85,247,0.12)", color: "#A855F7" },
 
-  WAITING_FOR_CUSTOMER: { bg: "rgba(56,189,248,0.12)", color: "#38BDF8" },
+  WAITING_FOR_CUSTOMER: { bg: "rgba(56,189,248,0.12)", color: "#8AA9B8" },
 
-  RESOLVED: { bg: "rgba(34,197,94,0.12)", color: "var(--color-success)" },
+  RESOLVED: { bg: "rgba(79,122,79,0.12)", color: "var(--color-success)" },
 
-  CLOSED: { bg: "rgba(107,114,128,0.14)", color: "#6B7280" },
+  CLOSED: { bg: "rgba(107,114,128,0.14)", color: "#8C8175" },
 }
 
 const SOURCE_LABEL: Record<Inquiry["source"], string> = {
@@ -257,7 +258,7 @@ function InquiryModal({
           <p
             className="text-xs px-3 py-2 rounded-lg mb-4"
             style={{
-              background: "rgba(239,68,68,0.1)",
+              background: "rgba(167,70,54,0.1)",
               color: "var(--color-danger)",
             }}
           >
@@ -300,9 +301,9 @@ function InquiryModal({
           <div
             className="p-4 rounded-lg border"
             style={{
-              background: "rgba(212,160,48,0.07)",
+              background: "rgba(196,122,67,0.07)",
 
-              borderColor: "rgba(212,160,48,0.28)",
+              borderColor: "rgba(196,122,67,0.28)",
             }}
           >
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -471,15 +472,15 @@ function InquiryModal({
                       className="max-w-[85%] min-w-0 p-3 rounded-lg border"
                       style={{
                         borderColor: n.internal
-                          ? "rgba(245,158,11,0.3)"
+                          ? "rgba(201,138,74,0.3)"
                           : fromCustomer
-                            ? "rgba(212,160,48,0.28)"
+                            ? "rgba(196,122,67,0.28)"
                             : "var(--color-border)",
 
                         background: n.internal
-                          ? "rgba(245,158,11,0.05)"
+                          ? "rgba(201,138,74,0.05)"
                           : fromCustomer
-                            ? "rgba(212,160,48,0.07)"
+                            ? "rgba(196,122,67,0.07)"
                             : "var(--color-secondary)",
                       }}
                     >
@@ -510,9 +511,9 @@ function InquiryModal({
                           <span
                             className="text-[10px] px-1.5 py-0.5 rounded-full"
                             style={{
-                              background: "rgba(245,158,11,0.15)",
+                              background: "rgba(201,138,74,0.15)",
 
-                              color: "#F59E0B",
+                              color: "#C98A4A",
                             }}
                           >
                             פנימי
@@ -622,7 +623,7 @@ function NewInquiryModal({ onClose }: { onClose: () => void }) {
           <p
             className="text-xs px-3 py-2 rounded-lg mb-4"
             style={{
-              background: "rgba(239,68,68,0.1)",
+              background: "rgba(167,70,54,0.1)",
               color: "var(--color-danger)",
             }}
           >
@@ -767,33 +768,34 @@ export default function AdminSupportPage() {
 
   return (
     <div className="max-w-6xl mx-auto page-enter">
-      <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
-        <div>
-          <h1 className="font-display text-4xl font-semibold mb-1">
-            פניות לקוחות
-          </h1>
-          <p style={{ color: "var(--color-muted-foreground)" }}>
-            כל פנייה שנשלחה מהאתר נשמרת כאן עם מספר מעקב, סטטוס, שיוך לנציג
-            ויומן הערות.
-          </p>
-        </div>
-        {can(adminRole, "manage_support") && (
-          <button
-            onClick={() => setShowNew(true)}
-            className="btn-gradient px-5 py-2.5 rounded-full font-semibold text-sm"
-          >
-            + רישום פנייה
-          </button>
-        )}
-      </div>
+      <PageHeader
+        eyebrow="ניהול · שירות לקוחות"
+        title="פניות לקוחות"
+        description="כל פנייה שנשלחה מהאתר נשמרת כאן עם מספר מעקב, סטטוס, שיוך לנציג ויומן הערות."
+        breadcrumbs={[
+          { label: "ניהול", to: "/admin" },
+          { label: "פניות לקוחות" },
+        ]}
+        actions={
+          can(adminRole, "manage_support") ? (
+            <button
+              type="button"
+              onClick={() => setShowNew(true)}
+              className="app-btn"
+            >
+              + רישום פנייה
+            </button>
+          ) : undefined
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {stats.map(({ icon, label, value }) => (
-          <div key={label} className="card-glow p-5">
+          <div key={label} className="app-surface p-5">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
               style={{
-                background: "rgba(227,174,60,0.12)",
+                background: "rgba(222,154,96,0.12)",
                 color: "var(--color-primary)",
               }}
             >

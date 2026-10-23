@@ -18,10 +18,13 @@
 
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router"
-import { isSupabaseConfigured, requireSupabase } from "../integrations/supabase/supabase"
-import Icon from "../components/icons"
-import ThemeToggle from "../components/ThemeToggle"
-import logoImg from "../assets/main_photo.jpg"
+import {
+  isSupabaseConfigured,
+  requireSupabase,
+} from "../integrations/supabase/supabase"
+import Alert from "../components/ui/Alert"
+import Spinner from "../components/ui/Spinner"
+import AuthShell from "../components/layout/AuthShell"
 
 type RedeemState = "redeeming" | "redirecting" | "invalid" | "error"
 
@@ -102,162 +105,66 @@ export default function ResetPasswordPage() {
 
   if (state === "invalid") {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center px-6"
-        style={{ background: "var(--color-background)" }}
+      <AuthShell
+        eyebrow="איפוס סיסמה"
+        title="הקישור אינו תקין או שפג תוקפו"
+        description="קישורי איפוס תקפים ל־10 דקות ולשימוש אחד בלבד. בקשו מהמנהל קישור חדש."
       >
-        <div className="w-full max-w-sm text-center page-enter">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{
-              background: "rgba(239,68,68,0.12)",
-              border: "1px solid rgba(239,68,68,0.3)",
-              color: "var(--color-danger)",
-            }}
-          >
-            <Icon name="lock" size={28} />
-          </div>
-          <h1 className="font-display text-2xl font-semibold mb-2">
-            הקישור אינו תקין או שפג תוקפו
-          </h1>
-          <p
-            className="text-sm mb-6"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            קישורי איפוס תקפים ל־10 דקות ולשימוש אחד בלבד. בקשו מהמנהל קישור
-            חדש.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Link
-              to="/forgot-password"
-              className="btn-gradient px-5 py-2.5 rounded-full font-semibold text-sm"
-            >
-              בקש קישור חדש
-            </Link>
-            <Link
-              to="/login"
-              className="px-5 py-2.5 rounded-full border text-sm"
-              style={{
-                borderColor: "var(--color-border)",
-                color: "var(--color-foreground)",
-              }}
-            >
-              התחברות
-            </Link>
-          </div>
+        <div className="flex flex-col gap-2.5 sm:flex-row">
+          <Link to="/forgot-password" className="app-btn flex-1">
+            בקש קישור חדש
+          </Link>
+          <Link to="/login" className="app-btn-secondary flex-1">
+            התחברות
+          </Link>
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
   const busy = state === "redeeming" || state === "redirecting"
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden"
-      style={{ background: "var(--color-background)" }}
+    <AuthShell
+      eyebrow="איפוס סיסמה"
+      title={
+        state === "error"
+          ? "משהו השתבש"
+          : state === "redirecting"
+            ? "מאומת — ממשיכים…"
+            : "מאמת קישור איפוס…"
+      }
+      description={
+        state === "error" ? undefined : "רגע אחד, מכין את מסך הסיסמה החדשה."
+      }
     >
-      <div
-        className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(212,160,48,0.08) 0%, transparent 70%)",
-          top: "-140px",
-          left: "50%",
-          transform: "translateX(-50%)",
-        }}
-      />
-      <div className="absolute top-5 left-5 z-10">
-        <ThemeToggle />
-      </div>
-
-      <div className="w-full max-w-sm text-center page-enter relative">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <img
-              src={logoImg}
-              alt=""
-              className="w-9 h-9 rounded-lg object-cover"
-            />
-            <span
-              dir="ltr"
-              className="font-display text-xl font-semibold tracking-wide"
-              style={{ color: "var(--color-primary)" }}
+      {state === "error" ? (
+        <div className="space-y-4">
+          <Alert tone="error">{error}</Alert>
+          <div className="flex flex-col gap-2.5 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => setAttempt((n) => n + 1)}
+              className="app-btn flex-1 cursor-pointer"
             >
-              Casanova
-            </span>
-          </Link>
+              נסו שוב
+            </button>
+            <Link to="/login" className="app-btn-secondary flex-1">
+              התחברות
+            </Link>
+          </div>
         </div>
-
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-          style={{
-            background: "rgba(227,174,60,0.12)",
-            border: "1px solid rgba(227,174,60,0.3)",
-            color: "var(--color-primary)",
-          }}
-        >
-          <Icon name="lock" size={28} />
-        </div>
-
-        {state === "error" ? (
-          <>
-            <h1 className="font-display text-2xl font-semibold mb-2">
-              משהו השתבש
-            </h1>
-            <p
-              className="text-sm mb-6"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              {error}
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                type="button"
-                onClick={() => setAttempt((n) => n + 1)}
-                className="btn-gradient px-5 py-2.5 rounded-full font-semibold text-sm cursor-pointer"
-              >
-                נסו שוב
-              </button>
-              <Link
-                to="/login"
-                className="px-5 py-2.5 rounded-full border text-sm"
-                style={{
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-foreground)",
-                }}
-              >
-                התחברות
-              </Link>
-            </div>
-          </>
-        ) : (
-          <>
-            <h1 className="font-display text-2xl font-semibold mb-2">
-              {state === "redirecting"
-                ? "מאומת — ממשיכים…"
-                : "מאמת קישור איפוס…"}
-            </h1>
-            <p
-              className="text-sm"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              רגע אחד, מכין את מסך הסיסמה החדשה.
-            </p>
-            {busy && (
-              <span
-                className="inline-block w-8 h-8 rounded-full border-2 animate-spin mt-6"
-                style={{
-                  borderColor: "var(--color-border)",
-                  borderTopColor: "var(--color-primary)",
-                }}
-                role="status"
-                aria-live="polite"
-              />
-            )}
-          </>
-        )}
-      </div>
-    </div>
+      ) : (
+        busy && (
+          <Spinner
+            label={
+              state === "redirecting"
+                ? "מעביר אותך למסך הסיסמה…"
+                : "מאמת קישור איפוס…"
+            }
+          />
+        )
+      )}
+    </AuthShell>
   )
 }

@@ -13,9 +13,8 @@ import { Link } from "react-router"
 import { getSettings, requestPasswordReset } from "../lib/api"
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import { requestPasswordReset as requestSupabaseReset } from "../integrations/supabase/supabase-auth"
-import Icon from "../components/icons"
-import ThemeToggle from "../components/ThemeToggle"
-import logoImg from "../assets/main_photo.jpg"
+import Alert from "../components/ui/Alert"
+import AuthShell from "../components/layout/AuthShell"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -54,187 +53,92 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden"
-      style={{ background: "var(--color-background)" }}
-    >
-      <div
-        className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(212,160,48,0.08) 0%, transparent 70%)",
-          top: "-140px",
-          right: "-120px",
-        }}
-      />
-      <div className="absolute top-5 left-5 z-10">
-        <ThemeToggle />
-      </div>
-
-      <div className="w-full max-w-sm page-enter relative">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <img
-              src={logoImg}
-              alt=""
-              className="w-9 h-9 rounded-lg object-cover"
-            />
-            <span
-              dir="ltr"
-              className="font-display text-xl font-semibold tracking-wide"
-              style={{ color: "var(--color-primary)" }}
-            >
-              Casanova
-            </span>
-          </Link>
-
-          {!submitted ? (
-            <>
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{
-                  background: "rgba(227,174,60,0.12)",
-                  border: "1px solid rgba(227,174,60,0.3)",
-                  color: "var(--color-primary)",
-                }}
-              >
-                <Icon name="key" size={28} />
-              </div>
-              <h1 className="font-display text-3xl font-semibold mb-2">
-                איפוס סיסמה
-              </h1>
-              <p
-                className="text-sm"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                הזן את כתובת המייל של החשבון. נשלח לך קישור איפוס מאובטח.
-              </p>
-            </>
-          ) : (
-            <>
-              <div
-                className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 glow-pulse"
-                style={{
-                  background: "rgba(212,160,48,0.1)",
-                  color: "var(--color-primary)",
-                  border: "1px solid rgba(212,160,48,0.3)",
-                  boxShadow: "0 0 40px rgba(212,160,48,0.2)",
-                }}
-              >
-                <Icon name="mail" size={32} />
-              </div>
-              <h1 className="font-display text-3xl font-semibold mb-2">
-                הבקשה נרשמה
-              </h1>
-              <p
-                className="text-sm"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                אם קיים חשבון עבור <strong dir="ltr">{email}</strong>, קישור
-                איפוס נרשם עבורו. מטעמי אבטחה איננו מודיעים האם הכתובת קיימת
-                במערכת.
-              </p>
-              {!delivered && (
-                <p
-                  className="text-xs px-3 py-2.5 rounded-lg mt-5 flex items-start gap-2 text-right"
-                  style={{
-                    background: "rgba(245,158,11,0.1)",
-                    color: "#F59E0B",
-                  }}
-                >
-                  <Icon
-                    name="mail"
-                    size={14}
-                    className="flex-shrink-0 mt-0.5"
-                  />
-                  <span>
-                    לא מוגדר כרגע ספק שליחת מיילים, ולכן הקישור נשמר בתור בלבד
-                    ולא נמסר בפועל. מנהל מערכת יכול להנפיק קישור איפוס ישירות
-                    מניהול המשתמשים באזור הניהול ולהעביר אותו לבעל החשבון.
-                  </span>
-                </p>
-              )}
-            </>
-          )}
-        </div>
-
-        {!submitted ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label
-                htmlFor="forgot-email"
-                className="block text-xs font-medium mb-1.5"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                כתובת מייל
-              </label>
-              <input
-                id="forgot-email"
-                type="email"
-                dir="ltr"
-                className="w-full px-4 py-3 rounded-lg border text-sm outline-none text-left"
-                style={{
-                  background: "var(--color-secondary)",
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-foreground)",
-                }}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-
-            {error && (
-              <p
-                role="alert"
-                className="text-xs px-3 py-2.5 rounded-lg"
-                style={{
-                  background: "rgba(239,68,68,0.1)",
-                  color: "var(--color-danger)",
-                }}
-              >
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={busy}
-              className="btn-gradient w-full py-3 rounded-full font-semibold text-sm disabled:opacity-40"
-            >
-              {busy ? "שולח…" : "שליחת קישור איפוס"}
-            </button>
-          </form>
+    <AuthShell
+      eyebrow="שחזור גישה"
+      title={submitted ? "הבקשה נרשמה" : "איפוס סיסמה"}
+      description={
+        submitted ? (
+          <>
+            אם קיים חשבון עבור{" "}
+            <strong dir="ltr" className="break-all">
+              {email}
+            </strong>
+            , קישור איפוס נרשם עבורו. מטעמי אבטחה איננו מודיעים האם הכתובת קיימת
+            במערכת.
+          </>
         ) : (
-          <Link
-            to="/login"
-            className="block w-full py-3 rounded-full font-semibold text-sm text-center border transition-colors hover:bg-white/5"
-            style={{
-              borderColor: "var(--color-border)",
-              color: "var(--color-foreground)",
-            }}
+          "הזן את כתובת המייל של החשבון. נשלח לך קישור איפוס מאובטח."
+        )
+      }
+      footer={
+        !submitted ? (
+          <p className="m-0 text-center">
+            נזכרת בסיסמה? <Link to="/login">התחבר</Link>
+          </p>
+        ) : undefined
+      }
+    >
+      {!submitted ? (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="app-field">
+            <label htmlFor="forgot-email" className="app-label">
+              כתובת מייל
+            </label>
+            <input
+              id="forgot-email"
+              type="email"
+              dir="ltr"
+              className="w-full px-4 py-3 text-left"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+
+          {error && <Alert tone="error">{error}</Alert>}
+
+          <button
+            type="submit"
+            disabled={busy}
+            aria-busy={busy || undefined}
+            className="app-btn w-full"
           >
+            {busy ? (
+              <>
+                <span
+                  className="app-spinner"
+                  aria-hidden="true"
+                  style={{
+                    width: "1rem",
+                    height: "1rem",
+                    borderColor:
+                      "color-mix(in srgb, var(--color-primary-foreground) 35%, transparent)",
+                    borderTopColor: "var(--color-primary-foreground)",
+                  }}
+                />
+                שולח…
+              </>
+            ) : (
+              "שליחת קישור איפוס"
+            )}
+          </button>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          {!delivered && (
+            <Alert tone="warning">
+              לא מוגדר כרגע ספק שליחת מיילים, ולכן הקישור נשמר בתור בלבד ולא
+              נמסר בפועל. מנהל מערכת יכול להנפיק קישור איפוס ישירות מניהול
+              המשתמשים באזור הניהול ולהעביר אותו לבעל החשבון.
+            </Alert>
+          )}
+
+          <Link to="/login" className="app-btn-secondary w-full">
             חזרה להתחברות
           </Link>
-        )}
-
-        {!submitted && (
-          <p
-            className="text-center text-sm mt-6"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            נזכרת בסיסמה?{" "}
-            <Link
-              to="/login"
-              className="font-medium hover:opacity-70"
-              style={{ color: "var(--color-primary)" }}
-            >
-              התחבר
-            </Link>
-          </p>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </AuthShell>
   )
 }

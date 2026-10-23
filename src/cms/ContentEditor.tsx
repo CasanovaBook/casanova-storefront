@@ -19,7 +19,7 @@
  *  - Loading indicator
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useLocation, useNavigate, useSearchParams } from "react-router"
 import {
   GROUPS,
@@ -44,23 +44,29 @@ import { maestro } from "@/maestro"
 import { useApp } from "@/context/AppContext"
 import { can } from "@/lib/permissions"
 import Icon from "@/components/icons"
+import PageHeader from "@/components/ui/PageHeader"
+import EmptyState from "@/components/ui/EmptyState"
+import Alert from "@/components/ui/Alert"
 import { toast } from "./toast"
 
-const inputStyle: React.CSSProperties = {
+/* Shared editor control styles retained from the previous editor. They use
+ * the application tokens so the dense CMS controls follow the same palette
+ * as the rest of the admin area. */
+const btnBase =
+  "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+
+const inputStyle: CSSProperties = {
   background: "var(--color-secondary)",
   border: "1px solid var(--color-border)",
   color: "var(--color-foreground)",
   borderRadius: "var(--radius)",
 }
 
-const cardStyle: React.CSSProperties = {
+const cardStyle: CSSProperties = {
   background: "var(--color-card)",
   border: "1px solid var(--color-border)",
   borderRadius: "var(--radius-md)",
 }
-
-const focusBorder = "1px solid var(--color-primary)"
-const focusShadow = "0 0 0 2px rgba(227,174,60,0.15)"
 
 /** Inline live preview needs the third column; below this width it would
  *  squeeze the fields pane to an unusable strip on tablets. */
@@ -114,32 +120,15 @@ function AutoTextarea({
       rows={rows}
       placeholder={placeholder}
       className={`w-full px-3 py-2 text-sm ${mono ? "font-mono" : ""}`}
-      style={{ ...inputStyle, resize: "none", overflow: "hidden", ...style }}
+      style={{ resize: "none", overflow: "hidden", ...style }}
       dir={dir ?? "rtl"}
-      onFocus={(e) => {
-        e.currentTarget.style.border = focusBorder
-        e.currentTarget.style.boxShadow = focusShadow
-      }}
-      onBlur={(e) => {
-        e.currentTarget.style.border = (inputStyle.border as string)
-        e.currentTarget.style.boxShadow = "none"
-      }}
     />
   )
 }
 
 const inputProps = (dir = "rtl") => ({
   className: "w-full px-3 py-2 text-sm",
-  style: inputStyle,
   dir,
-  onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.border = focusBorder
-    e.currentTarget.style.boxShadow = focusShadow
-  },
-  onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.border = (inputStyle.border as string)
-    e.currentTarget.style.boxShadow = "none"
-  },
 })
 
 const TYPE_LABELS: Record<string, string> = {
@@ -209,10 +198,7 @@ function FieldEditor({
             rows={3}
             placeholder="שורה חדשה = מעבר שורה. *מילה* = הדגשה."
           />
-          <p
-            className="mt-1 text-[10px]"
-            style={{ color: "var(--color-muted-foreground)", opacity: 0.5 }}
-          >
+          <p className="app-hint mt-1">
             *מילה* = הדגשה · שורה חדשה = שורה חדשה
           </p>
         </div>
@@ -227,10 +213,7 @@ function FieldEditor({
             placeholder="Markdown: פסקאות, ## כותרות, - רשימות, **מודגש**"
             mono
           />
-          <p
-            className="mt-1 text-[10px]"
-            style={{ color: "var(--color-muted-foreground)", opacity: 0.5 }}
-          >
+          <p className="app-hint mt-1">
             ## כותרת · **מודגש** · - רשימה · פסקאות בהפרדת שורה ריקה
           </p>
         </div>
@@ -295,10 +278,7 @@ function FieldEditor({
             placeholder={field.hint ?? "פריט אחד בכל שורה"}
           />
           <div className="mt-1 flex justify-end">
-            <span
-              className="text-[10px]"
-              style={{ color: "var(--color-muted-foreground)", opacity: 0.5 }}
-            >
+            <span className="app-hint">
               {count} פריטים
             </span>
           </div>
@@ -342,19 +322,20 @@ function FieldEditor({
             />
           ))}
           <button
+            type="button"
             onClick={() => {
               const blank: Record<string, unknown> = {}
               for (const f of itemFields)
                 blank[f.key] = f.type === "boolean" ? false : ""
               onChange([...items, blank])
             }}
-            className="w-full rounded-xl py-2.5 text-xs font-medium transition-all hover:opacity-80 flex items-center justify-center gap-1.5"
+            className="w-full rounded-lg border border-dashed py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 hover:bg-[var(--color-secondary)]"
             style={{
-              border: "1px dashed var(--color-border)",
+              borderColor: "var(--color-border)",
               color: "var(--color-primary)",
             }}
           >
-            <span className="text-sm">+</span> הוספת פריט
+            <span className="text-sm" aria-hidden="true">+</span> הוספת פריט
           </button>
         </div>
       )
@@ -400,19 +381,20 @@ function ListItemEditor({
     : `פריט ${idx + 1}`
   return (
     <div
-      className="rounded-xl overflow-hidden transition-all"
+      className="overflow-hidden rounded-lg transition-colors"
       style={{
         background: "var(--color-secondary)",
         border: "1px solid var(--color-border)",
       }}
     >
-      <div className="flex items-center gap-2 px-3 py-2 select-none">
+      <div className="flex items-center gap-2 px-2.5 py-2 select-none">
         <span
           className="text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
           style={{
-            background: "rgba(227,174,60,0.15)",
+            background: "color-mix(in srgb, var(--color-primary) 15%, transparent)",
             color: "var(--color-primary)",
           }}
+          aria-hidden="true"
         >
           {idx + 1}
         </span>
@@ -423,43 +405,51 @@ function ListItemEditor({
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="text-xs font-medium truncate flex-1 text-right rounded transition-opacity hover:opacity-80"
+          className="min-w-0 flex-1 truncate text-start text-xs font-medium rounded transition-colors hover:text-[var(--color-primary)]"
           style={{ color: "var(--color-foreground)" }}
         >
           {title}
         </button>
         <div className="flex items-center gap-0.5 flex-shrink-0">
           <button
+            type="button"
             onClick={() => onMove(-1)}
             disabled={idx === 0}
-            className="p-0.5 rounded transition-opacity hover:opacity-80 disabled:opacity-20"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--color-muted)] disabled:opacity-20"
             style={{ color: "var(--color-muted-foreground)" }}
             title="העלה למעלה"
+            aria-label={`העלאת ${title} למעלה`}
           >
-            <span className="text-xs">▲</span>
+            <span className="text-xs" aria-hidden="true">▲</span>
           </button>
           <button
+            type="button"
             onClick={() => onMove(1)}
             disabled={idx === total - 1}
-            className="p-0.5 rounded transition-opacity hover:opacity-80 disabled:opacity-20"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--color-muted)] disabled:opacity-20"
             style={{ color: "var(--color-muted-foreground)" }}
             title="הורד למטה"
+            aria-label={`הורדת ${title} למטה`}
           >
-            <span className="text-xs">▼</span>
+            <span className="text-xs" aria-hidden="true">▼</span>
           </button>
           <button
+            type="button"
             onClick={onDuplicate}
-            className="p-0.5 rounded transition-opacity hover:opacity-80"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--color-muted)]"
             style={{ color: "var(--color-muted-foreground)" }}
             title="שכפל"
+            aria-label={`שכפול ${title}`}
           >
             <Icon name="layers" size={12} />
           </button>
           <button
+            type="button"
             onClick={onDelete}
-            className="p-0.5 rounded transition-opacity hover:opacity-80"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--color-muted)]"
             style={{ color: "var(--color-danger)" }}
             title="מחק"
+            aria-label={`מחיקת ${title}`}
           >
             <Icon name="x" size={12} />
           </button>
@@ -472,14 +462,14 @@ function ListItemEditor({
       </div>
       {open && (
         <div
-          className="px-3 pb-3 space-y-2"
+          className="px-3 pb-3 space-y-2.5"
           style={{ borderTop: "1px solid var(--color-border)" }}
         >
           {fields.map((f) => (
-            <div key={f.key} className="pt-2">
+            <div key={f.key} className="app-field pt-2">
               <label
-                className="text-[11px] font-medium mb-1 block"
-                style={{ color: "var(--color-muted-foreground)" }}
+                className="app-label"
+                style={{ fontSize: "0.72rem" }}
               >
                 {f.label}
               </label>
@@ -489,7 +479,7 @@ function ListItemEditor({
                   onChange={(v) => onChange({ ...item, [f.key]: v })}
                   rows={f.type === "md" ? 5 : 3}
                   mono={f.type === "md"}
-                  style={{ fontSize: "11px", padding: "6px 8px" }}
+                  style={{ fontSize: "12px", padding: "6px 8px" }}
                 />
               ) : (
                 <input
@@ -498,17 +488,8 @@ function ListItemEditor({
                   onChange={(e) =>
                     onChange({ ...item, [f.key]: e.target.value })
                   }
-                  className="w-full rounded-lg px-2.5 py-1.5 text-xs"
-                  style={inputStyle}
+                  className="w-full rounded-md px-2.5 py-1.5 text-xs"
                   dir={f.type === "link" ? "ltr" : "rtl"}
-                  onFocus={(e) => {
-                    e.currentTarget.style.border = focusBorder
-                    e.currentTarget.style.boxShadow = focusShadow
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.border = (inputStyle.border as string)
-                    e.currentTarget.style.boxShadow = "none"
-                  }}
                 />
               )}
             </div>
@@ -529,66 +510,64 @@ function SeoPreview({ groupId }: { groupId: string }) {
   const titleOk = titleLen > 0 && titleLen <= 60
   const descOk = descLen >= 120 && descLen <= 160
   return (
-    <div className="p-4" style={cardStyle}>
-      <h3
-        className="mb-3 text-sm font-bold flex items-center gap-2"
-        style={{ color: "var(--color-foreground)" }}
-      >
-        <Icon name="eye" size={14} /> תצוגת Google
-      </h3>
-      <div
-        className="rounded-lg p-3"
-        dir="ltr"
-        style={{
-          background: "var(--color-secondary)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <p
-          className="text-xs truncate"
-          style={{ color: "var(--color-success)" }}
-        >
-          {window.location.origin}
-          {GROUPS.find((g) => g.id === groupId)?.path ?? "/"}
-        </p>
-        <p
-          className="mt-0.5 text-base truncate font-medium"
-          style={{ color: "#8ab4f8" }}
-        >
-          {title || "ללא כותרת"}
-        </p>
-        <p
-          className="mt-0.5 text-xs line-clamp-2"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          {description || "ללא תיאור"}
-        </p>
+    <section className="app-surface" aria-labelledby="seo-preview-title">
+      <div className="app-surface-head">
+        <h2 id="seo-preview-title" className="app-section-title flex items-center gap-2">
+          <Icon name="eye" size={16} /> תצוגת Google
+        </h2>
       </div>
-      <div className="mt-2 flex gap-4 text-xs">
-        <span
+      <div className="app-surface-body">
+        <div
+          className="rounded-lg p-3"
+          dir="ltr"
           style={{
-            color: titleOk
-              ? "var(--color-success)"
-              : titleLen > 60
-                ? "var(--color-danger)"
-                : "var(--color-muted-foreground)",
+            background: "var(--color-secondary)",
+            border: "1px solid var(--color-border)",
           }}
         >
-          כותרת: {titleLen}/60
-        </span>
-        <span
-          style={{
-            color: descOk
-              ? "var(--color-success)"
-              : descLen > 160
-                ? "var(--color-danger)"
-                : "var(--color-muted-foreground)",
-          }}
-        >
-          תיאור: {descLen}/160
-        </span>
+          <p
+            className="text-xs truncate"
+            style={{ color: "var(--color-success)" }}
+          >
+            {window.location.origin}
+            {GROUPS.find((g) => g.id === groupId)?.path ?? "/"}
+          </p>
+          <p
+            className="mt-0.5 text-base truncate font-medium"
+            style={{ color: "#8ab4f8" }}
+          >
+            {title || "ללא כותרת"}
+          </p>
+          <p className="mt-0.5 text-xs line-clamp-2 app-muted">
+            {description || "ללא תיאור"}
+          </p>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-4 text-xs">
+          <span
+            style={{
+              color: titleOk
+                ? "var(--color-success)"
+                : titleLen > 60
+                  ? "var(--color-danger)"
+                  : "var(--color-muted-foreground)",
+            }}
+          >
+            כותרת: {titleLen}/60
+          </span>
+          <span
+            style={{
+              color: descOk
+                ? "var(--color-success)"
+                : descLen > 160
+                  ? "var(--color-danger)"
+                  : "var(--color-muted-foreground)",
+            }}
+          >
+            תיאור: {descLen}/160
+          </span>
+        </div>
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -875,109 +854,78 @@ export function ContentEditor() {
   const visibleFields = showModified
     ? groupFields.filter((f) => isModified(f.key))
     : groupFields
-  const btnBase = "rounded-lg px-3 py-1.5 text-sm font-medium transition-all"
-
-  /* The editing-context bar: the quiet, always-visible answer to "where am
-   * I and what am I editing?". Sits inside the existing admin chrome — no
-   * overlay, no banner, nothing the customer-facing page ever renders. */
-  const EditorContextBar = (
-    <div
-      className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-2.5"
-      style={{
-        background: "var(--color-card)",
-        border: "1px solid var(--color-border)",
-      }}
-      dir="rtl"
-    >
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        <span
-          className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold"
-          style={{
-            background: "rgba(227,174,60,0.14)",
-            color: "var(--color-primary)",
-          }}
-        >
-          <Icon name="pen" size={12} />
-          עורך תוכן
-        </span>
-        <span
-          className="truncate text-sm font-semibold"
-          style={{ color: "var(--color-foreground)" }}
-          title={activeGroupLabel}
-        >
-          {activeGroupLabel}
-        </span>
-        <span
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-          style={{
-            background: saving
-              ? "rgba(227,174,60,0.16)"
-              : draftCount > 0
-                ? "rgba(227,174,60,0.1)"
-                : "rgba(34,197,94,0.1)",
-            color: saving
-              ? "var(--color-primary)"
-              : draftCount > 0
-                ? "var(--color-primary)"
-                : "var(--color-success)",
-          }}
-        >
-          {saving ? (
-            <>
-              <span className="h-2.5 w-2.5 rounded-full border border-current border-t-transparent animate-spin" />
-              שומר…
-            </>
-          ) : draftCount > 0 ? (
-            <>
-              <Icon name="pen" size={10} />
-              {draftCount} שינויים שלא פורסמו
-            </>
-          ) : lastSavedAt ? (
-            <>
-              <Icon name="checkCircle" size={10} />
-              נשמר לאחרונה{" "}
-              {lastSavedAt.toLocaleTimeString("he-IL", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </>
-          ) : (
-            <>
-              <Icon name="checkCircle" size={10} />
-              כל השינויים שמורים
-            </>
-          )}
-        </span>
-      </div>
-      <button
-        onClick={() => navigate("/admin/cms/content-editor")}
-        className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-70"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        <Icon name="arrowRight" size={13} />
-        חזרה ללוח הבקרה
-      </button>
-    </div>
+  /* The editing-context header replaces the old floating context bar. The
+   * group label, save state and route back stay visible while the editor
+   * columns keep their own independent scroll. */
+  const saveStatus = saving ? (
+    <>
+      <span
+        className="h-2.5 w-2.5 rounded-full border border-current border-t-transparent animate-spin"
+        aria-hidden="true"
+      />
+      שומר…
+    </>
+  ) : draftCount > 0 ? (
+    <>
+      <Icon name="pen" size={10} />
+      {draftCount} שינויים שלא פורסמו
+    </>
+  ) : lastSavedAt ? (
+    <>
+      <Icon name="checkCircle" size={10} />
+      נשמר לאחרונה{" "}
+      {lastSavedAt.toLocaleTimeString("he-IL", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}
+    </>
+  ) : (
+    <>
+      <Icon name="checkCircle" size={10} />
+      כל השינויים שמורים
+    </>
   )
 
   return (
-    <div>
-      {EditorContextBar}
+    <div dir="rtl">
+      <PageHeader
+        eyebrow="Maestro CMS · עורך תוכן"
+        title="עריכת תוכן"
+        description={`קבוצת התוכן הפעילה: ${activeGroupLabel}. שינויים נשמרים כטיוטה עד לפרסום.`}
+        actions={
+          <>
+            <span
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className={`app-badge ${saving || draftCount > 0 ? "app-badge--accent" : "app-badge--success"}`}
+            >
+              {saveStatus}
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate("/admin/cms/content-editor")}
+              className="app-btn-secondary"
+            >
+              <Icon name="arrowRight" size={13} />
+              חזרה ללוח הבקרה
+            </button>
+          </>
+        }
+      />
       <div
-        className="flex h-[calc(100vh-9rem)] rounded-xl overflow-hidden"
-        style={{ border: "1px solid var(--color-border)" }}
+        className="flex flex-col overflow-hidden rounded-xl border md:flex-row md:h-[calc(100dvh-12rem)] md:min-h-[30rem]"
+        style={{ borderColor: "var(--color-border)", background: "var(--color-background)" }}
         aria-busy={loading || saving}
       >
         {/* Group sidebar */}
         <div
-          className="hidden md:block w-56 overflow-auto flex-shrink-0"
+          className="hidden md:block w-60 flex-shrink-0 overflow-auto"
           style={{
             background: "var(--color-card)",
-            borderLeft: "1px solid var(--color-border)",
+            borderInlineEnd: "1px solid var(--color-border)",
           }}
+          aria-label="קבוצות תוכן"
         >
           <div className="p-2">
             <div className="relative">
@@ -987,7 +935,6 @@ export function ContentEditor() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="חיפוש שדות…"
                 className="w-full rounded-lg py-2 pe-3 ps-8 text-xs"
-                style={inputStyle}
                 dir="rtl"
                 aria-label="חיפוש שדות בקבוצה הפעילה"
               />
@@ -1008,21 +955,23 @@ export function ContentEditor() {
               return (
                 <button
                   key={g.id}
+                  type="button"
                   onClick={() => {
                     setActiveGroup(g.id)
                     setShowSeo(false)
                   }}
-                  className="flex items-center justify-between w-full px-3 py-2 text-right text-sm rounded-lg transition-all"
+                  aria-current={active ? "true" : undefined}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-start text-sm transition-colors hover:bg-[var(--color-secondary)]"
                   style={{
                     background: active
-                      ? "linear-gradient(90deg, rgba(227,174,60,0.16), rgba(227,174,60,0.05))"
+                      ? "color-mix(in srgb, var(--color-primary) 12%, transparent)"
                       : "transparent",
                     color: active
                       ? "var(--color-primary)"
                       : "var(--color-muted-foreground)",
-                    boxShadow: active
-                      ? "inset 3px 0 0 var(--color-primary)"
-                      : "none",
+                    borderInlineStart: active
+                      ? "3px solid var(--color-primary)"
+                      : "3px solid transparent",
                     fontWeight: active ? 600 : 400,
                   }}
                 >
@@ -1031,7 +980,7 @@ export function ContentEditor() {
                     <span
                       className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
                       style={{
-                        background: "rgba(227,174,60,0.2)",
+                        background: "color-mix(in srgb, var(--color-primary) 20%, transparent)",
                         color: "var(--color-primary)",
                       }}
                     >
@@ -1046,35 +995,18 @@ export function ContentEditor() {
             className="p-3 mt-2"
             style={{ borderTop: "1px solid var(--color-border)" }}
           >
-            <p
-              className="text-xs font-medium mb-1.5"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
+            <p className="app-label mb-1.5" style={{ color: "var(--color-muted-foreground)" }}>
               סטטיסטיקות
             </p>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex justify-between text-xs">
-                <span
-                  style={{
-                    color: "var(--color-muted-foreground)",
-                    opacity: 0.7,
-                  }}
-                >
-                  שדות
-                </span>
+                <span className="app-muted">שדות</span>
                 <span style={{ color: "var(--color-foreground)" }}>
                   {FIELDS.length}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span
-                  style={{
-                    color: "var(--color-muted-foreground)",
-                    opacity: 0.7,
-                  }}
-                >
-                  שונו
-                </span>
+                <span className="app-muted">שונו</span>
                 <span
                   style={{ color: "var(--color-primary)", fontWeight: 600 }}
                 >
@@ -1082,14 +1014,7 @@ export function ContentEditor() {
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span
-                  style={{
-                    color: "var(--color-muted-foreground)",
-                    opacity: 0.7,
-                  }}
-                >
-                  בטיוטה
-                </span>
+                <span className="app-muted">בטיוטה</span>
                 <span
                   style={{
                     color:
@@ -1138,7 +1063,7 @@ export function ContentEditor() {
                 <span
                   className="rounded-full px-2.5 py-0.5 text-xs font-medium flex items-center gap-1"
                   style={{
-                    background: "rgba(227,174,60,0.12)",
+                    background: "rgba(222,154,96,0.12)",
                     color: "var(--color-primary)",
                   }}
                 >
@@ -1154,7 +1079,7 @@ export function ContentEditor() {
                 style={{
                   border: "1px solid var(--color-border)",
                   background: showModified
-                    ? "rgba(227,174,60,0.12)"
+                    ? "rgba(222,154,96,0.12)"
                     : "var(--color-card)",
                   color: showModified
                     ? "var(--color-primary)"
@@ -1170,7 +1095,7 @@ export function ContentEditor() {
                   style={{
                     border: "1px solid var(--color-border)",
                     background: showSeo
-                      ? "rgba(34,197,94,0.12)"
+                      ? "rgba(79,122,79,0.12)"
                       : "var(--color-card)",
                     color: showSeo
                       ? "var(--color-success)"
@@ -1186,7 +1111,7 @@ export function ContentEditor() {
                 style={{
                   border: "1px solid var(--color-border)",
                   background: showPreview
-                    ? "rgba(227,174,60,0.12)"
+                    ? "rgba(222,154,96,0.12)"
                     : "var(--color-card)",
                   color: showPreview
                     ? "var(--color-primary)"
@@ -1249,8 +1174,8 @@ export function ContentEditor() {
                 <span
                   className="rounded-lg px-3 py-1.5 text-xs"
                   style={{
-                    background: "rgba(227,174,60,0.08)",
-                    border: "1px solid rgba(227,174,60,0.2)",
+                    background: "rgba(222,154,96,0.08)",
+                    border: "1px solid rgba(222,154,96,0.2)",
                     color: "var(--color-primary)",
                   }}
                 >
@@ -1312,7 +1237,7 @@ export function ContentEditor() {
                   style={{
                     ...cardStyle,
                     borderColor: modified
-                      ? "rgba(227,174,60,0.3)"
+                      ? "rgba(222,154,96,0.3)"
                       : "var(--color-border)",
                   }}
                 >

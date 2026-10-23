@@ -10,6 +10,10 @@ import type { AdminRole } from "../../types"
 
 import AccessDenied from "../../components/AccessDenied"
 
+import EmptyState from "../../components/ui/EmptyState"
+
+import PageHeader from "../../components/ui/PageHeader"
+
 import Icon, { type IconName } from "../../components/icons"
 
 const CATEGORY_LABEL: Record<AuditCategory, string> = {
@@ -111,117 +115,110 @@ export default function AdminAuditPage() {
     ...new Set(auditLog.map((a) => a.category)),
   ] as AuditCategory[]
 
+  const clearFilters = () => {
+    setSearch("")
+    setCategoryFilter("ALL")
+  }
+
   return (
-    <div className="max-w-5xl mx-auto page-enter">
-      <div className="mb-8">
-        <h1 className="font-display text-4xl font-semibold mb-1">
-          יומן פעולות (Audit Log)
-        </h1>
-        <p style={{ color: "var(--color-muted-foreground)" }}>
-          תיעוד מלא ובלתי הפיך של כל פעולה משמעותית שביצע מנהל — שינוי מחיר,
-          החזר, הרשאות, חסימות והחלפות תוכן.
-        </p>
-      </div>
+    <div className="page-enter">
+      <PageHeader
+        eyebrow="Audit Log"
+        title="יומן פעולות"
+        description="תיעוד מלא ובלתי הפיך של כל פעולה משמעותית שביצע מנהל — שינוי מחיר, החזר, הרשאות, חסימות והחלפות תוכן."
+      />
 
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <input
-          className="flex-1 min-w-48 px-4 py-2.5 rounded-lg border text-sm outline-none"
-          style={{
-            background: "var(--color-secondary)",
-            borderColor: "var(--color-border)",
-            color: "var(--color-foreground)",
-          }}
-          placeholder="חיפוש לפי מבצע, פעולה או יעד..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <div className="flex gap-2 flex-wrap">
-          {[...new Set(["ALL", ...usedCategories])].map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategoryFilter(c)}
-              className="px-3 py-2 rounded-full text-xs font-medium border transition-all"
-              style={{
-                background:
-                  categoryFilter === c ? "var(--color-primary)" : "transparent",
+      <section
+        className="app-surface app-surface--flat mb-4"
+        aria-label="סינון יומן הפעולות"
+      >
+        <div className="app-surface-body">
+          <div className="app-field mb-4">
+            <label className="app-label" htmlFor="audit-search">
+              חיפוש
+            </label>
+            <div className="relative">
+              <Icon
+                name="search"
+                size={15}
+                className="app-muted pointer-events-none absolute top-1/2 -translate-y-1/2"
+                style={{ insetInlineEnd: "0.9rem" }}
+              />
+              <input
+                id="audit-search"
+                className="w-full px-4"
+                style={{ paddingInlineEnd: "2.5rem" }}
+                placeholder="חיפוש לפי מבצע, פעולה או יעד..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
 
-                color:
-                  categoryFilter === c
-                    ? "var(--color-primary-foreground)"
-                    : "var(--color-muted-foreground)",
-
-                borderColor:
-                  categoryFilter === c
-                    ? "var(--color-primary)"
-                    : "var(--color-border)",
-              }}
-            >
-              {c === "ALL" ? "הכול" : CATEGORY_LABEL[(c as AuditCategory)]}
-            </button>
-          ))}
+          <div
+            className="app-tabs"
+            role="group"
+            aria-label="סינון לפי קטגוריית פעולה"
+          >
+            {[...new Set(["ALL", ...usedCategories])].map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCategoryFilter(c)}
+                className="app-tab"
+                data-active={categoryFilter === c}
+                aria-pressed={categoryFilter === c}
+              >
+                {c === "ALL" ? "הכול" : CATEGORY_LABEL[(c as AuditCategory)]}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
       {filtered.length === 0 ? (
-        <div className="card-glow p-12 text-center">
-          <span
-            className="w-12 h-12 rounded-full inline-flex items-center justify-center mb-3"
-            style={{
-              background: "rgba(227,174,60,0.12)",
-              color: "var(--color-primary)",
-            }}
-          >
-            <Icon name="list" size={22} />
-          </span>
-          <p className="font-semibold">אין רישומים עדיין</p>
-          <p
-            className="text-sm mt-1"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            כל פעולת ניהול משמעותית תתועד כאן באופן אוטומטי.
-          </p>
-        </div>
+        auditLog.length === 0 ? (
+          <EmptyState
+            icon="list"
+            title="אין רישומים עדיין"
+            description="כל פעולת ניהול משמעותית תתועד כאן באופן אוטומטי."
+          />
+        ) : (
+          <EmptyState
+            icon="search"
+            title="לא נמצאו רישומים"
+            description="לא נמצאו פעולות התואמות את הסינון."
+            actions={
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="app-btn-secondary"
+              >
+                ניקוי הסינון
+              </button>
+            }
+          />
+        )
       ) : (
-        <div
-          className="rounded-lg border overflow-hidden"
-          style={{ borderColor: "var(--color-border)" }}
-        >
-          <table className="w-full text-sm">
+        <div className="app-table-wrap">
+          <table className="app-table" style={{ minWidth: "56rem" }}>
+            <caption className="sr-only">
+              יומן פעולות — זמן, מבצע, קטגוריה, פעולה, יעד ופרטים
+            </caption>
             <thead>
-              <tr style={{ background: "var(--color-secondary)" }}>
-                {["זמן", "מבצע/ת", "קטגוריה", "פעולה", "יעד", "פרטים"].map(
-                  (col) => (
-                    <th
-                      key={col}
-                      className="text-right px-5 py-3 text-xs tracking-wide"
-                      style={{
-                        color: "var(--color-muted-foreground)",
-                        borderBottom: "1px solid var(--color-border)",
-                      }}
-                    >
-                      {col}
-                    </th>
-                  ),
-                )}
+              <tr>
+                <th scope="col">זמן</th>
+                <th scope="col">מבצע/ת</th>
+                <th scope="col">קטגוריה</th>
+                <th scope="col">פעולה</th>
+                <th scope="col">יעד</th>
+                <th scope="col">פרטים</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((entry, i) => (
-                <tr
-                  key={entry.audit_id}
-                  style={{
-                    background:
-                      i % 2 === 0
-                        ? "var(--color-card)"
-                        : "var(--color-background)",
-
-                    borderBottom: "1px solid var(--color-border)",
-                  }}
-                >
-                  <td
-                    className="px-5 py-3 text-xs whitespace-nowrap"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
+              {filtered.map((entry) => (
+                <tr key={entry.audit_id}>
+                  <td className="text-xs app-muted whitespace-nowrap">
                     {new Date(entry.created_at).toLocaleString("he-IL", {
                       day: "numeric",
 
@@ -232,35 +229,38 @@ export default function AdminAuditPage() {
                       minute: "2-digit",
                     })}
                   </td>
-                  <td className="px-5 py-3">
+                  <td style={{ overflowWrap: "anywhere" }}>
                     <p className="text-xs font-medium">{entry.actor_name}</p>
-                    <p
-                      className="text-[10px]"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
+                    <p className="text-[10px] app-muted mt-0.5">
                       {ROLE_LABEL[(entry.actor_role as AdminRole)] ??
                         entry.actor_role}
                     </p>
                   </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
-                      style={{
-                        background: "rgba(227,174,60,0.1)",
-                        color: "var(--color-primary)",
-                      }}
-                    >
+                  <td>
+                    <span className="app-badge app-badge--accent">
                       <Icon name={CATEGORY_ICON[entry.category]} size={11} />
                       {CATEGORY_LABEL[entry.category]}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-xs font-medium">
+                  <td
+                    className="text-xs font-medium"
+                    style={{ minWidth: "11rem", overflowWrap: "anywhere" }}
+                  >
                     {entry.action}
                   </td>
-                  <td className="px-5 py-3 text-xs">{entry.target_label}</td>
                   <td
-                    className="px-5 py-3 text-xs max-w-56"
-                    style={{ color: "var(--color-muted-foreground)" }}
+                    className="text-xs"
+                    style={{ minWidth: "9rem", overflowWrap: "anywhere" }}
+                  >
+                    {entry.target_label}
+                  </td>
+                  <td
+                    className="text-xs app-muted"
+                    style={{
+                      minWidth: "14rem",
+                      maxWidth: "24rem",
+                      overflowWrap: "anywhere",
+                    }}
                   >
                     {entry.details}
                   </td>

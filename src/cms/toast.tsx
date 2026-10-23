@@ -22,24 +22,24 @@ interface Toast {
 let nextId = 0;
 let addToastFn: ((t: Omit<Toast, "id">) => void) | null = null;
 
-const TYPE_STYLES: Record<ToastType, { bg: string; border: string; color: string; icon: string }> = {
+const TYPE_STYLES: Record<ToastType, { bg: string; border: string; color: string; icon: "checkCircle" | "alertTriangle" | "sparkles" }> = {
   success: {
-    bg: "rgba(34,197,94,0.12)",
-    border: "rgba(34,197,94,0.3)",
+    bg: "rgba(79,122,79,0.12)",
+    border: "rgba(79,122,79,0.3)",
     color: "var(--color-success)",
     icon: "checkCircle",
   },
   error: {
-    bg: "rgba(239,68,68,0.12)",
-    border: "rgba(239,68,68,0.3)",
+    bg: "rgba(167,70,54,0.12)",
+    border: "rgba(167,70,54,0.32)",
     color: "var(--color-danger)",
-    icon: "alertCircle",
+    icon: "alertTriangle",
   },
   info: {
-    bg: "rgba(227,174,60,0.12)",
-    border: "rgba(227,174,60,0.3)",
+    bg: "rgba(196,122,67,0.12)",
+    border: "rgba(196,122,67,0.3)",
     color: "var(--color-primary)",
-    icon: "info",
+    icon: "sparkles",
   },
 };
 
@@ -87,7 +87,7 @@ export function Toaster() {
               minWidth: 220,
             }}
           >
-            <Icon name={s.icon as any} size={16} />
+            <Icon name={s.icon} size={16} />
             <span>{t.message}</span>
           </div>
         );

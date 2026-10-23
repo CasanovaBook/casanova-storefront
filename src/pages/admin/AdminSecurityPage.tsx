@@ -47,6 +47,12 @@ import type {
 
 import AccessDenied from "../../components/AccessDenied"
 
+import EmptyState from "../../components/ui/EmptyState"
+
+import PageHeader from "../../components/ui/PageHeader"
+
+import Alert from "../../components/ui/Alert"
+
 import Modal from "../../components/Modal"
 
 import Icon, { type IconName } from "../../components/icons"
@@ -155,22 +161,35 @@ function Card({
 
   children: React.ReactNode
 }) {
+  const titleId = `security-${title.replace(/\s+/g, "-")}`
+
   return (
-    <div className="card-glow p-6">
-      <div className="flex items-center gap-3 mb-1">
-        <span style={{ color: "var(--color-primary)" }}>
-          <Icon name={icon} size={17} />
-        </span>
-        <h2 className="font-display text-lg font-semibold">{title}</h2>
+    <section className="app-surface" aria-labelledby={titleId}>
+      <div className="app-surface-head">
+        <div className="flex items-center gap-3 min-w-0">
+          <span
+            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{
+              background:
+                "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+              color: "var(--color-primary)",
+            }}
+            aria-hidden="true"
+          >
+            <Icon name={icon} size={18} />
+          </span>
+          <div className="min-w-0">
+            <h2 id={titleId} className="app-section-title">
+              {title}
+            </h2>
+            <p className="text-xs app-muted mt-0.5 leading-relaxed">
+              {description}
+            </p>
+          </div>
+        </div>
       </div>
-      <p
-        className="text-xs mb-5"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        {description}
-      </p>
-      {children}
-    </div>
+      <div className="app-surface-body">{children}</div>
+    </section>
   )
 }
 
@@ -184,22 +203,10 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div>
-      <label
-        className="block text-xs font-medium mb-1.5"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
-        {label}
-      </label>
+    <div className="app-field">
+      <span className="app-label">{label}</span>
       {children}
-      {hint && (
-        <p
-          className="text-[11px] mt-1 leading-relaxed"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          {hint}
-        </p>
-      )}
+      {hint && <p className="app-hint">{hint}</p>}
     </div>
   )
 }
@@ -572,31 +579,21 @@ function PolicyEditor({
           </label>
 
           {error && (
-            <p
-              className="text-xs px-4 py-2.5 rounded-lg"
-              style={{
-                background: "rgba(239,68,68,0.1)",
-                color: "var(--color-danger)",
-              }}
-            >
-              {error}
-            </p>
+            <Alert tone="error">{error}</Alert>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
             <button
+              type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-full border text-sm font-semibold"
-              style={{
-                borderColor: "var(--color-border)",
-                color: "var(--color-muted-foreground)",
-              }}
+              className="app-btn-secondary"
             >
               ביטול
             </button>
             <button
+              type="button"
               onClick={submit}
-              className="btn-gradient px-6 py-2.5 rounded-full text-sm font-semibold"
+              className="app-btn"
             >
               {policy ? "שמירת שינויים" : "יצירת המדיניות"}
             </button>
@@ -636,6 +633,10 @@ export default function AdminSecurityPage() {
   const [pendingRevoke, setPendingRevoke] = useState<DeviceSession | null>(null)
 
   const [revokeReason, setRevokeReason] = useState("")
+
+  /* Deleting a policy used to run on a single click. It stays the same
+   * mutation, but it now passes through an explicit Hebrew confirmation. */
+  const [pendingDelete, setPendingDelete] = useState<DrmPolicy | null>(null)
 
   const policies = db.drm_policies
 
@@ -710,6 +711,8 @@ export default function AdminSecurityPage() {
         ? { kind: "ok", text: "המדיניות נמחקה." }
         : { kind: "error", text: result.error },
     )
+
+    setPendingDelete(null)
   }
 
   const revoke = () => {
@@ -735,48 +738,40 @@ export default function AdminSecurityPage() {
   const noActivePolicy = policies.filter((p) => p.active).length === 0
 
   return (
-    <div className="max-w-5xl mx-auto page-enter">
-      <div className="mb-8">
-        <h1 className="font-display text-4xl font-semibold mb-1">
-          הגנת תוכן ואבטחה
-        </h1>
-        <p style={{ color: "var(--color-muted-foreground)" }}>
-          מדיניות ההגנה על ספרים ומוצרים דיגיטליים, המכשירים המורשים לקרוא בהם,
-          ויומן הניסיונות שנחסמו. כל שינוי כאן משפיע מיידית על הקוראים הפתוחים.
-        </p>
-      </div>
+    <div className="page-enter">
+      <PageHeader
+        eyebrow="הגנה ובקרה"
+        title="הגנת תוכן ואבטחה"
+        description="מדיניות ההגנה על ספרים ומוצרים דיגיטליים, המכשירים המורשים לקרוא בהם, ויומן הניסיונות שנחסמו. כל שינוי כאן משפיע מיידית על הקוראים הפתוחים."
+      />
 
       {message && (
-        <p
-          className="text-xs px-4 py-2.5 rounded-lg mb-4 flex items-center justify-between gap-3"
-          style={{
-            background:
-              message.kind === "ok"
-                ? "rgba(34,197,94,0.1)"
-                : "rgba(239,68,68,0.1)",
-
-            color:
-              message.kind === "ok"
-                ? "var(--color-success)"
-                : "var(--color-danger)",
-          }}
-        >
-          {message.text}
-          <button onClick={() => setMessage(null)} aria-label="סגירת הודעה">
-            <Icon name="x" size={13} />
-          </button>
-        </p>
+        <div className="mb-4">
+          <Alert tone={message.kind === "ok" ? "success" : "error"}>
+            <div className="flex items-start justify-between gap-3">
+              <span>{message.text}</span>
+              <button
+                type="button"
+                onClick={() => setMessage(null)}
+                aria-label="סגירת הודעה"
+                className="app-icon-btn"
+                style={{ width: "1.75rem", height: "1.75rem", minHeight: "1.75rem" }}
+              >
+                <Icon name="x" size={13} />
+              </button>
+            </div>
+          </Alert>
+        </div>
       )}
 
       {noActivePolicy && (
-        <p
-          className="text-xs px-4 py-3 rounded-lg mb-5 leading-relaxed"
-          style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}
-        >
-          כל המדיניות כבויה, ולכן חלה מדיניות ברירת המחדל המוגנת של המערכת —
-          ההגנות אינן כבויות. כדי להרפות הגנה יש לערוך מדיניות פעילה ולכבות
-          בתוכה את הדגל הרלוונטי, כך שהשינוי יתועד ביומן הפעולות.
-        </p>
+        <div className="mb-5">
+          <Alert tone="warning">
+            כל המדיניות כבויה, ולכן חלה מדיניות ברירת המחדל המוגנת של המערכת —
+            ההגנות אינן כבויות. כדי להרפות הגנה יש לערוך מדיניות פעילה ולכבות
+            בתוכה את הדגל הרלוונטי, כך שהשינוי יתועד ביומן הפעולות.
+          </Alert>
+        </div>
       )}
 
       <div className="space-y-6">
@@ -865,22 +860,23 @@ export default function AdminSecurityPage() {
           title="מדיניות הגנה"
           description="ניתן להגדיר מדיניות שונה לכל פלטפורמה או לכל סוג מוצר, ולהחליף ביניהן ללא שינוי קוד."
         >
-          <div className="flex justify-end mb-4">
+          <div className="flex flex-wrap justify-end gap-2 mb-4">
             <button
+              type="button"
               onClick={() => setEditing({ open: true, policy: null })}
-              className="btn-gradient px-5 py-2.5 rounded-full text-sm font-semibold"
+              className="app-btn"
             >
+              <Icon name="sparkles" size={14} />
               מדיניות חדשה
             </button>
           </div>
 
           {policies.length === 0 ? (
-            <p
-              className="text-sm text-center py-8"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              לא הוגדרה מדיניות. חלה מדיניות ברירת המחדל המוגנת.
-            </p>
+            <EmptyState
+              icon="shield"
+              title="לא הוגדרה מדיניות"
+              description="חלה מדיניות ברירת המחדל המוגנת."
+            />
           ) : (
             <div className="space-y-3">
               {policies.map((policy) => {
@@ -890,57 +886,34 @@ export default function AdminSecurityPage() {
                 return (
                   <div
                     key={policy.policy_id}
-                    className="rounded-xl border p-4"
+                    className="app-surface app-surface--flat p-4"
                     style={{
                       borderColor: governing
                         ? "var(--color-primary)"
                         : "var(--color-border)",
-
-                      background: "var(--color-secondary)",
                     }}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-sm">
                             {policy.policy_name}
                           </h3>
-                          <span
-                            className="text-[10px] px-2 py-0.5 rounded-full border"
-                            style={{
-                              borderColor: "var(--color-border)",
-                              color: "var(--color-muted-foreground)",
-                            }}
-                          >
+                          <span className="app-badge app-badge--neutral">
                             {SCOPE_LABEL[policy.applies_to]}
                           </span>
                           {governing && (
-                            <span
-                              className="text-[10px] px-2 py-0.5 rounded-full font-bold"
-                              style={{
-                                background: "var(--color-primary)",
-                                color: "var(--color-primary-foreground)",
-                              }}
-                            >
+                            <span className="app-badge app-badge--accent">
                               בתוקף כעת
                             </span>
                           )}
                           {!policy.active && (
-                            <span
-                              className="text-[10px] px-2 py-0.5 rounded-full"
-                              style={{
-                                background: "rgba(148,163,184,0.18)",
-                                color: "var(--color-muted-foreground)",
-                              }}
-                            >
+                            <span className="app-badge app-badge--neutral">
                               כבויה
                             </span>
                           )}
                         </div>
-                        <p
-                          className="text-[11px] mt-2 leading-relaxed"
-                          style={{ color: "var(--color-muted-foreground)" }}
-                        >
+                        <p className="text-[11px] app-muted mt-2 leading-relaxed">
                           {FLAG_FIELDS.filter((f) => Boolean(policy[f.key]))
 
                             .map((f) => f.label)
@@ -954,29 +927,33 @@ export default function AdminSecurityPage() {
                           {policy.max_devices_per_user} מכשירים · פג תוקף אחרי{" "}
                           {policy.session_timeout_minutes} דק׳
                         </p>
-                        <p
-                          className="text-[10px] mt-1.5"
-                          style={{ color: "var(--color-muted-foreground)" }}
-                        >
+                        <p className="text-[10px] app-muted mt-1.5">
                           עודכן {formatDate(policy.updated_at)}
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2 flex-shrink-0">
                         <button
+                          type="button"
                           onClick={() => setEditing({ open: true, policy })}
-                          className="tap-target px-4 py-2 rounded-lg border text-xs font-medium flex items-center gap-1.5"
+                          className="app-btn-secondary"
                           style={{
-                            borderColor: "var(--color-border)",
-                            color: "var(--color-foreground)",
+                            minHeight: "2.25rem",
+                            padding: "0.4rem 0.85rem",
+                            fontSize: "0.75rem",
                           }}
                         >
                           <Icon name="pen" size={13} /> עריכה
                         </button>
                         <button
-                          onClick={() => remove(policy)}
-                          className="tap-target px-4 py-2 rounded-lg border text-xs font-medium flex items-center gap-1.5"
+                          type="button"
+                          onClick={() => setPendingDelete(policy)}
+                          className="app-btn-secondary"
                           style={{
-                            borderColor: "rgba(239,68,68,0.4)",
+                            minHeight: "2.25rem",
+                            padding: "0.4rem 0.85rem",
+                            fontSize: "0.75rem",
+                            borderColor:
+                              "color-mix(in srgb, var(--color-danger) 40%, var(--color-border))",
                             color: "var(--color-danger)",
                           }}
                         >
@@ -997,28 +974,19 @@ export default function AdminSecurityPage() {
           title="מכשירים מחוברים"
           description="כל דפדפן שתופס מקום במכסת המכשירים של חשבון. חסימה כאן נועלת את מסך הקריאה של אותו מכשיר מיידית."
         >
-          <div className="flex gap-2 flex-wrap mb-4">
+          <div
+            className="app-tabs mb-4"
+            role="group"
+            aria-label="סינון מכשירים מחוברים"
+          >
             {(["OPEN", "ALL"] as const).map((value) => (
               <button
                 key={value}
+                type="button"
                 onClick={() => setDeviceFilter(value)}
-                className="tap-target px-4 py-2 rounded-full text-xs font-medium border"
-                style={{
-                  background:
-                    deviceFilter === value
-                      ? "var(--color-primary)"
-                      : "transparent",
-
-                  color:
-                    deviceFilter === value
-                      ? "var(--color-primary-foreground)"
-                      : "var(--color-muted-foreground)",
-
-                  borderColor:
-                    deviceFilter === value
-                      ? "var(--color-primary)"
-                      : "var(--color-border)",
-                }}
+                className="app-tab"
+                data-active={deviceFilter === value}
+                aria-pressed={deviceFilter === value}
               >
                 {value === "OPEN" ? "פעילים כעת" : "הכול כולל היסטוריה"}
               </button>
@@ -1026,27 +994,28 @@ export default function AdminSecurityPage() {
           </div>
 
           {devices.length === 0 ? (
-            <p
-              className="text-sm text-center py-8"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              אין מכשירים רשומים. מכשיר נרשם בפעם הראשונה כאשר לקוח פותח ספר
-              שקנה.
-            </p>
+            <EmptyState
+              icon="smartphone"
+              title="אין מכשירים רשומים"
+              description="מכשיר נרשם בפעם הראשונה כאשר לקוח פותח ספר שקנה."
+            />
           ) : (
-            <div className="overflow-x-auto -mx-6 px-6">
-              <table className="w-full text-sm min-w-[640px]">
+            <div className="app-table-wrap">
+              <table className="app-table" style={{ minWidth: "48rem" }}>
+                <caption className="sr-only">
+                  מכשירים מחוברים — חשבון, מכשיר, מועד פתיחה, פעילות אחרונה,
+                  מצב וחסימה
+                </caption>
                 <thead>
-                  <tr
-                    className="text-[11px] text-right"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    <th className="pb-2 font-medium">חשבון</th>
-                    <th className="pb-2 font-medium">מכשיר</th>
-                    <th className="pb-2 font-medium">נפתח</th>
-                    <th className="pb-2 font-medium">נראה לאחרונה</th>
-                    <th className="pb-2 font-medium">מצב</th>
-                    <th className="pb-2 font-medium" />
+                  <tr>
+                    <th scope="col">חשבון</th>
+                    <th scope="col">מכשיר</th>
+                    <th scope="col">נפתח</th>
+                    <th scope="col">נראה לאחרונה</th>
+                    <th scope="col">מצב</th>
+                    <th scope="col" style={{ textAlign: "left" }}>
+                      פעולות
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1054,67 +1023,70 @@ export default function AdminSecurityPage() {
                     const expired = isSessionExpired(session, inForce)
 
                     const status = session.revoked
-                      ? { text: "נחסם", color: "var(--color-danger)" }
+                      ? { text: "נחסם", badge: "app-badge--danger" }
                       : session.ended_at
                         ? {
                             text: "שוחרר",
-                            color: "var(--color-muted-foreground)",
+                            badge: "app-badge--neutral",
                           }
                         : expired
-                          ? { text: "פג תוקף", color: "#F59E0B" }
-                          : { text: "פעיל", color: "var(--color-success)" }
+                          ? { text: "פג תוקף", badge: "app-badge--warning" }
+                          : { text: "פעיל", badge: "app-badge--success" }
 
                     return (
-                      <tr
-                        key={session.session_id}
-                        className="border-t"
-                        style={{ borderColor: "var(--color-border)" }}
-                      >
-                        <td className="py-2.5 text-xs">
+                      <tr key={session.session_id}>
+                        <td
+                          className="text-xs"
+                          style={{ overflowWrap: "anywhere" }}
+                        >
                           {nameOf(session.user_id)}
                         </td>
-                        <td className="py-2.5 text-xs">
+                        <td className="text-xs">
                           <span className="flex items-center gap-1.5">
                             <Icon name="smartphone" size={13} />{" "}
-                            {session.device_name}
+                            <span style={{ overflowWrap: "anywhere" }}>
+                              {session.device_name}
+                            </span>
                           </span>
                           <span
-                            className="text-[10px]"
-                            style={{ color: "var(--color-muted-foreground)" }}
+                            className="text-[10px] app-muted"
                             dir="ltr"
+                            style={{
+                              display: "block",
+                              maxWidth: "18rem",
+                              overflowWrap: "anywhere",
+                            }}
                           >
                             {session.device_fingerprint}
                           </span>
                         </td>
-                        <td
-                          className="py-2.5 text-[11px]"
-                          style={{ color: "var(--color-muted-foreground)" }}
-                        >
+                        <td className="text-[11px] app-muted whitespace-nowrap">
                           {formatDate(session.started_at)}
                         </td>
-                        <td
-                          className="py-2.5 text-[11px]"
-                          style={{ color: "var(--color-muted-foreground)" }}
-                        >
+                        <td className="text-[11px] app-muted whitespace-nowrap">
                           {formatDate(session.last_seen_at)}
                         </td>
-                        <td
-                          className="py-2.5 text-[11px] font-medium"
-                          style={{ color: status.color }}
-                        >
-                          {status.text}
+                        <td>
+                          <span className={`app-badge ${status.badge}`}>
+                            {status.text}
+                          </span>
                         </td>
-                        <td className="py-2.5 text-left">
+                        <td style={{ textAlign: "left" }}>
                           {isSessionOpen(session) && (
                             <button
+                              type="button"
                               onClick={() => {
                                 setPendingRevoke(session)
 
                                 setRevokeReason("")
                               }}
-                              className="tap-target px-3 py-1.5 rounded-lg border text-[11px] font-medium"
+                              className="app-btn-secondary"
                               style={{
-                                borderColor: "rgba(239,68,68,0.4)",
+                                minHeight: "2.1rem",
+                                padding: "0.3rem 0.7rem",
+                                fontSize: "0.72rem",
+                                borderColor:
+                                  "color-mix(in srgb, var(--color-danger) 40%, var(--color-border))",
                                 color: "var(--color-danger)",
                               }}
                             >
@@ -1134,8 +1106,10 @@ export default function AdminSecurityPage() {
             <div
               className="mt-4 rounded-xl border p-4"
               style={{
-                borderColor: "rgba(239,68,68,0.4)",
-                background: "rgba(239,68,68,0.05)",
+                borderColor:
+                  "color-mix(in srgb, var(--color-danger) 40%, var(--color-border))",
+                background:
+                  "color-mix(in srgb, var(--color-danger) 5%, var(--color-card))",
               }}
             >
               <p
@@ -1144,38 +1118,29 @@ export default function AdminSecurityPage() {
               >
                 חסימת המכשיר של {nameOf(pendingRevoke.user_id)}
               </p>
-              <p
-                className="text-[11px] mb-3"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
+              <p className="text-[11px] app-muted mb-3 leading-relaxed">
                 מסך הקריאה באותו מכשיר יינעל מיידית והמקום יתפנה במכסת המכשירים
                 של החשבון. הסיבה תירשם ביומן הפעולות וביומן אירועי ההגנה.
               </p>
-              <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <input
-                  className="flex-1 min-w-56 px-4 py-2.5 rounded-lg border text-sm outline-none"
+                  className="w-full px-4 py-2.5 sm:flex-1 sm:min-w-56"
                   style={inputStyle}
                   placeholder="סיבה (למשל: שיתוף חשבון עם גורם שלישי)"
                   value={revokeReason}
                   onChange={(e) => setRevokeReason(e.target.value)}
                 />
                 <button
+                  type="button"
                   onClick={revoke}
-                  className="tap-target px-5 py-2.5 rounded-full text-sm font-semibold border"
-                  style={{
-                    borderColor: "rgba(239,68,68,0.5)",
-                    color: "var(--color-danger)",
-                  }}
+                  className="app-btn-danger"
                 >
                   אישור חסימה
                 </button>
                 <button
+                  type="button"
                   onClick={() => setPendingRevoke(null)}
-                  className="tap-target px-5 py-2.5 rounded-full text-sm font-medium border"
-                  style={{
-                    borderColor: "var(--color-border)",
-                    color: "var(--color-muted-foreground)",
-                  }}
+                  className="app-btn-secondary"
                 >
                   ביטול
                 </button>
@@ -1190,51 +1155,30 @@ export default function AdminSecurityPage() {
           title="אירועי הגנה"
           description="מה שאמצעי המניעה תפסו בפועל. אירועים כפולים מאותו מסך מצומצמים, והיומן מוגבל באורכו כדי לא להאט את המערכת."
         >
-          <div className="flex items-center gap-2 flex-wrap mb-4">
+          <div
+            className="app-tabs mb-4"
+            role="group"
+            aria-label="סינון אירועי הגנה"
+          >
             <button
+              type="button"
               onClick={() => setEventFilter("ALL")}
-              className="tap-target px-3 py-2 rounded-full text-xs font-medium border"
-              style={{
-                background:
-                  eventFilter === "ALL"
-                    ? "var(--color-primary)"
-                    : "transparent",
-
-                color:
-                  eventFilter === "ALL"
-                    ? "var(--color-primary-foreground)"
-                    : "var(--color-muted-foreground)",
-
-                borderColor:
-                  eventFilter === "ALL"
-                    ? "var(--color-primary)"
-                    : "var(--color-border)",
-              }}
+              className="app-tab"
+              data-active={eventFilter === "ALL"}
+              aria-pressed={eventFilter === "ALL"}
             >
               הכול ({events.length})
             </button>
             {usedEventTypes.map((type) => (
               <button
                 key={type}
+                type="button"
                 onClick={() => setEventFilter(type)}
-                className="tap-target px-3 py-2 rounded-full text-xs font-medium border"
+                className="app-tab"
+                data-active={eventFilter === type}
+                aria-pressed={eventFilter === type}
                 style={{
-                  background:
-                    eventFilter === type
-                      ? "var(--color-primary)"
-                      : "transparent",
-
-                  color:
-                    eventFilter === type
-                      ? "var(--color-primary-foreground)"
-                      : "var(--color-muted-foreground)",
-
-                  borderColor:
-                    eventFilter === type
-                      ? "var(--color-primary)"
-                      : "var(--color-border)",
-
-                  fontWeight: HIGH_SIGNAL_EVENTS.includes(type) ? 700 : 500,
+                  fontWeight: HIGH_SIGNAL_EVENTS.includes(type) ? 700 : 600,
                 }}
               >
                 {SECURITY_EVENT_LABEL[type]} (
@@ -1244,14 +1188,15 @@ export default function AdminSecurityPage() {
           </div>
 
           {filteredEvents.length === 0 ? (
-            <p
-              className="text-sm text-center py-8"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              {events.length === 0
-                ? "לא נרשמו אירועי הגנה. זהו מצב תקין — אירוע נרשם רק כאשר מישהו מנסה פעולה שנחסמה."
-                : "לא נמצאו אירועים מהסוג שנבחר."}
-            </p>
+            <EmptyState
+              icon="zap"
+              title="אין אירועים להצגה"
+              description={
+                events.length === 0
+                  ? "לא נרשמו אירועי הגנה. זהו מצב תקין — אירוע נרשם רק כאשר מישהו מנסה פעולה שנחסמה."
+                  : "לא נמצאו אירועים מהסוג שנבחר."
+              }
+            />
           ) : (
             <div className="space-y-2">
               {filteredEvents.slice(0, 60).map((event) => {
@@ -1268,7 +1213,7 @@ export default function AdminSecurityPage() {
                     className="rounded-lg border px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1"
                     style={{
                       borderColor: HIGH_SIGNAL_EVENTS.includes(event.event_type)
-                        ? "rgba(245,158,11,0.35)"
+                        ? "rgba(201,138,74,0.4)"
                         : "var(--color-border)",
 
                       background: "var(--color-secondary)",
@@ -1278,44 +1223,35 @@ export default function AdminSecurityPage() {
                       className="text-xs font-semibold"
                       style={{
                         color: HIGH_SIGNAL_EVENTS.includes(event.event_type)
-                          ? "#F59E0B"
+                          ? "var(--color-primary)"
                           : "var(--color-foreground)",
                       }}
                     >
                       {SECURITY_EVENT_LABEL[event.event_type]}
                     </span>
                     <span
-                      className="text-[11px]"
-                      style={{ color: "var(--color-muted-foreground)" }}
+                      className="text-[11px] app-muted"
+                      style={{ overflowWrap: "anywhere", minWidth: 0 }}
                     >
                       {nameOf(event.user_id)}
                       {product ? ` · ${product}` : ""}
                       {detail ? ` · ${detail}` : ""}
                     </span>
-                    <span
-                      className="text-[11px] mr-auto"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
+                    <span className="text-[11px] app-muted ms-auto whitespace-nowrap">
                       {formatDate(event.created_at)}
                     </span>
                   </div>
                 )
               })}
               {filteredEvents.length > 60 && (
-                <p
-                  className="text-[11px] text-center pt-2"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
+                <p className="text-[11px] app-muted text-center pt-2">
                   מוצגים 60 האירועים האחרונים מתוך {filteredEvents.length}.
                 </p>
               )}
             </div>
           )}
 
-          <p
-            className="text-[11px] mt-4"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
+          <p className="text-[11px] app-muted mt-4 leading-relaxed">
             אירועים בעלי משקל גבוה עד כה: {highSignal}. אלו מצביעים על ניסיון
             עקיפה מכוון ולא על הקשה מקרית.
           </p>
@@ -1328,6 +1264,43 @@ export default function AdminSecurityPage() {
           onClose={() => setEditing({ open: false, policy: null })}
           onSaved={(text) => setMessage({ kind: "ok", text })}
         />
+      )}
+
+      {pendingDelete && (
+        <Modal
+          size="md"
+          align="center"
+          title="מחיקת מדיניות הגנה"
+          onClose={() => setPendingDelete(null)}
+        >
+          <p className="text-sm leading-relaxed">
+            למחוק את המדיניות{" "}
+            <strong>{pendingDelete.policy_name}</strong> (
+            {SCOPE_LABEL[pendingDelete.applies_to]})? מחיקת המדיניות אינה הפיכה,
+            היא תירשם ביומן הפעולות, וההגנות שהיא מפעילה יפסיקו לחול על
+            הפלטפורמה שהיא חלה עליה.
+          </p>
+          <p className="text-xs app-muted mt-3 leading-relaxed">
+            אם זו המדיניות הפעילה היחידה, המערכת תסרב למחוק אותה כדי שלא
+            תישאר המערכת ללא מדיניות מוגדרת.
+          </p>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-6">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              className="app-btn-secondary"
+            >
+              ביטול
+            </button>
+            <button
+              type="button"
+              onClick={() => remove(pendingDelete)}
+              className="app-btn-danger"
+            >
+              <Icon name="x" size={14} /> מחיקת המדיניות
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   )

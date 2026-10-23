@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { Link } from "react-router"
 import { useAdmin } from "../../context/AdminContext"
 import { useCms } from "../../context/CmsContext"
 import { can } from "../../lib/permissions"
@@ -8,6 +9,9 @@ import type { Order, PaymentStatus } from "../../types"
 import AccessDenied from "../../components/AccessDenied"
 import Modal from "../../components/Modal"
 import Icon from "../../components/icons"
+import PageHeader from "../../components/ui/PageHeader"
+import EmptyState from "../../components/ui/EmptyState"
+import Alert from "../../components/ui/Alert"
 
 /* ── Payment & invoice ──────────────────────────────────────
  * The order model is deliberately minimal: a purchase attempt is
@@ -32,18 +36,16 @@ const PAYMENT_LABEL: Record<PaymentStatus, string> = {
 /** The only three states an admin filters by and acts on. */
 const PAYMENT_FILTERS: PaymentStatus[] = ["PENDING", "PAID", "FAILED"]
 
-const AMBER = "#F59E0B"
-
-function paymentColor(payment: PaymentStatus): string {
+function paymentBadge(payment: PaymentStatus): string {
   switch (payment) {
     case "PAID":
-      return "var(--color-success)"
+      return "app-badge--success"
     case "FAILED":
-      return "var(--color-danger)"
+      return "app-badge--danger"
     case "PENDING":
-      return AMBER
+      return "app-badge--warning"
     default:
-      return "var(--color-muted-foreground)"
+      return "app-badge--neutral"
   }
 }
 
@@ -108,7 +110,7 @@ function OrderDetailModal({
     label: string
     value: string
     mono?: boolean
-    color?: string
+    badge?: string
   }[] = [
     { label: "מספר הזמנה", value: order.order_number, mono: true },
     {
@@ -124,7 +126,7 @@ function OrderDetailModal({
     {
       label: "סטטוס תשלום",
       value: PAYMENT_LABEL[order.payment_status],
-      color: paymentColor(order.payment_status),
+      badge: paymentBadge(order.payment_status),
     },
     { label: "סכום", value: `₪${order.total_amount.toLocaleString()}` },
     {
@@ -137,29 +139,27 @@ function OrderDetailModal({
 
   return (
     <Modal size="2xl" title="פרטי הזמנה" onClose={onClose}>
-      <div className="grid grid-cols-2 gap-3 mb-5">
-        {details.map(({ label, value, mono, color }) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+        {details.map(({ label, value, mono, badge }) => (
           <div
             key={label}
-            className="p-3 rounded-md"
-            style={{ background: "var(--color-secondary)" }}
+            className="p-3 rounded-md min-w-0"
+            style={{ background: "var(--color-muted)" }}
           >
-            <p
-              className="text-xs mb-0.5"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              {label}
-            </p>
-            <p
-              className={`text-sm font-medium truncate ${
-                mono ? "font-mono" : ""
-              }`}
-              dir={mono ? "ltr" : undefined}
-              style={{ color }}
-              title={value}
-            >
-              {value}
-            </p>
+            <p className="text-xs mb-0.5 app-muted">{label}</p>
+            {badge ? (
+              <span className={`app-badge ${badge}`}>{value}</span>
+            ) : (
+              <p
+                className={`text-sm font-medium truncate ${
+                  mono ? "font-mono" : ""
+                }`}
+                dir={mono ? "ltr" : undefined}
+                title={value}
+              >
+                {value}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -167,12 +167,9 @@ function OrderDetailModal({
       {/* Payment details — masked by policy */}
       <div
         className="p-3 rounded-md mb-5"
-        style={{ background: "var(--color-secondary)" }}
+        style={{ background: "var(--color-muted)" }}
       >
-        <p
-          className="text-xs mb-2 flex items-center gap-1.5"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
+        <p className="text-xs mb-2 flex items-center gap-1.5 app-muted">
           <Icon name="card" size={12} /> פרטי תשלום
         </p>
         <div className="text-sm space-y-1">
@@ -181,35 +178,25 @@ function OrderDetailModal({
               ? maskCard(order.card_last4)
               : "לא נשמרו פרטי כרטיס"}
           </p>
-          <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+          <p className="text-xs app-muted">
             {order.payment_provider
               ? `ספק סליקה: ${order.payment_provider}`
               : "ספק סליקה: לא נרשם"}
           </p>
           {order.transaction_reference && (
-            <p
-              className="text-xs font-mono"
-              dir="ltr"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
+            <p className="text-xs font-mono app-muted" dir="ltr">
               {order.transaction_reference}
             </p>
           )}
         </div>
-        <p
-          className="text-[10px] mt-2 flex items-start gap-1"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
+        <p className="text-[10px] mt-2 flex items-start gap-1 app-muted">
           <Icon name="shield" size={11} className="flex-shrink-0 mt-px" />
           {SECURITY_NOTE}
         </p>
       </div>
 
       {/* Items — purchase-time snapshot, never the live catalogue price */}
-      <h4
-        className="text-xs font-semibold tracking-wide mb-3"
-        style={{ color: "var(--color-muted-foreground)" }}
-      >
+      <h4 className="text-xs font-semibold tracking-wide mb-3 app-muted">
         פריטי ההזמנה ({order.items.length})
       </h4>
       <div className="space-y-2 mb-5">
@@ -223,21 +210,14 @@ function OrderDetailModal({
               <p className="text-sm font-medium truncate">
                 {item.product_name}
               </p>
-              <p
-                className="text-xs"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
+              <p className="text-xs app-muted">
                 כמות: {item.quantity} · ₪{item.unit_price.toLocaleString()}{" "}
                 ליחידה
                 {item.discount_amount > 0
                   ? ` · הנחה ₪${item.discount_amount.toLocaleString()}`
                   : ""}
               </p>
-              <p
-                className="text-[10px] font-mono mt-0.5"
-                dir="ltr"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
+              <p className="text-[10px] font-mono mt-0.5 app-muted" dir="ltr">
                 {item.product_id}
               </p>
             </div>
@@ -250,16 +230,11 @@ function OrderDetailModal({
 
       {/* Invoice — only ever shows as issued when an invoice row really exists */}
       <div
-        className="flex items-center justify-between gap-3 p-3 rounded-md mb-5 border"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-md mb-5 border"
         style={{ borderColor: "var(--color-border)" }}
       >
         <div className="min-w-0">
-          <p
-            className="text-xs mb-0.5"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            חשבונית
-          </p>
+          <p className="text-xs mb-0.5 app-muted">חשבונית</p>
           {invoice ? (
             <>
               <p
@@ -274,23 +249,23 @@ function OrderDetailModal({
               </p>
             </>
           ) : (
-            <p
-              className="text-sm"
-              style={{
-                color: captured ? AMBER : "var(--color-muted-foreground)",
-              }}
+            <span
+              className={`app-badge ${
+                captured ? "app-badge--warning" : "app-badge--neutral"
+              }`}
             >
               לא הונפקה
-            </p>
+            </span>
           )}
         </div>
         {!invoice && captured && canFinance && (
           <button
             onClick={() => run(issueInvoice(order.order_id))}
-            className="text-xs px-3 py-1.5 rounded-full flex-shrink-0"
+            className="app-btn flex-shrink-0"
             style={{
-              background: "var(--color-primary)",
-              color: "var(--color-primary-foreground)",
+              minHeight: "2.2rem",
+              padding: "0.35rem 0.9rem",
+              fontSize: "0.75rem",
             }}
           >
             הנפקת חשבונית
@@ -299,9 +274,9 @@ function OrderDetailModal({
       </div>
 
       {error && (
-        <p className="text-xs mb-4" style={{ color: "var(--color-danger)" }}>
-          {error}
-        </p>
+        <div className="mb-4">
+          <Alert tone="error">{error}</Alert>
+        </div>
       )}
 
       {/* Confirm payment — the only path that marks an order paid */}
@@ -312,8 +287,10 @@ function OrderDetailModal({
           <div
             className="mb-4 p-4 rounded-md border"
             style={{
-              borderColor: "rgba(34,197,94,0.3)",
-              background: "rgba(34,197,94,0.05)",
+              borderColor:
+                "color-mix(in srgb, var(--color-success) 32%, var(--color-border))",
+              background:
+                "color-mix(in srgb, var(--color-success) 6%, var(--color-card))",
             }}
           >
             <p
@@ -322,11 +299,12 @@ function OrderDetailModal({
             >
               אישור קבלת תשלום
             </p>
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               <input
                 className={fieldClass}
                 style={inputStyle}
                 placeholder="ספק תשלומים"
+                aria-label="ספק תשלומים"
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
               />
@@ -335,6 +313,7 @@ function OrderDetailModal({
                 style={inputStyle}
                 dir="ltr"
                 placeholder="מזהה עסקה"
+                aria-label="מזהה עסקה"
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
               />
@@ -344,11 +323,12 @@ function OrderDetailModal({
                 dir="ltr"
                 maxLength={4}
                 placeholder="4 ספרות אחרונות"
+                aria-label="ארבע ספרות אחרונות של הכרטיס"
                 value={last4}
                 onChange={(e) => setLast4(e.target.value.replace(/\D/g, ""))}
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => {
                   if (
@@ -365,21 +345,17 @@ function OrderDetailModal({
                     setLast4("")
                   }
                 }}
-                className="flex-1 py-2 rounded-full text-sm font-medium"
+                className="app-btn flex-1"
                 style={{
                   background: "var(--color-success)",
-                  color: "#04160A",
+                  color: "var(--color-card)",
                 }}
               >
                 אישור התשלום
               </button>
               <button
                 onClick={() => setShowConfirmPayment(false)}
-                className="flex-1 py-2 rounded-full text-sm font-medium border"
-                style={{
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-foreground)",
-                }}
+                className="app-btn-secondary flex-1"
               >
                 ביטול
               </button>
@@ -388,10 +364,11 @@ function OrderDetailModal({
         ) : (
           <button
             onClick={() => setShowConfirmPayment(true)}
-            className="w-full py-2 rounded-full text-sm font-medium border transition-colors hover:bg-white/5 mb-3"
+            className="app-btn-secondary w-full mb-3"
             style={{
-              borderColor: "rgba(34,197,94,0.3)",
               color: "var(--color-success)",
+              borderColor:
+                "color-mix(in srgb, var(--color-success) 35%, var(--color-border))",
             }}
           >
             אישור קבלת תשלום
@@ -404,13 +381,11 @@ function OrderDetailModal({
           className="mb-4 p-3 rounded-md border"
           style={{ borderColor: "var(--color-border)" }}
         >
-          <label
-            className="text-xs block mb-1.5"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
+          <label htmlFor="failure-reason" className="app-label block mb-1.5">
             סיבת כישלון
           </label>
           <input
+            id="failure-reason"
             className={fieldClass}
             style={inputStyle}
             value={failureReason}
@@ -427,25 +402,14 @@ function OrderDetailModal({
               )
             }
             disabled={!failureReason.trim()}
-            className="w-full mt-2 py-2 rounded-full text-xs font-medium border disabled:opacity-40"
-            style={{
-              borderColor: "rgba(239,68,68,0.3)",
-              color: "var(--color-danger)",
-            }}
+            className="app-btn-danger w-full mt-2"
           >
             סימון התשלום כנכשל
           </button>
         </div>
       )}
 
-      <button
-        onClick={onClose}
-        className="w-full py-2 rounded-full text-sm font-medium border transition-colors hover:bg-white/5"
-        style={{
-          borderColor: "var(--color-border)",
-          color: "var(--color-foreground)",
-        }}
-      >
+      <button onClick={onClose} className="app-btn-secondary w-full">
         סגירה
       </button>
     </Modal>
@@ -497,277 +461,272 @@ export default function AdminOrdersPage() {
 
   const paidCount = orders.filter((o) => isCaptured(o)).length
 
-  const filterButton = (
-    value: string,
-    current: string,
-    set: (v: string) => void,
-    label: string,
-  ) => (
-    <button
-      key={value}
-      onClick={() => set(value)}
-      className="px-3 py-2 rounded-full text-xs font-medium border transition-all"
-      style={{
-        background: current === value ? "var(--color-primary)" : "transparent",
-        color:
-          current === value
-            ? "var(--color-primary-foreground)"
-            : "var(--color-muted-foreground)",
-        borderColor:
-          current === value ? "var(--color-primary)" : "var(--color-border)",
-      }}
-    >
-      {label}
-    </button>
-  )
+  const clearFilters = () => {
+    setSearch("")
+    setPaymentStatusFilter("ALL")
+    setProductFilter("ALL")
+    setFromDate("")
+    setToDate("")
+  }
 
   return (
-    <div className="max-w-6xl mx-auto page-enter">
-      <div className="mb-8">
-        <h1 className="font-display text-4xl font-semibold mb-1">הזמנות</h1>
-        <p style={{ color: "var(--color-muted-foreground)" }}>
-          {orders.length} הזמנות · {paidCount} שולמו · ₪
-          {Math.round(lifetime.net).toLocaleString()} הכנסות מאושרות ·{" "}
-          {invoices.length} חשבוניות הונפקו
-        </p>
-      </div>
+    <div className="page-enter">
+      <PageHeader
+        eyebrow="ניהול · מכירות"
+        title="הזמנות"
+        description={`${orders.length} הזמנות · ${paidCount} שולמו · ₪${Math.round(
+          lifetime.net,
+        ).toLocaleString()} הכנסות מאושרות · ${
+          invoices.length
+        } חשבוניות הונפקו`}
+        breadcrumbs={[{ label: "ניהול", to: "/admin" }, { label: "הזמנות" }]}
+        actions={
+          can(adminRole, "finance") ? (
+            <Link to="/admin/finance" className="app-btn-secondary">
+              <Icon name="money" size={15} />
+              כספים וחשבוניות
+            </Link>
+          ) : undefined
+        }
+      />
 
       {/* Filters */}
-      <div className="card-glow p-4 mb-4 space-y-3">
-        <div className="flex items-center gap-3 flex-wrap">
-          <input
-            className="flex-1 min-w-48 px-4 py-2.5 rounded-lg border text-sm outline-none"
-            style={inputStyle}
-            placeholder="חיפוש לפי שם, אימייל, מספר הזמנה או מוצר..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <label
-            className="flex items-center gap-2 text-xs"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            מתאריך
-            <input
-              type="date"
-              className="px-3 py-2 rounded-lg border text-xs outline-none"
-              style={inputStyle}
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </label>
-          <label
-            className="flex items-center gap-2 text-xs"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            עד תאריך
-            <input
-              type="date"
-              className="px-3 py-2 rounded-lg border text-xs outline-none"
-              style={inputStyle}
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </label>
-          <select
-            className="px-3 py-2 rounded-lg border text-xs outline-none"
-            style={inputStyle}
-            value={productFilter}
-            onChange={(e) => setProductFilter(e.target.value)}
-          >
-            <option value="ALL">כל המוצרים</option>
-            {productIdsInOrders.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <section className="app-surface mb-4" aria-label="סינון הזמנות">
+        <div className="app-surface-body space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:items-end">
+            <div className="app-field lg:col-span-4">
+              <label htmlFor="orders-search" className="app-label">
+                חיפוש
+              </label>
+              <input
+                id="orders-search"
+                type="search"
+                className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
+                style={inputStyle}
+                placeholder="חיפוש לפי שם, אימייל, מספר הזמנה או מוצר..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="app-field lg:col-span-2">
+              <label htmlFor="orders-from" className="app-label">
+                מתאריך
+              </label>
+              <input
+                id="orders-from"
+                type="date"
+                className="w-full px-3 py-2 rounded-lg border text-xs outline-none"
+                style={inputStyle}
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+            </div>
+            <div className="app-field lg:col-span-2">
+              <label htmlFor="orders-to" className="app-label">
+                עד תאריך
+              </label>
+              <input
+                id="orders-to"
+                type="date"
+                className="w-full px-3 py-2 rounded-lg border text-xs outline-none"
+                style={inputStyle}
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </div>
+            <div className="app-field lg:col-span-4">
+              <label htmlFor="orders-product" className="app-label">
+                מוצר
+              </label>
+              <select
+                id="orders-product"
+                className="w-full px-3 py-2 rounded-lg border text-xs outline-none"
+                style={inputStyle}
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+              >
+                <option value="ALL">כל המוצרים</option>
+                {productIdsInOrders.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-        <div className="flex gap-2 flex-wrap items-center">
-          <span
-            className="text-xs"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            סטטוס תשלום:
-          </span>
-          {filterButton(
-            "ALL",
-            paymentStatusFilter,
-            setPaymentStatusFilter,
-            "הכול",
-          )}
-          {PAYMENT_FILTERS.map((s) =>
-            filterButton(
-              s,
-              paymentStatusFilter,
-              setPaymentStatusFilter,
-              PAYMENT_LABEL[s],
-            ),
-          )}
-        </div>
-      </div>
-
-      <div
-        className="rounded-lg border overflow-x-auto"
-        style={{ borderColor: "var(--color-border)" }}
-      >
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: "var(--color-secondary)" }}>
-              {["לקוח", "מוצר", "סכום", "תאריך", "תשלום", "חשבונית", ""].map(
-                (col, i) => (
-                  <th
-                    key={`${col}-${i}`}
-                    className="text-right px-4 py-3 text-xs tracking-wide whitespace-nowrap"
-                    style={{
-                      color: "var(--color-muted-foreground)",
-                      borderBottom: "1px solid var(--color-border)",
-                    }}
-                  >
-                    {col}
-                  </th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((order, i) => {
-              const invoice = invoices.find(
-                (inv) => inv.order_id === order.order_id,
-              )
-              const captured = isCaptured(order)
-              return (
-                <tr
-                  key={order.order_id}
-                  style={{
-                    background:
-                      i % 2 === 0
-                        ? "var(--color-card)"
-                        : "var(--color-background)",
-                    borderBottom: "1px solid var(--color-border)",
-                  }}
+          <div>
+            <span className="app-label block mb-1.5">סטטוס תשלום</span>
+            <div
+              className="app-tabs"
+              role="group"
+              aria-label="סינון לפי סטטוס תשלום"
+              style={{ borderBottom: 0 }}
+            >
+              <button
+                type="button"
+                onClick={() => setPaymentStatusFilter("ALL")}
+                className="app-tab"
+                data-active={paymentStatusFilter === "ALL"}
+                aria-pressed={paymentStatusFilter === "ALL"}
+              >
+                הכול
+              </button>
+              {PAYMENT_FILTERS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setPaymentStatusFilter(s)}
+                  className="app-tab"
+                  data-active={paymentStatusFilter === s}
+                  aria-pressed={paymentStatusFilter === s}
                 >
-                  <td className="px-4 py-3">
-                    <p className="font-medium whitespace-nowrap">
-                      {order.customer_first_name} {order.customer_last_name}
-                    </p>
-                    <p
-                      className="text-xs"
-                      dir="ltr"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      {order.customer_email}
-                    </p>
-                    <p
-                      className="text-[10px] font-mono"
-                      dir="ltr"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      {order.order_number}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">
-                    {order.items.map((item) => (
-                      <p
-                        key={item.order_item_id}
-                        className="text-sm truncate"
-                        title={item.product_name}
-                      >
-                        {item.product_name}
-                        {item.quantity > 1 ? ` ×${item.quantity}` : ""}
+                  {PAYMENT_LABEL[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {orders.length === 0 ? (
+        <EmptyState
+          icon="receipt"
+          title="אין עדיין הזמנות."
+          description="הזמנות שיושלמו בקופה יופיעו כאן עם סטטוס התשלום והחשבונית."
+        />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon="search"
+          title="לא נמצאו הזמנות התואמות את הסינון."
+          description="נסו לשנות את טווח התאריכים, המוצר או סטטוס התשלום."
+          actions={
+            <button
+              type="button"
+              className="app-btn-secondary"
+              onClick={clearFilters}
+            >
+              ניקוי סינון
+            </button>
+          }
+        />
+      ) : (
+        <div className="app-table-wrap">
+          <table className="app-table" style={{ minWidth: "64rem" }}>
+            <thead>
+              <tr>
+                {["לקוח", "מוצר", "סכום", "תאריך", "תשלום", "חשבונית", "פעולות"].map(
+                  (col) => (
+                    <th key={col} scope="col">
+                      {col}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((order) => {
+                const invoice = invoices.find(
+                  (inv) => inv.order_id === order.order_id,
+                )
+                const captured = isCaptured(order)
+                return (
+                  <tr key={order.order_id}>
+                    <td>
+                      <p className="font-medium whitespace-nowrap">
+                        {order.customer_first_name} {order.customer_last_name}
                       </p>
-                    ))}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="font-semibold">
-                      ₪{order.total_amount.toLocaleString()}
-                    </p>
-                    {order.discount_amount > 0 && (
-                      <p
-                        className="text-[10px]"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                      >
-                        הנחה ₪{order.discount_amount.toLocaleString()}
+                      <p className="text-xs app-muted">
+                        <span dir="ltr">{order.customer_email}</span>
                       </p>
-                    )}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-xs whitespace-nowrap"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    {formatIsraelDateTime(order.created_at) || "—"}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span
-                      className="text-xs font-medium inline-flex items-center gap-1.5"
-                      style={{ color: paymentColor(order.payment_status) }}
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: "currentColor" }}
-                      />
-                      {PAYMENT_LABEL[order.payment_status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {invoice ? (
-                      <>
-                        <span
-                          className="text-xs font-medium"
-                          style={{ color: "var(--color-success)" }}
-                        >
-                          הונפקה
-                        </span>
+                      <p
+                        className="text-[10px] font-mono app-muted"
+                        dir="ltr"
+                      >
+                        {order.order_number}
+                      </p>
+                    </td>
+                    <td>
+                      {order.items.map((item) => (
                         <p
-                          className="text-[10px] font-mono"
-                          dir="ltr"
-                          style={{ color: "var(--color-muted-foreground)" }}
+                          key={item.order_item_id}
+                          className="text-sm truncate max-w-[16rem]"
+                          title={item.product_name}
                         >
-                          {invoice.invoice_number}
+                          {item.product_name}
+                          {item.quantity > 1 ? ` ×${item.quantity}` : ""}
                         </p>
-                      </>
-                    ) : (
+                      ))}
+                    </td>
+                    <td className="whitespace-nowrap">
+                      <p className="font-semibold">
+                        ₪{order.total_amount.toLocaleString()}
+                      </p>
+                      {order.discount_amount > 0 && (
+                        <p className="text-[10px] app-muted">
+                          הנחה ₪{order.discount_amount.toLocaleString()}
+                        </p>
+                      )}
+                    </td>
+                    <td className="text-xs whitespace-nowrap app-muted">
+                      {formatIsraelDateTime(order.created_at) || "—"}
+                    </td>
+                    <td className="whitespace-nowrap">
                       <span
-                        className="text-xs"
+                        className={`app-badge ${paymentBadge(
+                          order.payment_status,
+                        )}`}
+                      >
+                        {PAYMENT_LABEL[order.payment_status]}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap">
+                      {invoice ? (
+                        <>
+                          <span className="app-badge app-badge--success">
+                            הונפקה
+                          </span>
+                          <p
+                            className="text-[10px] font-mono app-muted mt-1"
+                            dir="ltr"
+                          >
+                            {invoice.invoice_number}
+                          </p>
+                        </>
+                      ) : (
+                        <span
+                          className={`app-badge ${
+                            captured
+                              ? "app-badge--warning"
+                              : "app-badge--neutral"
+                          }`}
+                        >
+                          לא הונפקה
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(order.order_id)}
+                        aria-label={`צפייה בהזמנה ${order.order_number}`}
+                        className="app-btn-secondary whitespace-nowrap"
                         style={{
-                          color: captured
-                            ? AMBER
-                            : "var(--color-muted-foreground)",
+                          minHeight: "2.2rem",
+                          padding: "0.35rem 0.9rem",
+                          fontSize: "0.75rem",
                         }}
                       >
-                        לא הונפקה
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => setSelectedId(order.order_id)}
-                      className="text-xs px-3 py-1 rounded-full border transition-colors hover:bg-white/5 whitespace-nowrap"
-                      style={{
-                        borderColor: "var(--color-border)",
-                        color: "var(--color-foreground)",
-                      }}
-                    >
-                      צפייה
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-
-        {filtered.length === 0 && (
-          <div
-            className="text-center py-12 text-sm"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            {orders.length === 0
-              ? "אין עדיין הזמנות."
-              : "לא נמצאו הזמנות התואמות את הסינון."}
-          </div>
-        )}
-      </div>
+                        צפייה
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selected && (
         <OrderDetailModal

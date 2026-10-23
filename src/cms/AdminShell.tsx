@@ -6,6 +6,7 @@
  * responsive drawer on mobile.
  */
 
+import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { useApp } from "@/context/AppContext";
 import { ROLE_LABEL } from "@/lib/permissions";
@@ -38,16 +39,18 @@ function MaestroLayout() {
   const { user, logout } = useApp();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    document.documentElement.dataset.appShell = "true";
+    return () => { delete document.documentElement.dataset.appShell; };
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col lg:flex-row"
-      style={{ background: "var(--color-background)" }}
-    >
+    <div className="app-shell flex flex-col lg:flex-row">
       <Toaster />
       <a href="#main" className="skip-link">
         דלג לתוכן הראשי
@@ -61,50 +64,32 @@ function MaestroLayout() {
           { path: "/admin", label: "חזרה לניהול", icon: "arrowRight" },
         ]}
         chip={
-          <span
-            className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full"
-            style={{
-              background: "rgba(227,174,60,0.16)",
-              color: "var(--color-primary)",
-              boxShadow: "inset 0 0 0 1px rgba(227,174,60,0.22)",
-            }}
-          >
-            <Icon name="layers" size={12} /> Maestro CMS · עריכת תוכן
+          <span className="app-badge app-badge--accent">
+            <Icon name="layers" size={11} /> Maestro CMS
           </span>
         }
         footer={
           <>
-            <div className="flex items-center gap-3 mb-3 px-3">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shadow-md flex-shrink-0"
-                style={{
-                  background: "linear-gradient(135deg, var(--color-primary), var(--color-accent))",
-                  color: "var(--color-primary-foreground)",
-                }}
-              >
-                {user?.first_name.charAt(0)}
+            <div className="app-nav-user">
+              <div className="app-nav-avatar">
+                {user?.first_name.charAt(0) || user?.email.charAt(0) || "?"}
               </div>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-xs font-bold truncate"
-                  style={{ color: "var(--color-foreground)" }}
-                >
+              <div className="min-w-0">
+                <p className="app-nav-name">
                   {user?.first_name} {user?.last_name}
                 </p>
-                <p
-                  className="text-xs truncate"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
+                <p className="app-nav-meta">
                   {ROLE_LABEL[user?.admin_role ?? "SUPER_ADMIN"]}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
+            <div className="app-nav-actions">
+              <span className="cv-theme-toggle">
+                <ThemeToggle />
+              </span>
               <button
                 onClick={handleLogout}
-                className="tap-target flex-1 flex items-center gap-2 text-right text-xs px-3 py-2 rounded-lg transition-colors hover:bg-white/5"
-                style={{ color: "var(--color-muted-foreground)" }}
+                className="app-nav-logout"
               >
                 <Icon name="logout" size={14} /> התנתקות
               </button>
@@ -113,9 +98,11 @@ function MaestroLayout() {
         }
       />
 
-      <div className="flex-1 min-w-0 lg:mr-60">
-        <main id="main" className="min-h-screen p-4 sm:p-6 lg:p-8">
-          <Outlet />
+      <div className="app-content">
+        <main id="main" className="app-main">
+          <div className="app-page">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

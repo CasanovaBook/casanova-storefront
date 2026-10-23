@@ -31,6 +31,11 @@ export default function DashboardLayout() {
     loadContent().catch(() => {})
   }, [])
 
+  useEffect(() => {
+    document.documentElement.dataset.appShell = "true"
+    return () => { delete document.documentElement.dataset.appShell }
+  }, [])
+
   if (!authReady || !isAuthenticated) return null
 
   const handleLogout = () => {
@@ -39,10 +44,7 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col lg:flex-row"
-      style={{ background: "var(--color-background)" }}
-    >
+    <div className="app-shell flex flex-col lg:flex-row">
       <a href="#main" className="skip-link">
         דלג לתוכן הראשי
       </a>
@@ -55,38 +57,26 @@ export default function DashboardLayout() {
         ]}
         footer={
           <>
-            <div className="flex items-center gap-3 mb-3 px-3">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shadow-md flex-shrink-0"
-                style={{
-                  background: "linear-gradient(135deg, #E7B94C, #B8862A)",
-                  color: "var(--color-primary-foreground)",
-                }}
-              >
-                {user?.first_name.charAt(0)}
+            <div className="app-nav-user">
+              <div className="app-nav-avatar">
+                {user?.first_name.charAt(0) || user?.email.charAt(0) || "?"}
               </div>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-xs font-bold truncate"
-                  style={{ color: "var(--color-foreground)" }}
-                >
+              <div className="min-w-0">
+                <p className="app-nav-name">
                   {user?.first_name} {user?.last_name}
                 </p>
-                <p
-                  className="text-xs truncate"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                  dir="ltr"
-                >
+                <p className="app-nav-meta" dir="ltr">
                   {user?.email}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
+            <div className="app-nav-actions">
+              <span className="cv-theme-toggle">
+                <ThemeToggle />
+              </span>
               <button
                 onClick={handleLogout}
-                className="tap-target flex-1 flex items-center gap-2 text-right text-xs px-3 py-2 rounded-lg transition-colors hover:bg-white/5"
-                style={{ color: "var(--color-muted-foreground)" }}
+                className="app-nav-logout"
               >
                 <Icon name="logout" size={14} /> התנתקות
               </button>
@@ -95,10 +85,11 @@ export default function DashboardLayout() {
         }
       />
 
-      {/* Main content */}
-      <div className="flex-1 min-w-0 lg:mr-60">
-        <main id="main" className="min-h-screen p-4 sm:p-6 lg:p-8">
-          <Outlet />
+      <div className="app-content">
+        <main id="main" className="app-main">
+          <div className="app-page app-page--content">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

@@ -21,14 +21,10 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
-import {
-  peekReturnPath,
-  takeReturnPath,
-} from "../lib/checkout-intent"
-import Icon from "../components/icons"
-import ThemeToggle from "../components/ThemeToggle"
-import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
-import logoImg from "../assets/main_photo.jpg"
+import { peekReturnPath, takeReturnPath } from "../lib/checkout-intent"
+import Alert from "../components/ui/Alert"
+import Spinner from "../components/ui/Spinner"
+import AuthShell from "../components/layout/AuthShell"
 
 type VerifyState = "checking" | "confirmed" | "expired" | "no-session"
 
@@ -87,7 +83,8 @@ export default function VerifyEmailPage() {
     if (state !== "confirmed") return
     const timer = setTimeout(() => {
       navigate(
-        takeReturnPath() ?? (user?.role === "ADMIN" ? "/admin" : "/dashboard/library"),
+        takeReturnPath() ??
+          (user?.role === "ADMIN" ? "/admin" : "/dashboard/library"),
         { replace: true },
       )
     }, 2500)
@@ -101,28 +98,16 @@ export default function VerifyEmailPage() {
     checking: {
       title: "מאמתים את הכתובת…",
       body: "רגע אחד, אנחנו בודקים שהקישור שפתחת תקף ושהחשבון אומת בהצלחה.",
-      icon: "mail",
-      color: "var(--color-primary)",
-      bg: "rgba(212,160,48,0.1)",
-      border: "1px solid rgba(212,160,48,0.3)",
     },
     confirmed: {
       title: "הכתובת אומתה בהצלחה",
       body: returnPath
         ? "החשבון שלך מאומת ואתה מחובר. מעבירים אותך חזרה להמשך."
         : "החשבון שלך מאומת ואתה מחובר. מעבירים אותך לספרייה שלך…",
-      icon: "checkCircle",
-      color: "var(--color-success)",
-      bg: "rgba(34,197,94,0.12)",
-      border: "1px solid rgba(34,197,94,0.3)",
     },
     expired: {
       title: "הקישור אינו תקף",
       body: linkError,
-      icon: "alertTriangle",
-      color: "#F59E0B",
-      bg: "rgba(245,158,11,0.1)",
-      border: "1px solid rgba(245,158,11,0.3)",
     },
     "no-session": {
       /* This state is reached both when a link was opened in a browser that
@@ -136,131 +121,59 @@ export default function VerifyEmailPage() {
       body: isSupabaseConfigured
         ? "אם פתחת את קישור האימות מהמייל, הכתובת כבר אומתה — בדפדפן הזה צריך להתחבר איתה בשנית. אם עדיין לא אישרת, פתח את הקישור שהגיע אליך."
         : 'אין כרגע שרת Supabase מחובר, ולכן אימות בדוא"ל אינו זמין.',
-      icon: "lock",
-      color: "var(--color-primary)",
-      bg: "rgba(212,160,48,0.1)",
-      border: "1px solid rgba(212,160,48,0.3)",
     },
-  }[state] as {
-    title: string
-    body: string
-    icon: "mail" | "checkCircle" | "alertTriangle" | "lock"
-    color: string
-    bg: string
-    border: string
-  }
+  }[state]
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-6 relative overflow-hidden"
-      style={{ background: "var(--color-background)" }}
+    <AuthShell
+      eyebrow="אימות כתובת"
+      title={copy.title}
+      description={state === "expired" ? undefined : copy.body}
     >
-      <div
-        className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(212,160,48,0.08) 0%, transparent 70%)",
-          top: "-140px",
-          right: "-120px",
-        }}
-      />
-      <div className="absolute top-5 left-5 z-10">
-        <ThemeToggle />
-      </div>
-
-      <main id="main" className="w-full max-w-sm page-enter relative">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <img
-              src={logoImg}
-              alt=""
-              className="w-9 h-9 rounded-lg object-cover"
-            />
-            <span
-              dir="ltr"
-              className="font-display text-xl font-semibold tracking-wide"
-              style={{ color: "var(--color-primary)" }}
-            >
-              Casanova
-            </span>
-          </Link>
-
-          <div
-            className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${
-              state === "checking" ? "" : "glow-pulse"
-            }`}
-            style={{ background: copy.bg, color: copy.color, border: copy.border }}
-            role="status"
-            aria-live="polite"
-          >
-            <Icon name={copy.icon} size={32} />
-          </div>
-
-          <h1 className="font-display text-3xl font-semibold mb-2">
-            {copy.title}
-          </h1>
-          <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-            {copy.body}
-          </p>
-        </div>
-
-        {busy ? (
-          <p
-            className="text-center text-xs"
-            style={{ color: "var(--color-muted-foreground)" }}
-          >
-            נא להמתין…
-          </p>
-        ) : state === "confirmed" ? (
-          <Link
-            to={destination}
-            className="btn-gradient block w-full py-3 rounded-full font-semibold text-sm text-center"
-          >
+      {busy ? (
+        <Spinner label="נא להמתין…" />
+      ) : state === "confirmed" ? (
+        <div className="space-y-4">
+          <Link to={destination} className="app-btn w-full">
             {returnPath === "/checkout"
               ? "להשלמת הרכישה"
               : isAdmin
                 ? "לממשק הניהול"
                 : "לספרייה שלי"}
           </Link>
-        ) : state === "expired" ? (
-          <div className="space-y-3">
-            <Link
-              to={
-                returnPath
-                  ? `/login?redirect=${encodeURIComponent(returnPath)}`
-                  : "/login"
-              }
-              className="btn-gradient block w-full py-3 rounded-full font-semibold text-sm text-center"
-            >
-              חזרה להתחברות
-            </Link>
-            <p
-              className="text-center text-xs"
-              style={{ color: "var(--color-muted-foreground)" }}
-            >
-              ניתן לשלוח קישור חדש מהמסך שבו נרשמת, באמצעות לחצן
-              "שליחת קישור שוב".
-            </p>
-          </div>
-        ) : (
+        </div>
+      ) : state === "expired" ? (
+        <div className="space-y-4">
+          <Alert tone="warning">{copy.body}</Alert>
           <Link
             to={
               returnPath
                 ? `/login?redirect=${encodeURIComponent(returnPath)}`
                 : "/login"
             }
-            className="btn-gradient block w-full py-3 rounded-full font-semibold text-sm text-center"
+            className="app-btn w-full"
+          >
+            חזרה להתחברות
+          </Link>
+          <p className="app-hint text-center">
+            ניתן לשלוח קישור חדש מהמסך שבו נרשמת, באמצעות לחצן "שליחת קישור
+            שוב".
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <Link
+            to={
+              returnPath
+                ? `/login?redirect=${encodeURIComponent(returnPath)}`
+                : "/login"
+            }
+            className="app-btn w-full"
           >
             התחבר עכשיו
           </Link>
-        )}
-
-        {/* No site footer on this screen; the accessibility controls still
-         * have to be reachable from here. */}
-        <div className="text-center mt-6 text-xs">
-          <AccessibilityFooterLink />
         </div>
-      </main>
-    </div>
+      )}
+    </AuthShell>
   )
 }

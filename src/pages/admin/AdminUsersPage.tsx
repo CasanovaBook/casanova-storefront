@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "react-router"
 import { useAdmin } from "../../context/AdminContext"
 import { useCms } from "../../context/CmsContext"
 import { formatIsraelDateTime } from "../../lib/datetime"
@@ -8,6 +9,8 @@ import type { ProductSnapshot, User } from "../../types"
 import AccessDenied from "../../components/AccessDenied"
 import Modal from "../../components/Modal"
 import Icon from "../../components/icons"
+import PageHeader from "../../components/ui/PageHeader"
+import EmptyState from "../../components/ui/EmptyState"
 import { useAccessActions } from "./useAccessActions"
 
 const ROLE_LABEL_USER: Record<string, string> = {
@@ -34,11 +37,11 @@ const ADMIN_PROTECTED_NOTICE = {
   body: "חשבונות שבתפקיד מנהל מוגנים מפני השהיה או סגירה, כדי שמנהל לא יוכל לנעול את עצמו או עמיתו מחוץ למערכת. כדי לשנות סטטוס של חשבון מנהל יש לעדכן אותו ישירות במסד הנתונים.",
 }
 
-const ACCESS_LABEL: Record<string, { text: string, color: string }> = {
-  ACTIVE: { text: "פעיל", color: "var(--color-success)" },
-  EXPIRED: { text: "פג תוקף", color: "#F59E0B" },
-  REVOKED: { text: "נשלל", color: "var(--color-danger)" },
-  SUSPENDED: { text: "מושעה", color: "#6B7280" },
+const ACCESS_LABEL: Record<string, { text: string, badge: string }> = {
+  ACTIVE: { text: "פעיל", badge: "app-badge--success" },
+  EXPIRED: { text: "פג תוקף", badge: "app-badge--warning" },
+  REVOKED: { text: "נשלל", badge: "app-badge--danger" },
+  SUSPENDED: { text: "מושעה", badge: "app-badge--neutral" },
 }
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
@@ -49,14 +52,14 @@ const ORDER_STATUS_LABEL: Record<string, string> = {
   CANCELLED: "בוטל",
 }
 
-const REFUND_STATUS_LABEL: Record<string, { text: string, color: string }> = {
-  REQUESTED: { text: "התקבלה בקשה", color: "#60A5FA" },
-  PENDING: { text: "ממתין להחלטה", color: "#F59E0B" },
-  APPROVED: { text: "אושר", color: "var(--color-success)" },
-  REJECTED: { text: "נדחה", color: "var(--color-danger)" },
-  PROCESSING: { text: "בטיפול", color: "#F59E0B" },
-  REFUNDED: { text: "הוחזר בפועל", color: "var(--color-success)" },
-  FAILED: { text: "נכשל", color: "var(--color-danger)" },
+const REFUND_STATUS_LABEL: Record<string, { text: string, badge: string }> = {
+  REQUESTED: { text: "התקבלה בקשה", badge: "app-badge--neutral" },
+  PENDING: { text: "ממתין להחלטה", badge: "app-badge--warning" },
+  APPROVED: { text: "אושר", badge: "app-badge--success" },
+  REJECTED: { text: "נדחה", badge: "app-badge--danger" },
+  PROCESSING: { text: "בטיפול", badge: "app-badge--warning" },
+  REFUNDED: { text: "הוחזר בפועל", badge: "app-badge--success" },
+  FAILED: { text: "נכשל", badge: "app-badge--danger" },
 }
 
 const INQUIRY_STATUS_LABEL: Record<string, string> = {
@@ -257,9 +260,11 @@ function UserDetailModal({
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold"
             style={{
-              background: "rgba(212,160,48,0.12)",
+              background:
+                "color-mix(in srgb, var(--color-primary) 12%, transparent)",
               color: "var(--color-primary)",
-              border: "1px solid rgba(212,160,48,0.3)",
+              border:
+                "1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)",
             }}
           >
             {initialOf(live)}
@@ -275,39 +280,26 @@ function UserDetailModal({
             </p>
           </div>
           <span
-            className="text-xs font-bold px-3 py-1 rounded-full"
-            style={{
-              background:
-                live.account_status === "ACTIVE"
-                  ? "rgba(34,197,94,0.15)"
-                  : "rgba(239,68,68,0.15)",
-              color:
-                live.account_status === "ACTIVE"
-                  ? "var(--color-success)"
-                  : "var(--color-danger)",
-            }}
+            className={`app-badge ${
+              live.account_status === "ACTIVE"
+                ? "app-badge--success"
+                : "app-badge--danger"
+            } flex-shrink-0`}
           >
             {STATUS_LABEL[live.account_status] ?? live.account_status}
           </span>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1.5 mb-5 flex-wrap">
+        <div className="app-tabs mb-5" role="tablist" aria-label="קטעי פרופיל הלקוח">
           {tabs.map((t) => (
             <button
               key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
-              style={{
-                background:
-                  tab === t.id ? "var(--color-primary)" : "transparent",
-                color:
-                  tab === t.id
-                    ? "var(--color-primary-foreground)"
-                    : "var(--color-muted-foreground)",
-                borderColor:
-                  tab === t.id ? "var(--color-primary)" : "var(--color-border)",
-              }}
+              className="app-tab"
             >
               {t.label}
             </button>
@@ -392,9 +384,9 @@ function UserDetailModal({
             <div
               className="flex items-start gap-2 p-3 rounded-md text-xs"
               style={{
-                background: "rgba(56,189,248,0.08)",
+                background: "var(--color-muted)",
                 color: "var(--color-muted-foreground)",
-                border: "1px solid rgba(56,189,248,0.2)",
+                border: "1px solid var(--color-border)",
               }}
             >
               <Icon name="shield" size={14} className="flex-shrink-0 mt-0.5" />
@@ -476,6 +468,7 @@ function UserDetailModal({
             {canGrant && grantable.length > 0 && (
               <div className="flex gap-2 mb-4">
                 <select
+                  aria-label="מוצר להענקת גישה"
                   className="flex-1 text-sm rounded-lg px-3 py-2 border outline-none"
                   style={inputStyle}
                   value={grantProductId}
@@ -505,11 +498,7 @@ function UserDetailModal({
                     setGrantProductId("")
                   }}
                   disabled={!grantProductId}
-                  className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
-                  style={{
-                    background: "var(--color-primary)",
-                    color: "var(--color-primary-foreground)",
-                  }}
+                  className="app-btn flex-shrink-0"
                 >
                   פתיחת גישה
                 </button>
@@ -527,7 +516,7 @@ function UserDetailModal({
                 {access.map((up) => {
                   const st = ACCESS_LABEL[up.access_status] ?? {
                     text: up.access_status,
-                    color: "var(--color-muted-foreground)",
+                    badge: "app-badge--neutral",
                   }
                   return (
                     <div
@@ -535,20 +524,17 @@ function UserDetailModal({
                       className="p-3 rounded-md border"
                       style={{
                         borderColor: "var(--color-border)",
-                        background: "var(--color-background)",
+                        background: "var(--color-muted)",
                       }}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <div className="flex items-center gap-3 min-w-0">
                           <TinyCover snapshot={up.product_snapshot} />
-                          <p className="text-sm font-medium">
+                          <p className="text-sm font-medium truncate">
                             {up.product_snapshot.name}
                           </p>
                         </div>
-                        <span
-                          className="text-xs font-bold"
-                          style={{ color: st.color }}
-                        >
+                        <span className={`app-badge ${st.badge} flex-shrink-0`}>
                           {st.text}
                         </span>
                       </div>
@@ -567,7 +553,7 @@ function UserDetailModal({
                           : ""}
                       </p>
                       {canGrant && (
-                        <div className="flex gap-2 flex-wrap">
+                        <div className="flex gap-2 flex-wrap items-center">
                           {up.access_status !== "ACTIVE" && (
                             <button
                               onClick={() =>
@@ -577,10 +563,11 @@ function UserDetailModal({
                                   "הפעלת גישה מחדש",
                                 )
                               }
-                              className="text-xs px-2.5 py-1 rounded-full border"
+                              className="app-btn-secondary"
                               style={{
-                                borderColor: "rgba(34,197,94,0.3)",
                                 color: "var(--color-success)",
+                                borderColor:
+                                  "color-mix(in srgb, var(--color-success) 35%, var(--color-border))",
                               }}
                             >
                               הפעלה
@@ -601,10 +588,10 @@ function UserDetailModal({
                                 )
                               }
                               disabled={accessBusyId !== null}
-                              className="text-xs px-2.5 py-1 rounded-full border disabled:opacity-50"
+                              className="app-btn-secondary"
                               style={{
-                                borderColor: "rgba(245,158,11,0.3)",
-                                color: "#F59E0B",
+                                borderColor:
+                                  "color-mix(in srgb, var(--color-primary) 35%, var(--color-border))",
                               }}
                             >
                               חסימה זמנית
@@ -628,10 +615,11 @@ function UserDetailModal({
                               )
                             }
                             disabled={accessBusyId !== null}
-                            className="text-xs px-2.5 py-1 rounded-full border disabled:opacity-50"
+                            className="app-btn-secondary"
                             style={{
-                              borderColor: "rgba(239,68,68,0.3)",
                               color: "var(--color-danger)",
+                              borderColor:
+                                "color-mix(in srgb, var(--color-danger) 35%, var(--color-border))",
                             }}
                           >
                             שלילה
@@ -649,11 +637,7 @@ function UserDetailModal({
                               )
                             }
                             disabled={accessBusyId !== null}
-                            className="text-xs px-2.5 py-1 rounded-full border disabled:opacity-50"
-                            style={{
-                              borderColor: "rgba(239,68,68,0.3)",
-                              color: "var(--color-danger)",
-                            }}
+                            className="app-btn-danger"
                           >
                             הסרה
                           </button>
@@ -715,7 +699,7 @@ function UserDetailModal({
                           style={{
                             width: `${rp.progress_percent}%`,
                             background:
-                              "linear-gradient(90deg, #E7B94C, #B8862A)",
+                              "linear-gradient(90deg, #DE9A60, #96552D)",
                           }}
                         />
                       </div>
@@ -753,7 +737,7 @@ function UserDetailModal({
               userRefunds.map((r) => {
                 const st = REFUND_STATUS_LABEL[r.status] ?? {
                   text: r.status,
-                  color: "var(--color-muted-foreground)",
+                  badge: "app-badge--neutral",
                 }
                 return (
                   <div
@@ -768,10 +752,7 @@ function UserDetailModal({
                       <span className="text-xs font-mono" dir="ltr">
                         {r.order_id}
                       </span>
-                      <span
-                        className="text-xs font-bold"
-                        style={{ color: st.color }}
-                      >
+                      <span className={`app-badge ${st.badge}`}>
                         {st.text}
                       </span>
                     </div>
@@ -896,8 +877,10 @@ function UserDetailModal({
             <div
               className="p-3 rounded-md mb-3 text-xs"
               style={{
-                background: "rgba(34,197,94,0.08)",
-                border: "1px solid rgba(34,197,94,0.25)",
+                background:
+                  "color-mix(in srgb, var(--color-success) 8%, var(--color-card))",
+                border:
+                  "1px solid color-mix(in srgb, var(--color-success) 28%, var(--color-border))",
               }}
             >
               <p
@@ -924,14 +907,10 @@ function UserDetailModal({
               </p>
             </div>
           )}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleResetLink}
-              className="flex-1 py-2 rounded-full text-sm font-medium border transition-colors hover:bg-white/5"
-              style={{
-                borderColor: "var(--color-border)",
-                color: "var(--color-foreground)",
-              }}
+              className="app-btn-secondary flex-1"
             >
               יצירת קישור איפוס סיסמה
             </button>
@@ -974,17 +953,20 @@ function UserDetailModal({
 
                   setActionError(result.error)
                 }}
-                className="flex-1 py-2 rounded-full text-sm font-medium border transition-colors hover:bg-red-500/10"
-                style={{
-                  borderColor:
-                    live.account_status === "ACTIVE"
-                      ? "rgba(239,68,68,0.3)"
-                      : "rgba(34,197,94,0.3)",
-                  color:
-                    live.account_status === "ACTIVE"
-                      ? "var(--color-danger)"
-                      : "var(--color-success)",
-                }}
+                className={
+                  live.account_status === "ACTIVE"
+                    ? "app-btn-danger flex-1"
+                    : "app-btn-secondary flex-1"
+                }
+                style={
+                  live.account_status === "ACTIVE"
+                    ? undefined
+                    : {
+                        color: "var(--color-success)",
+                        borderColor:
+                          "color-mix(in srgb, var(--color-success) 35%, var(--color-border))",
+                      }
+                }
               >
                 {live.account_status === "ACTIVE"
                   ? "השהיית משתמש"
@@ -1007,8 +989,10 @@ function UserDetailModal({
             <div
               className="mx-auto mb-4 w-11 h-11 rounded-full flex items-center justify-center"
               style={{
-                background: "rgba(212,160,48,0.12)",
-                border: "1px solid rgba(212,160,48,0.3)",
+                background:
+                  "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+                border:
+                  "1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)",
                 color: "var(--color-primary)",
               }}
             >
@@ -1023,11 +1007,7 @@ function UserDetailModal({
             </p>
             <button
               onClick={() => setNotice(null)}
-              className="w-full py-2 rounded-full text-sm font-medium border transition-colors hover:bg-white/5"
-              style={{
-                borderColor: "var(--color-border)",
-                color: "var(--color-foreground)",
-              }}
+              className="app-btn-secondary w-full"
             >
               הבנתי
             </button>
@@ -1054,190 +1034,204 @@ export default function AdminUsersPage() {
   })
 
   return (
-    <div className="max-w-5xl mx-auto page-enter">
-      <div className="mb-8">
-        <h1 className="font-display text-4xl font-semibold mb-1">משתמשים</h1>
-        <p style={{ color: "var(--color-muted-foreground)" }}>
-          {users.length} משתמשים רשומים
-        </p>
+    <div className="page-enter">
+      <PageHeader
+        eyebrow="ניהול · לקוחות וצוות"
+        title="משתמשים"
+        description={
+          users.length === 1
+            ? "משתמש אחד רשום"
+            : `${users.length} משתמשים רשומים`
+        }
+        breadcrumbs={[{ label: "ניהול", to: "/admin" }, { label: "משתמשים" }]}
+        actions={
+          can(adminRole, "access") ? (
+            <Link to="/admin/access" className="app-btn-secondary">
+              <Icon name="key" size={15} />
+              ניהול הרשאות גישה
+            </Link>
+          ) : undefined
+        }
+      />
+
+      <div className="app-surface mb-4">
+        <div className="app-surface-body">
+          <div className="flex flex-col md:flex-row md:items-end gap-4">
+            <div className="flex-1 min-w-0">
+              <label htmlFor="users-search" className="app-label block mb-1.5">
+                חיפוש
+              </label>
+              <input
+                id="users-search"
+                type="search"
+                className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
+                style={inputStyle}
+                placeholder="חיפוש לפי שם או אימייל..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="min-w-0">
+              <span className="app-label block mb-1.5">תפקיד</span>
+              <div
+                className="app-tabs"
+                role="group"
+                aria-label="סינון משתמשים לפי תפקיד"
+                style={{ borderBottom: 0 }}
+              >
+                {([
+                  { value: "ALL", label: "הכול" },
+                  { value: "CUSTOMER", label: "לקוחות" },
+                  { value: "ADMIN", label: "מנהלים" },
+                ] as const).map((r) => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setRoleFilter(r.value)}
+                    className="app-tab"
+                    data-active={roleFilter === r.value}
+                    aria-pressed={roleFilter === r.value}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <input
-          className="flex-1 min-w-48 px-4 py-2.5 rounded-lg border text-sm outline-none"
-          style={inputStyle}
-          placeholder="חיפוש לפי שם או אימייל..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+      {users.length === 0 ? (
+        <EmptyState
+          icon="users"
+          title="אין עדיין משתמשים רשומים"
+          description="לקוחות נוצרים אוטומטית עם השלמת רכישה או הרשמה."
         />
-        <div className="flex gap-2">
-          {([
-            { value: "ALL", label: "הכול" },
-            { value: "CUSTOMER", label: "לקוחות" },
-            { value: "ADMIN", label: "מנהלים" },
-          ] as const).map((r) => (
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon="search"
+          title="לא נמצאו משתמשים תואמים"
+          description="נסו לשנות את מונח החיפוש או את סינון התפקיד."
+          actions={
             <button
-              key={r.value}
-              onClick={() => setRoleFilter(r.value)}
-              className="px-3 py-2 rounded-full text-xs font-medium border transition-all"
-              style={{
-                background:
-                  roleFilter === r.value
-                    ? "var(--color-primary)"
-                    : "transparent",
-                color:
-                  roleFilter === r.value
-                    ? "var(--color-primary-foreground)"
-                    : "var(--color-muted-foreground)",
-                borderColor:
-                  roleFilter === r.value
-                    ? "var(--color-primary)"
-                    : "var(--color-border)",
+              type="button"
+              className="app-btn-secondary"
+              onClick={() => {
+                setSearch("")
+                setRoleFilter("ALL")
               }}
             >
-              {r.label}
+              ניקוי סינון
             </button>
-          ))}
-        </div>
-      </div>
-
-      {users.length === 0 && (
-        <div
-          className="card-glow p-10 text-center text-sm mb-4"
-          style={{ color: "var(--color-muted-foreground)" }}
-        >
-          אין עדיין משתמשים רשומים. לקוחות נוצרים אוטומטית עם השלמת רכישה או
-          הרשמה.
-        </div>
-      )}
-
-      <div
-        className="rounded-lg border overflow-hidden"
-        style={{ borderColor: "var(--color-border)" }}
-      >
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: "var(--color-secondary)" }}>
-              {[
-                "משתמש",
-                "תפקיד",
-                "סטטוס",
-                "הצטרפות",
-                "ספרים",
-                "התחברות אחרונה",
-                "פעולות",
-              ].map((col) => (
-                <th
-                  key={col}
-                  className="text-right px-5 py-3 text-xs tracking-wide"
-                  style={{
-                    color: "var(--color-muted-foreground)",
-                    borderBottom: "1px solid var(--color-border)",
-                  }}
-                >
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((user, i) => {
-              const count = userProducts.filter(
-                (up) =>
-                  up.user_id === user.user_id && up.access_status === "ACTIVE",
-              ).length
-              return (
-                <tr
-                  key={user.user_id}
-                  style={{
-                    background:
-                      i % 2 === 0
-                        ? "var(--color-card)"
-                        : "var(--color-background)",
-                    borderBottom: "1px solid var(--color-border)",
-                  }}
-                >
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+          }
+        />
+      ) : (
+        <div className="app-table-wrap">
+          <table className="app-table" style={{ minWidth: "58rem" }}>
+            <thead>
+              <tr>
+                {[
+                  "משתמש",
+                  "תפקיד",
+                  "סטטוס",
+                  "הצטרפות",
+                  "ספרים",
+                  "התחברות אחרונה",
+                  "פעולות",
+                ].map((col) => (
+                  <th key={col} scope="col">
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((user) => {
+                const count = userProducts.filter(
+                  (up) =>
+                    up.user_id === user.user_id && up.access_status === "ACTIVE",
+                ).length
+                return (
+                  <tr key={user.user_id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                          style={{
+                            background:
+                              "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+                            color: "var(--color-primary)",
+                          }}
+                          aria-hidden="true"
+                        >
+                          {initialOf(user)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{nameOf(user)}</p>
+                          <p className="text-xs app-muted">
+                            <span dir="ltr">{user.email}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={`app-badge ${
+                          user.role === "ADMIN"
+                            ? "app-badge--accent"
+                            : "app-badge--neutral"
+                        }`}
+                      >
+                        {ROLE_LABEL_USER[user.role] ?? user.role}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`app-badge ${
+                          user.account_status === "ACTIVE"
+                            ? "app-badge--success"
+                            : "app-badge--danger"
+                        }`}
+                      >
+                        {STATUS_LABEL[user.account_status] ??
+                          user.account_status}
+                      </span>
+                    </td>
+                    <td className="text-xs whitespace-nowrap app-muted">
+                      {new Date(user.created_at).toLocaleDateString("he-IL", {
+                        day: "numeric",
+                        month: "short",
+                        year: "2-digit",
+                      })}
+                    </td>
+                    <td>
+                      <span className="font-semibold">{count}</span>
+                    </td>
+                    <td className="text-xs whitespace-nowrap app-muted">
+                      {formatIsraelDateTime(user.last_login_at) || "מעולם"}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => setSelected(user)}
+                        aria-label={`צפייה בפרופיל של ${nameOf(user)}`}
+                        className="app-btn-secondary"
                         style={{
-                          background: "rgba(212,160,48,0.12)",
-                          color: "var(--color-primary)",
+                          minHeight: "2.2rem",
+                          padding: "0.35rem 0.9rem",
+                          fontSize: "0.75rem",
                         }}
                       >
-                        {initialOf(user)}
-                      </div>
-                      <div>
-                        <p className="font-medium">{nameOf(user)}</p>
-                        <p
-                          className="text-xs"
-                          dir="ltr"
-                          style={{ color: "var(--color-muted-foreground)" }}
-                        >
-                          {user.email}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className="text-xs"
-                      style={{ color: "var(--color-muted-foreground)" }}
-                    >
-                      {ROLE_LABEL_USER[user.role] ?? user.role}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className="text-xs"
-                      style={{
-                        color:
-                          user.account_status === "ACTIVE"
-                            ? "var(--color-success)"
-                            : "var(--color-danger)",
-                      }}
-                    >
-                      {STATUS_LABEL[user.account_status] ?? user.account_status}
-                    </span>
-                  </td>
-                  <td
-                    className="px-5 py-3 text-xs"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    {new Date(user.created_at).toLocaleDateString("he-IL", {
-                      day: "numeric",
-                      month: "short",
-                      year: "2-digit",
-                    })}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className="text-sm font-semibold">{count}</span>
-                  </td>
-                  <td
-                    className="px-5 py-3 text-xs"
-                    style={{ color: "var(--color-muted-foreground)" }}
-                  >
-                    {formatIsraelDateTime(user.last_login_at) || "מעולם"}
-                  </td>
-                  <td className="px-5 py-3">
-                    <button
-                      onClick={() => setSelected(user)}
-                      className="text-xs px-3 py-1 rounded-full border transition-colors hover:bg-white/5"
-                      style={{
-                        borderColor: "var(--color-border)",
-                        color: "var(--color-foreground)",
-                      }}
-                    >
-                      צפייה
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                        צפייה
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selected && (
         <UserDetailModal user={selected} onClose={() => setSelected(null)} />
