@@ -38,6 +38,15 @@ import {
   toPublicUser,
 } from "../lib/auth"
 import {
+  applyTheme,
+  getInitialTheme,
+  getStoredTheme,
+  isTheme,
+  storeTheme,
+  THEME_STORAGE_KEY,
+  type Theme,
+} from "../lib/theme"
+import {
   actorFromUser,
   bootstrapAdmin,
   isBootstrapRequired,
@@ -106,8 +115,6 @@ async function resolveRestoredUser(
 }
 
 
-const THEME_KEY = "casanova_theme"
-
 /** How often the signed-in account's entitlements are re-fetched as a
  * safety net under the Realtime push. Realtime covers INSERT/UPDATE
  * instantly; DELETE cannot pass RLS filtering, so removals surface on
@@ -144,7 +151,7 @@ interface AppContextValue {
   /** True while no administrator exists yet; gates the first-run setup screen. */
   bootstrapRequired: boolean
 
-  theme: "dark" | "light"
+  theme: Theme
   toggleTheme: () => void
 
   /* ── Auth ── */
@@ -201,22 +208,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /* ── Theme ────────────────────────────────────────────── */
-  /* Cream is the application default; dark remains a deliberate choice. The
-   * same rule runs in the pre-hydration script in index.html, so the first
-   * paint and the React state cannot disagree. */
-  const [theme, setTheme] = useState<"dark" | "light">(() =>
-    localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light",
+  /* The pre-hydration script resolves the stored choice or the OS preference,
+   * so React starts from the value already applied to <html>. Until the
+   * visitor makes an explicit choice we keep following the OS; the preference
+   * is written to localStorage only when the toggle is used. */
+  const [theme, setTheme] = useState<Theme>(getInitialTheme)
+  const [hasThemePreference, setHasThemePreference] = useState(
+    () => getStoredTheme() !== null,
   )
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem(THEME_KEY, theme)
+    applyTheme(theme)
   }, [theme])
 
-  const toggleTheme = useCallback(
-    () => setTheme((t) => (t === "dark" ? "light" : "dark")),
-    [],
-  )
+  useEffect(() => {
+    if (hasThemePreference) return
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const onChange = (event: MediaQueryListEvent) =>
+      setTheme(event.matches ? "dark" : "light")
+
+    media.addEventListener("change", onChange)
+    return () => media.removeEventListener("change", onChange)
+  }, [hasThemePreference])
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== THEME_STORAGE_KEY || !isTheme(event.newValue)) return
+
+      setHasThemePreference(true)
+      setTheme(event.newValue)
+    }
+
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    const next: Theme = theme === "dark" ? "light" : "dark"
+
+    storeTheme(next)
+    setHasThemePreference(true)
+    setTheme(next)
+  }, [theme])
 
   /* ── Session ──────────────────────────────────────────── */
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null)

@@ -1,7 +1,6 @@
 import { useEffect, type ReactNode } from "react"
 import { Link } from "react-router"
 import Icon from "../icons"
-import ThemeToggle from "../ThemeToggle"
 import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
 import { useContent } from "../../content/useContent"
 
@@ -60,9 +59,6 @@ export default function AuthShell({
             חזרה לאתר
           </Link>
           <div className="auth-topbar-actions">
-            <span className="auth-theme-toggle">
-              <ThemeToggle />
-            </span>
             <AccessibilityFooterLink />
           </div>
         </div>

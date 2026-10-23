@@ -814,6 +814,10 @@ export default function SalesLandingPage() {
               {accountLabel}
             </Link>
 
+            <span className="cv-theme-toggle">
+              <ThemeToggle />
+            </span>
+
             <button
               type="button"
               className="cv-btn cv-btn--camel cv-btn--sm cv-header-cta"
@@ -1328,9 +1332,6 @@ export default function SalesLandingPage() {
 
           <div className="cv-footer-bottom">
             <div className="cv-footer-utility">
-              <span className="cv-theme-toggle">
-                <ThemeToggle />
-              </span>
               <AccessibilityFooterLink />
             </div>
 

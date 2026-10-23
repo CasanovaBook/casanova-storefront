@@ -4,7 +4,6 @@ import { useApp } from "../../context/AppContext"
 import { fmt, useContent } from "../../content/useContent"
 import { SmartLink } from "../../content/render"
 import Icon from "../icons"
-import ThemeToggle from "../ThemeToggle"
 import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
 import { loadContent } from "../../content/store"
 import useFavicon from "../useFavicon"
@@ -232,14 +231,8 @@ export default function PublicRoot() {
               </span>
             )}
             <div className="hidden md:flex items-center gap-2">
-              <span className="site-theme-toggle">
-                <ThemeToggle />
-              </span>
               {desktopAccount}
             </div>
-            <span className="site-theme-toggle md:hidden">
-              <ThemeToggle />
-            </span>
             <button
               ref={menuButtonRef}
               type="button"

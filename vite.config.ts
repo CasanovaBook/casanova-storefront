@@ -1,6 +1,7 @@
 import { defineConfig, type HtmlTagDescriptor, type Plugin } from "vite"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
+import { createHash } from "node:crypto"
 import path from "node:path"
 
 import siteConfiguration from "./.figma/make/site.json"
@@ -322,60 +323,100 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
  * exists in a production bundle.
  */
 function figmaContentSecurityPolicy(isDevServer: boolean): Plugin {
-  const directives = [
-    "default-src 'self'",
-    "base-uri 'self'",
-    /* The reader embeds PDFs through an <iframe>, so no plugin document is
-     * ever legitimate here and <object>/<embed> are refused outright. */
-    "object-src 'none'",
-    isDevServer ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'",
-    /* 'unsafe-inline' stays in both policies: useScreenProtection injects a
-     * <style> element at runtime to blank the page for printing, and a nonce
-     * cannot cover an element application code creates itself. */
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    /* Covers and gallery images come from the CMS and may point at any https
-     * origin, so img-src cannot be narrowed to 'self' without breaking assets
-     * an administrator uploaded. */
-    "img-src 'self' data: blob: https:",
-    "media-src 'self' blob: https:",
-    /* The reader <iframe> now loads the PDF from a Supabase Storage signed
-     * URL, which is cross-origin, so frame-src has to name *.supabase.co or
-     * the viewer is blocked before it renders. YouTube/Vimeo stay for the
-     * CMS media embeds. */
-    "frame-src 'self' https://*.supabase.co https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
-    /* Supabase is reached over HTTPS for PostgREST/Auth/Storage and over
-     * WSS for Realtime, so connect-src has to name *.supabase.co or every
-     * query the client issues is blocked before it leaves the browser.
-     * The dev branch keeps ws:/wss: for Vite's own HMR socket. */
-    isDevServer
-      ? "connect-src 'self' ws: wss: https://*.supabase.co wss://*.supabase.co"
-      : "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-    "form-action 'self'",
-    ...(isDevServer ? [] : ["upgrade-insecure-requests"]),
-  ]
+  /* The theme bootstrap has to run before first paint, so it cannot wait for
+   * the module bundle. In production it is an inline classic script, which the
+   * policy allows through a SHA-256 hash instead of opening script-src to
+   * 'unsafe-inline'. Non-JS data blocks such as JSON-LD are not scripts and
+   * are skipped. */
+  function inlineScriptHashes(html: string): string[] {
+    const hashes: string[] = []
+    const pattern = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi
+    let match: RegExpExecArray | null
 
-  /* Turning on analytics in site.json injects an inline gtag snippet and a
-   * googletagmanager.com script; both would be blocked until script-src is
-   * widened to match. Nothing else in the app loads third-party script. */
+    while ((match = pattern.exec(html)) !== null) {
+      const attrs = match[1] ?? ""
+      if (/\bsrc\s*=/i.test(attrs)) continue
+
+      const type = attrs.match(/\btype=["']([^"']+)["']/i)?.[1]?.toLowerCase()
+      if (
+        type &&
+        type !== "text/javascript" &&
+        type !== "application/javascript" &&
+        type !== "module"
+      ) {
+        continue
+      }
+
+      const digest = createHash("sha256")
+        .update(match[2], "utf8")
+        .digest("base64")
+      hashes.push(`'sha256-${digest}'`)
+    }
+
+    return hashes
+  }
+
   return {
     name: "figma-content-security-policy",
     transformIndexHtml: {
       order: "post",
-      handler: () => [
-        {
-          tag: "meta",
-          attrs: {
-            "http-equiv": "Content-Security-Policy",
-            content: directives.join("; "),
+      handler: (html) => {
+        const scriptSrc = isDevServer
+          ? "script-src 'self' 'unsafe-inline'"
+          : ["script-src 'self'", ...inlineScriptHashes(html)].join(" ")
+
+        const directives = [
+          "default-src 'self'",
+          "base-uri 'self'",
+          /* The reader embeds PDFs through an <iframe>, so no plugin document
+           * is ever legitimate here and <object>/<embed> are refused outright. */
+          "object-src 'none'",
+          scriptSrc,
+          /* 'unsafe-inline' stays in both policies: useScreenProtection injects
+           * a <style> element at runtime to blank the page for printing, and a
+           * nonce cannot cover an element application code creates itself. */
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' https://fonts.gstatic.com",
+          /* Covers and gallery images come from the CMS and may point at any
+           * https origin, so img-src cannot be narrowed to 'self' without
+           * breaking assets an administrator uploaded. */
+          "img-src 'self' data: blob: https:",
+          "media-src 'self' blob: https:",
+          /* The reader <iframe> loads the PDF from a Supabase Storage signed
+           * URL, which is cross-origin, so frame-src has to name *.supabase.co
+           * or the viewer is blocked before it renders. YouTube/Vimeo stay for
+           * the CMS media embeds. */
+          "frame-src 'self' https://*.supabase.co https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
+          /* Supabase is reached over HTTPS for PostgREST/Auth/Storage and over
+           * WSS for Realtime, so connect-src has to name *.supabase.co or every
+           * query the client issues is blocked before it leaves the browser.
+           * The dev branch keeps ws:/wss: for Vite's own HMR socket. */
+          isDevServer
+            ? "connect-src 'self' ws: wss: https://*.supabase.co wss://*.supabase.co"
+            : "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+          "form-action 'self'",
+          ...(isDevServer ? [] : ["upgrade-insecure-requests"]),
+        ]
+
+        /* site.json analytics adds an inline gtag snippet (covered by the
+         * hashes above) and an external googletagmanager.com script, which
+         * script-src must name explicitly. Nothing else in the app loads
+         * third-party script. */
+        return [
+          {
+            tag: "meta",
+            attrs: {
+              "http-equiv": "Content-Security-Policy",
+              content: directives.join("; "),
+            },
+            /* head-prepend, not head: a meta policy only governs resources
+             * discovered after it is parsed, and appending to the head puts it
+             * after the entry <script> the build injects — which would leave
+             * the application bundle itself outside the policy. */
+            injectTo: "head-prepend",
           },
-          /* head-prepend, not head: a meta policy only governs resources
-           * discovered after it is parsed, and appending to the head puts it
-           * after the entry <script> the build injects — which would leave the
-           * application bundle itself outside the policy. */
-          injectTo: "head-prepend",
-        },
-      ],
+        ]
+      },
     },
   }
 }

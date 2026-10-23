@@ -4,7 +4,6 @@ import { useAdmin } from "../../context/AdminContext"
 import { can, ROLE_LABEL, type AdminPermission } from "../../lib/permissions"
 import { useEffect } from "react"
 import Icon, { type IconName } from "../icons"
-import ThemeToggle from "../ThemeToggle"
 import SideNav, { type SideNavItem } from "./SideNav"
 
 const navItems: {
@@ -167,9 +166,6 @@ export default function AdminLayout() {
               </div>
             </div>
             <div className="app-nav-actions">
-              <span className="cv-theme-toggle">
-                <ThemeToggle />
-              </span>
               <button
                 onClick={handleLogout}
                 className="app-nav-logout"

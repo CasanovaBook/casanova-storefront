@@ -13,7 +13,6 @@ import { ROLE_LABEL } from "@/lib/permissions";
 import { AdminAuthGate } from "./auth";
 import SideNav, { type SideNavItem } from "@/components/layout/SideNav";
 import Icon from "@/components/icons";
-import ThemeToggle from "@/components/ThemeToggle";
 import { Toaster } from "./toast";
 
 const NAV_ITEMS: SideNavItem[] = [
@@ -84,9 +83,6 @@ function MaestroLayout() {
               </div>
             </div>
             <div className="app-nav-actions">
-              <span className="cv-theme-toggle">
-                <ThemeToggle />
-              </span>
               <button
                 onClick={handleLogout}
                 className="app-nav-logout"
