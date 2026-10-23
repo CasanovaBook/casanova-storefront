@@ -168,7 +168,8 @@ link("sales", "hero.secondaryLink", "Hero — קישור לכפתור המשני
 strings("sales", "hero.facts", "Hero — עובדות קצרות", ["ספר דיגיטלי", "קריאה בדפדפן", "גישה בחשבון אישי"]);
 
 text("sales", "header.cta", "הדר — כפתור רכישה", "רכישת הספר");
-text("sales", "header.login", "הדר — קישור לאזור האישי", "האזור האישי");
+text("sales", "header.login", "הדר — קישור התחברות (לא מחובר)", "התחברות");
+text("sales", "header.dashboard", "הדר — קישור לאזור האישי (מחובר)", "האזור שלי");
 text("sales", "footer.copyright", "פוטר — זכויות יוצרים", "© {year} CASANOVA. כל הזכויות שמורות.");
 text("sales", "footer.powered", "פוטר — קרדיט", "Powered by Phantom Third Labs");
 text("sales", "footer.age", "פוטר — הערת גיל", "תוכן למבוגרים · 18+");
