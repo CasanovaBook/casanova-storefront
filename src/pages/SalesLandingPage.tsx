@@ -58,6 +58,67 @@ function formatNumber(value: number): string {
   return value.toLocaleString("he-IL", { maximumFractionDigits: 2 })
 }
 
+interface LandingAccount {
+  ready: boolean
+  signedIn: boolean
+  href: string
+  label: string
+  memberLabel: string
+  guestLabel: string
+  displayName: string
+  initial: string
+  email: string
+}
+
+function AccountIndicator({ account }: { account: LandingAccount }) {
+  if (!account.ready) {
+    return (
+      <span
+        className="cv-auth-indicator cv-auth-indicator--pending"
+        aria-hidden="true"
+      >
+        <span className="cv-auth-icon">
+          <Icon name="user" size={16} />
+        </span>
+      </span>
+    )
+  }
+
+  if (!account.signedIn) {
+    return (
+      <Link
+        to={account.href}
+        className="cv-auth-indicator cv-auth-indicator--guest"
+        aria-label={account.guestLabel}
+      >
+        <span className="cv-auth-icon" aria-hidden="true">
+          <Icon name="user" size={16} />
+        </span>
+        <span className="cv-auth-indicator-label">{account.guestLabel}</span>
+      </Link>
+    )
+  }
+
+  return (
+    <Link
+      to={account.href}
+      className="cv-auth-indicator cv-auth-indicator--member"
+      aria-label={`${account.memberLabel} — ${account.displayName} (מחובר)`}
+      title={
+        account.email
+          ? `${account.displayName} · ${account.email}`
+          : account.displayName
+      }
+    >
+      <span className="cv-auth-avatar" aria-hidden="true">
+        {account.initial}
+        <span className="cv-auth-status" />
+      </span>
+      <span className="cv-auth-indicator-label">{account.memberLabel}</span>
+    </Link>
+  )
+}
+
 function Price({
   value,
   currency,
@@ -380,7 +441,7 @@ function MobileMenu({
   onClose,
   onBuy,
   buyLabel,
-  loginLabel,
+  account,
   price,
   currency,
   productName,
@@ -389,7 +450,7 @@ function MobileMenu({
   onClose: () => void
   onBuy: () => void
   buyLabel: string
-  loginLabel: string
+  account: LandingAccount
   price: number
   currency: string
   productName: string
@@ -455,6 +516,48 @@ function MobileMenu({
       </nav>
 
       <div className="cv-mobile-actions">
+        <div className="cv-mobile-account">
+          {!account.ready ? null : account.signedIn ? (
+            <Link
+              to={account.href}
+              className="cv-mobile-account-card"
+              onClick={onClose}
+            >
+              <span className="cv-auth-avatar" aria-hidden="true">
+                {account.initial}
+                <span className="cv-auth-status" />
+              </span>
+              <span className="cv-mobile-account-copy">
+                <span className="cv-mobile-account-name">
+                  {account.displayName}
+                </span>
+                {account.email && (
+                  <span className="cv-mobile-account-email" dir="ltr">
+                    {account.email}
+                  </span>
+                )}
+                <span className="cv-mobile-account-state">
+                  <span className="cv-auth-dot" aria-hidden="true" />
+                  מחובר
+                </span>
+              </span>
+              <Icon name="arrowLeft" size={16} />
+            </Link>
+          ) : (
+            <Link
+              to={account.href}
+              className="cv-mobile-account-card cv-mobile-account-card--guest"
+              onClick={onClose}
+            >
+              <span className="cv-auth-icon" aria-hidden="true">
+                <Icon name="user" size={18} />
+              </span>
+              <span>{account.guestLabel}</span>
+              <Icon name="arrowLeft" size={16} />
+            </Link>
+          )}
+        </div>
+
         <button type="button" className="cv-btn cv-btn--camel" onClick={onBuy}>
           {buyLabel}
           <span className="cv-btn-price" dir="ltr">
@@ -463,9 +566,6 @@ function MobileMenu({
           </span>
           <Icon name="arrowLeft" size={16} />
         </button>
-        <Link to="/login" className="cv-account-link" onClick={onClose}>
-          {loginLabel}
-        </Link>
       </div>
 
       <p className="cv-mobile-note">
@@ -609,7 +709,7 @@ function ExitDialog({
 export default function SalesLandingPage() {
   const navigate = useNavigate()
 
-  const { setSelectedProduct } = useApp()
+  const { setSelectedProduct, authReady, isAuthenticated, user } = useApp()
   const cms = useCms()
   const c = useContent()
 
@@ -699,7 +799,26 @@ export default function SalesLandingPage() {
   const footerCopyright = c("sales.footer.copyright")
   const footerAge = c("sales.footer.age")
   const footerPowered = c("sales.footer.powered")
-  const accountLabel = c("sales.header.login") || "האזור האישי"
+  const memberLabel = c("sales.header.dashboard") || "האזור שלי"
+  const guestLabel = c("sales.header.login") || "התחברות"
+  const displayName =
+    user?.first_name?.trim() || user?.email?.split("@")[0] || "משתמש"
+  const initial = (user?.first_name?.trim() || user?.email || "?")
+    .trim()
+    .charAt(0)
+    .toLocaleUpperCase()
+
+  const account: LandingAccount = {
+    ready: authReady,
+    signedIn: isAuthenticated,
+    href: isAuthenticated ? "/dashboard" : "/login",
+    label: isAuthenticated ? memberLabel : guestLabel,
+    memberLabel,
+    guestLabel,
+    displayName,
+    initial,
+    email: user?.email ?? "",
+  }
 
   const stickyLabel =
     cms.settings.sales_sticky_cta?.trim() ||
@@ -810,9 +929,7 @@ export default function SalesLandingPage() {
           </nav>
 
           <div className="cv-header-actions">
-            <Link to="/login" className="cv-account-link">
-              {accountLabel}
-            </Link>
+            <AccountIndicator account={account} />
 
             <span className="cv-theme-toggle">
               <ThemeToggle />
@@ -1315,7 +1432,7 @@ export default function SalesLandingPage() {
                     {link.label}
                   </a>
                 ))}
-                <Link to="/login">{accountLabel}</Link>
+                <Link to={account.href}>{account.label}</Link>
               </nav>
 
               <div className="cv-footer-legal">
@@ -1359,7 +1476,7 @@ export default function SalesLandingPage() {
         onClose={() => setMenuOpen(false)}
         onBuy={handleMobileBuy}
         buyLabel={buyLabel}
-        loginLabel={accountLabel}
+        account={account}
         price={price}
         currency={product.currency}
         productName={product.name}

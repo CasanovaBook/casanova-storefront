@@ -654,7 +654,12 @@ body {
   gap: clamp(0.65rem, 1.5vw, 1.1rem);
 }
 
-.cv-account-link {
+.cv-auth-indicator {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
   color: var(--cv-on-dark-soft);
   font-size: 0.82rem;
   text-decoration: none;
@@ -662,8 +667,73 @@ body {
   transition: color 0.2s ease;
 }
 
-.cv-account-link:hover {
+.cv-auth-indicator:hover {
   color: var(--cv-cream);
+}
+
+.cv-auth-indicator--pending {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.cv-auth-icon,
+.cv-auth-avatar {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  color: var(--cv-camel-light);
+  background: rgba(196, 122, 67, 0.1);
+  border: 1px solid rgba(196, 122, 67, 0.32);
+  border-radius: 50%;
+}
+
+.cv-auth-avatar {
+  font-family: var(--cv-font-serif);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.cv-auth-status {
+  position: absolute;
+  inset-inline-end: -1px;
+  bottom: -1px;
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--color-success);
+  border: 2px solid var(--cv-black);
+  border-radius: 50%;
+}
+
+.cv-auth-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  background: var(--color-success);
+  border-radius: 50%;
+}
+
+.cv-auth-indicator--member:hover .cv-auth-avatar {
+  border-color: rgba(222, 154, 96, 0.6);
+}
+
+@media (min-width: 901px) {
+  .cv-auth-indicator {
+    min-width: 8rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .cv-auth-indicator {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .cv-auth-indicator-label {
+    display: none;
+  }
 }
 
 .cv-menu-btn {
@@ -1831,9 +1901,65 @@ body {
   margin-top: 2rem;
 }
 
-.cv-mobile-actions .cv-account-link {
-  align-self: center;
-  padding-block: 0.5rem;
+.cv-mobile-account {
+  display: block;
+}
+
+.cv-mobile-account-card {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  color: var(--cv-cream);
+  background: rgba(244, 238, 228, 0.04);
+  border: 1px solid var(--cv-line);
+  border-radius: 1rem;
+  text-decoration: none;
+}
+
+.cv-mobile-account-card > svg:last-child {
+  margin-inline-start: auto;
+  color: var(--cv-camel-light);
+}
+
+.cv-mobile-account-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cv-mobile-account-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.cv-mobile-account-email {
+  overflow: hidden;
+  color: var(--cv-on-dark-soft);
+  font-size: 0.72rem;
+  text-align: end;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-mobile-account-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-success);
+  font-size: 0.68rem;
+}
+
+.cv-mobile-account-card .cv-auth-avatar {
+  width: 2.3rem;
+  height: 2.3rem;
+}
+
+.cv-mobile-account-card .cv-auth-icon {
+  width: 2.3rem;
+  height: 2.3rem;
 }
 
 .cv-mobile-note {
@@ -2028,9 +2154,6 @@ body {
 
 @media (max-width: 900px) {
   .cv-nav {
-    display: none;
-  }
-  .cv-header-actions .cv-account-link {
     display: none;
   }
   .cv-menu-btn {
@@ -2275,12 +2398,41 @@ body {
   color: var(--cv-ink);
 }
 
-:root[data-theme='light'] .cv-account-link {
+:root[data-theme='light'] .cv-auth-indicator {
   color: var(--cv-ink-soft);
 }
 
-:root[data-theme='light'] .cv-account-link:hover {
+:root[data-theme='light'] .cv-auth-indicator:hover {
   color: var(--cv-ink);
+}
+
+:root[data-theme='light'] .cv-auth-icon,
+:root[data-theme='light'] .cv-auth-avatar {
+  color: var(--cv-camel-dark);
+  background: rgba(150, 85, 45, 0.08);
+  border-color: rgba(150, 85, 45, 0.28);
+}
+
+:root[data-theme='light'] .cv-auth-status {
+  border-color: var(--cv-cream);
+}
+
+:root[data-theme='light'] .cv-mobile-account-card {
+  color: var(--cv-ink);
+  background: rgba(25, 22, 18, 0.04);
+  border-color: var(--cv-line-cream);
+}
+
+:root[data-theme='light'] .cv-mobile-account-card > svg:last-child {
+  color: var(--cv-camel-dark);
+}
+
+:root[data-theme='light'] .cv-mobile-account-email {
+  color: var(--cv-ink-soft);
+}
+
+:root[data-theme='light'] .cv-mobile-account-state {
+  color: #2f7d52;
 }
 
 :root[data-theme='light'] .cv-menu-btn {
