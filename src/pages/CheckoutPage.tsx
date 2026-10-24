@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
@@ -87,11 +87,15 @@ function CheckoutHeader() {
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
-  const { selectedProduct, setSelectedProduct, placeOrder, user, resendConfirmation } =
+  const { selectedProduct, setSelectedProduct, placeOrder, user, resendConfirmation, authReady } =
     useApp()
   const cms = useCms()
 
   const product = selectedProduct
+
+  /* One key per checkout attempt: a retry after a lost response returns the
+   * order that was already recorded instead of charging twice. */
+  const idempotencyKey = useRef(crypto.randomUUID())
 
   const [resending, setResending] = useState(false)
   const [resendMessage, setResendMessage] = useState<string | null>(null)
@@ -244,9 +248,9 @@ export default function CheckoutPage() {
 
   const accountEmail = (user?.email ?? "").trim().toLowerCase()
 
-  /* A signed-out visitor has no verified address to deviate from, and cannot
-   * reach the review step at all, so the confirmation field would only be
-   * noise there. It answers to an account or not at all. */
+  /* A signed-out visitor has no account email to compare against. Guest
+   * checkout creates the account from the address they type, so the second
+   * field stays hidden for them. */
   const needsEmailConfirmation =
     accountEmail.length > 0 &&
     typedEmail.length > 0 &&
@@ -293,18 +297,9 @@ export default function CheckoutPage() {
   }
 
   const handleDetailsNext = () => {
-    if (!user) {
-      setSubmitError("יש להתחבר או להירשם לחשבון כדי להמשיך לרכישה.")
-      return
-    }
-    /* The verified-address gate is a hosted-backend rule. Without Supabase
-     * there is nothing that can confirm an address - no mail is sent and no
-     * `email_confirmed_at` is ever written - so requiring it here demanded the
-     * customer satisfy a condition the product could not offer them, and the
-     * screen refused with a message pointing at an email that never arrives.
-     * (docs/PRODUCTION_PLAN.md B2 gates real purchases on real verification,
-     * and the local driver is not a real purchase path.) */
-    if (isSupabaseConfigured && !user.email_confirmed_at) {
+    /* The verified-address gate still applies to a signed-in account. A guest
+     * has no account to verify and proceeds straight to review. */
+    if (user && isSupabaseConfigured && !user.email_confirmed_at) {
       setSubmitError("יש לאמת את כתובת האימייל שלך לפני ביצוע רכישה.")
       return
     }
@@ -331,6 +326,7 @@ export default function CheckoutPage() {
       last_name: form.last_name.trim(),
       email: form.email.trim(),
       phone: phone || undefined,
+      idempotency_key: idempotencyKey.current,
     })
     setIsProcessing(false)
     if (!result.ok) {
@@ -487,9 +483,11 @@ export default function CheckoutPage() {
                       הפרטים שלך
                     </h2>
                     <p className="app-hint mt-1">
-                      {isSupabaseConfigured
+                      {user
                         ? "הפרטים מאשרים את ההזמנה ואת שליחת הקבלה."
-                        : "משמשים ליצירת החשבון ולשליחת הקבלה."}
+                        : isSupabaseConfigured
+                          ? "הרכישה תקושר לחשבון של כתובת המייל, והקבלה תישלח אליה."
+                          : "משמשים ליצירת החשבון ולשליחת הקבלה."}
                     </p>
                   </div>
                   <span className="app-badge app-badge--neutral">
@@ -498,40 +496,9 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="app-surface-body">
-                  {/* Verified-User Gate Banner */}
-                  {!user ? (
-                    <div className="mb-5">
-                      <Alert
-                        tone="warning"
-                        title="חשבון משתמש נדרש לרכישה"
-                      >
-                        <p>
-                          כדי להעניק לך גישה מיידית לספר בספרייה הדיגיטלית, יש
-                          להתחבר או להירשם.
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              navigate("/login?redirect=/checkout")
-                            }
-                            className="app-btn-secondary"
-                          >
-                            התחברות
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              navigate("/register?redirect=/checkout")
-                            }
-                            className="app-btn"
-                          >
-                            יצירת חשבון
-                          </button>
-                        </div>
-                      </Alert>
-                    </div>
-                  ) : isSupabaseConfigured && !user.email_confirmed_at ? (
+                  {/* A signed-in account whose address is unverified still has
+                   * to confirm it. Guests proceed without an account. */}
+                  {user && isSupabaseConfigured && !user.email_confirmed_at ? (
                     <div className="mb-5">
                       <Alert
                         tone="error"
@@ -681,12 +648,10 @@ export default function CheckoutPage() {
                         </p>
                       )}
                       <p id="checkout-email-hint" className="app-hint">
-                        {/* "החשבון שלך ייווצר עם הכתובת הזו" described a guest
-                         * checkout that the hosted flow does not have: a
-                         * purchase is only allowed for a signed-in, verified
-                         * account, so this address is not creating anything. */}
                         {isSupabaseConfigured
-                          ? "כתובת החשבון המאומת. אליה תישלח הקבלה."
+                          ? user
+                            ? "כתובת החשבון. אליה יישלח אישור ההזמנה."
+                            : "הרכישה תקושר לכתובת הזו, ואליה יישלח קישור להגדרת סיסמה."
                           : "החשבון ייווצר עם הכתובת הזו אם עדיין אין לך אחד."}
                       </p>
                     </div>
@@ -922,9 +887,13 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={handleDetailsNext}
+                    disabled={isSupabaseConfigured && !authReady}
+                    aria-busy={isSupabaseConfigured && !authReady}
                     className="app-btn mt-5 w-full py-3.5"
                   >
-                    המשך לאישור ההזמנה
+                    {isSupabaseConfigured && !authReady
+                      ? "מאמת את החיבור..."
+                      : "המשך לאישור ההזמנה"}
                     <Icon name="arrowLeft" size={16} aria-hidden="true" />
                   </button>
                 </div>
@@ -1030,6 +999,14 @@ export default function CheckoutPage() {
                     <div className="mt-4">
                       <Alert tone="error">{submitError}</Alert>
                     </div>
+                  )}
+
+                  {!user && (
+                    <p className="app-hint mt-4">
+                      {isSupabaseConfigured
+                        ? "הרכישה תקושר לחשבון של כתובת המייל; יישלח קישור להגדרת סיסמה."
+                        : "החשבון ייווצר אוטומטית עם כתובת המייל."}
+                    </p>
                   )}
 
                   <button
@@ -1151,9 +1128,11 @@ export default function CheckoutPage() {
                   }}
                 >
                   {[
-                    isSupabaseConfigured
-                      ? "ההזמנה נרשמת לחשבון המאומת שלך"
-                      : "החשבון נוצר אוטומטית לפי כתובת המייל",
+                    user
+                      ? "ההזמנה נרשמת לחשבון שלך"
+                      : isSupabaseConfigured
+                        ? "הרכישה תקושר לחשבון לפי כתובת המייל"
+                        : "החשבון נוצר אוטומטית לפי כתובת המייל",
                     "ההזמנה נשמרת במערכת עם מספר הזמנה למעקב",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-2">

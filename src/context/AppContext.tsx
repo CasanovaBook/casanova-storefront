@@ -50,6 +50,7 @@ import type { LoginErrorCode } from "../shared/auth-login"
 import {
   actorFromUser,
   bootstrapAdmin,
+  fail,
   isBootstrapRequired,
   login as loginRequest,
   registerCustomer,
@@ -66,6 +67,7 @@ import {
 } from "../lib/api-support"
 import {
   checkout,
+  checkoutGuest,
   listOrdersForUser,
   type CheckoutInput,
   type CheckoutOutcome,
@@ -778,16 +780,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const placeOrder = useCallback(
     async (input: CheckoutInput): Promise<Result<CheckoutOutcome>> => {
-      const result = await checkout(input)
+      /* Wait for the first session lookup. Without this a signed-in buyer who
+       * clicks quickly would be treated as a guest and provisioned twice. */
+      if (isSupabaseConfigured && !authReady) {
+        return fail("UNAUTHENTICATED", "מאמת את החיבור. נסו שוב בעוד רגע.")
+      }
+
+      const result =
+        isSupabaseConfigured && !user
+          ? await checkoutGuest(input)
+          : await checkout(input)
+
       if (result.ok) {
         setLastOrderId(result.data.order.order_id)
         setCart([])
         // While no payment gateway is connected checkout auto-approves the
-        // order and grants access at once. Sign a guest buyer into the account
-        // we just created so they can open the book immediately; a buyer who is
-        // already signed in keeps their current session. Hosted checkout only
-        // runs for a signed-in Supabase account, so there is no local session
-        // to open.
+        // order and grants access at once. Sign a local guest buyer into the
+        // account we just created so they can open the book immediately.
         if (
           result.data.auto_approved &&
           !isSupabaseConfigured &&
@@ -795,11 +804,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ) {
           beginSession(result.data.customer)
         }
-        // Hosted purchases write the entitlement server-side. Pull the
-        // account's rows now so the library and the reader see the book
-        // immediately instead of waiting for the next sync beat - the reader
-        // re-verifies the entitlement server-side either way.
-        if (isSupabaseConfigured && result.data.customer.user_id) {
+        // Hosted purchases write the entitlement server-side. A guest has no
+        // session, so there is nothing to refresh or sync locally; the account
+        // receives the book and the setup mail instead.
+        if (
+          isSupabaseConfigured &&
+          !result.data.is_guest &&
+          result.data.customer.user_id
+        ) {
           void refreshEntitlements(result.data.customer.user_id)
 
           /* The number typed at purchase belongs to the order, and today it
@@ -821,7 +833,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return result
     },
-    [beginSession],
+    [authReady, beginSession, refreshEntitlements, user],
   )
 
   const lastOrder = useMemo(

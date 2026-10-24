@@ -42,6 +42,8 @@ export interface StorefrontCheckoutInput {
   coupon_code?: string
   /** Client-evaluated coupon discount. The server clamps it to the subtotal. */
   discount: number
+  /** Guest checkout only: deduplicates a retry after a lost response. */
+  idempotency_key?: string
 }
 
 export interface StorefrontCheckoutResult {
@@ -51,6 +53,12 @@ export interface StorefrontCheckoutResult {
   user_product_id: string
   granted_at: string
   customer: User
+}
+
+export interface GuestStorefrontCheckoutResult extends StorefrontCheckoutResult {
+  /** False when Supabase Auth rate-limited or failed to send the setup mail.
+   *  The order is still recorded and access is still granted. */
+  email_sent: boolean
 }
 
 /** Refusals raised by `create_storefront_order`, translated once. */
@@ -86,6 +94,40 @@ const CHECKOUT_REFUSALS: Record<string, { error: string; code: ErrorCode }> = {
   },
 }
 
+/** Refusals returned by the guest-checkout Edge Function. */
+const GUEST_CHECKOUT_REFUSALS: Record<
+  string,
+  { error: string; code: ErrorCode }
+> = {
+  user_not_found: { error: "המשתמש לא נמצא.", code: "NOT_FOUND" },
+  email_conflict: {
+    error: "כתובת המייל הזו משויכת לחשבון אחר. יש לפנות לתמיכה.",
+    code: "CONFLICT",
+  },
+  account_suspended: {
+    error: "החשבון מושעה ולא ניתן להשלים רכישה. יש לפנות לתמיכה.",
+    code: "FORBIDDEN",
+  },
+  gateway_configured: CHECKOUT_REFUSALS.gateway_configured,
+  product_not_found: { error: "המוצר לא נמצא.", code: "NOT_FOUND" },
+  product_unavailable: {
+    error: "המוצר אינו זמין לרכישה כרגע.",
+    code: "CONFLICT",
+  },
+  validation: {
+    error: "הפרטים אינם תקינים. יש לבדוק את השדות ולנסות שוב.",
+    code: "VALIDATION",
+  },
+  rate_limited: {
+    error: "יותר מדי ניסיונות רכישה. נסו שוב בעוד מספר דקות.",
+    code: "CONFLICT",
+  },
+  service_unavailable: {
+    error: "לא ניתן להשלים את הרכישה כרגע. נסו שוב בעוד רגע.",
+    code: "STORAGE",
+  },
+}
+
 function describeCheckoutRefusal(
   code: string,
   message: string,
@@ -108,6 +150,7 @@ interface RpcRow {
   item?: Record<string, unknown>
   entitlement?: Record<string, unknown>
   customer?: Record<string, unknown>
+  email_sent?: unknown
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -246,3 +289,76 @@ export async function createStorefrontOrder(
 /** The status a freshly created entitlement carries, re-exported so callers
  *  do not have to re-derive it. */
 export const STOREFRONT_ENTITLEMENT_STATUS: AccessStatus = "ACTIVE"
+
+/**
+ * Guest checkout. The Edge Function owns account creation and calls the
+ * service-role-only `create_guest_storefront_order` RPC. The returned shape
+ * matches `create_storefront_order` so the same mappers and local cache apply.
+ */
+export async function createGuestStorefrontOrder(
+  input: StorefrontCheckoutInput,
+  product: Product,
+): Promise<Result<GuestStorefrontCheckoutResult>> {
+  if (!isSupabaseConfigured) {
+    return fail("PROVIDER_NOT_CONFIGURED", "שרת Supabase אינו מוגדר.")
+  }
+
+  try {
+    const { data, error } = await requireSupabase().functions.invoke(
+      "guest-checkout",
+      {
+        body: {
+          product_id: input.product_id,
+          first_name: input.first_name,
+          last_name: input.last_name,
+          email: input.email,
+          phone: input.phone ?? null,
+          idempotency_key: input.idempotency_key ?? null,
+        },
+      },
+    )
+
+    if (error) {
+      let token = ""
+      const context = (error as { context?: Response }).context
+
+      if (context) {
+        try {
+          const body = (await context.json()) as { error?: unknown }
+          if (typeof body.error === "string") token = body.error
+        } catch {
+          /* a non-JSON refusal keeps the transport message */
+        }
+      }
+
+      const refused = GUEST_CHECKOUT_REFUSALS[token]
+      if (refused) return fail(refused.code, refused.error)
+
+      console.warn("[checkout] guest checkout refused:", token || error.message)
+      return fail(
+        "STORAGE",
+        GUEST_CHECKOUT_REFUSALS.service_unavailable.error,
+      )
+    }
+
+    const row = asRecord(data) as RpcRow | null
+    if (!row?.order) {
+      return fail("STORAGE", "ההזמנה לא נוצרה בשרת.")
+    }
+
+    const entitlement = row.entitlement ?? {}
+
+    return ok({
+      order: toOrder(row, product),
+      user_product_id: str(entitlement.user_product_id),
+      granted_at: str(entitlement.granted_at),
+      customer: toCustomer(row),
+      email_sent: row.email_sent === true,
+    })
+  } catch (err) {
+    return fail(
+      "STORAGE",
+      err instanceof Error ? err.message : "שגיאת רשת בלתי צפויה.",
+    )
+  }
+}

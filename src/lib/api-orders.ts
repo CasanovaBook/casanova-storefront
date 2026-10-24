@@ -49,7 +49,7 @@ import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
 import { fetchProductByIdFromDb } from "../integrations/supabase/supabase-catalog"
 
-import { createStorefrontOrder } from "../integrations/supabase/supabase-checkout"
+import { createGuestStorefrontOrder, createStorefrontOrder } from "../integrations/supabase/supabase-checkout"
 
 import { isUuid } from "../integrations/supabase/supabase-entitlements"
 
@@ -126,6 +126,9 @@ export interface CheckoutInput {
   phone?: string
 
   card_last4?: string
+
+  /** Guest checkout only: deduplicates a retry after a lost response. */
+  idempotency_key?: string
 }
 
 export interface CheckoutOutcome {
@@ -145,6 +148,16 @@ export interface CheckoutOutcome {
    *  caller can sign a first-time buyer straight in and let them read at once. */
 
   customer: User
+
+  /** True when no session existed and the server provisioned/looked up the
+   *  account from the typed email. */
+
+  is_guest?: boolean
+
+  /** Guest checkout only. False means the order succeeded but Supabase Auth
+   *  could not send the password-setup mail. */
+
+  email_sent?: boolean
 }
 
 /**
@@ -209,59 +222,13 @@ async function checkoutHosted(
   /* Cache the server's answer. The entitlement keeps the server's uuid, so
    * `mirrorRemoteEntitlements` treats it as a remote-owned row from now on
    * and the realtime/refresh paths keep it in sync. */
-  mutate((db) => {
-    db.orders = [order, ...db.orders.filter((o) => o.order_id !== order.order_id)]
-
-    db.payments = [
-      {
-        payment_id: uid("pay"),
-
-        order_id: order.order_id,
-
-        provider: "MANUAL",
-
-        status: "CAPTURED",
-
-        amount: order.total_amount,
-
-        currency: order.currency,
-
-        transaction_reference: `AUTO-${order.order_number}`,
-
-        created_at: order.paid_at ?? order.created_at,
-      },
-      ...db.payments.filter((p) => p.order_id !== order.order_id),
-    ]
-
-    const existing = db.user_products.find(
-      (up) =>
-        up.user_id === customer.user_id && up.product_id === product.product_id,
-    )
-
-    const entitlement: UserProduct = {
-      user_product_id: remote.data.user_product_id,
-
-      user_id: customer.user_id,
-
-      product_id: product.product_id,
-
-      product_snapshot: snapshotProduct(product),
-
-      source_order_id: order.order_id,
-
-      access_status: "ACTIVE",
-
-      granted_at: remote.data.granted_at || nowIso(),
-    }
-
-    db.user_products = existing
-      ? db.user_products.map((up) =>
-          up.user_product_id === existing.user_product_id
-            ? { ...entitlement, user_product_id: up.user_product_id }
-            : up,
-        )
-      : [...db.user_products, entitlement]
-  })
+  mirrorHostedCheckout(
+    order,
+    customer,
+    remote.data.user_product_id,
+    remote.data.granted_at,
+    product,
+  )
 
   dispatchEmail({
     recipient: order.customer_email,
@@ -299,6 +266,175 @@ async function checkoutHosted(
     auto_approved: true,
 
     customer,
+  })
+}
+
+/** Mirrors a hosted order into the local cache. Shared by the signed-in and
+ *  guest paths so both feed the success page and the library cache. */
+function mirrorHostedCheckout(
+  order: Order,
+  customer: User,
+  userProductId: string,
+  grantedAt: string,
+  product: Product,
+): void {
+  mutate((db) => {
+    db.orders = [order, ...db.orders.filter((o) => o.order_id !== order.order_id)]
+
+    db.payments = [
+      {
+        payment_id: uid("pay"),
+
+        order_id: order.order_id,
+
+        provider: "MANUAL",
+
+        status: "CAPTURED",
+
+        amount: order.total_amount,
+
+        currency: order.currency,
+
+        transaction_reference: `AUTO-${order.order_number}`,
+
+        created_at: order.paid_at ?? order.created_at,
+      },
+      ...db.payments.filter((p) => p.order_id !== order.order_id),
+    ]
+
+    const existing = db.user_products.find(
+      (up) =>
+        up.user_id === customer.user_id && up.product_id === product.product_id,
+    )
+
+    const entitlement: UserProduct = {
+      user_product_id: userProductId,
+
+      user_id: customer.user_id,
+
+      product_id: product.product_id,
+
+      product_snapshot: snapshotProduct(product),
+
+      source_order_id: order.order_id,
+
+      access_status: "ACTIVE",
+
+      granted_at: grantedAt || nowIso(),
+    }
+
+    db.user_products = existing
+      ? db.user_products.map((up) =>
+          up.user_product_id === existing.user_product_id
+            ? { ...entitlement, user_product_id: up.user_product_id }
+            : up,
+        )
+      : [...db.user_products, entitlement]
+  })
+}
+
+/**
+ * Guest checkout. The `guest-checkout` Edge Function resolves or creates the
+ * Supabase account by the typed email, records the order and entitlement with
+ * the service role, and sends the password-setup mail. The local cache is
+ * mirrored here so the success page and the buyer's next sign-in agree.
+ */
+export async function checkoutGuest(
+  input: CheckoutInput,
+): Promise<Result<CheckoutOutcome>> {
+  if (!isUuid(input.product_id)) {
+    return fail(
+      "NOT_FOUND",
+      "המוצר לא נמצא בקטלוג השרת. יש לרענן את העמוד ולבחור את הספר שוב.",
+    )
+  }
+
+  const contact = contactProblem(input)
+
+  if (contact) return fail("VALIDATION", contact)
+
+  const email = normalizeEmail(input.email)
+
+  const productResult = await fetchProductByIdFromDb(input.product_id)
+
+  if (!productResult.ok) return productResult
+
+  const product = productResult.data
+
+  if (product.status !== "ACTIVE" || product.visibility === "HIDDEN") {
+    return fail("CONFLICT", "המוצר אינו זמין לרכישה כרגע.")
+  }
+
+  if (product.availability === "OUT_OF_STOCK")
+    return fail("CONFLICT", "המוצר אזל מהמלאי.")
+
+  const remote = await createGuestStorefrontOrder(
+    {
+      product_id: input.product_id,
+      first_name: input.first_name.trim(),
+      last_name: input.last_name.trim(),
+      email,
+      phone: input.phone?.trim() || undefined,
+      discount: 0,
+      idempotency_key: input.idempotency_key,
+    },
+    product,
+  )
+
+  if (!remote.ok) return remote
+
+  const order = remote.data.order
+
+  const customer = remote.data.customer
+
+  mirrorHostedCheckout(
+    order,
+    customer,
+    remote.data.user_product_id,
+    remote.data.granted_at,
+    product,
+  )
+
+  dispatchEmail({
+    recipient: order.customer_email,
+
+    recipient_name: `${order.customer_first_name} ${order.customer_last_name}`,
+
+    template: "ORDER_RECEIVED",
+
+    subject: `ההזמנה ${order.order_number} התקבלה`,
+
+    related_type: "ORDER",
+
+    related_id: order.order_id,
+  })
+
+  dispatchEmail({
+    recipient: order.customer_email,
+
+    recipient_name: `${order.customer_first_name} ${order.customer_last_name}`,
+
+    template: "ORDER_PAID",
+
+    subject: orderPaidSubject(order),
+
+    related_type: "ORDER",
+
+    related_id: order.order_id,
+  })
+
+  return ok({
+    order,
+
+    payment_confirmed: true,
+
+    auto_approved: true,
+
+    customer,
+
+    is_guest: true,
+
+    email_sent: remote.data.email_sent,
   })
 }
 

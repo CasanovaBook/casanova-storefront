@@ -75,3 +75,10 @@ verify_jwt = false
 # without leaking where the protected file lives.
 [functions.get-content-status]
 verify_jwt = false
+
+# Public guest checkout. There is no customer session to verify: the function
+# validates the contact details, resolves or creates the account by email, and
+# performs every privileged write with the service role. The
+# create_guest_storefront_order RPC it calls is executable only by service_role.
+[functions.guest-checkout]
+verify_jwt = false

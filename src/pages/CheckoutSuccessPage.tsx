@@ -62,8 +62,12 @@ export default function CheckoutSuccessPage() {
     ? "לא הצלחנו לרשום את התשלום עבור ההזמנה. הצוות עודכן וייצור איתך קשר."
     : paid
       ? isFree
-        ? "תודה. הספר החינמי נפתח בספרייה שלך - לא בוצע חיוב."
-        : "תודה שרכשת. הגישה שלך למוצר נפתחה."
+        ? isAuthenticated
+          ? "תודה. הספר החינמי נפתח בספרייה שלך - לא בוצע חיוב."
+          : `תודה. הספר החינמי נשמר בחשבון ${order.customer_email}; שלחנו קישור להגדרת סיסמה.`
+        : isAuthenticated
+          ? "תודה שרכשת. הגישה שלך למוצר נפתחה."
+          : `תודה שרכשת. הרכישה מקושרת לחשבון ${order.customer_email}; שלחנו קישור להגדרת סיסמה.`
       : "תודה. ההזמנה נרשמה במערכת והיא ממתינה לאישור תשלום. נעדכן אותך ברגע שהתשלום יאושר והגישה תיפתח."
 
   const steps: { step: string, icon: IconName, title: string, desc: string }[] =
@@ -89,7 +93,11 @@ export default function CheckoutSuccessPage() {
             step: "2",
             icon: "mail",
             title: "הגדרת סיסמה",
-            desc: 'החשבון נוצר עם כתובת המייל שמילאת. השתמש ב"שכחת סיסמה?" כדי להגדיר סיסמה ולהתחבר.',
+            desc: isAuthenticated
+              ? 'החשבון נוצר עם כתובת המייל שמילאת. השתמש ב"שכחת סיסמה?" כדי להגדיר סיסמה ולהתחבר.'
+              : paid
+                ? `שלחנו קישור להגדרת סיסמה אל ${order.customer_email}. אם לא הגיע, השתמשו ב"שכחת סיסמה?" בעמוד ההתחברות.`
+                : 'החשבון נוצר עם כתובת המייל שמילאת. לאחר אישור התשלום ניתן להגדיר סיסמה ולהתחבר.',
           },
           {
             step: "3",
@@ -296,7 +304,14 @@ export default function CheckoutSuccessPage() {
               {singleProductId ? "התחילו לקרוא עכשיו" : "לספרייה שלי"}
             </Link>
           ) : (
-            <Link to="/login" className="app-btn w-full sm:w-auto">
+            <Link
+              to={`/login?redirect=${encodeURIComponent(
+                singleProductId
+                  ? `/read/${singleProductId}`
+                  : "/dashboard/library",
+              )}`}
+              className="app-btn w-full sm:w-auto"
+            >
               התחברות לספרייה שלי
             </Link>
           )}
