@@ -2616,6 +2616,10 @@ body {
   max-width: 72rem;
 }
 
+.app-page--fluid {
+  max-width: none;
+}
+
 .app-page-header {
   margin-bottom: clamp(1.5rem, 2.8vw, 2.4rem);
 }

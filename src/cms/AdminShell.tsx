@@ -7,7 +7,7 @@
  */
 
 import { useEffect } from "react";
-import { Outlet, useNavigate } from "react-router";
+import { Outlet, useMatch, useNavigate } from "react-router";
 import { useApp } from "@/context/AppContext";
 import { ROLE_LABEL } from "@/lib/permissions";
 import { AdminAuthGate } from "./auth";
@@ -32,6 +32,16 @@ export function AdminShell() {
       <MaestroLayout />
     </AdminAuthGate>
   );
+}
+
+function PageContainer() {
+  const isContentEditor =
+    useMatch("/admin/cms/content-editor/content/*") !== null
+  return (
+    <div className={isContentEditor ? "app-page app-page--fluid" : "app-page"}>
+      <Outlet />
+    </div>
+  )
 }
 
 function MaestroLayout() {
@@ -96,9 +106,7 @@ function MaestroLayout() {
 
       <div className="app-content">
         <main id="main" className="app-main">
-          <div className="app-page">
-            <Outlet />
-          </div>
+          <PageContainer />
         </main>
       </div>
     </div>

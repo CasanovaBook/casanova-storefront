@@ -112,6 +112,18 @@ function AutoTextarea({
   useEffect(() => {
     resize()
   }, [value, resize])
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === "undefined") return
+    let width = el.clientWidth
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth === width) return
+      width = el.clientWidth
+      resize()
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [resize])
   return (
     <textarea
       ref={ref}
@@ -914,7 +926,7 @@ export function ContentEditor() {
         }
       />
       <div
-        className="flex flex-col overflow-hidden rounded-xl border md:flex-row md:h-[calc(100dvh-12rem)] md:min-h-[30rem]"
+        className="flex w-full flex-col overflow-hidden rounded-xl border md:flex-row md:h-[calc(100dvh-12rem)] md:min-h-[30rem]"
         style={{ borderColor: "var(--color-border)", background: "var(--color-background)" }}
         aria-busy={loading || saving}
       >
@@ -1033,11 +1045,11 @@ export function ContentEditor() {
 
         {/* Fields */}
         <div
-          className="flex-1 overflow-auto p-4"
+          className="min-w-0 flex-1 overflow-auto scroll-pt-20 p-4 2xl:p-6"
           style={{ background: "var(--color-background)" }}
         >
           <div
-            className="sticky top-0 z-20 -mx-4 -mt-4 mb-4 flex items-center justify-between flex-wrap gap-2 border-b px-4 pt-4 pb-3"
+            className="sticky top-0 z-20 -mx-4 -mt-4 mb-4 flex items-center justify-between flex-wrap gap-2 border-b px-4 pt-4 pb-3 2xl:-mx-6 2xl:-mt-6 2xl:mb-6 2xl:px-6 2xl:pt-6"
             style={{
               background: "var(--color-background)",
               borderColor: "var(--color-border)",
@@ -1227,13 +1239,14 @@ export function ContentEditor() {
             </p>
           )}
 
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 3xl:grid-cols-2 4xl:grid-cols-3">
             {visibleFields.map((field) => {
               const modified = isModified(field.key)
+              const spansFull = ["textarea", "rich", "md", "strings", "list"].includes(field.type)
               return (
                 <div
                   key={field.key}
-                  className="rounded-xl p-4"
+                  className={`rounded-xl p-4${spansFull ? " col-span-full" : ""}`}
                   style={{
                     ...cardStyle,
                     borderColor: modified
@@ -1241,9 +1254,9 @@ export function ContentEditor() {
                       : "var(--color-border)",
                   }}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <label
-                      className="text-sm font-medium flex items-center gap-2"
+                      className="flex min-w-0 items-center gap-2 text-sm font-medium"
                       style={{ color: "var(--color-foreground)" }}
                     >
                       {field.label}
@@ -1313,7 +1326,7 @@ export function ContentEditor() {
             })}
             {!visibleFields.length && (
               <p
-                className="text-sm"
+                className="col-span-full text-sm"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
                 {showModified
@@ -1330,10 +1343,9 @@ export function ContentEditor() {
          * preview so the field editor keeps a usable width. */}
         {showPreview && inlinePreviewAvailable && (
           <div
-            className="flex-shrink-0 flex flex-col overflow-hidden"
+            className="flex w-[clamp(24rem,30vw,48rem)] shrink-0 flex-col overflow-hidden"
             style={{
-              width: "480px",
-              borderLeft: "1px solid var(--color-border)",
+              borderInlineStart: "1px solid var(--color-border)",
               background: "var(--color-card)",
             }}
           >
