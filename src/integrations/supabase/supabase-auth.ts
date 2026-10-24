@@ -16,6 +16,7 @@ import type { User as SupabaseAuthUser } from "@supabase/supabase-js"
 import { requireSupabase, isSupabaseConfigured } from "./supabase"
 import { passwordProblem, toPublicUser } from "../../lib/auth"
 import {
+  DEFAULT_RATE_LIMIT_SECONDS,
   LOGIN_MESSAGES,
   type LoginErrorCode,
   type LoginFailure,
@@ -509,11 +510,27 @@ export async function signInWithEmail(
     })
   }
 
+  /* Retry-After is the HTTP-level contract; the JSON copy is the app-level
+   * one. Read both so a proxy-generated 429 (Vercel, a CDN) still carries a
+   * usable wait time even when its body is HTML. */
+  const retryAfterHeader = Number(response.headers.get("retry-after") ?? "")
+  const headerRetryAfter =
+    Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+      ? Math.ceil(retryAfterHeader)
+      : undefined
+
   const contentType = response.headers.get("content-type") ?? ""
   if (
     response.status === 404 ||
     !contentType.toLowerCase().includes("application/json")
   ) {
+    if (response.status === 429) {
+      return authFail(LOGIN_MESSAGES.RATE_LIMITED, "RATE_LIMITED", false, {
+        status: 429,
+        retryAfterSeconds: headerRetryAfter ?? DEFAULT_RATE_LIMIT_SECONDS,
+      })
+    }
+
     return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE", false, {
       status: response.status,
     })
@@ -542,6 +559,13 @@ export async function signInWithEmail(
       code in LOGIN_MESSAGES
         ? LOGIN_MESSAGES[code as keyof typeof LOGIN_MESSAGES]
         : LOGIN_MESSAGES.INVALID_CREDENTIALS
+    const jsonRetryAfter = Number(failure.retryAfterSeconds)
+    const retryAfterSeconds =
+      Number.isFinite(jsonRetryAfter) && jsonRetryAfter > 0
+        ? Math.ceil(jsonRetryAfter)
+        : code === "RATE_LIMITED"
+          ? (headerRetryAfter ?? DEFAULT_RATE_LIMIT_SECONDS)
+          : headerRetryAfter
 
     return authFail(
       message,
@@ -549,7 +573,7 @@ export async function signInWithEmail(
       Boolean(failure.isUnconfirmed),
       {
         status: response.status,
-        retryAfterSeconds: failure.retryAfterSeconds,
+        retryAfterSeconds,
         captchaRequired:
           failure.captchaRequired ||
           code === "CAPTCHA_REQUIRED" ||

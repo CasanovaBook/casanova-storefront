@@ -9,6 +9,10 @@ export type LoginErrorCode =
   | "ACCOUNT_BLOCKED"
   | "VALIDATION"
 
+/** Server-side window: 5 failed attempts per IP in 5 minutes. Also the
+ *  fallback when a 429 arrives without a usable Retry-After value. */
+export const DEFAULT_RATE_LIMIT_SECONDS = 5 * 60
+
 export interface LoginRequest {
   email: string
   password: string

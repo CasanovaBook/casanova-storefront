@@ -20,7 +20,10 @@ import Icon from "../components/icons"
 import Alert from "../components/ui/Alert"
 import AuthShell from "../components/layout/AuthShell"
 import TurnstileWidget from "../components/TurnstileWidget"
-import { LOGIN_MESSAGES } from "../shared/auth-login"
+import {
+  DEFAULT_RATE_LIMIT_SECONDS,
+  LOGIN_MESSAGES,
+} from "../shared/auth-login"
 
 /** Marks a field the customer cannot submit without. The same red star the
  *  checkout screen already uses, so "required" is not a guess on either side. */
@@ -29,6 +32,13 @@ const requiredMark = (
     {" *"}
   </span>
 )
+
+/** mm:ss, LTR-isolated at the call site because the page is RTL. */
+function formatCountdown(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.ceil(totalSeconds))
+
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
+}
 
 export default function LoginPage() {
   const { login, register, resendConfirmation, bootstrapRequired, theme } =
@@ -62,7 +72,8 @@ export default function LoginPage() {
   const [captchaRequired, setCaptchaRequired] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState("")
   const [captchaReset, setCaptchaReset] = useState(0)
-  const [rateLimited, setRateLimited] = useState(false)
+  const [rateLimitRemaining, setRateLimitRemaining] = useState(0)
+  const rateLimited = rateLimitRemaining > 0
 
   // Email verification UX state
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
@@ -78,6 +89,17 @@ export default function LoginPage() {
     }, 1000)
     return () => clearInterval(timer)
   }, [cooldown])
+
+  /* One interval for the whole lockout: `rateLimited` only flips at the two
+   * ends of the countdown, so the timer is not torn down and rebuilt every
+   * second. The server remains the authority; this is the visible clock. */
+  useEffect(() => {
+    if (!rateLimited) return
+    const timer = setInterval(() => {
+      setRateLimitRemaining((value) => Math.max(0, value - 1))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [rateLimited])
 
   const handleResend = async (targetEmail: string) => {
     if (cooldown > 0 || resending) return
@@ -102,7 +124,6 @@ export default function LoginPage() {
     setCaptchaRequired(false)
     setTurnstileToken("")
     setCaptchaReset(0)
-    setRateLimited(false)
   }, [mode])
 
   // Check for Hebrew characters in email
@@ -151,10 +172,10 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (mode === "login" && rateLimited) return
     setError("")
     setUnconfirmedEmail(null)
     setResendMessage(null)
-    setRateLimited(false)
 
     if (mode === "login" && captchaRequired && !turnstileToken) {
       setError("יש להשלים את אימות האבטחה לפני ההתחברות.")
@@ -235,7 +256,17 @@ export default function LoginPage() {
       mode === "login" &&
       (result.status === 429 || result.code === "RATE_LIMITED")
     ) {
-      setRateLimited(true)
+      /* Retry-After / the JSON mirror decides the clock; a proxy 429 without
+       * either falls back to the server's 5-minute window. */
+      const seconds = Math.ceil(
+        result.retryAfterSeconds ?? DEFAULT_RATE_LIMIT_SECONDS,
+      )
+
+      setRateLimitRemaining(
+        Number.isFinite(seconds) && seconds > 0
+          ? seconds
+          : DEFAULT_RATE_LIMIT_SECONDS,
+      )
       setError("")
       setUnconfirmedEmail(null)
       return
@@ -722,7 +753,21 @@ export default function LoginPage() {
           resendMessage) && (
           <div className="space-y-2">
             {rateLimited ? (
-              <Alert tone="warning">{LOGIN_MESSAGES.RATE_LIMITED}</Alert>
+              <Alert tone="warning">
+                <p className="m-0">{LOGIN_MESSAGES.RATE_LIMITED}</p>
+                <p className="m-0 mt-1">
+                  ניתן לנסות שוב בעוד{" "}
+                  {/* Off the live region: the clock ticks every second and
+                   * would otherwise be announced on every tick. */}
+                  <span
+                    dir="ltr"
+                    aria-live="off"
+                    className="font-semibold tabular-nums"
+                  >
+                    {formatCountdown(rateLimitRemaining)}
+                  </span>
+                </p>
+              </Alert>
             ) : error ? (
               <Alert tone="error">{error}</Alert>
             ) : null}
@@ -775,6 +820,7 @@ export default function LoginPage() {
           type="submit"
           disabled={
             isLoading ||
+            (mode === "login" && rateLimited) ||
             (mode === "login" && captchaRequired && !turnstileToken)
           }
           aria-busy={isLoading || undefined}
