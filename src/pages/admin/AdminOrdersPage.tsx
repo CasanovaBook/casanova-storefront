@@ -16,7 +16,7 @@ import Alert from "../../components/ui/Alert"
 /* ── Payment & invoice ──────────────────────────────────────
  * The order model is deliberately minimal: a purchase attempt is
  * PENDING until a payment is confirmed, then PAID or FAILED. Nothing
- * else is a state an admin can set — a digital book has no fulfillment,
+ * else is a state an admin can set - a digital book has no fulfillment,
  * shipping or processing steps.
  *
  * The extra labels below are not selectable states. They only keep a
@@ -118,10 +118,10 @@ function OrderDetailModal({
       value: `${order.customer_first_name} ${order.customer_last_name}`,
     },
     { label: "אימייל", value: order.customer_email, mono: true },
-    { label: "טלפון", value: order.customer_phone ?? "—", mono: true },
+    { label: "טלפון", value: order.customer_phone ?? "-", mono: true },
     {
       label: "תאריך רכישה",
-      value: formatIsraelDateTime(order.created_at) || "—",
+      value: formatIsraelDateTime(order.created_at) || "-",
     },
     {
       label: "סטטוס תשלום",
@@ -132,7 +132,7 @@ function OrderDetailModal({
     {
       label: "שולם בתאריך",
       value: order.paid_at
-        ? formatIsraelDateTime(order.paid_at) || "—"
+        ? formatIsraelDateTime(order.paid_at) || "-"
         : "טרם שולם",
     },
   ]
@@ -164,7 +164,7 @@ function OrderDetailModal({
         ))}
       </div>
 
-      {/* Payment details — masked by policy */}
+      {/* Payment details - masked by policy */}
       <div
         className="p-3 rounded-md mb-5"
         style={{ background: "var(--color-muted)" }}
@@ -195,7 +195,7 @@ function OrderDetailModal({
         </p>
       </div>
 
-      {/* Items — purchase-time snapshot, never the live catalogue price */}
+      {/* Items - purchase-time snapshot, never the live catalogue price */}
       <h4 className="text-xs font-semibold tracking-wide mb-3 app-muted">
         פריטי ההזמנה ({order.items.length})
       </h4>
@@ -228,7 +228,7 @@ function OrderDetailModal({
         ))}
       </div>
 
-      {/* Invoice — only ever shows as issued when an invoice row really exists */}
+      {/* Invoice - only ever shows as issued when an invoice row really exists */}
       <div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-md mb-5 border"
         style={{ borderColor: "var(--color-border)" }}
@@ -279,7 +279,7 @@ function OrderDetailModal({
         </div>
       )}
 
-      {/* Confirm payment — the only path that marks an order paid */}
+      {/* Confirm payment - the only path that marks an order paid */}
       {canMarkPaid &&
         !isSettled(order) &&
         order.payment_status !== "CANCELLED" &&
@@ -375,7 +375,7 @@ function OrderDetailModal({
           </button>
         ))}
 
-      {/* Failure — a pending payment can be closed as failed */}
+      {/* Failure - a pending payment can be closed as failed */}
       {canMarkPaid && order.payment_status === "PENDING" && (
         <div
           className="mb-4 p-3 rounded-md border"
@@ -669,7 +669,7 @@ export default function AdminOrdersPage() {
                       )}
                     </td>
                     <td className="text-xs whitespace-nowrap app-muted">
-                      {formatIsraelDateTime(order.created_at) || "—"}
+                      {formatIsraelDateTime(order.created_at) || "-"}
                     </td>
                     <td className="whitespace-nowrap">
                       <span

@@ -1,12 +1,12 @@
 -- ============================================================
--- 0022 — make /admin/products write the real catalogue
+-- 0022 - make /admin/products write the real catalogue
 --        [REQUIRES SERVER-SIDE FUNCTIONS]
 --
 -- THE BUG
 --
 -- The admin products page rendered and saved `localStorage['casanova_db_v1']`
--- while every public surface — the storefront, the sales page, the reader's
--- signed-URL endpoint — read `public.products` in Supabase. An edit in
+-- while every public surface - the storefront, the sales page, the reader's
+-- signed-URL endpoint - read `public.products` in Supabase. An edit in
 -- /admin/products therefore changed nothing a customer could see, and a
 -- product the storefront sold had no admin row to edit at all.
 --
@@ -17,7 +17,7 @@
 -- impersonating the request, and `products` is the source of truth for what
 -- is sold, at what price, and whether it is public. So the catalogue stays
 -- unwritable from the browser and every admin write goes through a
--- SECURITY DEFINER function that checks `is_admin()` itself — the same
+-- SECURITY DEFINER function that checks `is_admin()` itself - the same
 -- pattern as 0011 (account status), 0013 and 0015 (entitlements).
 --
 -- WHAT THE FUNCTIONS DO
@@ -31,7 +31,7 @@
 --   admin_save_category(jsonb)    insert or update a category
 --   admin_delete_category(uuid)   delete a category (product links cascade)
 --
--- PAYLOAD CONTRACT — presence means "set", absent means "leave alone"
+-- PAYLOAD CONTRACT - presence means "set", absent means "leave alone"
 --
 -- The panel sends only the fields it changed (`diffPatch`). A key that is
 -- present is written; a key that is absent is left untouched; a key present
@@ -42,7 +42,7 @@
 BEGIN;
 
 -- ============================================================
--- SAVE PRODUCT — insert or update one catalogue row
+-- SAVE PRODUCT - insert or update one catalogue row
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_save_product(p_product jsonb)
 RETURNS public.products
@@ -78,7 +78,7 @@ BEGIN
 
   /* The stored row, read once. The INSERT leg below cannot see `products.*`
    * the way the ON CONFLICT leg can, so every field a partial update does
-   * not carry has to fall back to these values — otherwise a price-only
+   * not carry has to fall back to these values - otherwise a price-only
    * edit would be validated against price = 0 on the insert attempt and
    * rejected by the sale-price CHECK before the conflict was ever seen. */
   SELECT price, sale_price, status, product_type, name, slug
@@ -391,7 +391,7 @@ REVOKE ALL ON FUNCTION public.admin_save_product(jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_save_product(jsonb) TO authenticated;
 
 -- ============================================================
--- SET STATUS — publish, unpublish, draft or archive
+-- SET STATUS - publish, unpublish, draft or archive
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_set_product_status(
   p_product_id uuid,
@@ -438,7 +438,7 @@ REVOKE ALL ON FUNCTION public.admin_set_product_status(uuid, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_set_product_status(uuid, text) TO authenticated;
 
 -- ============================================================
--- DELETE — hard delete, refused while referenced
+-- DELETE - hard delete, refused while referenced
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_delete_product(p_product_id uuid)
 RETURNS void
@@ -457,7 +457,7 @@ BEGIN
   END IF;
 
   -- order_items.product_id is ON DELETE RESTRICT, and user_products is the
-  -- entitlement ledger. Both mean "this product has history" — archive is
+  -- entitlement ledger. Both mean "this product has history" - archive is
   -- the correct action, and the panel shows the same wording the local
   -- driver used.
   IF EXISTS (SELECT 1 FROM public.order_items WHERE product_id = p_product_id) THEN
@@ -481,7 +481,7 @@ REVOKE ALL ON FUNCTION public.admin_delete_product(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_delete_product(uuid) TO authenticated;
 
 -- ============================================================
--- MOVE — swap display position with the neighbour
+-- MOVE - swap display position with the neighbour
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_move_product(
   p_product_id uuid,
@@ -543,7 +543,7 @@ REVOKE ALL ON FUNCTION public.admin_move_product(uuid, integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_move_product(uuid, integer) TO authenticated;
 
 -- ============================================================
--- SAVE CATEGORY — insert or update one category
+-- SAVE CATEGORY - insert or update one category
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_save_category(p_category jsonb)
 RETURNS public.categories
@@ -637,7 +637,7 @@ GRANT EXECUTE ON FUNCTION public.admin_delete_category(uuid) TO authenticated;
 COMMIT;
 
 -- ============================================================
--- VERIFICATION — run after applying
+-- VERIFICATION - run after applying
 -- ============================================================
 -- 1. Six functions, all SECURITY DEFINER with a pinned search_path:
 --
@@ -660,7 +660,7 @@ COMMIT;
 --    and the admin's full read keep working exactly as before; only writes
 --    were added.
 --
--- 4. A non-admin must be refused (run as a signed-in customer) — expect
+-- 4. A non-admin must be refused (run as a signed-in customer) - expect
 --    ERROR: admin_required:
 --
 --    SELECT public.admin_save_product('{"name":"x","slug":"x"}'::jsonb);

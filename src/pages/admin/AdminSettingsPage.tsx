@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * CMS — platform settings.
+ * CMS - platform settings.
  *
  * These values drive real behaviour elsewhere in the app: the
  * currency shown in the catalogue, the prefixes behind order and
@@ -139,7 +139,7 @@ export default function AdminSettingsPage() {
 
     max_upload_bytes: String(settings.max_upload_bytes),
 
-    /* Site copy. trust_badges is a list, edited one entry per line — the
+    /* Site copy. trust_badges is a list, edited one entry per line - the
      * same convention the HERO block uses for a multi-line title, and the
      * same one the subscription product uses for its feature bullets. */
 
@@ -201,7 +201,7 @@ export default function AdminSettingsPage() {
       setMessage({
         kind: "error",
 
-        text: "לא ניתן לאפשר ביצוע החזרים ללא הגדרת ספק תשלומים — המערכת לא תטען שהכסף הוחזר.",
+        text: "לא ניתן לאפשר ביצוע החזרים ללא הגדרת ספק תשלומים - המערכת לא תטען שהכסף הוחזר.",
       })
 
       return
@@ -456,19 +456,19 @@ export default function AdminSettingsPage() {
             >
               <input
                 className={inputClass}
-                placeholder="ריק — התגית לא תוצג"
+                placeholder="ריק - התגית לא תוצג"
                 value={form.tagline}
                 onChange={(e) => setForm({ ...form, tagline: e.target.value })}
               />
             </Field>
             <Field
               label="הבטחות מתחת לכותרת"
-              hint="הבטחה אחת בכל שורה. אל תכתבו כאן התחייבות — למשל אחריות או החזר כספי — שאינכם עומדים בה בפועל."
+              hint="הבטחה אחת בכל שורה. אל תכתבו כאן התחייבות - למשל אחריות או החזר כספי - שאינכם עומדים בה בפועל."
             >
               <textarea
                 rows={3}
                 className={inputClass}
-                placeholder="ריק — שורת ההבטחות לא תוצג"
+                placeholder="ריק - שורת ההבטחות לא תוצג"
                 value={form.trust_badges}
                 onChange={(e) =>
                   setForm({ ...form, trust_badges: e.target.value })
@@ -478,7 +478,7 @@ export default function AdminSettingsPage() {
             <Field label="כותרת הקטלוג">
               <input
                 className={inputClass}
-                placeholder="ריק — הכותרת לא תוצג"
+                placeholder="ריק - הכותרת לא תוצג"
                 value={form.catalogue_title}
                 onChange={(e) =>
                   setForm({ ...form, catalogue_title: e.target.value })
@@ -489,7 +489,7 @@ export default function AdminSettingsPage() {
               <textarea
                 rows={2}
                 className={inputClass}
-                placeholder="ריק — הפתיח לא יוצג"
+                placeholder="ריק - הפתיח לא יוצג"
                 value={form.catalogue_blurb}
                 onChange={(e) =>
                   setForm({ ...form, catalogue_blurb: e.target.value })
@@ -502,7 +502,7 @@ export default function AdminSettingsPage() {
             >
               <input
                 className={inputClass}
-                placeholder="ריק — הכותרת לא תוצג"
+                placeholder="ריק - הכותרת לא תוצג"
                 value={form.pricing_title}
                 onChange={(e) =>
                   setForm({ ...form, pricing_title: e.target.value })
@@ -513,7 +513,7 @@ export default function AdminSettingsPage() {
               <textarea
                 rows={2}
                 className={inputClass}
-                placeholder="ריק — הפתיח לא יוצג"
+                placeholder="ריק - הפתיח לא יוצג"
                 value={form.pricing_blurb}
                 onChange={(e) =>
                   setForm({ ...form, pricing_blurb: e.target.value })
@@ -528,7 +528,7 @@ export default function AdminSettingsPage() {
                 <textarea
                   rows={2}
                   className={inputClass}
-                  placeholder="ריק — לא מוצגת"
+                  placeholder="ריק - לא מוצגת"
                   value={form.footer_text}
                   onChange={(e) =>
                     setForm({ ...form, footer_text: e.target.value })
@@ -542,7 +542,7 @@ export default function AdminSettingsPage() {
         <Section
           id="settings-sales-copy"
           icon="target"
-          title="דף מכירה — היא קודם"
+          title="דף מכירה - היא קודם"
           description="טקסטים שמופיעים בכפתור הדביק ובחלון הנטישה בדף הנחיתה הראשי. שדה ריק מציג את טקסט ברירת המחדל."
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -552,7 +552,7 @@ export default function AdminSettingsPage() {
             >
               <input
                 className={inputClass}
-                placeholder="רכישה עכשיו — {price} ₪"
+                placeholder="רכישה עכשיו - {price} ₪"
                 value={form.sales_sticky_cta}
                 onChange={(e) =>
                   setForm({ ...form, sales_sticky_cta: e.target.value })
@@ -651,7 +651,7 @@ export default function AdminSettingsPage() {
                 אפשר סימון החזר ככסף שהוחזר בפועל
               </span>
               <span className="block text-xs app-muted mt-0.5 leading-relaxed">
-                כשהמתג כבוי, מנהלים יכולים לתעד, לאשר או לדחות בקשות החזר — אך
+                כשהמתג כבוי, מנהלים יכולים לתעד, לאשר או לדחות בקשות החזר - אך
                 המערכת מסרבת לסמן החזר כבוצע. זהו מצב ברירת המחדל עד לחיבור
                 סליקה התומכת בהחזרים מתוכנתים.
               </span>
@@ -667,7 +667,7 @@ export default function AdminSettingsPage() {
         >
           <Field
             label="מזהה ספק הדואר"
-            hint="ריק — ההודעות נרשמות ביומן המיילים בסטטוס ״בתור״ ואינן נמסרות."
+            hint="ריק - ההודעות נרשמות ביומן המיילים בסטטוס ״בתור״ ואינן נמסרות."
           >
             <input
               dir="ltr"
@@ -732,7 +732,7 @@ export default function AdminSettingsPage() {
                 מחיקת כל הנתונים
               </h2>
               <p className="text-xs app-muted mt-0.5">
-                פעולה בלתי הפיכה — יש לייצא גיבוי לפני ביצוע.
+                פעולה בלתי הפיכה - יש לייצא גיבוי לפני ביצוע.
               </p>
             </div>
           </div>
@@ -742,7 +742,7 @@ export default function AdminSettingsPage() {
         <div className="app-surface-body">
           <p className="text-sm app-muted leading-relaxed">
             הפעולה מוחקת מוצרים, הזמנות, תשלומים, החזרים, לקוחות, הרשאות גישה,
-            פניות ויומנים — ומחזירה את המערכת להתקנה ריקה לחלוטין. היא אינה
+            פניות ויומנים - ומחזירה את המערכת להתקנה ריקה לחלוטין. היא אינה
             הפיכה ואינה מבצעת גיבוי אוטומטי; יש לייצא גיבוי מ־CMS לפני כן.
           </p>
 

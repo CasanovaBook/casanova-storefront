@@ -3,7 +3,7 @@
  * behind a Supabase Edge Function.
  *
  * The service_role key must never reach this bundle, so these call
- * `functions.invoke` and receive only the finished artefact — the
+ * `functions.invoke` and receive only the finished artefact - the
  * same arrangement content-storage.ts uses for Storage URLs.
  * ───────────────────────────────────────────────────────────── */
 

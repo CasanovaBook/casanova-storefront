@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * StoreScreen — browse only.
+ * StoreScreen - browse only.
  *
  * Purchase happens on the website, not here. That is a deliberate
  * decision rather than an unfinished feature:

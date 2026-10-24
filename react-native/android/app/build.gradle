@@ -27,7 +27,7 @@ def appVersionName = "1.0.0"
  * git-ignored; the credentials never live in this script and never live in
  * the repository. When it is absent the release build falls back to the
  * debug key so that `./gradlew assembleRelease` still produces something
- * installable during development — a release signed with a debug key is
+ * installable during development - a release signed with a debug key is
  * rejected by the Play Store, which is the correct outcome for a build
  * nobody configured.
  */
@@ -42,7 +42,7 @@ react {
     /* Required. This is what tells the Gradle plugin to fold the autolinked
      * libraries resolved in settings.gradle into this application module.
      * Omitting it produces a build that succeeds and an app in which every
-     * autolinked native module is undefined — so `NativeModules.ScreenShield`
+     * autolinked native module is undefined - so `NativeModules.ScreenShield`
      * would be null not because the shield is broken but because nothing was
      * ever linked, and `probeIntegrity()` would answer ATTESTATION_FAILED on a
      * perfectly healthy phone. */
@@ -117,7 +117,7 @@ android {
              * them (react-native-pdf, blob-util, keychain, device-info).
              * Turning it on without being able to run the resulting build on
              * a device would ship an app that fails at exactly the moment it
-             * matters — opening a book.
+             * matters - opening a book.
              *
              * To enable: set both flags true, then verify on a real device
              * that login, grant redemption, PDF render, offline expiry and

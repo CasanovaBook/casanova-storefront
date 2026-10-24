@@ -1,5 +1,5 @@
 -- ============================================================
--- 0004 — per-account first-login greeting
+-- 0004 - per-account first-login greeting
 --
 -- The dashboard says "ברוך הבא" on the visit that follows a
 -- customer's first sign-in and "ברוך שובך" on every visit after
@@ -37,7 +37,7 @@ COMMIT;
 
 -- The greeting must be claimable by the signed-in customer, and by
 -- nobody else. Without RLS the anon key could UPDATE any account's
--- greeted_at — and, far worse, any other column on `users`. Enabling
+-- greeted_at - and, far worse, any other column on `users`. Enabling
 -- RLS here and allowing exactly one narrow write is what makes the
 -- UPDATE in src/lib/first-login.ts safe to run from the browser.
 --

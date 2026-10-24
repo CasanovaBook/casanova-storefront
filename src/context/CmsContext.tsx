@@ -14,7 +14,7 @@
  *
  * The local document remains the fallback whenever Supabase is
  * unconfigured or unreachable, and `catalogSource` names whichever
- * source answered — a stale local catalogue can never pass itself off
+ * source answered - a stale local catalogue can never pass itself off
  * as live data without the state saying so.
  * ───────────────────────────────────────────────────────────── */
 
@@ -91,11 +91,11 @@ import { useApp } from "./AppContext"
 /**
  * Which catalogue the storefront is reading right now.
  *
- * `"supabase"` — the hosted Postgres catalogue answered. An empty
+ * `"supabase"` - the hosted Postgres catalogue answered. An empty
  * answer is still an answer: it means the storefront has nothing to
  * show, not that the local document should be put back on screen.
  *
- * `"local"` — Supabase is unconfigured or was unreachable, so the
+ * `"local"` - Supabase is unconfigured or was unreachable, so the
  * browser-local document is the only catalogue that exists.
  *
  * Exposed as state, never inferred, so a screen can say which one it
@@ -110,7 +110,7 @@ interface CmsContextValue {
   categories: Category[]
 
   /**
-   * The local catalogue cache — NOT a source of truth.
+   * The local catalogue cache - NOT a source of truth.
    *
    * `public.products` is the catalogue. This is the mirror of it that the
    * synchronous consumers read (the reader's title and page count, the
@@ -162,7 +162,7 @@ interface CmsContextValue {
   /** Re-runs the Supabase read; for the admin's benefit and for tests. */
   refreshCatalog: () => void
 
-  /** Categories for the storefront filters — same source as the products shown. */
+  /** Categories for the storefront filters - same source as the products shown. */
   storefrontCategories: Category[]
 
   productById: (id: string | undefined) => Product | undefined
@@ -255,7 +255,7 @@ export function CmsProvider({ children }: { children: ReactNode }) {
    * storefront, the reader and /admin/products all work against.
    * The local document is the cache the synchronous consumers read
    * and the whole catalogue only on an install where Supabase is
-   * unconfigured — see the mirror effect below.
+   * unconfigured - see the mirror effect below.
    *
    * A read that fails falls back to the cached local rows and says so
    * through `catalogError` and `catalogSource`. A read that succeeds and
@@ -337,7 +337,7 @@ export function CmsProvider({ children }: { children: ReactNode }) {
    * The broad read goes through `admin_list_products()` (migration 0025), which
    * is SECURITY DEFINER and checks the `products` permission in the same
    * ROLE_PERMISSIONS matrix the panel's buttons are hidden by. The role test
-   * below is therefore not what protects the catalogue — it only avoids
+   * below is therefore not what protects the catalogue - it only avoids
    * spending a round trip on a screen a customer cannot use, and a customer
    * who called it anyway would be refused by the database. */
   const [remoteAdminProducts, setRemoteAdminProducts] = useState<Product[] | null>(
@@ -372,7 +372,7 @@ export function CmsProvider({ children }: { children: ReactNode }) {
    * lines, the reader's product lookup, the editor's pickers), so the rows a
    * hosted read returned are mirrored into it. The admin's full-catalogue
    * read wins when it exists: it is a superset of the public list. A failed
-   * read mirrors nothing — neither effect runs on an error, because both
+   * read mirrors nothing - neither effect runs on an error, because both
    * sources stay null and pruning on a dropped request would blank the
    * catalogue. */
   useEffect(() => {

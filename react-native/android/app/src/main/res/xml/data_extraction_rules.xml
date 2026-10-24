@@ -5,8 +5,8 @@
   `android:allowBackup="false"` in the manifest already disables Auto Backup,
   and on API 31+ it also disables the newer extraction path. This file exists
   because relying on one attribute for the most important data-loss guarantee
-  in the app is not enough: a future edit that flips `allowBackup` to true —
-  which happens constantly, usually to silence a lint warning — would then be
+  in the app is not enough: a future edit that flips `allowBackup` to true -
+  which happens constantly, usually to silence a lint warning - would then be
   caught here instead of silently shipping a vault that backs up.
 
   `<device-transfer>` is the part people miss. Android 12 added

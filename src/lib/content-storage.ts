@@ -1,12 +1,12 @@
 /* ─────────────────────────────────────────────────────────────
- * Content-storage client — the browser side of the Supabase
+ * Content-storage client - the browser side of the Supabase
  * Storage delivery path.
  *
  * Two Edge Functions do the privileged work with the service_role
  * key (which never reaches this bundle):
  *
- *   • create-upload-url — CMS: get a signed UPLOAD url for a book.
- *   • get-content-url   — reader: resolve a product to a short-lived
+ *   • create-upload-url - CMS: get a signed UPLOAD url for a book.
+ *   • get-content-url   - reader: resolve a product to a short-lived
  *     signed DOWNLOAD url.
  *
  * Everything here returns the app's `Result`/`Failure` shape so the
@@ -43,7 +43,7 @@ export interface UploadTarget {
  * `available` / `missing` come from an authoritative check of the private
  * bucket (the object at `product-<id>/book.pdf` really does / does not exist).
  * `unverified` means the check could not run (Supabase off, the status
- * function not deployed, or a transport failure) — callers must fall back to
+ * function not deployed, or a transport failure) - callers must fall back to
  * the row's own pointer fields and must NOT report a confident "not uploaded".
  * No URL, path or token is ever returned here.
  */
@@ -72,8 +72,8 @@ interface InvokeResult<T> {
  * cold start that never boots, a connection the platform holds open)
  * would otherwise leave the reader on "פותח את הספר…" forever, which is
  * exactly the shape of the "only a refresh fixes it" report. Twenty
- * seconds is well above a normal signing round trip — the observed
- * production call is ~10 s — so this only fires on a genuinely hung
+ * seconds is well above a normal signing round trip - the observed
+ * production call is ~10 s - so this only fires on a genuinely hung
  * request, and it turns that into the existing retryable failure.
  */
 const FUNCTION_TIMEOUT_MS = 20_000
@@ -133,7 +133,7 @@ function codeFor(status: number | undefined): ErrorCode {
  * What a failed content lookup means, decided from the HTTP status alone.
  *
  * The status is the only trustworthy part: the body of a refusal comes from
- * the Edge Function or from the transport layer, and both speak English —
+ * the Edge Function or from the transport layer, and both speak English -
  * "Could not sign the content URL" reaching a customer through the reader is
  * exactly how a storage outage came to be reported as "the publisher has not
  * uploaded the file yet". The raw message stays in the console, never on the
@@ -173,7 +173,7 @@ export function contentFailure(
       return {
         code: "STORAGE",
         message:
-          "לא ניתן היה לפתוח את הקובץ כרגע. התקלה אינה בספר — ניתן לנסות שוב.",
+          "לא ניתן היה לפתוח את הקובץ כרגע. התקלה אינה בספר - ניתן לנסות שוב.",
       }
   }
 }
@@ -306,7 +306,7 @@ export async function uploadBookFile(
 /**
  * Admin path: ask whether a product's file actually exists in the private
  * bucket. This is the honest source of truth behind the "digital content"
- * column — the same object the Reader serves through `get-content-url`.
+ * column - the same object the Reader serves through `get-content-url`.
  *
  * Degrades to `unverified` rather than a false negative when the function is
  * not deployed or the call fails, so the CMS never claims a real book was
@@ -327,7 +327,7 @@ export async function fetchContentStatus(
 
     // A confirmed answer is always a 200 with an `exists` boolean, whether
     // the file is present or genuinely absent. Anything else is "could not
-    // verify" — never report a confident miss on a failed lookup.
+    // verify" - never report a confident miss on a failed lookup.
     if (typeof res.data?.exists !== "boolean") return { state: "unverified" }
 
     if (!res.data.exists) return { state: "missing" }

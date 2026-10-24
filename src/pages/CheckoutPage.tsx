@@ -236,7 +236,7 @@ export default function CheckoutPage() {
   /* The address printed on the account is the one Supabase verified, so a
    * purchase under it has already proven the thing a typed twice would only
    * re-prove. The confirmation field therefore appears when the buyer edits
-   * the address away from the verified one — the single case where a typo
+   * the address away from the verified one - the single case where a typo
    * would send a receipt somewhere the store cannot verify. Requiring the
    * double entry when nothing was changed asked every customer to retype an
    * address they had just confirmed by email. */
@@ -279,7 +279,7 @@ export default function CheckoutPage() {
           issue ??
           (value.toLowerCase() === typedEmail
             ? ""
-            : "כתובות המייל אינן תואמות — יש להקליד שוב את אותה כתובת")
+            : "כתובות המייל אינן תואמות - יש להקליד שוב את אותה כתובת")
       }
     }
 
@@ -298,8 +298,8 @@ export default function CheckoutPage() {
       return
     }
     /* The verified-address gate is a hosted-backend rule. Without Supabase
-     * there is nothing that can confirm an address — no mail is sent and no
-     * `email_confirmed_at` is ever written — so requiring it here demanded the
+     * there is nothing that can confirm an address - no mail is sent and no
+     * `email_confirmed_at` is ever written - so requiring it here demanded the
      * customer satisfy a condition the product could not offer them, and the
      * screen refused with a message pointing at an email that never arrives.
      * (docs/PRODUCTION_PLAN.md B2 gates real purchases on real verification,
@@ -316,7 +316,7 @@ export default function CheckoutPage() {
 
   /* No payment gateway is connected in this deployment, so checkout records
    * the order and the store confirms the payment. The page never claims a
-   * charge succeeded — the resulting order status is shown as-is. */
+   * charge succeeded - the resulting order status is shown as-is. */
   const handleSubmitOrder = async () => {
     if (!product) return
     if (!validate()) {
@@ -338,7 +338,7 @@ export default function CheckoutPage() {
       setStep("details")
       return
     }
-    /* The purchase is recorded, so there is nothing left to resume — and a
+    /* The purchase is recorded, so there is nothing left to resume - and a
      * leftover intent would offer this book again on the next visit. */
     clearCheckoutIntent()
     navigate("/checkout/success")
@@ -692,7 +692,7 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Only shown when the address above was edited away from
-                     * the verified one — see needsEmailConfirmation. */}
+                     * the verified one - see needsEmailConfirmation. */}
                     {needsEmailConfirmation && (
                       <div className="app-field">
                         <label
@@ -751,7 +751,7 @@ export default function CheckoutPage() {
                               size={13}
                               aria-hidden="true"
                             />
-                            הכתובות תואמות — הקבלה והגישה יישלחו לכתובת זו.
+                            הכתובות תואמות - הקבלה והגישה יישלחו לכתובת זו.
                           </p>
                         ) : (
                           <p
@@ -847,7 +847,7 @@ export default function CheckoutPage() {
                         </p>
                       ) : (
                         <p id="checkout-phone-hint" className="app-hint">
-                          חובה לרכישה — לצורכי יצירת קשר על ההזמנה.
+                          חובה לרכישה - לצורכי יצירת קשר על ההזמנה.
                         </p>
                       )}
                     </div>
@@ -991,7 +991,7 @@ export default function CheckoutPage() {
                     </dl>
                   </div>
 
-                  {/* Payment handling — stated truthfully, never simulated */}
+                  {/* Payment handling - stated truthfully, never simulated */}
                   <div
                     className={`app-alert ${providerConfigured ? "" : "app-alert--success"}`}
                   >
@@ -1019,7 +1019,7 @@ export default function CheckoutPage() {
                             הרכישה מאושרת מיידית.
                           </strong>{" "}
                           כיוון שטרם הוגדר ספק תשלומים, ההזמנה תאושר אוטומטית
-                          עם השליחה — החשבון ייפתח, הגישה למוצר תינתן מיד
+                          עם השליחה - החשבון ייפתח, הגישה למוצר תינתן מיד
                           ותוכלו להתחיל לקרוא ללא המתנה.
                         </>
                       )}

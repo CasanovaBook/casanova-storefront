@@ -16,7 +16,7 @@ buildscript {
         compileSdkVersion = 35
         /* 35, matching the React Native 0.79 template. Android 15 behaviour
          * changes are opted into at this level, and the one that matters here
-         * is edge-to-edge enforcement — which is why the screens lay out
+         * is edge-to-edge enforcement - which is why the screens lay out
          * through SafeAreaProvider rather than assuming the status bar is
          * somebody else's problem. */
         targetSdkVersion = 35

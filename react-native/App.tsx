@@ -4,9 +4,9 @@
  * Three decisions are made here and nowhere else:
  *
  *  1. RTL is forced before the first render. The screens do not depend
- *     on it — every text style sets `writingDirection` explicitly and
+ *     on it - every text style sets `writingDirection` explicitly and
  *     every row lays out with `flexDirection: 'row'` plus mirrored
- *     padding — but forcing it makes the platform's own widgets (the
+ *     padding - but forcing it makes the platform's own widgets (the
  *     text-selection handles, the keyboard's language row, the native
  *     `Alert` button order) agree with the app instead of fighting it.
  *
@@ -14,7 +14,7 @@
  *     protection policy is derived from a signed-in device session and
  *     the library only loads while signed in. `Protection` sits above
  *     the navigator so the shield owns the window for the whole app
- *     lifetime rather than per screen — see the note in
+ *     lifetime rather than per screen - see the note in
  *     `src/store/ProtectionContext.tsx` for why that matters during
  *     transitions.
  *
@@ -55,7 +55,7 @@ import { colors, fontSize, spacing } from "./src/theme"
  *
  * `forceRTL` only takes effect on the *next* launch, which normally means
  * an app restart is required to see it. None is needed here, for the
- * reason in the header — the UI is RTL by its own styles, so the first
+ * reason in the header - the UI is RTL by its own styles, so the first
  * launch already looks right and the flag simply catches up to it. */
 
 I18nManager.allowRTL(true)
@@ -130,8 +130,8 @@ export function App(): ReactNode {
             Platform.OS === "android" ? colors.background : undefined
           }
           /* Not translucent: with a translucent status bar the root view
-           * extends under it, and the shield overlay — which is a child of
-           * the root view — would then have to cover the system bar too.
+           * extends under it, and the shield overlay - which is a child of
+           * the root view - would then have to cover the system bar too.
            * Keeping the bar opaque means the overlay only ever has to hide
            * app content, which is all it is responsible for. */
 

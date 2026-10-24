@@ -1,5 +1,5 @@
 /**
- * Maestro Core — public entry point.
+ * Maestro Core - public entry point.
  *
  * Consumers import from "@/maestro" only, never from deeper paths.
  */

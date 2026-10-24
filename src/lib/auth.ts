@@ -45,7 +45,7 @@ export function randomSalt(): string {
 }
 
 function fallbackDigest(input: string): string {
-  // FNV-1a over several rounds. Not cryptographic — a placeholder so the
+  // FNV-1a over several rounds. Not cryptographic - a placeholder so the
 
   // app never keeps plaintext passwords even without WebCrypto.
 
@@ -131,7 +131,7 @@ export async function verifyPassword(
  * and the thresholds now live beside the validator the backend already uses.
  */
 
-/** Why an address cannot be used, in the customer's language — or `null`. */
+/** Why an address cannot be used, in the customer's language - or `null`. */
 export function emailProblem(value: string): string | null {
   const email = value.trim()
 
@@ -160,7 +160,7 @@ export function emailProblem(value: string): string | null {
  * The number is captured as a prefix plus a subscriber number so the two
  * parts can be validated and re-displayed without guessing where one ends.
  * Stored form stays the flat local format (`0501234567`) that `users.phone`
- * and `orders.customer_phone` already hold — no format change, no migration.
+ * and `orders.customer_phone` already hold - no format change, no migration.
  */
 
 /** The mobile prefixes the storefront offers. */
@@ -190,7 +190,7 @@ export interface PhoneParts {
  * `0XXXXXXXXX` form the storefront writes, and the `972XXXXXXXXX` form an
  * older record or a hand-entered contact can carry. A number whose prefix is
  * not an Israeli mobile prefix has no slot to return to, so it comes back
- * empty rather than half-filled — the customer retypes it instead of placing
+ * empty rather than half-filled - the customer retypes it instead of placing
  * an order under a number they did not confirm.
  */
 export function parsePhoneParts(
@@ -222,7 +222,7 @@ export function joinPhone({ prefix, number }: PhoneParts): string {
 }
 
 /**
- * Why a phone number cannot be used — or `null`.
+ * Why a phone number cannot be used - or `null`.
  *
  * `required` is the whole point of the parameter: the purchase must collect a
  * reachable number (docs/PRODUCT_BRIEF.md §5 lists Phone among the fields a
@@ -257,7 +257,7 @@ export function phoneProblem(
  *
  * Not a style choice: GoTrue rejects anything longer because bcrypt truncates
  * at 72 bytes, and that refusal arrives in English. The storefront applies the
- * same ceiling so the customer never meets the provider's sentence — and it
+ * same ceiling so the customer never meets the provider's sentence - and it
  * refuses with a plain "too long" rather than quoting the number. A limit that
  * only exists because of a hashing library is an implementation detail, and
  * the form has no business teaching it before the customer asks for it. */
@@ -267,7 +267,7 @@ export const PASSWORD_MAX_LENGTH = 72
  *
  * It is one constant because the same sentence is shown twice: live under the
  * field while a disallowed character is typed, and again as the refusal when
- * the form is submitted anyway. Two copies of it drifted once already — the
+ * the form is submitted anyway. Two copies of it drifted once already - the
  * screen promised "only English letters and digits" while the validator
  * accepted anything with a letter and a number in it. */
 export const PASSWORD_CHAR_RULE =
@@ -291,8 +291,8 @@ export function hasInvalidPasswordChars(text: string): boolean {
  * The password policy, in one place: at least 8 characters, printable ASCII
  * only, and at least one letter and one digit so the secret is not a number.
  *
- * Used by every screen that *sets* a password — registration, first-run
- * setup, recovery — and by the service layer behind them. It is deliberately
+ * Used by every screen that *sets* a password - registration, first-run
+ * setup, recovery - and by the service layer behind them. It is deliberately
  * never called on the way in: an account opened under an older, looser rule
  * must still be able to sign in, or tightening the policy would lock people
  * out of the library they paid for.
@@ -301,7 +301,7 @@ export function hasInvalidPasswordChars(text: string): boolean {
  * can live. Verified against the auth server's own source
  * (`internal/api/password.go`): its checks are a minimum length, a required
  * character *class* (`strings.ContainsAny`, which never refuses a character
- * outside the classes) and a 72-character cap — so no hosted configuration
+ * outside the classes) and a 72-character cap - so no hosted configuration
  * can forbid a non-Latin script. The length and the cap, on the other hand,
  * are enforced server-side and are configured in supabase/config.toml.
  */
@@ -334,7 +334,7 @@ export function writeSessionUserId(userId: string | null): void {
     if (userId) localStorage.setItem(SESSION_KEY, userId)
     else localStorage.removeItem(SESSION_KEY)
   } catch {
-    /* storage unavailable — session stays in memory only */
+    /* storage unavailable - session stays in memory only */
   }
 }
 

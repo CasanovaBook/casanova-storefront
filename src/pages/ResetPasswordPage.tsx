@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Reset Password — the customer-facing entry point of the admin
+ * Reset Password - the customer-facing entry point of the admin
  * reset flow.
  *
  * Reached from the admin-minted link /reset-password?r=<seal-id>.
@@ -7,7 +7,7 @@
  * Function and follows the returned Supabase action link in the
  * customer's own browser, which lands on /setup-password with an
  * active recovery session. The raw link is never rendered, stored
- * or logged — the page discards it on redirect.
+ * or logged - the page discards it on redirect.
  *
  * There is deliberately no session pre-check here: redeem is
  * single-use, so a replay (browser-back after completing the flow)
@@ -29,7 +29,7 @@ import AuthShell from "../components/layout/AuthShell"
 type RedeemState = "redeeming" | "redirecting" | "invalid" | "error"
 
 /** admin-password-reset mints 32 lowercase hex chars (UUID without dashes).
- *  Anything else can never be a valid seal, so the page refuses it locally —
+ *  Anything else can never be a valid seal, so the page refuses it locally -
  *  no network call, and a tampered or truncated link lands on the same
  *  friendly screen as an expired one. */
 const SEAL_ID_PATTERN = /^[0-9a-f]{32}$/
@@ -46,7 +46,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     let cancelled = false
 
-    /* No id, a malformed id, or the local driver without a hosted backend —
+    /* No id, a malformed id, or the local driver without a hosted backend -
      * the branded flow only exists where the Edge Functions do. */
     if (!sealId || !SEAL_ID_PATTERN.test(sealId) || !isSupabaseConfigured) {
       setState("invalid")
@@ -131,7 +131,7 @@ export default function ResetPasswordPage() {
         state === "error"
           ? "משהו השתבש"
           : state === "redirecting"
-            ? "מאומת — ממשיכים…"
+            ? "מאומת - ממשיכים…"
             : "מאמת קישור איפוס…"
       }
       description={

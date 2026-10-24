@@ -11,7 +11,7 @@
   launcher on API 24 inflates it in its own process without support-library
   help, and one file replaces five bitmaps. When real brand artwork exists,
   generate the PNG buckets with Android Studio's Image Asset tool and delete
-  this file — the adaptive pair in mipmap-anydpi-v26 stays either way.
+  this file - the adaptive pair in mipmap-anydpi-v26 stays either way.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"

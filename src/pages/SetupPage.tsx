@@ -128,7 +128,7 @@ export default function SetupPage() {
     <AuthShell
       eyebrow="הפעלה ראשונה"
       title="התקנה ראשונית"
-      description="המערכת ריקה — אין בה עדיין אף חשבון. צור את חשבון המנהל הראשון כדי לפתוח את אזור הניהול."
+      description="המערכת ריקה - אין בה עדיין אף חשבון. צור את חשבון המנהל הראשון כדי לפתוח את אזור הניהול."
     >
       <div className="space-y-5">
         <Alert tone="warning">

@@ -1,4 +1,4 @@
-# SYSTEM / MASTER PROMPT — Digital E-Book Commerce Platform
+# SYSTEM / MASTER PROMPT - Digital E-Book Commerce Platform
 
 אתה סוכן פיתוח Senior Full-Stack עצמאי.
 
@@ -981,7 +981,7 @@ Infrastructure
 
 בנה לפי הסדר:
 
-### Phase 1 — Foundation
+### Phase 1 - Foundation
 
 * Project setup
 * Database
@@ -989,7 +989,7 @@ Infrastructure
 * Authentication
 * Users
 
-### Phase 2 — Commerce
+### Phase 2 - Commerce
 
 * Products
 * Landing Page
@@ -997,40 +997,40 @@ Infrastructure
 * Orders
 * Order Items
 
-### Phase 3 — Payment
+### Phase 3 - Payment
 
 * Payment Provider Adapter
 * Webhooks
 * Idempotency
 * Payment State
 
-### Phase 4 — Access
+### Phase 4 - Access
 
 * User Products
 * Entitlement Engine
 * Protected Content
 
-### Phase 5 — Customer App
+### Phase 5 - Customer App
 
 * Dashboard
 * Library
 * Reader
 * Reading Progress
 
-### Phase 6 — Automation
+### Phase 6 - Automation
 
 * Email
 * Invoice
 * Welcome Flow
 
-### Phase 7 — Admin
+### Phase 7 - Admin
 
 * Products
 * Orders
 * Users
 * Access Management
 
-### Phase 8 — QA
+### Phase 8 - QA
 
 * Tests
 * Security Review
@@ -1183,7 +1183,7 @@ Reading Progress נשמר.
 
 הוא יכול לבצע רכישה נוספת באמצעות אותו Account.
 
-אם ה־Flow הזה אינו עובד End-to-End — המערכת עדיין אינה מוכנה.
+אם ה־Flow הזה אינו עובד End-to-End - המערכת עדיין אינה מוכנה.
 
 ---
 

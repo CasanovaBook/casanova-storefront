@@ -1,5 +1,5 @@
 /**
- * Maestro Core — shared domain types for Casanova Bookstore.
+ * Maestro Core - shared domain types for Casanova Bookstore.
  *
  * Every resource is a flat record so it maps 1:1 to a Postgres table
  * (see schema.sql) and to a localStorage collection.

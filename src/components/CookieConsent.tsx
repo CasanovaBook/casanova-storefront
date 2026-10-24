@@ -6,9 +6,9 @@
  * This banner covers both traditional cookies and localStorage usage.
  *
  * The banner distinguishes between:
- *  - Essential storage (session, checkout) — always active
- *  - Functional storage (accessibility prefs, theme) — user can opt out
- *  - Analytics (Google Analytics, if configured) — requires explicit consent
+ *  - Essential storage (session, checkout) - always active
+ *  - Functional storage (accessibility prefs, theme) - user can opt out
+ *  - Analytics (Google Analytics, if configured) - requires explicit consent
  *
  * Consent state is stored in localStorage under a versioned key.
  * ───────────────────────────────────────────────────────────── */
@@ -53,7 +53,7 @@ function writeConsent(state: ConsentState): void {
   try {
     localStorage.setItem(CONSENT_KEY, JSON.stringify(state))
   } catch {
-    /* Storage unavailable — consent stays in memory only */
+    /* Storage unavailable - consent stays in memory only */
   }
 }
 

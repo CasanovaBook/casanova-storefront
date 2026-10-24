@@ -1,9 +1,9 @@
 /**
- * Maestro Core — local connector (default, no secrets required).
+ * Maestro Core - local connector (default, no secrets required).
  *
  * Persists to the visitor's own localStorage, so it is meant for development,
  * demos and Figma preview. Data submitted this way is NOT visible to staff
- * on another device — set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY for
+ * on another device - set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY for
  * production (see schema.sql).
  *
  * Uses the same `casanova_db_v1` localStorage key as the rest of the app

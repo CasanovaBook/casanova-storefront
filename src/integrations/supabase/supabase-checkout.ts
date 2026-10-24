@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Supabase checkout service — the server-side half of a purchase.
+ * Supabase checkout service - the server-side half of a purchase.
  *
  * The browser cannot write `public.orders` or `public.user_products`
  * (RLS is row-level; a policy wide enough for a customer to insert
@@ -8,7 +8,7 @@
  * (migrations/0023_storefront_checkout_grant.sql). That one
  * transaction re-derives the price from `public.products`, records
  * the order, its line item and a captured manual payment, and writes
- * the buyer's `user_products` row — which is exactly what the
+ * the buyer's `user_products` row - which is exactly what the
  * `get-content-url` edge function checks before it will sign the
  * book file. Without it a completed purchase produced a local order
  * that the reader could not open.
@@ -187,7 +187,7 @@ function toCustomer(row: RpcRow): User {
  * `public.products`, for the signed-in account.
  *
  * `product` is the catalogue row checkout already resolved; it is passed
- * through only so the returned order can be mapped with sane fallbacks —
+ * through only so the returned order can be mapped with sane fallbacks -
  * the amounts stored in Postgres come from the product row the function
  * read itself, never from this client.
  */

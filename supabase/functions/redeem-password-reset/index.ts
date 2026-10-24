@@ -1,15 +1,15 @@
-/* redeem-password-reset — swap a sealed reset id for the real recovery link.
+/* redeem-password-reset - swap a sealed reset id for the real recovery link.
  *
  * The customer-facing /reset-password page calls this with the `r` id from
  * its URL and then navigates to the returned action link in their own
- * browser. The raw Supabase link — project domain, recovery token and all —
+ * browser. The raw Supabase link - project domain, recovery token and all -
  * is only ever present inside this response, which the page consumes
  * immediately by redirecting; it is never rendered, stored or logged.
  *
  * SECURITY PROPERTIES
  *
  * 1. The id is the only credential. It is a full 128-bit random UUID with
- *    the dashes stripped — unguessable, un enumerable, and worthless after
+ *    the dashes stripped - unguessable, un enumerable, and worthless after
  *    the first redeem (the row is deleted in the same request, so replay
  *    returns 410).
  * 2. Expiry is enforced twice: the row's expires_at is checked here even
@@ -17,7 +17,7 @@
  * 3. Authorization model: the table has RLS enabled with no policies, so
  *    anon/authenticated keys can read nothing; this function uses the
  *    service role, which is exactly the one trusted path.
- * 4. Nothing about the request or the link is logged — the response body is
+ * 4. Nothing about the request or the link is logged - the response body is
  *    the only copy, and the client discards it on redirect.
  *
  * verify_jwt is false (config.toml): the caller is an anonymous customer
@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
     const admin = adminClient()
 
     // Atomic single-use redeem: DELETE … RETURNING. Two concurrent requests
-    // with the same id race on one row — exactly one delete lands, the
+    // with the same id race on one row - exactly one delete lands, the
     // loser sees no row and gets the same answer as an expired link.
     const { data: row, error: deleteError } = await admin
       .from("password_reset_links")

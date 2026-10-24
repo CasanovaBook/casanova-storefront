@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Protection context — one shield for the whole app.
+ * Protection context - one shield for the whole app.
  *
  * The screen shield is mounted above the navigator rather than inside
  * the reader screen, for two reasons:
@@ -91,9 +91,9 @@ export function ProtectionProvider({ children }: { children: ReactNode }) {
   const setPolicy = useCallback((next: DrmPolicy) => setPolicyState(next), [])
 
   /* The shield is on whenever the policy asks for any capture protection.
-   * Both flags map to the same OS-level switch — FLAG_SECURE and the iOS
+   * Both flags map to the same OS-level switch - FLAG_SECURE and the iOS
    * capture notifications do not distinguish a still shot from a
-   * recording — so a policy that blocks one and not the other is applied
+   * recording - so a policy that blocks one and not the other is applied
    * as "block both". That is the only reading which does not silently
    * widen the hole the administrator thought they were closing. */
 
@@ -141,9 +141,9 @@ export function ProtectionProvider({ children }: { children: ReactNode }) {
           title="התוכן מוגן"
           message={
             shield.captured
-              ? "זוהתה הקלטת מסך — התוכן הוסתר להגנה על זכויות היוצרים."
+              ? "זוהתה הקלטת מסך - התוכן הוסתר להגנה על זכויות היוצרים."
               : shield.mirrored
-                ? "זוהה שיקוף מסך או חיבור לתצוגה חיצונית — נתקו את השיקוף כדי להמשיך לקרוא."
+                ? "זוהה שיקוף מסך או חיבור לתצוגה חיצונית - נתקו את השיקוף כדי להמשיך לקרוא."
                 : "התוכן מוסתר בזמן שהאפליקציה ברקע."
           }
         />

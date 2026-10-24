@@ -103,7 +103,7 @@ function RevenueChart({
                     ? "linear-gradient(180deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, var(--color-foreground)))"
                     : "var(--color-secondary)",
               }}
-              title={`${d.label} — ₪${d.revenue.toLocaleString()} · ${d.orders} הזמנות`}
+              title={`${d.label} - ₪${d.revenue.toLocaleString()} · ${d.orders} הזמנות`}
             />
           </div>
         ))}
@@ -186,7 +186,7 @@ export default function AdminDashboardPage() {
   const [preset, setPreset] = useState<RangePreset>("MONTH")
 
   /* Every figure below is derived on read from the order and refund records
-   * for the selected period — no stored totals that could drift. */
+   * for the selected period - no stored totals that could drift. */
   const rev = revenueFor(preset)
 
   const activeSubs = subscriptions.filter((s) => s.status === "ACTIVE")
@@ -258,7 +258,7 @@ export default function AdminDashboardPage() {
       <PageHeader
         eyebrow="ניהול · תמונת מצב"
         title="לוח בקרה"
-        description={`תמונת מצב מלאה של המערכת — ${new Date().toLocaleDateString(
+        description={`תמונת מצב מלאה של המערכת - ${new Date().toLocaleDateString(
           "he-IL",
           {
             weekday: "long",
@@ -296,7 +296,7 @@ export default function AdminDashboardPage() {
         }
       />
 
-      {/* Key metrics — derived from transactions in the selected period */}
+      {/* Key metrics - derived from transactions in the selected period */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <StatCard
           icon="money"
@@ -415,7 +415,7 @@ export default function AdminDashboardPage() {
               size={16}
               style={{ color: "var(--color-success)" }}
             />
-            הכול תקין — אין תקלות פתוחות כרגע.
+            הכול תקין - אין תקלות פתוחות כרגע.
           </div>
         ) : (
           <div className="divide-y" style={{ borderColor: "var(--color-border)" }}>

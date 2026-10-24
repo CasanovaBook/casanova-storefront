@@ -31,7 +31,7 @@
   --font-brand:   'Bodoni Moda', 'Frank Ruhl Libre', serif;
   --font-mono:    'JetBrains Mono', monospace;
 
-  /* In `rem` by convention only — the root font size is never changed,
+  /* In `rem` by convention only - the root font size is never changed,
    * so these resolve to 8/12/16px exactly as they always have. */
   --radius: 0.5rem;
   --radius-md: 0.625rem;
@@ -62,7 +62,7 @@
    *
    * The `vw` term is measured against the viewport, not the root font
    * size, so a reader who raises their browser's default font size
-   * still gets a proportionally wider shell — the lower bound wins.
+   * still gets a proportionally wider shell - the lower bound wins.
    */
   --container-6xl: clamp(72rem, 75vw, 96rem);
   --container-7xl: clamp(72rem, 75vw, 96rem);
@@ -70,8 +70,8 @@
   /* ── Fluid display type ───────────────────────────────────────
    * Only the display sizes scale, because they are what reads as "too
    * small" when a layout is dropped onto a large screen. Each clamp is
-   * a no-op at or below a 1536px viewport — the lower bound and the
-   * `vw` term meet exactly there — and tops out near 1.3x the laptop
+   * a no-op at or below a 1536px viewport - the lower bound and the
+   * `vw` term meet exactly there - and tops out near 1.3x the laptop
    * size, so a headline never turns into a billboard.
    *
    * Body copy is deliberately left alone. Growing body text with the
@@ -170,7 +170,7 @@ body {
  *             `max-w-6xl` ceiling, which is fluid (see `@theme`)
  *             rather than a fixed pixel value.
  *
- *   measure   The readable constraint nested inside the wrapper —
+ *   measure   The readable constraint nested inside the wrapper -
  *             `max-w-3xl` for prose, `max-w-4xl`/`5xl` for video and
  *             card rows. This is the one place a hard `rem` cap is
  *             still right, because line length is a property of
@@ -178,7 +178,7 @@ body {
  *
  * A `max-width` is therefore never itself the defect. What failed was
  * a section whose *only* container was the measure, so the entire
- * band — background included — shrank together with the text.
+ * band - background included - shrank together with the text.
  *
  * Section rhythm (`py-14 md:py-16` on the sales letter's bands) is
  * deliberately NOT viewport scaled: vertical breathing room belongs to
@@ -192,7 +192,7 @@ body {
  * `min-h-screen` makes a hero exactly as tall as the window. That is
  * right on a laptop and wrong everywhere else: on a tall display a
  * short hero is padded out with hundreds of pixels of empty gradient
- * — the "narrow card floating inside a huge screen" symptom — and on
+ * - the "narrow card floating inside a huge screen" symptom - and on
  * mobile `100vh` includes the collapsing URL bar, so the hero
  * overshoots the visible area and pushes its own content below the
  * fold.
@@ -201,8 +201,8 @@ body {
  * therefore never overshoots. The 50rem ceiling is what removes the
  * void: a 1440px- or 2160px-tall display now gets an 800px hero and
  * sees the next band, instead of a mostly empty screen. On a laptop
- * and on a phone the ceiling is inert — the viewport is already
- * shorter than 800px — so those layouts are unchanged.
+ * and on a phone the ceiling is inert - the viewport is already
+ * shorter than 800px - so those layouts are unchanged.
  *
  * No `100vh` fallback is written, deliberately. `svh` is
  * baseline-widely-available, this project sets no custom
@@ -322,7 +322,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * CASANOVA landing — scoped editorial art direction
+ * CASANOVA landing - scoped editorial art direction
  *
  * The storefront's application chrome keeps the shared theme tokens above;
  * this page owns a fixed cinematic palette so its black, cream and camel
@@ -4584,7 +4584,7 @@ html[data-app-shell='true'] .a11y-launcher {
 /* Skip-to-content link: visible when focused for keyboard users.
  *
  * `position: fixed` so it appears wherever the visitor is in a long page, and
- * a logical inset so it lands at the start of the reading direction — the
+ * a logical inset so it lands at the start of the reading direction - the
  * physical `left` it used before put it on the opposite side of the header in
  * this RTL layout. Every shell that has a `<main id="main">` renders this as
  * its first focusable element. */
@@ -4612,7 +4612,7 @@ html[data-app-shell='true'] .a11y-launcher {
   scroll-margin-top: 5.5rem;
 }
 
-/* Visible focus indicator for keyboard users, at all times — never only when
+/* Visible focus indicator for keyboard users, at all times - never only when
  * an accessibility setting is on. The setting below makes it stronger. */
 :focus-visible {
   outline: 3px solid var(--color-ring);
@@ -4628,7 +4628,7 @@ html[data-app-shell='true'] .a11y-launcher {
  * neither is allowed to reserve layout space, so opening them can never shift
  * the page.
  *
- * z-index sits above the page chrome (header and drawers are 40–50) and below
+ * z-index sits above the page chrome (header and drawers are 40-50) and below
  * the modal/overlay range (dialogs 100, reader lock 210, toasts 9999), so the
  * control never floats over a blocking surface.
  * ───────────────────────────────────────────────────────────── */
@@ -4936,7 +4936,7 @@ html[data-app-shell='true'] .a11y-launcher {
  * attributes on <html> (font size is set as the root `font-size` itself), so
  * one setting reaches every route at once: storefront, login, checkout,
  * dashboard, admin and reader. Nothing here is loaded per page and nothing
- * re-renders React — the browser just restyles.
+ * re-renders React - the browser just restyles.
  *
  * These rules come after the light-mode block on purpose: for the same
  * specificity the later rule wins, and the two states combine (light theme +
@@ -4946,7 +4946,7 @@ html[data-app-shell='true'] .a11y-launcher {
 
 /* Line height. Set on the elements that carry body copy rather than on `body`
  * alone, because Tailwind's `leading-*` utility on an element beats inherited
- * values — this rule out-specifies those utilities instead of fighting them
+ * values - this rule out-specifies those utilities instead of fighting them
  * with !important. */
 :root[data-a11y-line-height='true']
   :where(h1, h2, h3, h4, h5, h6, p, li, dd, dt, blockquote, figcaption, td, th, label, legend, span, div, a, button, input, textarea, select) {

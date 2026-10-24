@@ -1,4 +1,4 @@
-/*  ScreenShield.swift — the iOS half of the DRM contract declared in
+/*  ScreenShield.swift - the iOS half of the DRM contract declared in
  *  `src/drm/ScreenShield.tsx`.
  *
  *  Read this before changing it, because the difference between this file and
@@ -22,7 +22,7 @@
  *      cable mirror is running, and `capturedDidChangeNotification` fires when
  *      it starts. The JavaScript layer paints an opaque view over everything on
  *      that event. The recording therefore contains the book up to the moment it
- *      began and black afterwards — a mitigation with a hole at the front, which
+ *      began and black afterwards - a mitigation with a hole at the front, which
  *      is why the reader says so out loud in its protection sheet instead of
  *      letting the customer believe the hole is not there.
  *
@@ -30,7 +30,7 @@
  *      `userDidTakeScreenshotNotification` fires once the image is already in
  *      the camera roll. Nothing can be undone. The value is that
  *      `security_events` records who did it, on which device, during which
- *      session — which is what a publisher actually needs when a page turns up
+ *      session - which is what a publisher actually needs when a page turns up
  *      somewhere it should not.
  *
  *  Plus one thing that is not capture-related at all: `restrictDocumentInteraction`
@@ -162,9 +162,9 @@ class ScreenShield: RCTEventEmitter {
 
             /* What "protected" means on iOS, stated precisely: the window can
              * be covered before a snapshot, and active capture can be detected
-             * and reacted to. If neither is available — no key window yet, which
+             * and reacted to. If neither is available - no key window yet, which
              * can happen if `enable()` is somehow called before the scene
-             * connects — the honest answer is false, and the JavaScript layer
+             * connects - the honest answer is false, and the JavaScript layer
              * turns that into `shieldFailed` and refuses to render the book. */
             resolve(self.canProtectSwitcher())
         }
@@ -239,7 +239,7 @@ class ScreenShield: RCTEventEmitter {
      * True when the cover is installed or can be installed on demand.
      *
      * The secure-entry layer is NOT part of this answer. That layer is a
-     * best-effort extra — it depends on the internal structure of
+     * best-effort extra - it depends on the internal structure of
      * `UITextField.layer.sublayers`, which is not public API and has changed
      * shape between iOS releases. Making `enable()`'s return value depend on it
      * would mean an iOS update could stop the reader from opening books at all,
@@ -272,7 +272,7 @@ class ScreenShield: RCTEventEmitter {
         /* `addSubview` puts it last in the window's subview order, which is
          * above the React root view and above anything presented modally from
          * it. A React Native Modal lives in the same window, so it is covered
-         * too — and a modal open at the moment of deactivation is exactly the
+         * too - and a modal open at the moment of deactivation is exactly the
          * case where the reader is most likely to be showing a page. */
         window.addSubview(cover)
         privacyCover = cover
@@ -461,8 +461,8 @@ class ScreenShield: RCTEventEmitter {
      *
      * Like its Android counterpart this is a claim, not a proof: the checks run
      * inside the process being attacked, so anything they look for can be hidden
-     * from them. What they are good for is catching unmodified tooling — Cydia,
-     * Sileo, Zebra, checkra1n, palera1n, a `DYLD_INSERT_LIBRARIES` tweak — and
+     * from them. What they are good for is catching unmodified tooling - Cydia,
+     * Sileo, Zebra, checkra1n, palera1n, a `DYLD_INSERT_LIBRARIES` tweak - and
      * for putting a verdict on `device_sessions.device_integrity`, where a
      * pattern across many sessions is visible even when any single one is not.
      *
@@ -498,8 +498,8 @@ class ScreenShield: RCTEventEmitter {
             }
             /* `TRUSTED` means "no local indicator of compromise", and nothing
              * stronger. See the matching note in `ScreenShieldModule.kt` for why
-             * the alternative — reporting ATTESTATION_FAILED until App Attest or
-             * DeviceCheck is wired up — must not be used: that value is in the
+             * the alternative - reporting ATTESTATION_FAILED until App Attest or
+             * DeviceCheck is wired up - must not be used: that value is in the
              * JavaScript `COMPROMISED_INTEGRITY` list, so returning it would
              * block every unmodified iPhone that ever installs the app. */
             resolve("TRUSTED")
@@ -556,7 +556,7 @@ class ScreenShield: RCTEventEmitter {
      *
      * Requires `LSApplicationQueriesSchemes` in Info.plist, which is declared
      * there. Without that declaration `canOpenURL` returns false on a
-     * jailbroken device too, and this check silently stops working — the kind
+     * jailbroken device too, and this check silently stops working - the kind
      * of failure that looks like a clean result.
      */
     private static func detectJailbreakStoreSchemes() -> Bool {
@@ -575,7 +575,7 @@ class ScreenShield: RCTEventEmitter {
      * Sets `NSURLIsExcludedFromBackupKey`.
      *
      * Without it an iCloud or Finder backup carries the vault to whatever device
-     * the customer restores onto — a device whose session was never authorised
+     * the customer restores onto - a device whose session was never authorised
      * to hold that copy, and which the server has no record of. Android needs no
      * equivalent because `allowBackup="false"` there is per app and is set in the
      * manifest.
@@ -608,9 +608,9 @@ class ScreenShield: RCTEventEmitter {
      * SHA-256 of a file, lowercase hex.
      *
      * `SecureFileVault.fetchToVault` compares it against the `checksum` on the
-     * redeemed grant. Without it a truncated download — a captive-portal
+     * redeemed grant. Without it a truncated download - a captive-portal
      * interstitial, a proxy that closes early, a disk that silently stops
-     * writing — would be handed to the renderer as though it were the book, and
+     * writing - would be handed to the renderer as though it were the book, and
      * the renderer would either fail or, worse, draw the pages it did receive
      * and report success.
      *
@@ -656,8 +656,8 @@ class ScreenShield: RCTEventEmitter {
     /**
      * Best-effort removal of text selection from an open PDF.
      *
-     * PDFKit renders selectable text, and selection brings a Copy item and — on
-     * iOS 16+ — an edit menu carrying Share. That is a way to lift passages out
+     * PDFKit renders selectable text, and selection brings a Copy item and - on
+     * iOS 16+ - an edit menu carrying Share. That is a way to lift passages out
      * of a book which has nothing to do with cameras, so the reader removes it.
      *
      * How: walk the key window's hierarchy and, for every view whose class or
@@ -729,7 +729,7 @@ class ScreenShield: RCTEventEmitter {
      *
      * Falls back to any connected scene rather than returning nil when nothing
      * is foreground-active, because `willResignActive` is exactly the moment at
-     * which the active scene has already stopped being active — and that is the
+     * which the active scene has already stopped being active - and that is the
      * callback that needs a window in order to install the cover.
      */
     private static func keyWindow() -> UIWindow? {
@@ -760,7 +760,7 @@ class ScreenShield: RCTEventEmitter {
     /* ── Constants ─────────────────────────────────────── */
 
     /** Lets a stale cover be found and removed if this module is ever torn down
-     *  without `removePrivacyCover()` running — an app killed mid-transition,
+     *  without `removePrivacyCover()` running - an app killed mid-transition,
      *  for instance. A tagged view in the window is findable; an untagged one is
      *  indistinguishable from React's own. */
     private static let PRIVACY_COVER_TAG = 0x43_41_53_4E
@@ -785,7 +785,7 @@ class ScreenShield: RCTEventEmitter {
      * Paths that belong to a stock Darwin base system are deliberately absent,
      * `/bin/sh` in particular. Apple ships it, so whether `fileExists` reports it
      * depends on the iOS release and on what the app sandbox allows `stat()` to
-     * see outside the container — neither of which this app controls. The cost of
+     * see outside the container - neither of which this app controls. The cost of
      * getting that wrong is not symmetric: a false positive makes
      * `block_rooted_devices` refuse to open a book for a paying customer on an
      * unmodified iPhone, while a false negative leaves one detection technique

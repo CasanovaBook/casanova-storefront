@@ -1,5 +1,5 @@
 /**
- * Maestro Admin — route definitions.
+ * Maestro Admin - route definitions.
  */
 
 import { Link, Route, Routes } from "react-router";
@@ -46,7 +46,7 @@ function Placeholder({
           <>
             {description}
             <span className="mt-3 block text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-              אין כאן פעולות מדומות או נתוני דוגמה — המסך ייפתח רק כשייושם המודול.
+              אין כאן פעולות מדומות או נתוני דוגמה - המסך ייפתח רק כשייושם המודול.
             </span>
           </>
         }

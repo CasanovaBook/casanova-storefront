@@ -18,7 +18,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
  * Base URL of the shared backend.
  *
  * Overridable at runtime through `setApiBaseUrl()` so a QA build can be
- * pointed at staging without recompiling — the override lives in
+ * pointed at staging without recompiling - the override lives in
  * AsyncStorage, which is wiped on logout and never holds credentials.
  */
 
@@ -87,7 +87,7 @@ export const APP_VERSION = DeviceInfo.getVersion()
 
 /**
  * Integer build number. This is the value `mobile_min_build` gates on,
- * because a semver string cannot be compared safely in SQL — a
+ * because a semver string cannot be compared safely in SQL - a
  * forced-update check has to be `build_number >= mobile_min_build`.
  */
 

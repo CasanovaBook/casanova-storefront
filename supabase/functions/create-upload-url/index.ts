@@ -1,4 +1,4 @@
-/* create-upload-url — issue a signed Storage upload URL for a book PDF.
+/* create-upload-url - issue a signed Storage upload URL for a book PDF.
  *
  * Called by the CMS product editor (through src/lib/content-storage.ts) when
  * an admin picks a PDF. It mints a single-object signed UPLOAD url for path

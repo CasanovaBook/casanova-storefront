@@ -1,5 +1,5 @@
 -- ============================================================
--- 0018 — Support inquiries: authoritative identity, RLS, realtime
+-- 0018 - Support inquiries: authoritative identity, RLS, realtime
 --
 -- WHY
 --
@@ -16,7 +16,7 @@
 --   • Customers never INSERT directly. The only customer write path is
 --     `create_my_inquiry()`, a SECURITY DEFINER function that stamps
 --     user_id, customer_name and customer_email from the authenticated
---     profile — so a crafted request cannot open a ticket under another
+--     profile - so a crafted request cannot open a ticket under another
 --     account's name or address.
 --   • Staff (`is_admin()`, the same predicate the live users/entitlement
 --     policies use) read the whole queue and move tickets through their
@@ -121,7 +121,7 @@ CREATE SEQUENCE IF NOT EXISTS public.inquiry_ticket_seq;
 
 -- Seed past any number already in the table so the first server ticket
 -- cannot collide with a legacy row. Falls back to 1 if the suffixes do
--- not parse — the UNIQUE constraint remains the final guard.
+-- not parse - the UNIQUE constraint remains the final guard.
 DO $$
 DECLARE
   v_max bigint;
@@ -136,7 +136,7 @@ EXCEPTION WHEN OTHERS THEN
 END
 $$;
 
--- ── 3. create_my_inquiry() — the customer write path ────────
+-- ── 3. create_my_inquiry() - the customer write path ────────
 -- SECURITY DEFINER so the insert succeeds without a table-level INSERT
 -- policy for customers, and so the profile read below is authoritative
 -- regardless of the caller's own row visibility. Identity never comes
@@ -272,7 +272,7 @@ ALTER TABLE public.inquiries REPLICA IDENTITY DEFAULT;
 --    succeeds; the same UPDATE as user A is refused by RLS.
 --
 -- 4. Realtime: with the customer page open as user A, run the staff
---    UPDATE from (3) against A's ticket — the page updates within
+--    UPDATE from (3) against A's ticket - the page updates within
 --    seconds, without a browser refresh.
 --
 -- 5. Client-side: submit from /dashboard/support; the ticket appears in

@@ -16,7 +16,7 @@ of the product.
 nothing but ask Auth to send the mail:
 
 ```ts
-// requestPasswordReset() — src/lib/supabase-auth.ts:255
+// requestPasswordReset() - src/lib/supabase-auth.ts:255
 await client.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
   redirectTo: `${window.location.origin}/setup-password`,
 })
@@ -40,7 +40,7 @@ The subject line is intentionally left alone. See "Why not change the subject".
 Gmail groups a repeated password-reset request into the existing conversation
 and then hides the part of the new body that matches the earlier message behind
 its `...` control. The previous body was identical on every request, so Gmail
-classified **the entire message — button included —** as repeated content and
+classified **the entire message - button included -** as repeated content and
 collapsed all of it. That is the screenshot: a second reset e-mail showing
 nothing but `...`.
 
@@ -70,8 +70,8 @@ as `<no value>` or fail validation. That is why the timestamp idea needs the
 Send Email Hook below rather than a template edit.
 
 **2. Therefore the confirmation URL is the only per-request content
-available.** The body puts a large block of genuinely new visible text — the
-copy-and-paste link — directly beneath the button, with only static prose after
+available.** The body puts a large block of genuinely new visible text - the
+copy-and-paste link - directly beneath the button, with only static prose after
 it. Gmail meets a body that differs substantially from the previous one instead
 of an identical one, and the static tail is the part it is free to trim. The
 button sits above that block so the CTA and the new content travel together.
@@ -81,8 +81,8 @@ button sits above that block so the CTA and the new content travel together.
 Putting either in the body would weaken the account, not just the e-mail:
 
 - `{{ .ConfirmationURL }}` is **already** in the message, as the button's `href`.
-  Rendering it as visible fallback text adds **no** new exposure — it is the same
-  string — and a copy-and-paste fallback is what keeps the flow usable in the
+  Rendering it as visible fallback text adds **no** new exposure - it is the same
+  string - and a copy-and-paste fallback is what keeps the flow usable in the
   clients that refuse to render the button.
 - `{{ .Token }}` appears **nowhere** in the message by default. Publishing a short
   numeric code that resets an account turns "click this link" into "read me the
@@ -100,7 +100,7 @@ comment gets substituted into every message.
 
 Gmail decides conversation grouping itself, and a different subject is what
 actually separates two messages into two conversations. But the subject cannot
-be varied per request either — Supabase templates the subject with the same
+be varied per request either - Supabase templates the subject with the same
 variable set, which contains no per-request non-secret value. Appending a
 per-send timestamp to the subject would work around threading, at the cost of a
 visibly unprofessional inbox line, and it does not fix the body problem. Keep
@@ -122,7 +122,7 @@ Request a reset, then immediately re-request, and check a third request too:
 
 Acceptance criterion: the Reset Password button is visible and clickable in a
 subsequent reset e-mail without manually expanding Gmail's quoted-content
-section. Confirm the signup/verification e-mail is untouched — this change
+section. Confirm the signup/verification e-mail is untouched - this change
 touches the recovery template only.
 
 ## Optional: a real timestamp (Send Email Hook)
@@ -142,12 +142,12 @@ Caveats, which is why this is not the default fix:
 
 Steps if you want it:
 
-1. `supabase functions new send-email` — the repo already uses
+1. `supabase functions new send-email` - the repo already uses
    `supabase/functions/` with a shared `deno.json`.
 2. Verify the webhook and send via Resend. The payload is `{ user, email_data }`
    where `email_data` is `{ token, token_hash, redirect_to, email_action_type,
    site_url, token_new, token_hash_new, old_email, old_phone, provider,
-   factor_type }`. Note there is **no** timestamp in the payload either — the
+   factor_type }`. Note there is **no** timestamp in the payload either - the
    function generates it.
 3. Build the link from `token_hash` + `redirect_to` + `email_action_type` and
    send it through Resend.
@@ -162,5 +162,5 @@ Resend is configured as Supabase's custom SMTP (`smtp.resend.com:465`, user
 `resend`) under **Authentication → Emails → SMTP Settings**. That setting
 controls *how* Auth sends; the template controls *what* it sends. Supabase's
 docs warn that provider-side "email tracking" rewrites the links inside these
-templates and can break them — if click tracking is enabled on the Resend
+templates and can break them - if click tracking is enabled on the Resend
 domain, turn it off before testing.

@@ -1,11 +1,11 @@
 /* ─────────────────────────────────────────────────────────────
- * Supabase support-inquiries service — the server side of the
+ * Supabase support-inquiries service - the server side of the
  * customer↔admin ticket flow.
  *
  * `public.inquiries` is the shared queue both interfaces read (the local
  * document remains a mirror/fallback). Customers create tickets through
  * `create_my_inquiry`, a SECURITY DEFINER function that stamps the sender
- * from the JWT — so a crafted request cannot choose its own identity —
+ * from the JWT - so a crafted request cannot choose its own identity -
  * and read only their own rows through the live RLS policies. Staff read
  * the whole queue and move tickets through their lifecycle under
  * `is_admin()`.
@@ -64,7 +64,7 @@ interface InquiryNoteRow {
  *
  * The table stores the author by id only, so `author_name` is left empty
  * and resolved by the caller: staff resolve it from their user list, and a
- * customer is shown "support"/"you" — staff names are never sent to a
+ * customer is shown "support"/"you" - staff names are never sent to a
  * customer with the conversation, and never need to be.
  */
 export function toInquiryNote(row: InquiryNoteRow): InquiryNote {
@@ -136,7 +136,7 @@ function describeInquiryRefusal(
   if (message.includes("validation_message"))
     return {
       code: "VALIDATION",
-      error: "ההודעה קצרה מדי — יש לתאר את הפנייה בפירוט.",
+      error: "ההודעה קצרה מדי - יש לתאר את הפנייה בפירוט.",
     }
 
   /* The note/reply refusals raised by migration 0019. */
@@ -175,7 +175,7 @@ function describeInquiryRefusal(
  * Reads the signed-in customer's own tickets, newest first.
  *
  * Scoped server-side by the RLS policy (`user_id = auth.uid()`), and
- * filtered again client-side — a read answered wider than one account's
+ * filtered again client-side - a read answered wider than one account's
  * rows (a missing or loosened policy) must never be mirrored into a
  * customer's document.
  *
@@ -218,7 +218,7 @@ export async function fetchMyInquiries(
 /**
  * Reads the staff queue: every ticket the caller's JWT may see.
  *
- * RLS does the scoping — for an admin that is the whole table, for any
+ * RLS does the scoping - for an admin that is the whole table, for any
  * other signed-in account only its own rows, so the caller decides what
  * this fetch means. Returns `null` on a failed read, never on an empty
  * queue.
@@ -261,8 +261,8 @@ export interface CreateMyInquiryInput {
 /**
  * Creates a ticket for the signed-in account via the `create_my_inquiry`
  * RPC (migration 0018). The database stamps the identity from the JWT and
- * the `public.users` profile, so the caller never supplies — and cannot
- * influence — the name or address the ticket carries.
+ * the `public.users` profile, so the caller never supplies - and cannot
+ * influence - the name or address the ticket carries.
  *
  * The returned row is what the database stored, ticket number included.
  */
@@ -342,7 +342,7 @@ export async function updateInquiryRemote(
 
       /* resolved_at accompanies a status change only when the caller sent
        * one: a note-driven freshness bump (status unchanged) must leave a
-       * resolved ticket's resolved_at intact — chk_inquiry_resolution
+       * resolved ticket's resolved_at intact - chk_inquiry_resolution
        * refuses a RESOLVED row without it. */
       if (patch.resolved_at !== undefined)
         payload.resolved_at = patch.resolved_at
@@ -440,7 +440,7 @@ async function readInquiryNotes(
 /**
  * Reads the customer-visible conversation of the given tickets.
  *
- * The tickets must be the signed-in account's own — scoped here and again
+ * The tickets must be the signed-in account's own - scoped here and again
  * by `inquiry_notes_select_own_public`, which also hides `internal = TRUE`
  * annotations, so a customer can only ever receive their own public
  * replies.

@@ -1,11 +1,11 @@
 -- ============================================================
--- 0007 — backfill auth accounts missing from public.users
---        [OBSOLETE — SKIP IF YOU APPLY 0010]
+-- 0007 - backfill auth accounts missing from public.users
+--        [OBSOLETE - SKIP IF YOU APPLY 0010]
 --
 -- ⚠ If you run 0010_delete_all_users_except_admin.sql (wiping every
 --   account except maorgacp@gmail.com), this file becomes pointless:
 --   it would re-insert two customers that 0010 is about to delete.
---   The correct order in that case is 0010 alone — do not run both.
+--   The correct order in that case is 0010 alone - do not run both.
 --
 -- This file is kept for the case where you decide to KEEP your
 -- customers and only repair the two accounts that never landed.
@@ -26,7 +26,7 @@
 -- and fix the two rows that are already stranded, so those stay
 -- invisible to the admin forever until they are inserted by hand. This
 -- closes that gap. It deliberately does NOT create or replace the
--- trigger — if one already exists, it keeps doing its job unchanged.
+-- trigger - if one already exists, it keeps doing its job unchanged.
 --
 -- SAFE TO RE-RUN
 --
@@ -64,14 +64,14 @@ COMMIT;
 
 -- ── VERIFY ───────────────────────────────────────────────────
 -- Must now return no rows. If it still does, the anti-join is being
--- blocked by the UNIQUE index on LOWER(email) — report the email.
+-- blocked by the UNIQUE index on LOWER(email) - report the email.
 --
 --   SELECT a.id, a.email FROM auth.users a
 --   LEFT JOIN public.users p ON p.user_id = a.id
 --   WHERE p.user_id IS NULL;
 --
 -- Then confirm the two repaired accounts are the OLDEST customers,
--- not the newest — i.e. the backfill dated them correctly:
+-- not the newest - i.e. the backfill dated them correctly:
 --
 --   SELECT email, created_at FROM public.users
 --   WHERE email IN ('zvika0710@gmail.com','maorgacp1@gmail.com');
@@ -81,4 +81,4 @@ COMMIT;
 --
 -- NOTE: these two accounts are CUSTOMER role and unconfirmed-era
 -- signups. Confirm they should be CUSTOMER before promoting either to
--- ADMIN — the backfill assigns CUSTOMER to every row it inserts.
+-- ADMIN - the backfill assigns CUSTOMER to every row it inserts.

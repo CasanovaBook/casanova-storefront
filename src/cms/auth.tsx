@@ -1,5 +1,5 @@
 /**
- * Maestro Admin — authentication gate.
+ * Maestro Admin - authentication gate.
  *
  * Uses the Casanova admin session directly (SSO). No separate Maestro login.
  * Any admin with cms:edit_live permission can access the CMS editor.

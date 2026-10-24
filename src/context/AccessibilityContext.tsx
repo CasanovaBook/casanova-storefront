@@ -23,8 +23,8 @@ import {
  * Every flag is a `data-a11y-*` attribute on `<html>` (font size is the one
  * exception: it is the root `font-size` itself). The styling that reacts to
  * them lives in one clearly marked block in `src/index.css`. That keeps the
- * cost at zero re-renders of page content — toggling a setting mutates one
- * attribute on one element — and it works for content this app does not own,
+ * cost at zero re-renders of page content - toggling a setting mutates one
+ * attribute on one element - and it works for content this app does not own,
  * such as CMS-rendered pages.
  *
  * What is deliberately *not* persisted
@@ -289,7 +289,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
    * shell, and restores the button if it had been hidden. `event.code` is used
    * rather than `event.key` because Alt+A produces a different character on
    * macOS keyboards. This is the visitor's guaranteed way back to the controls
-   * on a page with no footer — a screen-reader user cannot be locked out of
+   * on a page with no footer - a screen-reader user cannot be locked out of
    * the accessibility settings by hiding the button.
    */
   useEffect(() => {

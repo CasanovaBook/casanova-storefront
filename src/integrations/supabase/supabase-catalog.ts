@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Supabase Catalog Data Service — Public Read Path.
+ * Supabase Catalog Data Service - Public Read Path.
  *
  * Implements direct Supabase PostgreSQL queries for `categories`
  * and `products` tables.
@@ -18,6 +18,7 @@ import type {
   ProductAvailability,
 } from "../../types"
 import { ok, fail, type ErrorCode, type Result } from "../../shared/result"
+import { normalizeHyphens } from "../../lib/text"
 import { supabase, isSupabaseConfigured } from "./supabase"
 
 export interface DbBookRow {
@@ -141,9 +142,13 @@ export function mapDbProductToEntity(row: DbProductRow): Product {
 
   const book = row.book
     ? {
-        author_name: row.book.author_name ?? undefined,
+        author_name: row.book.author_name
+          ? normalizeHyphens(row.book.author_name)
+          : undefined,
         isbn: row.book.isbn ?? undefined,
-        publisher: row.book.publisher ?? undefined,
+        publisher: row.book.publisher
+          ? normalizeHyphens(row.book.publisher)
+          : undefined,
         language: row.book.language ?? undefined,
         publication_date: row.book.publication_date ?? undefined,
         total_pages: row.book.total_pages ?? undefined,
@@ -193,7 +198,7 @@ export function mapDbProductToEntity(row: DbProductRow): Product {
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
         .map((ml) => ({
           media_link_id: ml.media_link_id,
-          label: ml.label,
+          label: normalizeHyphens(ml.label),
           url: ml.url,
           platform: ml.platform as "YOUTUBE" | "VIMEO" | "WEB",
         }))
@@ -202,20 +207,24 @@ export function mapDbProductToEntity(row: DbProductRow): Product {
   const seo =
     row.seo_title || row.seo_description || row.seo_keywords
       ? {
-          title: row.seo_title ?? undefined,
-          description: row.seo_description ?? undefined,
-          keywords: row.seo_keywords ?? undefined,
+          title: row.seo_title ? normalizeHyphens(row.seo_title) : undefined,
+          description: row.seo_description
+            ? normalizeHyphens(row.seo_description)
+            : undefined,
+          keywords: row.seo_keywords
+            ? normalizeHyphens(row.seo_keywords)
+            : undefined,
         }
       : undefined
 
   return {
     product_id: row.product_id,
-    name: row.name,
-    subtitle: row.subtitle ?? undefined,
+    name: normalizeHyphens(row.name),
+    subtitle: row.subtitle ? normalizeHyphens(row.subtitle) : undefined,
     slug: row.slug,
     sku: row.sku ?? undefined,
-    description: row.description || "",
-    short_description: row.short_description || "",
+    description: normalizeHyphens(row.description || ""),
+    short_description: normalizeHyphens(row.short_description || ""),
     product_type: row.product_type,
     price: Number(row.price),
     sale_price:
@@ -229,7 +238,7 @@ export function mapDbProductToEntity(row: DbProductRow): Product {
         ? [row.cover_colors[0], row.cover_colors[1]]
         : undefined,
     category_ids: category_ids.length > 0 ? category_ids : undefined,
-    tags: Array.isArray(row.tags) ? row.tags : [],
+    tags: Array.isArray(row.tags) ? row.tags.map((tag) => normalizeHyphens(tag)) : [],
     status: row.status,
     visibility: row.visibility,
     availability: row.availability,
@@ -257,7 +266,7 @@ export function mapDbProductToEntity(row: DbProductRow): Product {
     created_at: row.created_at,
     updated_at: row.updated_at,
     archived_at: row.archived_at ?? undefined,
-    // Content URL is stripped on public reads — protected books require signed access grants
+    // Content URL is stripped on public reads - protected books require signed access grants
     content_url: undefined,
   }
 }
@@ -281,9 +290,9 @@ export async function fetchCategoriesFromDb(): Promise<Result<Category[]>> {
 
   const categories: Category[] = (data || []).map((row) => ({
     category_id: row.category_id,
-    name: row.name,
+    name: normalizeHyphens(row.name),
     slug: row.slug,
-    description: row.description ?? undefined,
+    description: row.description ? normalizeHyphens(row.description) : undefined,
     display_order: Number(row.display_order) || 0,
     created_at: row.created_at,
   }))
@@ -385,14 +394,14 @@ export async function fetchProductByIdFromDb(
  * The public list is deliberately narrowed to what a visitor may buy. An
  * administrator granting access works against the entire catalogue instead,
  * because a title can be DRAFT, INACTIVE, UNLISTED or HIDDEN and still be
- * exactly the book an entitlement has to point at — and because the hosted
+ * exactly the book an entitlement has to point at - and because the hosted
  * store's books are private by default, reading only the public rows left
  * the grant picker empty.
  *
  * It goes through `admin_list_products()` rather than an unfiltered
  * `select()`. Migration 0025 replaced the policies on `public.products` with
  * ones that show the published set to every caller including staff, so a
- * plain table read can no longer reach a draft — and would reach it for
+ * plain table read can no longer reach a draft - and would reach it for
  * anyone whose token happened to satisfy a looser policy. The function is
  * SECURITY DEFINER and checks the `products` permission in the same
  * ROLE_PERMISSIONS matrix the panel's buttons are hidden by, so this read
@@ -421,7 +430,7 @@ export async function fetchAllProductsFromDb(): Promise<Result<Product[]>> {
 }
 
 /* ─────────────────────────────────────────────────────────────
- * Admin write path — the only client code that mutates `products`.
+ * Admin write path - the only client code that mutates `products`.
  *
  * Each function calls a SECURITY DEFINER function from
  * migrations/0022_admin_product_writes.sql, which re-checks `is_admin()`
@@ -468,17 +477,17 @@ const PRODUCT_REFUSALS: Record<string, { error: string; code: ErrorCode }> = {
   category_not_found: { error: "הקטגוריה לא נמצאה.", code: "NOT_FOUND" },
   product_has_orders: {
     error:
-      "לא ניתן למחוק מוצר שמופיע בהזמנות קיימות — יש להעביר אותו לארכיון כדי לשמור על שלמות הנתונים ההיסטוריים.",
+      "לא ניתן למחוק מוצר שמופיע בהזמנות קיימות - יש להעביר אותו לארכיון כדי לשמור על שלמות הנתונים ההיסטוריים.",
     code: "CONFLICT",
   },
   product_has_grants: {
     error:
-      "לא ניתן למחוק מוצר שקיימות עבורו הרשאות גישה של לקוחות — יש להעביר אותו לארכיון.",
+      "לא ניתן למחוק מוצר שקיימות עבורו הרשאות גישה של לקוחות - יש להעביר אותו לארכיון.",
     code: "CONFLICT",
   },
   product_has_subscriptions: {
     error:
-      "לא ניתן למחוק מוצר שיש לו מנויים פעילים — יש להעביר אותו לארכיון.",
+      "לא ניתן למחוק מוצר שיש לו מנויים פעילים - יש להעביר אותו לארכיון.",
     code: "CONFLICT",
   },
 
@@ -486,7 +495,7 @@ const PRODUCT_REFUSALS: Record<string, { error: string; code: ErrorCode }> = {
    * catalogue functions, so a refusal here means the server declined on
    * the account's role rather than on the shape of the payload. The
    * message carries the permission name; the wording is generic on
-   * purpose — an admin does not need the server to enumerate the matrix
+   * purpose - an admin does not need the server to enumerate the matrix
    * back at them, and the panel has already hidden what they may not do. */
   permission_denied: {
     error: "לתפקיד הזה אין הרשאה לבצע את הפעולה הזו.",
@@ -513,13 +522,13 @@ function describeProductRefusal(
   }
   if (code === "23505") return PRODUCT_REFUSALS.slug_taken
 
-  /* A referential-integrity refusal the functions did not name — a
+  /* A referential-integrity refusal the functions did not name - a
    * product still held by a table this migration does not check, for
-   * instance — would otherwise surface as a raw Postgres sentence. */
+   * instance - would otherwise surface as a raw Postgres sentence. */
   if (code === "23503") {
     return {
       error:
-        "לא ניתן למחוק מוצר שיש לו היסטוריה במערכת — יש להעביר אותו לארכיון.",
+        "לא ניתן למחוק מוצר שיש לו היסטוריה במערכת - יש להעביר אותו לארכיון.",
       code: "CONFLICT",
     }
   }
@@ -585,14 +594,14 @@ const hasOwn = (obj: object, key: string) =>
  * Three states have to survive the trip, because the RPC reads *presence*
  * as the instruction:
  *
- *   absent   leave the column alone  — `diffPatch` dropped the key
- *   null     clear the column        — the editor emptied the field
- *   value    write it                 — the editor changed it
+ *   absent   leave the column alone  - `diffPatch` dropped the key
+ *   null     clear the column        - the editor emptied the field
+ *   value    write it                 - the editor changed it
  *
  * The middle state is the one that needs work. A cleared field arrives
  * from the panel as `undefined`, and `JSON.stringify` omits a key whose
  * value is `undefined`, so it left as "absent" and the database kept the
- * old value — the sale price an editor had just deleted stayed on sale.
+ * old value - the sale price an editor had just deleted stayed on sale.
  * `put` and `putList` below do the one conversion that turns those three
  * into three distinct keys; nothing downstream has to know.
  *
@@ -621,18 +630,22 @@ export function toProductPayload(
     payload[key] = value === undefined ? null : value
   }
 
+  const putText = (key: string, value: string | null | undefined) => {
+    put(key, typeof value === "string" ? normalizeHyphens(value) : value)
+  }
+
   const putList = (key: string, value: unknown) => {
     if (!hasOwn(patch, key)) return
     payload[key] = value === undefined || value === null ? [] : value
   }
 
   put("product_id", patch.product_id)
-  put("name", patch.name)
-  put("subtitle", patch.subtitle)
+  putText("name", patch.name)
+  putText("subtitle", patch.subtitle)
   put("slug", patch.slug)
   put("sku", patch.sku)
-  put("description", patch.description)
-  put("short_description", patch.short_description)
+  putText("description", patch.description)
+  putText("short_description", patch.short_description)
   put("product_type", patch.product_type)
   put("price", patch.price)
   put("sale_price", patch.sale_price)
@@ -663,9 +676,17 @@ export function toProductPayload(
   putList("bundle_item_ids", patch.bundle_item_ids)
 
   if (hasOwn(patch, "seo")) {
-    payload.seo_title = patch.seo?.title ?? null
-    payload.seo_description = patch.seo?.description ?? null
-    payload.seo_keywords = patch.seo?.keywords ?? null
+    const seo = patch.seo
+    payload.seo_title =
+      typeof seo?.title === "string" ? normalizeHyphens(seo.title) : (seo?.title ?? null)
+    payload.seo_description =
+      typeof seo?.description === "string"
+        ? normalizeHyphens(seo.description)
+        : (seo?.description ?? null)
+    payload.seo_keywords =
+      typeof seo?.keywords === "string"
+        ? normalizeHyphens(seo.keywords)
+        : (seo?.keywords ?? null)
   }
 
   const meta: Record<string, unknown> = { ...(existing?.metadata ?? {}) }
@@ -770,9 +791,12 @@ export async function saveCategoryToDb(payload: Record<string, unknown>): Promis
   const row = result.data
   return ok({
     category_id: String(row.category_id),
-    name: String(row.name),
+    name: normalizeHyphens(String(row.name)),
     slug: String(row.slug),
-    description: (row.description as string | null) ?? undefined,
+    description:
+      typeof row.description === "string"
+        ? normalizeHyphens(row.description)
+        : undefined,
     display_order: Number(row.display_order) || 0,
     created_at: String(row.created_at ?? ""),
   })

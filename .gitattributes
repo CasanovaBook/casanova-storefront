@@ -39,8 +39,8 @@
 *.toml  text eol=lf
 *.sh    text eol=lf
 
-# Binary. Marked so Git never attempts newline conversion on them — a single
-# rewritten byte destroys an image or a PDF — and so diffs stay out of them.
+# Binary. Marked so Git never attempts newline conversion on them - a single
+# rewritten byte destroys an image or a PDF - and so diffs stay out of them.
 *.png   binary
 *.jpg   binary
 *.jpeg  binary

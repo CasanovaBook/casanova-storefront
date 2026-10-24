@@ -103,7 +103,7 @@ function AccountIndicator({ account }: { account: LandingAccount }) {
     <Link
       to={account.href}
       className="cv-auth-indicator cv-auth-indicator--member"
-      aria-label={`${account.memberLabel} — ${account.displayName} (מחובר)`}
+      aria-label={`${account.memberLabel} - ${account.displayName} (מחובר)`}
       title={
         account.email
           ? `${account.displayName} · ${account.email}`
@@ -882,7 +882,7 @@ export default function SalesLandingPage() {
 
   const seoDescription =
     c("sales.seo.description") ||
-    "הכירו את CASANOVA — המדריך הדיגיטלי ״היא קודם״ על תשוקה, משיכה ואינטימיות."
+    "הכירו את CASANOVA - המדריך הדיגיטלי ״היא קודם״ על תשוקה, משיכה ואינטימיות."
 
   const seoImage = c("sales.seo.image") || "/covers/hi-kodem-cover-1024.webp"
 
@@ -914,7 +914,7 @@ export default function SalesLandingPage() {
 
       <header className="cv-header" data-scrolled={scrolled}>
         <div className="cv-shell cv-header-inner">
-          <Link to="/" className="cv-brand" aria-label="CASANOVA — דף הבית">
+          <Link to="/" className="cv-brand" aria-label="CASANOVA - דף הבית">
             <span className="cv-brand-word" dir="ltr" lang="en">
               CASANOVA
             </span>
@@ -973,7 +973,7 @@ export default function SalesLandingPage() {
 
               <h1
                 className="cv-hero-title"
-                aria-label={`CASANOVA — ${product.name}`}
+                aria-label={`CASANOVA - ${product.name}`}
               >
                 <span className="cv-brand-display" dir="ltr" lang="en">
                   CASANOVA
@@ -1105,7 +1105,7 @@ export default function SalesLandingPage() {
                 <div className="cv-about-photo">
                   <img
                     src={portraitImg}
-                    alt="איור CASANOVA — דיוקן בסגנון קלאסי"
+                    alt="איור CASANOVA - דיוקן בסגנון קלאסי"
                     width={900}
                     height={900}
                     loading="lazy"

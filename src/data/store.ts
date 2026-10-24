@@ -20,7 +20,7 @@ let crossTabStarted = false
 
 /**
  * Starts listening for changes made in other tabs. Safe to call more than
- * once — only the first call registers a listener.
+ * once - only the first call registers a listener.
  */
 
 export function ensureCrossTabSync(): void {

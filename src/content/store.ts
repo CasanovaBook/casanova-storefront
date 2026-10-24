@@ -9,6 +9,7 @@
 import { useSyncExternalStore } from "react";
 import { maestro } from "@/maestro";
 import { FIELD_MAP } from "./registry";
+import { normalizeHyphens } from "../lib/text";
 
 type Values = Record<string, unknown>;
 
@@ -109,7 +110,7 @@ export function applySaved(values: Values, removedKeys: string[] = []): void {
 /** Non-React access to interface text (validators, prefilled messages):  ui("err.name"). */
 export const ui = (name: string): string => {
   const v = getRaw(`ui.${name}`);
-  return typeof v === "string" ? v : "";
+  return normalizeHyphens(typeof v === "string" ? v : "");
 };
 
 const subscribe = (cb: () => void) => {

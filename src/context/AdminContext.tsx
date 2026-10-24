@@ -8,7 +8,7 @@
  *
  * Write side: every action is a thin call into the service layer with
  * the signed-in admin attached. The service refuses anything the
- * admin's role may not do — the checks in the pages only decide what
+ * admin's role may not do - the checks in the pages only decide what
  * to render, never what is allowed.
  * ───────────────────────────────────────────────────────────── */
 
@@ -232,7 +232,7 @@ interface AdminContextValue {
 
   issueInvoice: (orderId: string) => Result<Invoice>
 
-  /* Refunds — recording a request never moves money */
+  /* Refunds - recording a request never moves money */
 
   refundableAmount: (order: Order) => number
 
@@ -299,8 +299,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
    *
    * The admin user list is the one collection that cannot be served from
    * the local store alone. `db.users` only ever holds records this browser
-   * created, so an account registered through Supabase Auth — by any other
-   * visitor, on any other device — was invisible in the admin dashboard
+   * created, so an account registered through Supabase Auth - by any other
+   * visitor, on any other device - was invisible in the admin dashboard
    * until it was rebuilt by hand.
    *
    * `public.users` is the source of truth for authenticated accounts, so it
@@ -329,7 +329,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   )
 
   /* Fetch once an admin session exists, and again whenever the signed-in
-   * user changes — the read is RLS-gated on that identity, so running it
+   * user changes - the read is RLS-gated on that identity, so running it
    * while signed out would only ever return an empty list. */
   useEffect(() => {
     if (!user) return
@@ -362,8 +362,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
    * The same split the users list had: a purchase or a grant made
    * elsewhere lives in Supabase, while `db.user_products` only ever holds
    * rows this browser wrote. Reading the hosted rows here is what lets
-   * /admin/access and /admin/users show the real entitlements — including
-   * one just created by an admin — instead of an empty local list.
+   * /admin/access and /admin/users show the real entitlements - including
+   * one just created by an admin - instead of an empty local list.
    *
    * Read-through cache, merged by the entitlement's identity
    * (`user_id` + `product_id`, which is what the table itself is unique
@@ -389,7 +389,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
        * guard kept rows deleted from Supabase (הסרה מלאה, a lapsed test
        * grant) on screen forever, and every action against such a ghost
        * row came back "הרשאת הגישה לא נמצאה". A transient read failure
-       * also returns [], which drops back to the local document — the
+       * also returns [], which drops back to the local document - the
        * same fallback the page already renders when signed out. */
       setRemoteEntitlements(rows)
     },
@@ -419,7 +419,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
    * Tickets submitted from the customer's device land in Postgres, so the
    * queue is mirrored here the way the users list is: an initial read once
    * a staff session exists, a re-read on returning to the tab, and a
-   * realtime subscription that refetches on every change — the event is a
+   * realtime subscription that refetches on every change - the event is a
    * hint; the RLS-scoped read is the data. A non-staff JWT passes only its
    * own rows' policies, so the mirror can never widen beyond what the
    * server allows.
@@ -430,7 +430,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   /* Tickets and their conversations come from the same authoritative read,
    * in parallel: the customer's reply and the admin's own reply must both be
    * visible in the queue, and the notes read is RLS-scoped like the tickets
-   * one — an admin sees every conversation, nobody else sees more than
+   * one - an admin sees every conversation, nobody else sees more than
    * their own. */
   const refreshInquiries = useMemo(
     () => async () => {
@@ -499,7 +499,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, [db.user_products, remoteEntitlements])
 
   /* Mirrored remote rows carry only the assignee's id; the support modal
-   * renders a name, so it is resolved from the merged user list here —
+   * renders a name, so it is resolved from the merged user list here -
    * the same display the local driver stores directly. */
   const inquiries = useMemo(() => {
     return db.inquiries.map((i) => {
@@ -516,7 +516,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, [db.inquiries, users])
 
   /* Mirrored notes carry the author's id only (the table stores no name), so
-   * the display name is resolved here — the same treatment `assigned_to_name`
+   * the display name is resolved here - the same treatment `assigned_to_name`
    * gets above. A note whose author is no longer in the list keeps a neutral
    * label rather than rendering an empty name. */
   const inquiryNotes = useMemo(() => {
@@ -615,7 +615,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       createPasswordResetLink: async (userId) => {
         /* Supabase owns the credentials, so a locally-minted reset token is
          * meaningless there. The reset has to be a real Supabase recovery
-         * link, which only the service_role can produce — hence the Edge
+         * link, which only the service_role can produce - hence the Edge
          * Function, and hence the authoritative permission check living in it
          * rather than in the service layer's `guard`. */
         if (isSupabaseConfigured) {
@@ -646,8 +646,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       },
 
       /* Entitlement writes are async when they land in Supabase. The
-       * service layer decides per target — a uuid id is a hosted row, a
-       * legacy local id stays local — so the dialog does not have to know
+       * service layer decides per target - a uuid id is a hosted row, a
+       * legacy local id stays local - so the dialog does not have to know
        * which backend owns the row. After a hosted write the cache is
        * refreshed so the list reflects what the server stored. */
       grantAccess: async (userId, productId, sourceOrderId) => {
@@ -671,7 +671,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
         if (result.ok && isSupabaseConfigured) void refreshEntitlements()
         /* A NOT_FOUND means the row the list is showing no longer exists
-         * server-side — purge the ghost so the admin sees real rows. */
+         * server-side - purge the ghost so the admin sees real rows. */
         else if (!result.ok && isSupabaseConfigured && result.code === "NOT_FOUND")
           void refreshEntitlements()
 

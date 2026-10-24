@@ -6,7 +6,7 @@ import path from "node:path"
 
 import siteConfiguration from "./.figma/make/site.json"
 
-// Vite config — https://vitejs.dev/config/
+// Vite config - https://vitejs.dev/config/
 export default defineConfig(({ mode, command }) => {
   // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
   const emitSourcemaps = mode === "development"
@@ -29,7 +29,7 @@ export default defineConfig(({ mode, command }) => {
            * already has cached. Route-level `lazy()` splits the pages.
            *
            * Rolldown, which Vite 8 builds on, only accepts the function form
-           * of manualChunks — the object form is rejected at build time. */
+           * of manualChunks - the object form is rejected at build time. */
           manualChunks(id) {
             if (!id.includes("node_modules")) return
             if (id.includes("react-router")) return "router"
@@ -61,7 +61,7 @@ export default defineConfig(({ mode, command }) => {
       host: "0.0.0.0",
       port: parseInt(process.env.PORT || "8443"),
       strictPort: true,
-      /* Ignore heavy/locked binary content — watching docs/*.pdf crashed the
+      /* Ignore heavy/locked binary content - watching docs/*.pdf crashed the
        * server with EBUSY.
        *
        * PDFs are now ignored by directory instead of by extension. The blanket
@@ -70,7 +70,7 @@ export default defineConfig(({ mode, command }) => {
        * files at startup and refreshes it from watcher events, so a title dropped
        * into public/books while the server was running was never seen. The request
        * fell through to the SPA fallback, and the reader's <iframe> was handed
-       * index.html with a 200 and Content-Type text/html instead of the book —
+       * index.html with a 200 and Content-Type text/html instead of the book -
        * a blank viewer, no error in the console, and a restart that appeared to
        * fix it. Keeping public/books watched removes that trap; docs/ keeps its
        * directory-level ignore, which is where the EBUSY actually came from.
@@ -412,7 +412,7 @@ function figmaContentSecurityPolicy(isDevServer: boolean): Plugin {
             },
             /* head-prepend, not head: a meta policy only governs resources
              * discovered after it is parsed, and appending to the head puts it
-             * after the entry <script> the build injects — which would leave
+             * after the entry <script> the build injects - which would leave
              * the application bundle itself outside the policy. */
             injectTo: "head-prepend",
           },

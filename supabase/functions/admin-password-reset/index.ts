@@ -1,4 +1,4 @@
-/* admin-password-reset — mint a Supabase recovery link for a customer.
+/* admin-password-reset - mint a Supabase recovery link for a customer.
  *
  * Called by the admin users page ("יצירת קישור איפוס סיסמה") through
  * src/lib/supabase-admin.ts.
@@ -17,8 +17,8 @@
  * raw recovery token in its query string. Handing that to the admin UI both
  * exposes infrastructure the customer should never see and leaves a live
  * credential sitting in a chat window or clipboard. Instead the action link
- * is sealed server-side — in the password_reset_links table, readable only
- * through the service role — and the UI receives a branded URL,
+ * is sealed server-side - in the password_reset_links table, readable only
+ * through the service role - and the UI receives a branded URL,
  * https://casanova-books.com/reset-password?r=…, whose single redeemable
  * secret is a random 128-bit id. The customer-facing page redeems that id
  * through redeem-password-reset and follows the real link inside their own
@@ -34,13 +34,13 @@
  * 2. Requires the caller's public.users row to have role = 'ADMIN'.
  * 3. Resolves the target address from public.users by user_id. The email is
  *    never read from the request body, so this cannot be turned into a probe
- *    for — or a reset of — an address that is not in this database.
+ *    for - or a reset of - an address that is not in this database.
  */
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2"
 
-/** How long the reset link stays valid. Enforced here — after this the
- *  sealed id is dead and can never be exchanged for the recovery link —
+/** How long the reset link stays valid. Enforced here - after this the
+ *  sealed id is dead and can never be exchanged for the recovery link -
  *  and mirrored in the admin dialog's expiry stamp. Supabase additionally
  *  enforces its own OTP expiry on the underlying recovery token, so the
  *  effective lifetime is the shorter of the two. */
@@ -104,7 +104,7 @@ function jsonResponse(
 }
 
 /**
- * Public origin the reset page lives on — always the branded site, never
+ * Public origin the reset page lives on - always the branded site, never
  * whatever host invoked this function.
  */
 
@@ -180,7 +180,7 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // 2. Caller must be staff. This is the real gate — the panel's own
+    // 2. Caller must be staff. This is the real gate - the panel's own
 
     //    `can(adminRole, "users")` check is cosmetic, since a signed-in
 
@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
 
     // 4. Mint the recovery link. generateLink sends no mail, and the link
 
-    //    is sealed server-side — it never travels to any client as-is.
+    //    is sealed server-side - it never travels to any client as-is.
 
     const { data: link, error: linkError } =
       await admin.auth.admin.generateLink({
@@ -247,7 +247,7 @@ Deno.serve(async (req: Request) => {
 
     //    that can read password_reset_links, and both Edge Functions run
 
-    //    with that key — so the raw token is reachable only inside the
+    //    with that key - so the raw token is reachable only inside the
 
     //    trusted runtime, never in a browser, log or admin UI.
 

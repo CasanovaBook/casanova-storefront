@@ -11,7 +11,7 @@ import PageHeader from "../../components/ui/PageHeader"
 /**
  * Finance dashboard for a one-time digital-book purchase model.
  *
- * Source of truth — read-only derivation from existing tables:
+ * Source of truth - read-only derivation from existing tables:
  *  - Successful purchases / revenue  → orders.payment_status = 'PAID'
  *  - Failed purchases                → orders.payment_status = 'FAILED'
  *  - Open refund tickets             → inquiries.topic = 'REFUND'
@@ -64,7 +64,7 @@ export default function AdminFinancePage() {
     return <AccessDenied page="finance" />
   }
 
-  /* ---- Derived metrics (computed on read — no stored totals to drift) ---- */
+  /* ---- Derived metrics (computed on read - no stored totals to drift) ---- */
 
   const paidOrders = orders.filter((o) => o.payment_status === "PAID")
   const failedOrders = orders.filter((o) => o.payment_status === "FAILED")
@@ -185,7 +185,7 @@ export default function AdminFinancePage() {
                         ₪{(order.total_amount ?? 0).toLocaleString()}
                       </td>
                       <td className="text-xs whitespace-nowrap app-muted">
-                        {formatIsraelDateTime(order.created_at) || "—"}
+                        {formatIsraelDateTime(order.created_at) || "-"}
                       </td>
                     </tr>
                   ))}
@@ -249,7 +249,7 @@ export default function AdminFinancePage() {
                       </td>
                       <td className="whitespace-nowrap">{ticket.customer_name}</td>
                       <td className="text-xs whitespace-nowrap app-muted">
-                        {formatIsraelDateTime(ticket.created_at) || "—"}
+                        {formatIsraelDateTime(ticket.created_at) || "-"}
                       </td>
                     </tr>
                   ))}

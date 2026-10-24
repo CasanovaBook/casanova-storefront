@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * ScreenShield — capture protection for the native reader.
+ * ScreenShield - capture protection for the native reader.
  *
  * WHAT EACH PLATFORM CAN ACTUALLY DO
  *
@@ -10,7 +10,7 @@
  * thumbnail is blank, and Miracast/Chromecast mirroring is refused.
  * There is nothing for JavaScript to detect, because nothing gets
  * through. This module still reports events on Android so the reader
- * can tell "protection is on" from "protection failed to install" —
+ * can tell "protection is on" from "protection failed to install" -
  * a device where FLAG_SECURE did not take is a device that must not be
  * shown the file.
  *
@@ -121,7 +121,7 @@ export interface ScreenShieldNative {
    * Reduces what a reader can lift out of an open document.
    *
    * iOS renders PDFs through PDFKit, whose view supports long-press text
-   * selection and the Copy/Share menu that comes with it — a way to
+   * selection and the Copy/Share menu that comes with it - a way to
    * extract passages that has nothing to do with screenshots. This walks
    * the window hierarchy, finds the document view and disables its
    * long-press recognisers, which removes selection while leaving scroll
@@ -238,7 +238,7 @@ export async function restrictDocumentInteraction(): Promise<boolean> {
 
 export interface ScreenShieldOptions {
   /** Whether protection should be on. Pass false on public screens so
-   *  the marketing pages can be screenshotted — refusing that would be
+   *  the marketing pages can be screenshotted - refusing that would be
    *  a defect, not a feature. */
 
   active?: boolean
@@ -307,7 +307,7 @@ export function useScreenShield({
   /* The reporting callback is held in a ref so that a screen passing an
    * inline arrow function does not tear down and rebuild the native
    * listeners on every render. Rebuilding them repeatedly can drop the
-   * event that matters — the one fired at the moment of capture. */
+   * event that matters - the one fired at the moment of capture. */
 
   const onEventRef = useRef(onEvent)
 
@@ -428,7 +428,7 @@ export function useScreenShield({
          *
          * Android: from API 34 `Activity.registerScreenCaptureCallback` reports
          * a screenshot of this window. FLAG_SECURE has already emptied it, so
-         * again there is nothing to prevent — but the CMS gets to see that a
+         * again there is nothing to prevent - but the CMS gets to see that a
          * customer tried, on which device, during which session. Below API 34
          * there is no callback and no permission-free substitute, so the event
          * simply never arrives; the absence of a row means "not observable",
@@ -545,9 +545,9 @@ export function ScreenShieldProvider({
           title="התוכן מוגן"
           message={
             state.captured
-              ? "זוהתה הקלטת מסך — התוכן הוסתר להגנה על זכויות היוצרים."
+              ? "זוהתה הקלטת מסך - התוכן הוסתר להגנה על זכויות היוצרים."
               : state.mirrored
-                ? "זוהה שיקוף מסך או חיבור לתצוגה חיצונית — נתקו את השיקוף כדי להמשיך לקרוא."
+                ? "זוהה שיקוף מסך או חיבור לתצוגה חיצונית - נתקו את השיקוף כדי להמשיך לקרוא."
                 : "התוכן מוסתר בזמן שהאפליקציה ברקע."
           }
         />

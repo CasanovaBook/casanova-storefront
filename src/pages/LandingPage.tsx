@@ -104,7 +104,7 @@ function StarRating({ rating }: { rating: number }) {
  *
  * The two are bound on purpose. On a site nobody has configured yet the
  * heading is simply absent, and a divider left hanging above nothing reads
- * as a rendering bug rather than as missing content — so with no title and no
+ * as a rendering bug rather than as missing content - so with no title and no
  * blurb the pair disappears entirely for a visitor, and an administrator gets
  * the dashed hint in place of the heading, rule and all.
  */
@@ -160,8 +160,8 @@ export default function LandingPage() {
   /* CMS-driven content. HERO, TESTIMONIALS, FAQ and CTA each own one
    * fixed slot on the page. The rest are free-form blocks rendered as an
    * ordered stream, which is how an editor composes the middle of the
-   * page — how many blocks, in what order, with what wording — without
-   * anybody touching code. SALES sections are excluded — they belong to
+   * page - how many blocks, in what order, with what wording - without
+   * anybody touching code. SALES sections are excluded - they belong to
    * the main page, which is served at `/`. */
   const homeSections = cms.activeSections.filter((s) => s.page !== "SALES")
   const heroSection = homeSections.find((s) => s.type === "HERO")
@@ -240,7 +240,7 @@ export default function LandingPage() {
 
   /* The editor owns the whole headline. Line one is set plain and any further
    * lines pick up the gold gradient, so a two-line title reads the way the old
-   * hardcoded one did — without half of it being written in code. */
+   * hardcoded one did - without half of it being written in code. */
   const heroLines = (contentTitle || heroSection?.title || "")
     .split("\n")
     .map((l) => l.trim())
@@ -249,7 +249,7 @@ export default function LandingPage() {
   const heroAccent = heroLines.slice(1)
 
   /* Subscription bullets come from the product's own description, one per
-   * line — an editable field that already exists in the product form, rather
+   * line - an editable field that already exists in the product form, rather
    * than a list of features invented here that no editor could ever reach. */
   const subscriptionBullets = (subscription?.description ?? "")
     .split("\n")
@@ -491,7 +491,7 @@ export default function LandingPage() {
                 {contentEyebrow || settings.tagline?.trim()}
               </div>
             ) : (
-              <CmsHint what="תוכן חסר: סיסמת המותג — הוסיפו אותה ב״הגדרות מערכת ← תוכן האתר״." />
+              <CmsHint what="תוכן חסר: סיסמת המותג - הוסיפו אותה ב״הגדרות מערכת ← תוכן האתר״." />
             )}
 
             {heroLines.length > 0 ? (
@@ -514,7 +514,7 @@ export default function LandingPage() {
                 )}
               </h1>
             ) : (
-              <CmsHint what="תוכן חסר: כותרת ראשית — הפעילו בלוק HERO ב־CMS וכתבו אותה שם, שורה לכל שורה." />
+              <CmsHint what="תוכן חסר: כותרת ראשית - הפעילו בלוק HERO ב־CMS וכתבו אותה שם, שורה לכל שורה." />
             )}
 
             {(contentLede || heroSection?.content) && (
@@ -536,7 +536,7 @@ export default function LandingPage() {
                     to={contentCta1Link || "/checkout"}
                     className="btn-gradient px-8 py-3.5 rounded-full font-bold text-sm"
                   >
-                    {contentCta1 || `התחילו לקרוא — ${formatPrice(effectivePrice(featuredBook))}`}
+                    {contentCta1 || `התחילו לקרוא - ${formatPrice(effectivePrice(featuredBook))}`}
                   </SmartLink>
                 )}
                 {ebookProducts.length > 0 && (
@@ -573,7 +573,7 @@ export default function LandingPage() {
             )}
           </div>
 
-          {/* Book stack visual — rendered only when there is a book to stack. */}
+          {/* Book stack visual - rendered only when there is a book to stack. */}
           {featuredBook && (
             <div className="hidden md:flex justify-center items-center relative">
               <div className="relative">
@@ -671,7 +671,7 @@ export default function LandingPage() {
           <SectionTitle
             title={settings.catalogue_title}
             blurb={settings.catalogue_blurb}
-            hint="תוכן חסר: כותרת אזור הקטלוג — הוסיפו אותה ב״הגדרות מערכת ← תוכן האתר״."
+            hint="תוכן חסר: כותרת אזור הקטלוג - הוסיפו אותה ב״הגדרות מערכת ← תוכן האתר״."
           />
 
           {/* Three columns on a display-scale viewport: at `3xl`+ the shell
@@ -680,7 +680,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 3xl:grid-cols-3 gap-6">
             {ebookProducts.length === 0 && (
               <div className="md:col-span-2 3xl:col-span-3">
-                <CmsHint what="אין מוצרים מסוג ספר דיגיטלי — הוסיפו מוצר בניהול המוצרים ופרסמו אותו, והוא יופיע כאן." />
+                <CmsHint what="אין מוצרים מסוג ספר דיגיטלי - הוסיפו מוצר בניהול המוצרים ופרסמו אותו, והוא יופיע כאן." />
               </div>
             )}
             {ebookProducts.map((product) => {
@@ -812,10 +812,10 @@ export default function LandingPage() {
             <SectionTitle
               title={settings.pricing_title}
               blurb={settings.pricing_blurb}
-              hint="תוכן חסר: כותרת בלוק החבילות — הוסיפו אותה ב״הגדרות מערכת ← תוכן האתר״."
+              hint="תוכן חסר: כותרת בלוק החבילות - הוסיפו אותה ב״הגדרות מערכת ← תוכן האתר״."
             />
 
-            {/* Two pricing cards, so the column count must stay at two —
+            {/* Two pricing cards, so the column count must stay at two -
                 instead the pair is capped at `4xl` on a display-scale
                 viewport so the cards keep the width they were designed
                 for rather than stretching to fill the widened shell. */}
@@ -954,12 +954,12 @@ export default function LandingPage() {
 
       {/* ── TESTIMONIALS (CMS) ────────────────────────────────── */}
       {/* Gated on isAdmin, not left to CmsHint alone. CmsHint returns null
-          for a visitor, but this wrapper carries py-12 of its own — without
+          for a visitor, but this wrapper carries py-12 of its own - without
           the guard every visitor gets a 96px band of empty space where an
           explanation only an administrator can read used to be. */}
       {isAdmin && testimonialsSection && testimonials.length === 0 && (
         <div className="max-w-6xl mx-auto px-6 py-12">
-          <CmsHint what="בלוק ההמלצות פעיל אך ריק — הוסיפו המלצות ב־CMS, או כבו את הבלוק כדי שלא יתפוס מקום." />
+          <CmsHint what="בלוק ההמלצות פעיל אך ריק - הוסיפו המלצות ב־CMS, או כבו את הבלוק כדי שלא יתפוס מקום." />
         </div>
       )}
       {testimonialsSection && testimonials.length > 0 && (
@@ -967,7 +967,7 @@ export default function LandingPage() {
           <SectionTitle
             title={testimonialsSection.title}
             blurb={testimonialsSection.content}
-            hint="תוכן חסר: כותרת בלוק ההמלצות — כתבו אותה ב־CMS."
+            hint="תוכן חסר: כותרת בלוק ההמלצות - כתבו אותה ב־CMS."
           />
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -1021,7 +1021,7 @@ export default function LandingPage() {
       {/* ── FAQ (CMS) ─────────────────────────────────────────── */}
       {isAdmin && faqSection && faqs.length === 0 && (
         <div className="max-w-3xl mx-auto px-6 py-12">
-          <CmsHint what="בלוק השאלות הנפוצות פעיל אך ריק — הוסיפו שאלות ב־CMS, או כבו את הבלוק." />
+          <CmsHint what="בלוק השאלות הנפוצות פעיל אך ריק - הוסיפו שאלות ב־CMS, או כבו את הבלוק." />
         </div>
       )}
       {faqSection && faqs.length > 0 && (
@@ -1034,7 +1034,7 @@ export default function LandingPage() {
             <SectionTitle
               title={faqSection.title}
               blurb={faqSection.content}
-              hint="תוכן חסר: כותרת בלוק השאלות הנפוצות — כתבו אותה ב־CMS."
+              hint="תוכן חסר: כותרת בלוק השאלות הנפוצות - כתבו אותה ב־CMS."
             />
 
             <div className="space-y-3">
@@ -1129,7 +1129,7 @@ export default function LandingPage() {
         </section>
       ) : isAdmin ? (
         <div className="max-w-2xl mx-auto px-6 py-12">
-          <CmsHint what="לא הוגדר בלוק CTA — הפעילו אותו ב־CMS כדי לסיים את העמוד בקריאה לפעולה." />
+          <CmsHint what="לא הוגדר בלוק CTA - הפעילו אותו ב־CMS כדי לסיים את העמוד בקריאה לפעולה." />
         </div>
       ) : null}
 

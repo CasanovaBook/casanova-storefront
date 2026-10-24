@@ -1,11 +1,11 @@
 /* ─────────────────────────────────────────────────────────────
- * Reader state QA — /read/:productId under every content outcome.
+ * Reader state QA - /read/:productId under every content outcome.
  *
  * The reader defect was not a wrong string, it was one screen claiming
  * several different things: a lookup still in flight, a storage outage and a
  * genuinely missing file were all reported to a paying customer as "the
  * publisher has not uploaded the copy yet". This drives each outcome through
- * the real application — real router, real grant effect, real PDF parser —
+ * the real application - real router, real grant effect, real PDF parser -
  * and asserts what the customer is actually told.
  *
  *   node scripts/verify-reader-content-states.cjs
@@ -152,7 +152,7 @@ async function until(pred, ms = 15000) {
 }
 
 const results = []
-/* Reports go to the ignored scratch directory, never next to the sources —
+/* Reports go to the ignored scratch directory, never next to the sources -
  * running the suite must not leave the tree dirty. */
 const DEBUG = path.join(ROOT, ".tmp", "reader-states-debug.txt")
 fs.writeFileSync(DEBUG, "", "utf8")
@@ -187,7 +187,7 @@ async function setScenario(s) {
 
 /* Every scenario needs a clean document: `issueContentGrant` reuses a live
  * STREAM grant for the same account, product and device rather than asking
- * the server again — correct behaviour in production, and it would otherwise
+ * the server again - correct behaviour in production, and it would otherwise
  * make every scenario after the first one test a cached answer. */
 async function signInAndOpen(scenario) {
   await goto(`${APP}/`)

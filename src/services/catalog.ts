@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Catalog service — categories and products.
+ * Catalog service - categories and products.
  *
  * Extracted verbatim from `src/lib/api.ts` (Phase 5B / Group B).
  * Behaviour is unchanged: same permission guards, same validation
@@ -162,7 +162,7 @@ export function getProductBySlug(slug: string): Product | undefined {
  * Catalog view for the storefront: published, publicly visible, ordered.
  *
  * `content_url` is stripped here on purpose. This is the payload an
- * anonymous visitor receives, so anything in it is public by definition —
+ * anonymous visitor receives, so anything in it is public by definition -
  * and the address of a protected PDF is the shortest possible route from
  * "browse the catalogue" to "download the book". Readers get the location
  * through issueContentGrant(), which checks the entitlement and the device
@@ -425,7 +425,7 @@ export function updateProduct(
 
       target_label: updated.name,
 
-      details: updated.content_file?.file_name ?? updated.content_url ?? "—",
+      details: updated.content_file?.file_name ?? updated.content_url ?? "-",
     })
   } else {
     writeAudit(actor, {
@@ -552,7 +552,7 @@ export function moveProduct(
 
 /**
  * Hard deletion. Refused whenever the product is referenced by financial
- * or entitlement history — archiving is the correct action there, so
+ * or entitlement history - archiving is the correct action there, so
  * historical orders can never be corrupted.
  */
 
@@ -580,8 +580,8 @@ export function deleteProduct(actor: Actor | null, productId: string): Result {
       "CONFLICT",
 
       referencedByOrders
-        ? "לא ניתן למחוק מוצר שמופיע בהזמנות קיימות — יש להעביר אותו לארכיון כדי לשמור על שלמות הנתונים ההיסטוריים."
-        : "לא ניתן למחוק מוצר שקיימות עבורו הרשאות גישה של לקוחות — יש להעביר אותו לארכיון.",
+        ? "לא ניתן למחוק מוצר שמופיע בהזמנות קיימות - יש להעביר אותו לארכיון כדי לשמור על שלמות הנתונים ההיסטוריים."
+        : "לא ניתן למחוק מוצר שקיימות עבורו הרשאות גישה של לקוחות - יש להעביר אותו לארכיון.",
     )
   }
 

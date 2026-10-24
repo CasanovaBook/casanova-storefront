@@ -1,5 +1,5 @@
 -- ============================================================
--- 0016 — drop admin_extend_access   [FEATURE REMOVAL]
+-- 0016 - drop admin_extend_access   [FEATURE REMOVAL]
 --
 -- The "הארכה ב־30 ימים" action was removed from the admin access UI
 -- and from the service layer. The SECURITY DEFINER function below is

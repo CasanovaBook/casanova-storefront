@@ -1,5 +1,5 @@
 -- ============================================================
--- 0003 — CMS custom pages + categories
+-- 0003 - CMS custom pages + categories
 -- ============================================================
 -- Lets staff create new content pages from Maestro CMS and organise
 -- them into categories. Each page has a slug that becomes its public
@@ -11,7 +11,7 @@
 BEGIN;
 
 -- ============================================================
--- CMS_CATEGORIES — grouping for custom pages
+-- CMS_CATEGORIES - grouping for custom pages
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cms_categories (
   id            VARCHAR(255) PRIMARY KEY,
@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_cms_categories_order
   ON cms_categories (display_order, name);
 
 -- ============================================================
--- CMS_PAGES — custom content pages created from Maestro
+-- CMS_PAGES - custom content pages created from Maestro
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cms_pages (
   id              VARCHAR(255) PRIMARY KEY,

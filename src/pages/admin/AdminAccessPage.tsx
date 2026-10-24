@@ -55,7 +55,7 @@ export default function AdminAccessPage() {
 
   /* Every product an entitlement can point at: the whole hosted catalogue
    * for an admin, or the local document when Supabase is unconfigured. The
-   * storefront's ACTIVE + PUBLIC list is the wrong source here — a private
+   * storefront's ACTIVE + PUBLIC list is the wrong source here - a private
    * book is not publicly listed, so the picker came up empty. */
   const { adminProducts: products } = useCms()
 
@@ -140,7 +140,7 @@ export default function AdminAccessPage() {
       <PageHeader
         eyebrow="ניהול · בקרת גישה"
         title="הרשאות גישה"
-        description="Access Management — פתיחה, חסימה, שלילה או הסרה של גישה למוצרים, כולל מעקב אחר מקור ההרשאה."
+        description="Access Management - פתיחה, חסימה, שלילה או הסרה של גישה למוצרים, כולל מעקב אחר מקור ההרשאה."
         breadcrumbs={[
           { label: "ניהול", to: "/admin" },
           { label: "הרשאות גישה" },
@@ -193,7 +193,7 @@ export default function AdminAccessPage() {
                   <option value="">בחירת משתמש...</option>
                   {users.map((u) => (
                     <option key={u.user_id} value={u.user_id}>
-                      {u.first_name} {u.last_name} — {u.email}
+                      {u.first_name} {u.last_name} - {u.email}
                     </option>
                   ))}
                 </select>
@@ -251,7 +251,7 @@ export default function AdminAccessPage() {
             )}
             {products.length === 0 && (
               <p className="app-hint mt-3">
-                אין עדיין מוצרים בקטלוג — יש ליצור מוצר לפני הענקת גישה.
+                אין עדיין מוצרים בקטלוג - יש ליצור מוצר לפני הענקת גישה.
               </p>
             )}
           </div>
@@ -307,7 +307,7 @@ export default function AdminAccessPage() {
         </div>
       </section>
 
-      {/* Action feedback — the RPC refusals and failures surfaced here,
+      {/* Action feedback - the RPC refusals and failures surfaced here,
           so a failed action is never a silent dead click. */}
       {(actionError || actionSuccess) && (
         <div className="flex items-start gap-2 mb-4">

@@ -1,4 +1,4 @@
-/* get-content-status — verify a digital product's file exists in Storage.
+/* get-content-status - verify a digital product's file exists in Storage.
 
  * The Reader resolves a book from the deterministic private path
  * `books/product-<id>/book.pdf` (see get-content-url), independent of any

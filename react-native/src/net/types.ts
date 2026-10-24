@@ -240,7 +240,7 @@ export interface DrmPolicy {
  *
  * Every flag fails CLOSED. A default of `block_download: false` would
  * mean that a network hiccup at exactly the wrong moment silently turned
- * protection off — the same class of bug the web app's
+ * protection off - the same class of bug the web app's
  * `withProtectionDefaults()` guard exists to prevent.
  */
 

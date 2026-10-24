@@ -33,8 +33,8 @@ class MainActivity : ReactActivity() {
          *
          * Why before super: `ReactActivity.onCreate` builds the ReactRootView
          * and starts rendering the JavaScript bundle. Setting the flag after
-         * that would leave the interval between the first frame and the call —
-         * typically a second or two on a cold start, longer on a slow device —
+         * that would leave the interval between the first frame and the call -
+         * typically a second or two on a cold start, longer on a slow device -
          * during which the window is capturable. If the reader were resumed
          * straight into a book, that interval would contain a page of it.
          *
@@ -48,7 +48,7 @@ class MainActivity : ReactActivity() {
          * CMS controls that through `drm_policies.block_screenshots`, and
          * `ScreenShieldModule.disable()` clears the flag when the policy in
          * force says screenshots are allowed. Starting blocked and relaxing on
-         * instruction is the only order that fails closed — starting relaxed
+         * instruction is the only order that fails closed - starting relaxed
          * would mean every launch depends on a network round trip completing
          * before the first frame, and a phone offline at launch would then be
          * unprotected for the whole session.
@@ -65,8 +65,8 @@ class MainActivity : ReactActivity() {
      * Re-asserts the flag whenever the window is (re)created.
      *
      * `onCreate` covers a cold start, but a configuration change that the
-     * manifest does not declare — a locale switch, a font-scale change, a
-     * foldable posture change — destroys and recreates the Activity and with
+     * manifest does not declare - a locale switch, a font-scale change, a
+     * foldable posture change - destroys and recreates the Activity and with
      * it the window. Without this the recreated window would come back without
      * FLAG_SECURE until JavaScript noticed and called `enable()` again, and a
      * screen recording running through the rotation would capture whatever the

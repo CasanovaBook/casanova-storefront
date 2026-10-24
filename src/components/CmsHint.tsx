@@ -3,7 +3,7 @@ import { useApp } from "../context/AppContext"
 /**
  * Placeholder rendered where CMS content is missing.
  *
- * Visible to an administrator only, so a visitor never sees scaffolding —
+ * Visible to an administrator only, so a visitor never sees scaffolding -
  * and never sees invented copy standing in for content nobody wrote. That
  * trade is deliberate: an unconfigured page looks sparse to a customer, but
  * it can never claim something the business did not say.

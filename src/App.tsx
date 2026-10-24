@@ -13,7 +13,7 @@ import { router } from "./routes"
  * AccessibilityProvider sits outside the router on purpose: it is mounted
  * once for the whole app, so there is exactly one accessibility interface, it
  * is never remounted by navigation, and its preferences apply to every route
- * — storefront, login, checkout, dashboard, admin and the protected reader.
+ * - storefront, login, checkout, dashboard, admin and the protected reader.
  * The widget is rendered here rather than inside a layout, for the same
  * reason: no shell can forget it, and no page can render a second one. */
 export default function App() {

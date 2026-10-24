@@ -1,5 +1,5 @@
 /**
- * Maestro Core — Supabase connector.
+ * Maestro Core - Supabase connector.
  *
  * Talks to PostgREST / GoTrue over plain `fetch` (no SDK dependency).
  * Security lives in the database: see schema.sql for the Row Level
@@ -170,7 +170,7 @@ function filterQuery(opts: ListOptions, select?: string): string {
   const p: string[] = [];
   /* `select` has to lead when present. Without it PostgREST returns every
    * column, and for `products` that includes `content_url` and
-   * `content_asset_id` — which migration 0025 revoked from anon and
+   * `content_asset_id` - which migration 0025 revoked from anon and
    * authenticated at the column level. A `select=*` would ask for both and
    * fail the whole request with 42501 rather than quietly omitting them, so
    * the collection is told which columns it may name. */

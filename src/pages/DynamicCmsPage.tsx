@@ -13,6 +13,7 @@ import Icon from "@/components/icons"
 import PageHeader from "@/components/ui/PageHeader"
 import Spinner from "@/components/ui/Spinner"
 import { Md } from "@/content/render"
+import { normalizeHyphens } from "@/lib/text"
 
 interface CmsPage {
   id: string
@@ -72,10 +73,17 @@ export default function DynamicCmsPage() {
   const loading = Boolean(slug) && !current
   const notFound = !slug || Boolean(current && !current.page)
 
+  const pageTitle = page ? normalizeHyphens(page.title) : ""
+  const pageExcerpt = page ? normalizeHyphens(page.excerpt) : ""
+  const seoTitle = page?.seo_title ? normalizeHyphens(page.seo_title) : ""
+  const seoDescription = page?.seo_description
+    ? normalizeHyphens(page.seo_description)
+    : ""
+
   // Update document title and meta description for the CMS page.
   useEffect(() => {
     if (!page) return
-    document.title = page.seo_title || page.title
+    document.title = seoTitle || pageTitle
 
     let meta = document.querySelector('meta[name="description"]')
     if (!meta) {
@@ -83,8 +91,8 @@ export default function DynamicCmsPage() {
       meta.setAttribute("name", "description")
       document.head.appendChild(meta)
     }
-    meta.setAttribute("content", page.seo_description || page.excerpt || "")
-  }, [page])
+    meta.setAttribute("content", seoDescription || pageExcerpt)
+  }, [page, pageTitle, pageExcerpt, seoTitle, seoDescription])
 
   if (loading) {
     return (
@@ -130,9 +138,9 @@ export default function DynamicCmsPage() {
             CASANOVA
           </span>
         }
-        title={page.title}
-        description={page.excerpt || undefined}
-        breadcrumbs={[{ label: "דף הבית", to: "/" }, { label: page.title }]}
+        title={pageTitle}
+        description={pageExcerpt || undefined}
+        breadcrumbs={[{ label: "דף הבית", to: "/" }, { label: pageTitle }]}
       />
 
       <article className="app-surface overflow-hidden">
@@ -143,7 +151,7 @@ export default function DynamicCmsPage() {
           >
             <img
               src={coverSrc}
-              alt={page.title}
+              alt={pageTitle}
               className="w-full object-cover"
               style={{ maxHeight: 400 }}
             />

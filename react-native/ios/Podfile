@@ -1,4 +1,4 @@
-# Podfile — iOS dependency resolution.
+# Podfile - iOS dependency resolution.
 #
 # Kept as close to the React Native 0.79 template as possible. Every deviation
 # is commented with the reason, because a Podfile that has been "improved"
@@ -33,7 +33,7 @@ prepare_react_native_project!
 #
 #   USE_FRAMEWORKS=static bundle exec pod install
 #
-# which gives static frameworks — the variant that coexists with React Native —
+# which gives static frameworks - the variant that coexists with React Native -
 # rather than dynamic ones.
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
@@ -64,7 +64,7 @@ target 'CasanovaReader' do
     # of the pods here declare nothing, so they fall back to a value below the
     # platform line. That produces a wall of "The iOS deployment target is set
     # to X, but the range of supported versions is Y" warnings on every install,
-    # and — worse — it means the app and its dependencies are compiled against
+    # and - worse - it means the app and its dependencies are compiled against
     # different availability assumptions. `restrictDocumentInteraction()` in
     # ScreenShield.swift walks PDFKit's view hierarchy with `responds(to:)`
     # guards that only make sense if every module agrees on the floor.

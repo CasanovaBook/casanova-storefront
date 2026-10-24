@@ -1,5 +1,5 @@
 -- ============================================================
--- 0025 — scope what the catalogue table hands to the browser
+-- 0025 - scope what the catalogue table hands to the browser
 --        [REQUIRES SERVER-SIDE FUNCTIONS + POLICY CHANGES]
 --
 -- WHY
@@ -8,7 +8,7 @@
 --
 -- 1. `supabase-catalog.ts` selected `*` from public.products. The
 --    mapper then blanked `content_url` before it reached app code, so
---    the value never appeared in a component — but it was in the HTTP
+--    the value never appeared in a component - but it was in the HTTP
 --    response the whole time, and blanking a field in JavaScript is not
 --    a security boundary. `content_asset_id` has the same problem:
 --    it is a pointer into content_assets and was being selected for
@@ -67,7 +67,7 @@
 BEGIN;
 
 -- ============================================================
--- 1. COLUMNS — the address of a file is not public information
+-- 1. COLUMNS - the address of a file is not public information
 --
 -- The table-level grant is replaced by an explicit column list.
 -- `content_url` and `content_asset_id` are absent, so PostgREST
@@ -75,7 +75,7 @@ BEGIN;
 -- request is refused, not answered-and-filtered.
 --
 -- This is why every product read in the client now names its
--- columns — a `select=*` would ask for content_url and fail the whole
+-- columns - a `select=*` would ask for content_url and fail the whole
 -- query rather than quietly omitting it. PRODUCT_SELECT in
 -- src/lib/supabase-catalog.ts and the Maestro connector's products
 -- collection were both updated in the same change.
@@ -100,7 +100,7 @@ COMMENT ON COLUMN public.products.content_asset_id IS
   'Pointer into content_assets. Not readable by anon or authenticated; see content_url.';
 
 -- ============================================================
--- 2. POLICIES — replace whatever was there with a known shape
+-- 2. POLICIES - replace whatever was there with a known shape
 --
 -- The deployed policies are not in version control, so they are
 -- dropped and recreated rather than patched. The dropped set is
@@ -142,7 +142,7 @@ ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 -- so there is one.
 --
 -- The predicate is exactly what the storefront shows: published and
--- publicly listed, in any availability state — an out-of-stock title stays
+-- publicly listed, in any availability state - an out-of-stock title stays
 -- visible so the page can say so rather than quietly omitting it.
 CREATE POLICY products_read ON public.products
   FOR SELECT
@@ -150,7 +150,7 @@ CREATE POLICY products_read ON public.products
   USING (status = 'ACTIVE' AND visibility = 'PUBLIC');
 
 -- ============================================================
--- 3. THE CHILD TABLES — a draft title's detail is still a detail
+-- 3. THE CHILD TABLES - a draft title's detail is still a detail
 --
 -- Each policy answers the same question: does this row belong to a
 -- product a visitor may see, or is the caller staff?
@@ -159,7 +159,7 @@ CREATE POLICY products_read ON public.products
 -- catalogue's child rows are written only by admin_save_product.
 --
 -- The owner column is named per table, not assumed. Four of the five
--- hang off `product_id`; `product_relations` does not — it is an edge
+-- hang off `product_id`; `product_relations` does not - it is an edge
 -- table with `source_product_id` and `target_product_id`, and its
 -- schema comment says the source product owns the relation. The first
 -- draft of this migration wrote `product_id` for all five and died with
@@ -237,7 +237,7 @@ END;
 $$;
 
 -- ============================================================
--- 3b. THE 0024 HELPERS — the same missing revoke, one function over
+-- 3b. THE 0024 HELPERS - the same missing revoke, one function over
 --
 -- 0024 granted the four permission helpers to `authenticated` and
 -- revoked them from PUBLIC. On this project that revoke does not take
@@ -253,7 +253,7 @@ $$;
 --   POST /rpc/admin_has_permission     {"p_permission":"edit_price"}
 --     -> false                          <- answered, not refused
 --
--- Nothing is writable and no other account's data is reachable — a
+-- Nothing is writable and no other account's data is reachable - a
 -- customer asking `admin_has_permission` can only learn their own role,
 -- which is already in the JavaScript bundle. But a permission predicate
 -- that answers anonymous callers is not the shape this system is
@@ -285,7 +285,7 @@ END;
 $$;
 
 -- ============================================================
--- 4. THE ADMIN READ — one protected path for the whole catalogue
+-- 4. THE ADMIN READ - one protected path for the whole catalogue
 --
 -- Returns jsonb rather than the products composite so the joins can
 -- be assembled server-side in one round trip. The keys match what
@@ -295,7 +295,7 @@ $$;
 --
 -- `content_url` IS included. An administrator is the audience for
 -- that field, they manage it in the editor, and this function is
--- owner-run with the permission matrix in front of it — which is the
+-- owner-run with the permission matrix in front of it - which is the
 -- difference between a field the database trusts this caller with and
 -- one every visitor could read.
 --
@@ -380,7 +380,7 @@ COMMENT ON FUNCTION public.admin_list_products() IS
   'The whole catalogue with its books, categories, images, media links '
   'and relations, as jsonb. SECURITY DEFINER and gated on the '
   '"products" permission, so it is the only way to see a DRAFT, '
-  'UNLISTED, HIDDEN or ARCHIVED product — the table policies show the '
+  'UNLISTED, HIDDEN or ARCHIVED product - the table policies show the '
   'published set to everyone else. Replaces the unfiltered select() the '
   'admin panel used to issue.';
 
@@ -391,14 +391,14 @@ GRANT EXECUTE ON FUNCTION public.admin_list_products() TO authenticated;
 COMMIT;
 
 -- ============================================================
--- VERIFICATION — run after applying
+-- VERIFICATION - run after applying
 --
 -- 1. The storefront is unharmed. As `anon`:
 --
 --      curl "$URL/rest/v1/products?select=product_id,slug,name,price,sale_price"
 --
 --    Must return the published titles with their prices. Identical to
---    the result before this migration — that equality is the proof
+--    the result before this migration - that equality is the proof
 --    that nothing a visitor could see was taken away.
 --
 -- 2b. The 0024 permission helpers are refused by grant, not answered:

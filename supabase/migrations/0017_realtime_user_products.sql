@@ -1,11 +1,11 @@
 -- ============================================================
--- 0017 — Realtime delivery for user_products
+-- 0017 - Realtime delivery for user_products
 --
 -- WHY
 --
 -- Suspending (חסימה) or revoking an entitlement updated the server row
 -- immediately, but a customer already inside the Reader learned about it
--- only when the client's revalidation beat happened to refetch — up to
+-- only when the client's revalidation beat happened to refetch - up to
 -- 30 s later, and only while the revalidation loop was running. The
 -- client now subscribes to Supabase Realtime on public.user_products
 -- (scoped to its own rows) so an access change is mirrored in the
@@ -15,8 +15,8 @@
 --
 -- Supabase Realtime broadcasts postgres_changes events only to
 -- subscribers whose JWT passes the table's Row Level Security, exactly
--- as a SELECT would. The existing policy on public.user_products —
--- "a customer may read their own rows" — is therefore the entire
+-- as a SELECT would. The existing policy on public.user_products -
+-- "a customer may read their own rows" - is therefore the entire
 -- authorization story: a blocked user receives events about their own
 -- (now blocked) row, which is precisely what the client needs to see,
 -- and never about anyone else's.
@@ -70,7 +70,7 @@ ALTER TABLE public.user_products REPLICA IDENTITY DEFAULT;
 -- 2. The client subscription: with the app open on the Reader, run
 --    UPDATE public.user_products SET access_status = 'SUSPENDED'
 --     WHERE user_product_id = '<open entitlement>';
---    as an admin (through admin_set_access_status, not a raw UPDATE —
+--    as an admin (through admin_set_access_status, not a raw UPDATE -
 --    the trigger trg_user_product_revokes_grants must still cascade).
 --    The open Reader should drop its content within seconds, without a
 --    browser refresh.

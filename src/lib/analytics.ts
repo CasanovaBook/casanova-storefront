@@ -4,7 +4,7 @@
  * Every figure here is derived on demand from the order and refund
  * records. Nothing is pre-computed, cached in a record or duplicated
  * into a "totals" row, so historical revenue can never drift away
- * from the transactions that produced it — and it never depends on a
+ * from the transactions that produced it - and it never depends on a
  * product's *current* price, only on the price stored on the order
  * line at purchase time.
  * ───────────────────────────────────────────────────────────── */

@@ -44,7 +44,7 @@
       Package visibility, required from API 30 for canOpenURL to answer
       honestly. Without this, `Linking.canOpenURL('market://...')` returns
       false on a device that has the Play Store, and the forced-update
-      screen falls through to its web link — which works, but which sends a
+      screen falls through to its web link - which works, but which sends a
       customer to a browser to install an app.
     -->
     <queries>
@@ -81,8 +81,8 @@
         <!--
           android:allowBackup="false" is the single most important line in
           this file. With it true, `adb backup` and every cloud backup path
-          would carry the vault directory — including any offline copy of a
-          book — onto another device, where the TTL and the device session
+          would carry the vault directory - including any offline copy of a
+          book - onto another device, where the TTL and the device session
           that authorised it do not exist. `fullBackupContent` and
           `dataExtractionRules` are belt-and-braces for the API levels that
           read one or the other; neither can turn a backup back on once
@@ -93,7 +93,7 @@
           expects the books to go with it.
 
           android:usesCleartextTraffic="false" applies to the WebView, to
-          fetch(), and — importantly — to react-native-pdf's own downloader,
+          fetch(), and - importantly - to react-native-pdf's own downloader,
           which is a native code path that does not go through the JS
           client. `src/debug/AndroidManifest.xml` overrides it, because the
           Metro dev server is plain HTTP on localhost.
@@ -116,7 +116,7 @@
             <!--
               android:resizeableActivity="false" keeps the app out of
               split-screen and freeform windows. FLAG_SECURE still blanks the
-              pane, so this is not the protection — it removes the case where
+              pane, so this is not the protection - it removes the case where
               a second app sits beside the reader and can be pointed at it by
               an accessibility service or a window-capture tool that reads
               the composition rather than the framebuffer.

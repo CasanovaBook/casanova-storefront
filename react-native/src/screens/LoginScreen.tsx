@@ -4,7 +4,7 @@
  * Signing in here does two things at once: it authenticates against the
  * same `users` table the website uses, and it claims a device slot. The
  * second part is why the screen tells the user up front how many devices
- * their account allows — arriving at the cap after typing a password
+ * their account allows - arriving at the cap after typing a password
  * reads like a broken login rather than a policy.
  * ───────────────────────────────────────────────────────────── */
 
@@ -104,8 +104,8 @@ export function LoginScreen({ navigation }: Props) {
               autoCorrect={false}
               /* `textContentType` is what lets a password manager fill
                * both fields. Refusing autofill on a login screen does not
-               * protect anything — the credential never touches this app's
-               * storage — and it makes signing in on a phone needlessly
+               * protect anything - the credential never touches this app's
+               * storage - and it makes signing in on a phone needlessly
                * slow. */
 
               textContentType="emailAddress"

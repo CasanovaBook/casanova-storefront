@@ -12,11 +12,11 @@ import Alert from "../components/ui/Alert"
 
 /* Hover/focus/touch on "המשך קריאה" starts fetching the PDF runtime chunk
  * before the click lands, so the first open skips most of its lazy-load
- * latency. A no-op once loaded; it never fetches content — only code. */
+ * latency. A no-op once loaded; it never fetches content - only code. */
 
 /** The chunk download also starts on mount: a reader who arrived here to
  *  read is going to click within seconds, and the ~430 kB parser chunk is
- *  the single largest fixed cost of the first open. Pure code fetch — no
+ *  the single largest fixed cost of the first open. Pure code fetch - no
  *  content, no auth, nothing that could serve the book to anyone. */
 function usePrefetchPdfRuntimeOnMount(): void {
   useEffect(() => {
@@ -69,7 +69,7 @@ function LibraryCover({
   const cursor = active ? "cursor-pointer" : "cursor-default"
   /* Clicking the cover opens the book, but that is a pointer shortcut: the
    * button beside it does the same thing from the keyboard. The image is
-   * therefore announced as decorative — its title sits right next to it and
+   * therefore announced as decorative - its title sits right next to it and
    * repeating it would only make the screen reader read the name twice. */
   if (src) {
     return (
@@ -205,7 +205,7 @@ export default function LibraryPage() {
             ) : (
               <p className="text-xs app-muted mt-2">
                 {totalPages
-                  ? `עוד לא התחלתם — ${totalPages} עמודים`
+                  ? `עוד לא התחלתם - ${totalPages} עמודים`
                   : "עוד לא התחלתם לקרוא"}
               </p>
             )}

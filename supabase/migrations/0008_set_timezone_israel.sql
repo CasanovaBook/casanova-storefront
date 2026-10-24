@@ -1,13 +1,13 @@
 -- ============================================================
--- 0008 — display timestamps in Israel time
+-- 0008 - display timestamps in Israel time
 --
 -- WHAT THIS ACTUALLY CHANGES (and what it does not)
 --
 -- Every timestamp column in this database is `timestamptz` (87 of them
 -- across schema.sql; the only bare "TIMESTAMP" in the repo is the
 -- constraint name chk_refund_processed_timestamp, not a column).
--- A `timestamptz` stores an absolute instant — UTC seconds since the
--- epoch — and carries NO timezone of its own. The `+00` you see in
+-- A `timestamptz` stores an absolute instant - UTC seconds since the
+-- epoch - and carries NO timezone of its own. The `+00` you see in
 -- the dashboard is the session's TimeZone setting deciding how to
 -- RENDER that instant, not a property of the stored value.
 --
@@ -26,7 +26,7 @@
 -- Hardcoding `SET timezone = '+03'` would pin the database to summer
 -- time for the whole year. From late October to late March every
 -- timestamp would then be displayed one hour AHEAD of the correct
--- Israel wall-clock time — and the error would be invisible, because
+-- Israel wall-clock time - and the error would be invisible, because
 -- the number would still look like a plausible evening time.
 --
 -- 'Asia/Jerusalem' is the correct value. It is a named zone in the
@@ -40,7 +40,7 @@
 -- AdminUsersPage, AdminOrdersPage, AdminFinancePage). The browser
 -- applies the visitor's own timezone and ignores this setting
 -- entirely. So this migration changes what the Supabase dashboard
--- table editor and SQL editor show — it does not change what the
+-- table editor and SQL editor show - it does not change what the
 -- admin panel renders. If the panel ever looks wrong, the fix is on
 -- the client (pin an explicit `timeZone` option in the
 -- toLocaleDateString call), not here.
@@ -52,7 +52,7 @@
 -- reconnect (and re-run this file) to see the result. Safe to re-run.
 -- ============================================================
 
--- 1. The database default — covers the SQL editor and psql.
+-- 1. The database default - covers the SQL editor and psql.
 ALTER DATABASE postgres SET timezone = 'Asia/Jerusalem';
 
 -- 2. The roles that hold real traffic.
@@ -77,7 +77,7 @@ ALTER ROLE service_role  SET timezone = 'Asia/Jerusalem';
 --   SELECT now();                  -- rendered in Israel time
 --   SELECT current_setting('TimeZone');
 --
--- Confirm the stored instants are untouched — this is the check that
+-- Confirm the stored instants are untouched - this is the check that
 -- matters most. Pick a row and compare its UTC value with what the
 -- admin panel shows; they must describe the same moment:
 --
@@ -88,7 +88,7 @@ ALTER ROLE service_role  SET timezone = 'Asia/Jerusalem';
 --   ORDER BY created_at DESC LIMIT 1;
 --
 -- `raw_timestamptz` will equal `as_utc` regardless of the session
--- timezone — that is the proof no data moved.
+-- timezone - that is the proof no data moved.
 --
 -- If `SHOW timezone` still returns UTC, you are in a pooled or reused
 -- session: reconnect, or run the statements one at a time so each

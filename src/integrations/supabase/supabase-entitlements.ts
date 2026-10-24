@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Supabase entitlements service — the server side of content access.
+ * Supabase entitlements service - the server side of content access.
  *
  * `public.user_products` is the source of truth for "may this account
  * open this product?" (see the product brief, §11). The browser cannot
@@ -107,7 +107,7 @@ export function toUserProduct(row: UserProductRow): UserProduct {
  * server answered with no rows. The distinction matters for the mirror:
  * an empty result prunes locally-cached entitlements the server no
  * longer holds (הסרה מלאה must reach the customer's cache), while a
- * failed read must leave the cache untouched — pruning on a dropped
+ * failed read must leave the cache untouched - pruning on a dropped
  * request would flash every book out of the library during a hiccup.
  */
 export async function fetchMyEntitlements(
@@ -280,8 +280,8 @@ async function callAccessRpc(
 /**
  * Admin-only: grants one account access to one product.
  *
- * The return value is the row as the database stored it — including the
- * snapshot built server-side — so the caller renders what actually
+ * The return value is the row as the database stored it - including the
+ * snapshot built server-side - so the caller renders what actually
  * landed rather than what it asked for.
  */
 export async function adminGrantAccess(

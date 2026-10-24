@@ -28,7 +28,7 @@ class MainApplication : Application(), ReactApplication {
              * depends on it.
              *
              * `PackageList(this).packages` returns a mutable list, so `apply`
-             * adds to it in place and returns it — the same shape the React
+             * adds to it in place and returns it - the same shape the React
              * Native template uses for manually linked packages.
              */
             override fun getPackages(): List<ReactPackage> =

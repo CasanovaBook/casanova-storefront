@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Persistence driver — the single storage boundary of the app.
+ * Persistence driver - the single storage boundary of the app.
  *
  * Everything the platform knows lives in one versioned database
  * document. Nothing is seeded: a fresh install is genuinely empty
@@ -10,7 +10,7 @@
  * `localStorage`. `src/lib/api.ts` is the service layer on top of it
  * and is shaped like the REST surface it will eventually call, so
  * moving to a real HTTP backend means replacing this file's
- * `readDocument` / `writeDocument` pair with fetch calls — no page or
+ * `readDocument` / `writeDocument` pair with fetch calls - no page or
  * context has to change.
  * ───────────────────────────────────────────────────────────── */
 
@@ -280,7 +280,7 @@ export function emptyDatabase(): Database {
  *
  * This is not cosmetic. A policy row persisted before `block_download`
  * existed would arrive with the field `undefined`, which is falsy, which
- * every reader would treat as "downloads are allowed" — an upgrade would
+ * every reader would treat as "downloads are allowed" - an upgrade would
  * silently switch off a protection nobody chose to switch off. Missing
  * deterrents therefore default to the strictest value, and a missing
  * offline setting defaults to off.

@@ -80,4 +80,4 @@ Before a production native release, copy `android/keystore.properties.example` t
 
 ## Deployment
 
-Build the web application with `pnpm run build`; deploy the generated `dist/` directory through the chosen hosting platform. Configure production security headers at the hosting layer—especially `frame-ancestors`, which cannot be enforced by the application’s HTML meta Content-Security-Policy.
+Build the web application with `pnpm run build`; deploy the generated `dist/` directory through the chosen hosting platform. Configure production security headers at the hosting layer-especially `frame-ancestors`, which cannot be enforced by the application’s HTML meta Content-Security-Policy.

@@ -1,7 +1,7 @@
 /**
  * Dynamically updates the browser tab favicon from the CMS content store.
  *
- * Reads `global.favicon` — when set, injects or updates the `<link rel="icon">`
+ * Reads `global.favicon` - when set, injects or updates the `<link rel="icon">`
  * element in `<head>`. When cleared, removes the custom icon so the browser
  * falls back to the default.
  */

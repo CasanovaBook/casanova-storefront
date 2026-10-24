@@ -1,4 +1,4 @@
-/* get-content-url — resolve a product to a short-lived signed Storage URL.
+/* get-content-url - resolve a product to a short-lived signed Storage URL.
  *
  * Called by the reader (through src/lib/content-storage.ts) when it mints a
  * content grant.
@@ -170,7 +170,7 @@ Deno.serve(async (req: Request) => {
     // re-derived the same answer: signing a missing object fails anyway,
     // with the same 404 mapped below. Dropping the list halves the
     // Storage latency on the reader's critical path without touching
-    // authorization — every check above still runs first.
+    // authorization - every check above still runs first.
     const path = `product-${productId}/book.pdf`
 
     const { data: signed, error: signError } = await admin.storage

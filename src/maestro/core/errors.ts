@@ -1,5 +1,5 @@
 /**
- * Maestro Core — error normalization.
+ * Maestro Core - error normalization.
  *
  * Connectors receive many error shapes (PostgREST, network, plain strings).
  * `toMaestroError` normalizes any value into an `Error` so call-sites can rely

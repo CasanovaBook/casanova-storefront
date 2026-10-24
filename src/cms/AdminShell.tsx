@@ -1,5 +1,5 @@
 /**
- * Maestro Admin — shell layout.
+ * Maestro Admin - shell layout.
  *
  * Reuses the Casanova SideNav so the CMS panel looks and feels like
  * the rest of the admin. Same dark theme, same gold accents, same

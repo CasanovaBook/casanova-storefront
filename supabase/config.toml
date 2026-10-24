@@ -19,13 +19,13 @@ project_id = "zlweiqsqfsspecrubfuf"
 #     • required character classes (lower / upper / digit / symbol)
 #     • leaked-password rejection via HaveIBeenPwned (Pro plan and above)
 #   The server also always refuses a password longer than 72 characters, the
-#   bcrypt limit — src/lib/auth.ts states the same cap so the customer never
+#   bcrypt limit - src/lib/auth.ts states the same cap so the customer never
 #   meets that sentence in English on a Hebrew form.
 #
 #   NOT ENFORCEABLE SERVER-SIDE: this project's rule that a password contain
 #   no Hebrew, Arabic, emoji or spaces. The class check is implemented as
-#   `strings.ContainsAny`, which only requires that a class appear — it never
-#   refuses a character outside the listed sets — and no Auth Hook can fill the
+#   `strings.ContainsAny`, which only requires that a class appear - it never
+#   refuses a character outside the listed sets - and no Auth Hook can fill the
 #   gap: the available hooks are custom_access_token, send_sms, send_email,
 #   mfa_verification_attempt and password_verification_attempt. The last of
 #   those runs on sign-in with a payload of {user_id, valid} and never sees the
@@ -41,7 +41,7 @@ project_id = "zlweiqsqfsspecrubfuf"
 # Before raising the server-side minimum: an existing account whose password
 # falls short gets a WeakPasswordError on sign-in, so the mapping in
 # translateAuthError must be in place first and the change should be staged.
-# No [auth] values are set here on purpose — `supabase config push` applies the
+# No [auth] values are set here on purpose - `supabase config push` applies the
 # whole auth configuration to the live project, which needs an explicit
 # decision, and the exact key names were not verified against this CLI version.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ verify_jwt = false
 # Same arrangement as the two above: the JWT is verified inside the function
 # so the caller's identity can be checked against public.users.role before
 # anything privileged happens. This one mints a recovery link, so it is the
-# most sensitive of the three — it must never be reachable by a customer.
+# most sensitive of the three - it must never be reachable by a customer.
 [functions.admin-password-reset]
 verify_jwt = false
 
@@ -70,8 +70,8 @@ verify_jwt = false
 # Same arrangement as the others: the JWT is verified inside the function so
 # the caller's role can be checked against public.users.role (ADMIN only)
 # before any privileged Storage lookup happens. It reports only whether the
-# deterministic object books/product-<id>/book.pdf exists — never a path, a
-# public URL or a signed URL — so it is safe to expose the admin status signal
+# deterministic object books/product-<id>/book.pdf exists - never a path, a
+# public URL or a signed URL - so it is safe to expose the admin status signal
 # without leaking where the protected file lives.
 [functions.get-content-status]
 verify_jwt = false

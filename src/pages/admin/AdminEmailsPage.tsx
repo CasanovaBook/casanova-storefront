@@ -222,7 +222,7 @@ export default function AdminEmailsPage() {
         <div className="app-table-wrap">
           <table className="app-table" style={{ minWidth: "52rem" }}>
             <caption className="sr-only">
-              יומן מיילים — נמען, נושא, תבנית, תאריך, סטטוס ופעולות
+              יומן מיילים - נמען, נושא, תבנית, תאריך, סטטוס ופעולות
             </caption>
             <thead>
               <tr>

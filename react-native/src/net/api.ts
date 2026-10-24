@@ -163,7 +163,7 @@ export async function login(
   )
 }
 
-/** Ends the `sessions` row. Does not touch device_sessions — a logout
+/** Ends the `sessions` row. Does not touch device_sessions - a logout
  *  is not a device revocation, and the next login should reuse the slot
  *  rather than consume a new one. */
 
@@ -182,7 +182,7 @@ export const requestPasswordReset = (email: string) =>
 
 /**
  * Public catalogue. The server answers from `v_storefront_catalog`,
- * which contains no `content_url` and no `public_url` — see the comment
+ * which contains no `content_url` and no `public_url` - see the comment
  * on `CatalogProduct` for why that is load-bearing.
  */
 
@@ -271,7 +271,7 @@ export const revokeDevice = (sessionId: string, reason: string) =>
  *
  * Returns a token, never an address. The server re-checks the
  * entitlement, the device session, and `block_rooted_devices` before it
- * mints — so a rooted phone that lied in `registerDevice()` can still be
+ * mints - so a rooted phone that lied in `registerDevice()` can still be
  * stopped here, by a second opinion the client did not write.
  */
 
@@ -288,7 +288,7 @@ export const issueGrant = (input: {
  * and re-validates expiry, use budget, revocation and entitlement inside
  * the same transaction. The phone cannot redeem a token twice, cannot
  * redeem a token for a different product, and cannot redeem one after
- * the entitlement behind it was revoked — regardless of what the client
+ * the entitlement behind it was revoked - regardless of what the client
  * believes.
  */
 
@@ -360,7 +360,7 @@ export function displayName(user: PublicUser | null): string {
  * Renders the watermark exactly as the web reader does.
  *
  * In practice the grant's frozen `watermark_text` is preferred over this
- * — see `ReaderScreen` — because a stamp computed on the client can be
+ * - see `ReaderScreen` - because a stamp computed on the client can be
  * recomputed with different inputs by anyone who can patch the bundle.
  */
 

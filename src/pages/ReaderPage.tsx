@@ -34,7 +34,7 @@ const ACTIVITY_WINDOW_MS = 60_000
  * How often the reader re-verifies the entitlement server-side while the
  * book is open.
  *
- * A grant minted once at open time is not authorization — it is a
+ * A grant minted once at open time is not authorization - it is a
  * snapshot of authorization. `get-content-url` checks
  * `access_status = 'ACTIVE'` only when it signs, and the signed URL it
  * hands back cannot be un-signed, so the only way an already-open reader
@@ -48,7 +48,7 @@ const ACCESS_REVALIDATE_MS = 30_000
  * Text-size rungs, as a percentage of the PDF's natural scale.
  *
  * Discrete rather than continuous because every change repaints the page
- * through PdfCanvas at a new scale — a slider would fire a repaint for
+ * through PdfCanvas at a new scale - a slider would fire a repaint for
  * every pixel of travel. Repaints are cheap (one canvas draw from the
  * already-parsed document), but rungs still read better than a twitchy
  * continuous control.
@@ -131,8 +131,8 @@ function hasOpenDialog(): boolean {
  *  • Copy protection, resolved from the active DRM policy rather than
  *    hardcoded, so the business can tune it per platform without a
  *    release. The identity watermark is the part that actually deters
- *    redistribution — a capture of this screen carries the buyer's own
- *    name and address — and the deterrents around it only remove the
+ *    redistribution - a capture of this screen carries the buyer's own
+ *    name and address - and the deterrents around it only remove the
  *    effortless paths.
  *
  *  • A device session, claimed on open and renewed while the reader is
@@ -145,7 +145,7 @@ function hasOpenDialog(): boolean {
  * still scrolls the embedded document normally.
  *
  * Text size is a separate control from navigation, and it works by
- * repainting the current page at a new scale through PdfCanvas — there
+ * repainting the current page at a new scale through PdfCanvas - there
  * is no browser PDF plugin involved anymore, so there is also no plugin
  * toolbar and no download/print path to disable.
  */
@@ -174,7 +174,7 @@ export default function ReaderPage() {
 
   const title = product?.name ?? snapshot?.name ?? ""
 
-  usePageTitle(title ? `קריאה — ${title}` : "קריאה")
+  usePageTitle(title ? `קריאה - ${title}` : "קריאה")
   /* The CMS count is a hint only; the document itself is authoritative.
    * A mistyped count used to break the progress bar (a 148-page PDF
    * against "3" rendered 300%) and clamp navigation early. PdfCanvas
@@ -187,7 +187,7 @@ export default function ReaderPage() {
 
   /* The address of the file is never read off the catalogue row. The reader
    * asks the service layer for a grant, which re-checks the entitlement and
-   * the device session and hands back a short-lived, use-budgeted URL — the
+   * the device session and hands back a short-lived, use-budgeted URL - the
    * same contract the native reader follows, and the reason the storefront
    * catalogue carries no content_url at all. */
   const [contentUrl, setContentUrl] = useState<string | undefined>(undefined)
@@ -201,7 +201,7 @@ export default function ReaderPage() {
    * never uploaded. */
   const [grantCode, setGrantCode] = useState<string | null>(null)
   /* The mint is a network round trip. Until it has been answered nothing is
-   * known about the file — and the screen used to declare, inside that
+   * known about the file - and the screen used to declare, inside that
    * window, that the publisher had never uploaded it. */
   const [grantPending, setGrantPending] = useState(true)
   /* Bumped by the retry actions. The mint effect keys on it because a
@@ -213,7 +213,7 @@ export default function ReaderPage() {
   const isPdf = Boolean(contentUrl && /\.pdf(\?|#|$)/i.test(contentUrl))
 
   /* A PDF renders through PdfCanvas, which parses the document once and
-   * paints pages onto a canvas the page owns — no browser PDF plugin, so
+   * paints pages onto a canvas the page owns - no browser PDF plugin, so
    * no plugin toolbar with its one-click download / print buttons, and
    * page turns cost a repaint instead of a full document reload. */
 
@@ -246,7 +246,7 @@ export default function ReaderPage() {
 
   /* One claim per account, keyed on the user id rather than on `actor`
    * itself. `actor` is a memoised object, and a store write during
-   * registration can hand back a fresh identity — which would re-run this
+   * registration can hand back a fresh identity - which would re-run this
    * effect, write again, and loop until React bails out with "maximum
    * update depth exceeded". The id is stable across those rebuilds. */
   const registeredFor = useRef<string | null>(null)
@@ -260,7 +260,7 @@ export default function ReaderPage() {
       setDeviceError(null)
     } else {
       /* Clear the guard so a retry can happen: hitting the device cap is
-       * not permanent — freeing a slot in the dashboard makes the next
+       * not permanent - freeing a slot in the dashboard makes the next
        * attempt succeed. */
       registeredFor.current = null
       setDeviceError(result.error)
@@ -310,7 +310,7 @@ export default function ReaderPage() {
    * version marked it as claimed before the request resolved and never
    * released it, so a mint that was torn down mid-flight (an entitlement
    * mirror write, a session refresh) stayed "claimed" while its result was
-   * discarded — the reader sat on "פותח את הספר…" indefinitely and only a
+   * discarded - the reader sat on "פותח את הספר…" indefinitely and only a
    * full reload could start a new mint. Releasing the claim when the run
    * is cancelled is what lets the next run actually ask again.
    *
@@ -383,7 +383,7 @@ export default function ReaderPage() {
          * underneath them can still throw (a full localStorage, for
          * one). Without this branch that throw escaped the async task,
          * left the key inflight and parked the screen on "פותח את
-         * הספר…" forever — the exact failure this effect now guards
+         * הספר…" forever - the exact failure this effect now guards
          * against. */
         if (cancelled) return
         if (autoRetried.current !== key) {
@@ -416,7 +416,7 @@ export default function ReaderPage() {
    *
    * The grant mint above runs once per sitting: after it succeeds the
    * reader holds a parsed PDF and a signed URL, and nothing would ever
-   * tell it that access died in the meantime — an administrator pressing
+   * tell it that access died in the meantime - an administrator pressing
    * חסימה (or שלילה) changed `user_products.access_status` on the server,
    * but this tab went on rendering from memory. The mirror in AppContext
    * only refreshed on focus, throttled to a minute, and even a refreshed
@@ -427,13 +427,13 @@ export default function ReaderPage() {
    *  1. Every 30 s the entitlements are re-fetched from Supabase (through
    *     RLS, the caller's own rows) and the guard below re-evaluates
    *     `hasAccess` against the fresh mirror.
-   *  2. The guard — which already ran on open — now also runs on every
+   *  2. The guard - which already ran on open - now also runs on every
    *     mirror change and tears the content down when access is gone:
    *     the signed URL is dropped, the parsed document unmounts, and the
    *     block screen replaces the page. From there the existing paths take
    *     over: the Library hides the book, a reopen fails in
    *     issueContentGrant, and get-content-url refuses to sign anything
-   *     new. This is an enforcement boundary, not cosmetics — without it
+   *     new. This is an enforcement boundary, not cosmetics - without it
    *     the only server-side checks in the system never fire again after
    *     the first mint.
    */
@@ -460,7 +460,7 @@ export default function ReaderPage() {
     }
   }, [productId, refreshEntitlements])
 
-  // Enforcement guard for the beat above — see the comment block there.
+  // Enforcement guard for the beat above - see the comment block there.
   // Also covers the pre-existing cold-open path, so the original guard
   // below it is superseded; both exist for now, this one runs later.
   useEffect(() => {
@@ -525,7 +525,7 @@ export default function ReaderPage() {
   /* True once the reader has navigated in this sitting. The very first
    * page render is not a reading event: it must never write progress,
    * or a mount that raced the CMS load (total unknown, initialiser fell
-   * back to 1) would overwrite the stored position — the mechanism
+   * back to 1) would overwrite the stored position - the mechanism
    * behind "blocking reset my page". */
   const navigated = useRef(false)
   const [darkMode, setDarkMode] = useState(true)
@@ -533,13 +533,13 @@ export default function ReaderPage() {
    * both the state name and the visible label say "immersive reading". */
   const [immersiveMode, setImmersiveMode] = useState(false)
   /* Session-scoped, not persisted with the reading progress. Zoom is a
-   * property of the screen in front of the reader right now — a phone held
+   * property of the screen in front of the reader right now - a phone held
    * at arm's length wants a different size from the same account on a
-   * desktop — so carrying it between devices would be more often wrong than
+   * desktop - so carrying it between devices would be more often wrong than
    * right. Page position is the opposite: that one is worth keeping. */
   const [zoom, setZoom] = useState<number>(ZOOM_FIT)
 
-  // Access guard — entitlements, not the catalogue, decide who may read.
+  // Access guard - entitlements, not the catalogue, decide who may read.
   /* `authReady` must gate this: arriving from a verification link, the
    * session is still being restored, and without the gate the reader was
    * redirected to /login before the entitlement lookup had a chance. */
@@ -558,7 +558,7 @@ export default function ReaderPage() {
    * what was last written rather than the effect's own dependency list:
    * `updateProgress` is rebuilt whenever the signed-in user's row is
    * rewritten, and without this the effect re-ran, saved, rewrote the row,
-   * and re-ran again — a loop that took the reader down before the book ever
+   * and re-ran again - a loop that took the reader down before the book ever
    * appeared. saveReadingProgress now declines no-op writes too; this is the
    * belt to that brace. */
   const savedProgressKey = useRef<string | null>(null)
@@ -576,7 +576,7 @@ export default function ReaderPage() {
   }, [currentPage, productId, contentUrl, totalPages, updateProgress])
 
   /* Late resume. The mount initialiser could only clamp the saved page
-   * against the total it had at that instant — often zero, before the
+   * against the total it had at that instant - often zero, before the
    * CMS catalogue and the parsed document have reported. Once a real
    * total arrives, if the reader has not navigated yet, jump to the
    * stored position; this is the same clamp the initialiser wanted to
@@ -607,7 +607,7 @@ export default function ReaderPage() {
   )
 
   /* Leaving "fit" lands on the nearest rung rather than on the first one.
-   * Fit-width renders somewhere around 100–115% depending on the viewport, so
+   * Fit-width renders somewhere around 100-115% depending on the viewport, so
    * pressing "smaller" from fit and dropping straight to 75% would read as a
    * lurch rather than as one step down. */
   const stepZoom = useCallback(
@@ -616,7 +616,7 @@ export default function ReaderPage() {
       setZoom((current) => {
         if (current === ZOOM_FIT) return direction > 0 ? 125 : 100
         const index = ZOOM_STEPS.indexOf(current)
-        /* Not on the ladder — only possible if a step value was edited without
+        /* Not on the ladder - only possible if a step value was edited without
          * updating the sentinels. Snap to the largest rather than to zero,
          * because zero is the fit sentinel and would silently mean "reset". */
         if (index === -1) return ZOOM_STEPS[ZOOM_STEPS.length - 1]
@@ -708,7 +708,7 @@ export default function ReaderPage() {
    * count is a number an administrator types into the CMS; turning a page
    * must not hinge on whether somebody remembered to type it.
    *
-   * The count is still used for what it is genuinely for — the progress bar,
+   * The count is still used for what it is genuinely for - the progress bar,
    * the "N / M" denominator and the clamp at the last page. When it is
    * unknown the reader shows the current page alone and lets forward
    * navigation run unbounded, because the viewer clamps at the document's
@@ -740,7 +740,7 @@ export default function ReaderPage() {
 
   const resume = () => {
     if (!actor) return
-    // A revoked slot cannot be renewed — it has to be claimed again, which
+    // A revoked slot cannot be renewed - it has to be claimed again, which
     // re-checks the device cap and can legitimately fail.
     const result =
       session && !session.revoked
@@ -852,8 +852,8 @@ export default function ReaderPage() {
               {/* The readout is also the reset: one control that says what the
                * size is and returns it to fit-width, instead of a third button
                * in a bar that is already crowded on a phone. While at fit it
-               * shows the fit-width glyph and is inert — there is nothing to
-               * reset — and the fixed min-width stops the bar from jumping
+               * shows the fit-width glyph and is inert - there is nothing to
+               * reset - and the fixed min-width stops the bar from jumping
                * sideways every time the label changes shape. */}
               <button
                 type="button"
@@ -886,7 +886,7 @@ export default function ReaderPage() {
           )}
 
           {/* Dark mode. The label names the state, and aria-pressed says
-           * whether that state is on — the tooltip names the action. */}
+           * whether that state is on - the tooltip names the action. */}
           <button
             type="button"
             onClick={() => setDarkMode((d) => !d)}
@@ -989,7 +989,7 @@ export default function ReaderPage() {
                     onPointerLeave={cancelGesture}
                     role="button"
                     tabIndex={-1}
-                    aria-label="העמוד הקודם — החליקו או הקישו"
+                    aria-label="העמוד הקודם - החליקו או הקישו"
                   >
                     <Icon
                       name="chevronRight"
@@ -1011,7 +1011,7 @@ export default function ReaderPage() {
                     onPointerLeave={cancelGesture}
                     role="button"
                     tabIndex={-1}
-                    aria-label="העמוד הבא — החליקו או הקישו"
+                    aria-label="העמוד הבא - החליקו או הקישו"
                   >
                     <Icon
                       name="chevronLeft"
@@ -1069,10 +1069,10 @@ export default function ReaderPage() {
             </p>
             <p className="text-sm mb-8" style={{ color: mutedColor }}>
               {contentVerdict === "checking"
-                ? "העמוד ייטען מעצמו ברגע שהקובץ ייפתח — אין צורך לפנות לתמיכה בינתיים."
+                ? "העמוד ייטען מעצמו ברגע שהקובץ ייפתח - אין צורך לפנות לתמיכה בינתיים."
                 : contentVerdict === "refused"
                   ? "כל קריאה מקבלת קישור חד־פעמי משלה. אם הגישה שלך תקינה, ניסיון נוסף מנפיק קישור טרי."
-                  : "הגישה שלך לספר תקינה — התוכן יופיע כאן מיד לאחר שהקובץ יועלה."}
+                  : "הגישה שלך לספר תקינה - התוכן יופיע כאן מיד לאחר שהקובץ יועלה."}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               {grantError && (
@@ -1202,7 +1202,7 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Identity watermark — the attribution layer over protected content */}
+      {/* Identity watermark - the attribution layer over protected content */}
       {policy.watermark_enabled && watermark && !locked && (
         <div
           className="drm-watermark fixed inset-0 overflow-hidden"
@@ -1234,7 +1234,7 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Device / session lock — replaces the content, never sits behind it */}
+      {/* Device / session lock - replaces the content, never sits behind it */}
       {locked && (
         <div
           className="fixed inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center"
@@ -1284,7 +1284,7 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* DRM shield overlay — covers everything while the window is blurred */}
+      {/* DRM shield overlay - covers everything while the window is blurred */}
       {shielded && !locked && (
         <div
           className="fixed inset-0 flex flex-col items-center justify-center gap-4 px-6"

@@ -1,5 +1,5 @@
 /**
- * Maestro Admin — Products page.
+ * Maestro Admin - Products page.
  *
  * Full product management: create, edit, duplicate, archive, delete.
  * Slide-over detail panel with tabbed editing (content, pricing, media, SEO).
@@ -732,7 +732,7 @@ export function MaestroProductsPage() {
                   </div>
                 </div>
 
-                {/* Status badge — a button, so the status can be changed from
+                {/* Status badge - a button, so the status can be changed from
                  * the keyboard as well as by click. */}
                 <button
                   type="button"
@@ -745,7 +745,7 @@ export function MaestroProductsPage() {
                   {STATUS_LABEL[p.status ?? "DRAFT"] ?? p.status}
                 </button>
 
-                {/* Quick actions. Revealed on hover *and* on keyboard focus —
+                {/* Quick actions. Revealed on hover *and* on keyboard focus -
                  * hover-only controls are invisible to a keyboard user. */}
                 <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                   <button
@@ -791,7 +791,7 @@ export function MaestroProductsPage() {
       {/* Sync indicator */}
       <div className="mt-6 flex items-center justify-center gap-2 text-xs" style={{ color: "var(--color-muted-foreground)", opacity: 0.5 }}>
         <span className="inline-block w-2 h-2 rounded-full" style={{ background: "var(--color-success)" }} />
-        מחובר ישירות למסד הנתונים — נתונים משותפים עם האתר
+        מחובר ישירות למסד הנתונים - נתונים משותפים עם האתר
       </div>
 
       {/* ── Create Dialog ──────────────────────────────────────────── */}
@@ -1203,7 +1203,7 @@ function PricingTab({
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(79,122,79,0.08)" }}>
           <Icon name="tag" size={14} />
           <span className="text-sm font-bold" style={{ color: "var(--color-success)" }}>
-            הנחה {discount}% — חיסכון {formatPrice(price - salePrice!, draft.currency ?? "ILS")}
+            הנחה {discount}% - חיסכון {formatPrice(price - salePrice!, draft.currency ?? "ILS")}
           </span>
         </div>
       )}
@@ -1373,7 +1373,7 @@ function SeoTab({
 
       {/* Google preview */}
       <div className="p-4 rounded-xl" style={{ background: "#fff", border: "1px solid var(--color-border)" }}>
-        <p className="text-xs mb-2 font-medium" style={{ color: "#5f6368" }}>תצוגה מקדימה — Google</p>
+        <p className="text-xs mb-2 font-medium" style={{ color: "#5f6368" }}>תצוגה מקדימה - Google</p>
         <p className="text-lg leading-tight truncate" style={{ color: "#1a0dab" }}>{seoTitle || "שם המוצר"}</p>
         <p className="text-sm truncate" style={{ color: "#006621" }}>
           casanova.co.il/product/{draft.slug ?? "slug"}

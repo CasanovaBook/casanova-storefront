@@ -1,8 +1,8 @@
-# CASANOVA BOOKS — Accessibility System
+# CASANOVA BOOKS - Accessibility System
 
 This document describes the accessibility work on the storefront: what was
 removed, what replaced it, which requirements are implemented, what was
-verified, and — deliberately — what is **not** claimed.
+verified, and - deliberately - what is **not** claimed.
 
 Automated tooling cannot establish legal compliance. Nothing in this document
 is a legal opinion, and passing the checks listed at the end does not make the
@@ -14,10 +14,10 @@ site compliant by itself. See "Requires human or legal verification".
 
 | Standard | Status in this implementation |
 | --- | --- |
-| **Israeli Standard ת"י 5568 חלק 1** (the standard Israeli law points to) | The technical requirements it carries — WCAG 2.0 level AA, a documented accessibility statement, an identified accessibility coordinator, keyboard and screen-reader support — are implemented at the technical level. The **statement page, coordinator name and contact details are content/legal work, not code** and are not added by this change. |
+| **Israeli Standard ת"י 5568 חלק 1** (the standard Israeli law points to) | The technical requirements it carries - WCAG 2.0 level AA, a documented accessibility statement, an identified accessibility coordinator, keyboard and screen-reader support - are implemented at the technical level. The **statement page, coordinator name and contact details are content/legal work, not code** and are not added by this change. |
 | **WCAG 2.0 AA** | Implemented; this is the level the Israeli standard requires. |
 | **WCAG 2.2 AA** | Used as the engineering target, which adds: 2.4.11 focus not obscured, 2.5.8 target size (minimum), 3.3.7 redundant entry, 3.3.8 accessible authentication, 1.4.10 reflow. Not all of 3.3.8 applies to this product's auth flow (see limitations). |
-| **EN 301 549 / PDF/UA** | Not applicable to the protected reader as built — see section 8. |
+| **EN 301 549 / PDF/UA** | Not applicable to the protected reader as built - see section 8. |
 
 ---
 
@@ -61,7 +61,7 @@ src/App.tsx                               one mount point, above the router
   CMS-rendered content is covered too. The styling lives in one labelled block
   in `src/index.css`.
 * **Storage keys.** `casanova_accessibility_v2` holds `{ preferences, hidden }`
-  only. No identifiers, no session, no order or reader data — so it cannot
+  only. No identifiers, no session, no order or reader data - so it cannot
   collide with authentication, checkout or reader state. Untrusted values are
   re-validated on read (unknown keys dropped, font size clamped to the ladder).
 * **Weight.** No new dependency. The widget is ~300 lines of React and ~250
@@ -73,7 +73,7 @@ src/App.tsx                               one mount point, above the router
 | --- | --- |
 | `Alt + A` | Opens the settings panel from anywhere, and restores the button if it was hidden. |
 | `Tab` / `Shift+Tab` | Cycles inside the open panel; focus is contained. |
-| `Escape` | Closes the panel, and stops there — a dialog further up the page does not also react to the same press. |
+| `Escape` | Closes the panel, and stops there - a dialog further up the page does not also react to the same press. |
 
 `Alt+A` is the reason a visitor can never be locked out of the controls: it
 works on the reader and the admin shell, which have no public footer.
@@ -82,12 +82,12 @@ works on the reader and the admin shell, which have no public footer.
 
 ## 4. Privacy, motion and content preferences
 
-The panel offers (each toggle is a pressed-state button — icon plus text label
+The panel offers (each toggle is a pressed-state button - icon plus text label
 with `aria-pressed`, announced as pressed/not pressed):
 
 | Group | Setting | Effect |
 | --- | --- | --- |
-| גודל טקסט | גודל טקסט | Root font size, 90%–160% in 10% steps, plus a "רגיל" reset. Scales every rem-based size in the product. |
+| גודל טקסט | גודל טקסט | Root font size, 90%-160% in 10% steps, plus a "רגיל" reset. Scales every rem-based size in the product. |
 | תצוגה | ניגודיות גבוהה | Black surfaces, white text, yellow interactive elements, white borders, white focus ring. Applied through the theme tokens, so pages that colour themselves with `var(--color-*)` follow automatically. |
 | תצוגה | שיפור ניגודיות הטקסט | Raises the contrast of muted/secondary text without repainting the theme. |
 | תצוגה | גווני אפור | Desaturates the theme tokens and real images. |
@@ -113,7 +113,7 @@ the same specificity.
 single enabled setting, and the hidden state persists. There are two ways back,
 and at least one exists on every route:
 
-1. The footer control (`הצגת כפתור הנגישות`) — in the public footer, the sales
+1. The footer control (`הצגת כפתור הנגישות`) - in the public footer, the sales
    page footer, the dashboard and admin side navigation, and on the login,
    setup and email-verification screens, which have no footer of their own.
 2. `Alt + A`, from anywhere.
@@ -133,7 +133,7 @@ than being dropped on `<body>`.
   `SetupPage`, `VerifyEmailPage`, `SalesLandingPage`.
 * A skip-to-content link is the first focusable element on every shell that has
   chrome above the content, including the reader (`דלג לתוכן הקריאה`). The link
-  used a physical `left: 8px` — the wrong side of the screen in an RTL layout —
+  used a physical `left: 8px` - the wrong side of the screen in an RTL layout -
   and is now `inset-inline-start` and `position: fixed`.
 * `#main { scroll-margin-top: 5.5rem }` keeps the fixed header from covering the
   target when a skip link or an in-page anchor scrolls to it.
@@ -161,7 +161,7 @@ happens to impose is never quoted at all.
 **Keyboard**
 
 * The password show/hide toggle on the login, setup and reset screens was
-  `tabIndex={-1}` — a functional control removed from the tab order. It is now
+  `tabIndex={-1}` - a functional control removed from the tab order. It is now
   focusable, has an `aria-label` and reports `aria-pressed`.
 * The Maestro CMS section header became a real disclosure button
   (`aria-expanded`) instead of a clickable `div`; the product name in the Maestro
@@ -196,10 +196,10 @@ AXE_PATH=.tmp/package/axe.min.js A11Y_ALL_SETTINGS=1 node scripts/audit-accessib
 ```
 
 `scripts/` holds the canonical versions of both CDP scripts; `.tmp/` holds
-older working copies. **Runtime behaviour — 44/44 checks pass** on the
+older working copies. **Runtime behaviour - 44/44 checks pass** on the
 production build: one launcher and no legacy markup; accessible name,
 `aria-expanded`, `aria-controls`, `aria-haspopup`, floating 52px circular
-launcher whose logo is the whole face of the button — rendered at full size,
+launcher whose logo is the whole face of the button - rendered at full size,
 centred, decorative, with no second visible copy of the name; Enter opens the
 panel; dialog semantics with a resolvable name; focus moves into the panel; Tab
 cycles inside it; a font-size step (A+ / A−) changes the root font size; a toggle
@@ -212,10 +212,10 @@ node's computed `animation-duration` and `animation-iteration-count` are read
 before, during and after the toggle); the panel stays inside a 360×640 viewport,
 inside a 640×480 viewport at 160% text, scrolls internally with every control
 reachable, causes no horizontal overflow, and never leaves the launcher half
-covered — an overlap with the button is total or none; a hidden widget stays
+covered - an overlap with the button is total or none; a hidden widget stays
 hidden and restorable after a reload.
 
-**axe-core — 0 violations** on `/`, `/store`, `/checkout`, `/support`, `/login`,
+**axe-core - 0 violations** on `/`, `/store`, `/checkout`, `/support`, `/login`,
 `/register`, `/forgot-password`, `/terms-and-conditions`, with the panel open,
 and again with **all eleven settings enabled at 160% text**:
 
@@ -235,25 +235,25 @@ Two findings this surfaced were fixed rather than documented around:
 **Overlap check.** The launcher was measured against every visible interactive
 element on `/`, `/store`, `/checkout`, `/support` at 1280px and 360px: **zero
 overlaps on desktop**, and on a 360px viewport two corner overlaps under 4% of
-one control's area (a filter select, a text input) — the control stays clickable
+one control's area (a filter select, a text input) - the control stays clickable
 outside that corner, and the button can be hidden. The open panel necessarily
 covers part of the page; that is what an overlay popup does, and it closes on
 Escape, on the close button or on a click outside. Its own footprint is kept
 off the launcher unless it can cover it completely: when the button has no room
-left beside the panel — a 360px viewport, or 640×480 at 160% text — the panel
+left beside the panel - a 360px viewport, or 640×480 at 160% text - the panel
 steps over the button rather than stopping on it, so no cropped sliver of the
 button is left showing next to the dialog.
 
 **Contrast** was verified manually where axe cannot compute against a gradient.
 `.btn-gradient` (gold gradient, near-black text) resolves to ≈6.0:1 at its
-darkest stop — above the 4.5:1 normal-text threshold; in high-contrast mode it
+darkest stop - above the 4.5:1 normal-text threshold; in high-contrast mode it
 is black on `#ffe066` (≈17:1). The remaining contrast items axe could not
 decide are all text over these gradients. A scripted sweep of every text
 element on `/`, `/store`, `/checkout` and `/support` **in high-contrast mode**
 (found zero computable failures on the three storefront routes; the landing
 page's flagged items are all the 14%-alpha gold radial glow over the black page
-and the hero's gradient headline, whose painted glyphs — gold gradient on black
-— measure ≈6.2:1 at the darkest stop and ≈10.5:1 at the brightest, above the
+and the hero's gradient headline, whose painted glyphs - gold gradient on black
+- measure ≈6.2:1 at the darkest stop and ≈10.5:1 at the brightest, above the
 4.5:1 threshold). The sweep script cannot compute through gradients, so these
 were resolved by hand rather than by the tool.
 
@@ -273,7 +273,7 @@ were resolved by hand rather than by the tool.
 3. **The floating button sits mid-left, near the page edge, on small screens.** On
    the reader there is no empty gutter at all, so on a phone the button covers a
    small strip at the left edge of the viewing area. It moves nothing, can be
-   hidden, and `Alt+A` brings the panel back — but it is a real trade-off, not
+   hidden, and `Alt+A` brings the panel back - but it is a real trade-off, not
    a non-issue.
 4. **Templates render colours outside the theme.** A handful of components set
    literal hex values (`#F59E0B`, `#F87171`…) for status badges. High contrast
@@ -306,8 +306,8 @@ session timeouts and `user-select: none`.
   itself is announced as page image number N.
 * Making the *content* accessible would mean rendering an extractable text layer
   for the PDF, which is exactly the thing the copy protection exists to prevent.
-  A proper solution has to be a product decision — for example accepting
-  titles that ship with tagged PDFs — and a legal decision about the tension
+  A proper solution has to be a product decision - for example accepting
+  titles that ship with tagged PDFs - and a legal decision about the tension
   between the Israeli accessibility duty and the rights-holder's protection
   requirement. **This change does not claim to solve it.**
 * Nothing in the accessibility system weakens the protection: no download path,
@@ -315,7 +315,7 @@ session timeouts and `user-select: none`.
   flow or the signed URLs.
 * The accessibility font scale and contrast settings apply to the reader's
   chrome and to the app around the canvas. The PDF page surface itself is
-  rendered by PDF.js and is not recoloured — the reader's own light/dark switch
+  rendered by PDF.js and is not recoloured - the reader's own light/dark switch
   is the control for that.
 
 ---
@@ -335,5 +335,5 @@ session timeouts and `user-select: none`.
    claims compliance for purchased content.
 5. **A third-party audit** (e.g. an Israeli accessibility consultancy) before
    the site publishes a compliance claim. Automated tooling covered roughly a
-   third of WCAG's success criteria — the rest was reviewed by hand and needs a
+   third of WCAG's success criteria - the rest was reviewed by hand and needs a
    human on real assistive technology.

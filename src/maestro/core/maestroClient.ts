@@ -1,5 +1,5 @@
 /**
- * Maestro Core — singleton client.
+ * Maestro Core - singleton client.
  *
  * Components import `maestro` from "@/maestro" and call e.g.
  * `maestro.products.list(...)`. The active connector defaults to Supabase when
@@ -7,7 +7,7 @@
  * connector otherwise. It can be swapped at runtime with `configureMaestro`.
  *
  * On top of the connector, this layer applies:
- *  - role-based access rules (RBAC) — defence in depth, the database RLS is the real gate
+ *  - role-based access rules (RBAC) - defence in depth, the database RLS is the real gate
  *  - public reads restricted to published / active records
  *  - an audit trail for every staff mutation
  */

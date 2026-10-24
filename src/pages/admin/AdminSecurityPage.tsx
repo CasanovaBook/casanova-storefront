@@ -1,15 +1,15 @@
 /* ─────────────────────────────────────────────────────────────
- * CMS — content protection & security.
+ * CMS - content protection & security.
  *
  * Three panels, all driven by the same store the reader reads from, so
  * an edit here changes what a customer experiences on their next page
  * turn rather than on the next release:
  *
- *   1. Protection policies — which deterrents are in force, the identity
+ *   1. Protection policies - which deterrents are in force, the identity
  *      watermark, the device cap and the inactivity timeout.
- *   2. Device sessions — every browser currently holding a slot, with
+ *   2. Device sessions - every browser currently holding a slot, with
  *      the ability to revoke one and stop that screen immediately.
- *   3. Protection events — what the deterrents actually caught.
+ *   3. Protection events - what the deterrents actually caught.
  *
  * Restricted to SUPER_ADMIN. The service layer enforces the same
  * permission, so this page is a view of the policy rather than the
@@ -94,7 +94,7 @@ const FLAG_FIELDS: { key: keyof DrmPolicyInput, label: string, hint: string }[] 
 
       label: "הסתרת התוכן באיבוד מיקוד",
 
-      hint: "הקריאה נעלמת כאשר עוברים לחלון אחר — מונעת חשיפה בשיתוף מסך או בצילום אקראי.",
+      hint: "הקריאה נעלמת כאשר עוברים לחלון אחר - מונעת חשיפה בשיתוף מסך או בצילום אקראי.",
     },
 
     {
@@ -377,7 +377,7 @@ function PolicyEditor({
                 className={inputClass}
                 style={inputStyle}
                 value={form.policy_name}
-                placeholder="למשל: ספרים דיגיטליים — מחמיר"
+                placeholder="למשל: ספרים דיגיטליים - מחמיר"
                 onChange={(e) =>
                   setForm({ ...form, policy_name: e.target.value })
                 }
@@ -458,7 +458,7 @@ function PolicyEditor({
                   />
                 </Field>
                 <Field
-                  label={`עוצמת הסימון — ${Math.round(form.watermark_opacity * 100)}%`}
+                  label={`עוצמת הסימון - ${Math.round(form.watermark_opacity * 100)}%`}
                   hint="עד 40%. עוצמה גבוהה מקשה על קריאה."
                 >
                   <input
@@ -626,7 +626,7 @@ export default function AdminSecurityPage() {
 
   // Revoking needs a reason for the audit trail, so it is a two-step
 
-  // inline flow rather than a browser prompt — prompts are unreliable on
+  // inline flow rather than a browser prompt - prompts are unreliable on
 
   // mobile and cannot be styled to match the rest of the CMS.
 
@@ -649,7 +649,7 @@ export default function AdminSecurityPage() {
 
     // the guarded service call is used instead, which returns only the
 
-    // caller's own sessions — so the page degrades to a personal device
+    // caller's own sessions - so the page degrades to a personal device
 
     // list rather than becoming a way to enumerate other customers.
 
@@ -767,7 +767,7 @@ export default function AdminSecurityPage() {
       {noActivePolicy && (
         <div className="mb-5">
           <Alert tone="warning">
-            כל המדיניות כבויה, ולכן חלה מדיניות ברירת המחדל המוגנת של המערכת —
+            כל המדיניות כבויה, ולכן חלה מדיניות ברירת המחדל המוגנת של המערכת -
             ההגנות אינן כבויות. כדי להרפות הגנה יש לערוך מדיניות פעילה ולכבות
             בתוכה את הדגל הרלוונטי, כך שהשינוי יתועד ביומן הפעולות.
           </Alert>
@@ -848,7 +848,7 @@ export default function AdminSecurityPage() {
           >
             מגבלה כנה: דפדפן אינו יכול למנוע צילום של המסך במצלמה, ואינו יכול
             להצפין קובץ שהדפדפן עצמו צריך לקרוא. מה שהמדיניות הזו מספקת הוא
-            זיהוי — כל עותק שודלף נושא את פרטי הרוכש — והגבלה מעשית על הפצת
+            זיהוי - כל עותק שודלף נושא את פרטי הרוכש - והגבלה מעשית על הפצת
             רכישה אחת בין מכשירים. הגנה מלאה מחייבת שרת שמנפיק עמודים חתומים לכל
             הפעלה.
           </p>
@@ -1003,7 +1003,7 @@ export default function AdminSecurityPage() {
             <div className="app-table-wrap">
               <table className="app-table" style={{ minWidth: "48rem" }}>
                 <caption className="sr-only">
-                  מכשירים מחוברים — חשבון, מכשיר, מועד פתיחה, פעילות אחרונה,
+                  מכשירים מחוברים - חשבון, מכשיר, מועד פתיחה, פעילות אחרונה,
                   מצב וחסימה
                 </caption>
                 <thead>
@@ -1193,7 +1193,7 @@ export default function AdminSecurityPage() {
               title="אין אירועים להצגה"
               description={
                 events.length === 0
-                  ? "לא נרשמו אירועי הגנה. זהו מצב תקין — אירוע נרשם רק כאשר מישהו מנסה פעולה שנחסמה."
+                  ? "לא נרשמו אירועי הגנה. זהו מצב תקין - אירוע נרשם רק כאשר מישהו מנסה פעולה שנחסמה."
                   : "לא נמצאו אירועים מהסוג שנבחר."
               }
             />

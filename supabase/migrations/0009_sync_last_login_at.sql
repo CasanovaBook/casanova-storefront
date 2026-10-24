@@ -1,21 +1,21 @@
 -- ============================================================
--- 0009 — record last login for admin   [REQUIRES A SERVER-SIDE TRIGGER]
+-- 0009 - record last login for admin   [REQUIRES A SERVER-SIDE TRIGGER]
 --
 -- THE BUG
 --
 -- "התחברות אחרונה" (last login) shows "מעולם" (never) for every
 -- Supabase-backed account, even after the person has signed in.
 --
--- ROOT CAUSE — nothing writes the column
+-- ROOT CAUSE - nothing writes the column
 --
 -- public.users.last_login_at exists (schema.sql:145) and the admin UI
 -- reads it correctly in all THREE display sites, falling back to
 -- "מעולם" when the column is null:
 --
---   • AdminUsersPage:1112     — the "התחברות אחרונה" column on
+--   • AdminUsersPage:1112     - the "התחברות אחרונה" column on
 --                               /admin/users.
---   • AdminUsersPage:321      — the same field in the "צפייה" drawer.
---   • AdminDashboardPage:651  — the "משתמשים אחרונים" row on /admin.
+--   • AdminUsersPage:321      - the same field in the "צפייה" drawer.
+--   • AdminDashboardPage:651  - the "משתמשים אחרונים" row on /admin.
 --                               Added later: that panel previously
 --                               rendered only avatar, name, email and
 --                               status, so last login looked "missing"
@@ -28,13 +28,13 @@
 -- But in Supabase mode NO code path ever writes it:
 --
 --   • src/lib/api.ts:491 stamps last_login_at, but only inside
---     login() — the LEGACY localStorage driver, which is skipped
+--     login() - the LEGACY localStorage driver, which is skipped
 --     entirely when isSupabaseConfigured is true (AppContext:266).
 --   • src/lib/supabase-auth.ts does read authUser.last_sign_in_at
 --     and maps it into the in-memory User (line 223), so the
 --     signed-in user sees a correct value in the DASHBOARD.
 --     It is never persisted back to public.users.
---   • auth.users.last_sign_in_at IS maintained by Supabase — but
+--   • auth.users.last_sign_in_at IS maintained by Supabase - but
 --     auth.users is not readable from the browser with the anon
 --     key, and the admin list reads public.users.
 --
@@ -44,8 +44,8 @@
 --
 -- WHY THE TRIGGER IS NOT OPTIONAL
 --
--- The obvious client-side fix — UPDATE public.users SET
--- last_login_at = now() after signInWithPassword() — CANNOT WORK
+-- The obvious client-side fix - UPDATE public.users SET
+-- last_login_at = now() after signInWithPassword() - CANNOT WORK
 -- today, and must not be attempted:
 --
 --   migrations/0004_first_login_greeting.sql:60-61 revoked the
@@ -57,14 +57,14 @@
 --
 --   `authenticated` may therefore update ONLY greeted_at. Widening
 --   that grant to include last_login_at would hand every signed-in
---   CUSTOMER the ability to write their own last_login_at — an
+--   CUSTOMER the ability to write their own last_login_at - an
 --   admin-facing audit field that a user could then forge. A client
 --   patch would need that grant, and the grant is the hole.
 --
 -- THE FIX BELOW AVOIDS THAT ENTIRELY
 --
 -- A trigger on auth.users runs inside the database, after GoTrue
--- has already recorded the login, as the table owner — no RLS, no
+-- has already recorded the login, as the table owner - no RLS, no
 -- client grant, and nothing a browser can tamper with.
 --
 -- Apply this file, then deploy. The column stays empty until each
@@ -76,7 +76,7 @@
 -- RLS would otherwise block for a non-owner role. Owned by postgres.
 --
 -- AFTER UPDATE, not INSERT: GoTrue writes last_sign_in_at on the
--- very first sign-in too (the same reason greeted_at had to exist —
+-- very first sign-in too (the same reason greeted_at had to exist -
 -- see first-login.ts:16-19). Watching INSERT would miss that first
 -- login; watching UPDATE catches it.
 --
@@ -120,7 +120,7 @@ COMMENT ON FUNCTION public.sync_last_login_at() IS
   'the admin panel can show "last login". Runs as the table owner, so no '
   'RLS or client grant is involved and a customer cannot forge it.';
 
--- ── BACKFILL — one time, optional ─────────────────────────────
+-- ── BACKFILL - one time, optional ─────────────────────────────
 -- Sign-ins that already happened left no public.users timestamp,
 -- and auth.users is the only record of them. This copies the truth
 -- in. Run it AFTER the trigger exists so new logins are covered.
@@ -135,7 +135,7 @@ COMMENT ON FUNCTION public.sync_last_login_at() IS
 --      AND p.last_login_at IS NULL;
 --
 -- Run it once, by hand. Guarded by `p.last_login_at IS NULL` so it
--- never overwrites a real value — but it is a backfill, not a
+-- never overwrites a real value - but it is a backfill, not a
 -- migration, so keep it out of any pipeline that re-runs.
 --
 -- ⚠ SKIP if you cannot confirm every current account is a real
@@ -165,7 +165,7 @@ COMMENT ON FUNCTION public.sync_last_login_at() IS
 --
 --    `matches` must be true for every row.
 --
--- 4. Security check — the customer still cannot forge it:
+-- 4. Security check - the customer still cannot forge it:
 --    SELECT column_name FROM information_schema.column_privileges
 --    WHERE grantee = 'authenticated' AND table_name = 'users'
 --      AND privilege_type = 'UPDATE';

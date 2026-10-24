@@ -4,7 +4,7 @@
  * The dashboard greets a customer differently on the visit that
  * follows their first sign-in ("ברוך הבא") than on every visit
  * after it ("ברוך שובך"). That fact belongs to the ACCOUNT, not to
- * the browser — a customer who signs in on a phone after using a
+ * the browser - a customer who signs in on a phone after using a
  * desktop is a returning customer and must be greeted as one.
  *
  * The two existing columns cannot answer the question, which is why
@@ -69,7 +69,7 @@ function claimLocally(userId: string): boolean {
 
 /**
  * Resolves whether this is the account's first dashboard view, and
- * records the fact so no later visit — on any device — repeats it.
+ * records the fact so no later visit - on any device - repeats it.
  *
  * Returns `true` only for the caller that won the claim. Safe to call
  * from a render path: it never throws, and a failed write degrades to

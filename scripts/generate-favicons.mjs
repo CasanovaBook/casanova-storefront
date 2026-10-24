@@ -7,8 +7,8 @@
  *
  * Composition: the source is a square 1254×1254 illustration on an
  * off-white field. A favicon-sized rendering of the full frame keeps the
- * ring and the book legible, so the crop is a symmetric ~4% inset — just
- * enough to trim the uneven white margin — followed by a resize onto a
+ * ring and the book legible, so the crop is a symmetric ~4% inset - just
+ * enough to trim the uneven white margin - followed by a resize onto a
  * white square tile. PNG output carries transparency for the corners of
  * the rounded tile; the .ico keeps a square white field, which is the
  * safest rendering for legacy consumers that ignore alpha.
@@ -61,7 +61,7 @@ function tile(size) {
 /**
  * Rounded-tile variant: white tile with transparent corners so the icon
  * does not read as a hard white square on dark tab bars. Radius is ~9%
- * of the side — enough to be visible at 16 px, not so much that the
+ * of the side - enough to be visible at 16 px, not so much that the
  * illustration's own ring feels cropped.
  */
 async function roundedTile(size) {
@@ -83,7 +83,7 @@ async function roundedTile(size) {
 
 /* ── PNG set (modern browsers) ─────────────────────────────
  * 16/32 cover tab rendering; 48 is the Windows desktop-shortcut size;
- * 180 is the Apple touch icon (opaque square — iOS rounds it itself,
+ * 180 is the Apple touch icon (opaque square - iOS rounds it itself,
  * transparency becomes black); 192/512 serve PWA/Android surfaces and
  * any manifest that later lands. Rounded variants are used where the
  * consumer shows the icon as-is; opaque where the OS masks it. */
@@ -104,7 +104,7 @@ for (const t of pngTargets) {
   console.log(`✓ ${t.name}`)
 }
 
-/* ── .ico — multi-resolution, for consumers that only speak ICO ──
+/* ── .ico - multi-resolution, for consumers that only speak ICO ──
  * sharp cannot emit ICO, but the format is a simple container: a
  * 6-byte header, one 16-byte directory entry per image, then the
  * encoded PNGs. ICO consumers have accepted PNG-encoded entries since
@@ -143,9 +143,9 @@ const ico = Buffer.concat([header, ...dirEntries, ...payloads])
 await writeFile(path.join(OUT, "favicon.ico"), ico)
 console.log(`✓ favicon.ico (${icoSizes.join(", ")})`)
 
-/* ── site.webmanifest — home-screen metadata for Android/Chrome ── */
+/* ── site.webmanifest - home-screen metadata for Android/Chrome ── */
 const manifest = {
-  name: "Casanova — ספרייה דיגיטלית פרטית",
+  name: "Casanova - ספרייה דיגיטלית פרטית",
   short_name: "Casanova",
   icons: [
     {

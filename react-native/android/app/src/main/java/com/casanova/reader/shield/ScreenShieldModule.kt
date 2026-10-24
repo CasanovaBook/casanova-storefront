@@ -30,7 +30,7 @@ import java.util.function.Consumer
  * the window is left out of the framebuffer that screenshots, screen
  * recordings, `adb shell screencap` and the recent-apps thumbnail all read
  * from, so a capture of the reader produces black. That is why this module
- * contains no attempt to hide content in response to a capture — by the time
+ * contains no attempt to hide content in response to a capture - by the time
  * a capture could be observed, the pixels in it are already useless.
  *
  * What the module adds on top of the flag, which `MainActivity` sets before
@@ -65,7 +65,7 @@ class ScreenShieldModule(private val reactContext: ReactApplicationContext) :
     private var displayListener: DisplayManager.DisplayListener? = null
 
     /** API 34+ only. Held so it can be unregistered with the same instance the
-     *  Activity was given — passing a different Consumer to
+     *  Activity was given - passing a different Consumer to
      *  `unregisterScreenCaptureCallback` silently does nothing. */
     private var screenCaptureCallback: Consumer<Int>? = null
 
@@ -128,7 +128,7 @@ class ScreenShieldModule(private val reactContext: ReactApplicationContext) :
         }
 
         /* Seed the JS side with the real state rather than letting it keep the
-         * `false` it was constructed with — the app may have been resumed into
+         * `false` it was constructed with - the app may have been resumed into
          * a state where a display was already attached. */
         publishDisplays(force = true)
     }
@@ -205,7 +205,7 @@ class ScreenShieldModule(private val reactContext: ReactApplicationContext) :
      * time it can be observed and the only remaining defence is to stop the
      * *recording* from getting the next frame. On Android FLAG_SECURE has
      * already removed this window from every capture surface, so there is no
-     * frame to conceal — covering the screen would hide the book from the
+     * frame to conceal - covering the screen would hide the book from the
      * legitimate reader while adding nothing against anyone else.
      *
      * `onCaptureChanged` is therefore never emitted here either, which is why
@@ -221,7 +221,7 @@ class ScreenShieldModule(private val reactContext: ReactApplicationContext) :
      * Miracast, Chromecast, a desktop-mode dock, or the virtual display a
      * MediaProjection session creates.
      *
-     * FLAG_SECURE covers all of them, so this is not the protection — it is
+     * FLAG_SECURE covers all of them, so this is not the protection - it is
      * the signal that lets the CMS see that a book was read on a second
      * screen, and that lets the app tell the customer why the overlay appeared
      * (`shouldConceal` in the JS includes `mirrored`, deliberately: reading a
@@ -287,8 +287,8 @@ class ScreenShieldModule(private val reactContext: ReactApplicationContext) :
          * not an attestation, and it cannot be one, because nothing in this
          * build talks to a hardware-backed service that could vouch for it.
          *
-         * The tempting alternative — reporting `ATTESTATION_FAILED` until Play
-         * Integrity is wired up — must not be used. That value is in
+         * The tempting alternative - reporting `ATTESTATION_FAILED` until Play
+         * Integrity is wired up - must not be used. That value is in
          * `COMPROMISED_INTEGRITY` on the JavaScript side, so returning it would
          * make `drm_policies.block_rooted_devices` refuse to open a book on
          * every unmodified Android phone in existence. A DRM client that blocks
@@ -301,7 +301,7 @@ class ScreenShieldModule(private val reactContext: ReactApplicationContext) :
          * lets `issueContentGrant` refuse what this module would have approved.
          * `ATTESTATION_FAILED` stays in the shared type for that build, and is
          * produced today only by the JavaScript layer when this module is
-         * missing from the binary altogether — a genuinely broken install,
+         * missing from the binary altogether - a genuinely broken install,
          * which is the case where blocking is correct.
          */
         return INTEGRITY_TRUSTED
@@ -393,9 +393,9 @@ class ScreenShieldModule(private val reactContext: ReactApplicationContext) :
      * SHA-256 of a file, lowercase hex.
      *
      * Compared by `SecureFileVault.fetchToVault` against the `checksum` on the
-     * redeemed grant. Without it, a truncated download — a captive portal
+     * redeemed grant. Without it, a truncated download - a captive portal
      * interstitial, a proxy that closes early, a full disk that silently stops
-     * writing — would be handed to the PDF renderer as though it were the book.
+     * writing - would be handed to the PDF renderer as though it were the book.
      * The renderer would then either fail or, worse, render the pages it did
      * receive and report success.
      *
@@ -437,7 +437,7 @@ class ScreenShieldModule(private val reactContext: ReactApplicationContext) :
      * no text layer, and there is nothing to select. The Copy/Share problem
      * does not exist on this platform, so there is nothing to disable.
      *
-     * Returning true rather than false matters — the reader uses the answer to
+     * Returning true rather than false matters - the reader uses the answer to
      * decide whether to warn the customer that text can still be lifted. On
      * Android it cannot, and saying so is more useful than a warning that does
      * not apply.
@@ -532,7 +532,7 @@ class ScreenShieldModule(private val reactContext: ReactApplicationContext) :
         private const val HASH_BUFFER_BYTES = 64 * 1024
 
         /** Kept in step with `DeviceIntegrity` in `src/net/types.ts`. A typo
-         *  here is not a compile error — it is a value the server has never
+         *  here is not a compile error - it is a value the server has never
          *  seen, and the CHECK constraint on `device_sessions.device_integrity`
          *  rejects the row.
          *

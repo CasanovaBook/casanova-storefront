@@ -1,10 +1,10 @@
 /* ─────────────────────────────────────────────────────────────
- * CMS — customer inquiries.
+ * CMS - customer inquiries.
  *
  * Every ticket submitted through the public support form lands here.
  * Admins can open it, move it through the status lifecycle, assign an
  * owner, add internal or customer-visible notes, and link it to the
- * order it concerns. The list is read from the persisted collection —
+ * order it concerns. The list is read from the persisted collection -
  * there is no demo ticket to fall back on.
  * ───────────────────────────────────────────────────────────── */
 
@@ -181,7 +181,7 @@ function InquiryModal({
 
     { label: "אימייל", value: inquiry.customer_email, ltr: true },
 
-    { label: "טלפון", value: inquiry.customer_phone ?? "—", ltr: true },
+    { label: "טלפון", value: inquiry.customer_phone ?? "-", ltr: true },
 
     {
       label: "נושא הפנייה",
@@ -229,7 +229,7 @@ function InquiryModal({
        * customer's ticket show the same moment. */
       label: "נפתרה בתאריך",
 
-      value: formatIsraelDateTime(inquiry.resolved_at) || "—",
+      value: formatIsraelDateTime(inquiry.resolved_at) || "-",
     },
   ]
 
@@ -451,8 +451,8 @@ function InquiryModal({
           ) : (
             <div className="space-y-2 mb-4">
               {notes.map((n) => {
-                /* Who wrote a message is backend data — `author_id`, which the
-                 * database stamps from the JWT — compared with the ticket's
+                /* Who wrote a message is backend data - `author_id`, which the
+                 * database stamps from the JWT - compared with the ticket's
                  * own `user_id`. Nothing here is inferred from content, and a
                  * ticket with no owner (the public form while signed out, or a
                  * ticket logged from a phone call) can only ever be written to

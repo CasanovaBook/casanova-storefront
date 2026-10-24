@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Assets service — turns a picked browser file into a storable data URL.
+ * Assets service - turns a picked browser file into a storable data URL.
  *
  * Extracted verbatim from `src/lib/api.ts` (Phase 5B / Group B).
  * Behaviour is unchanged.
@@ -33,7 +33,7 @@ export async function readAssetFile(
 
       `הקובץ גדול מדי (${Math.round(file.size / 1024).toLocaleString()}KB). המגבלה היא ${Math.round(
         max / 1024,
-      ).toLocaleString()}KB — יש להעלות קבצים גדולים לאחסון חיצוני ולהדביק את הכתובת שלהם.`,
+      ).toLocaleString()}KB - יש להעלות קבצים גדולים לאחסון חיצוני ולהדביק את הכתובת שלהם.`,
     )
   }
 

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Service layer — orders, payments, refunds, invoices, subscriptions.
+ * Service layer - orders, payments, refunds, invoices, subscriptions.
  *
  * Two rules shape this module:
  *
@@ -64,8 +64,8 @@ import { isUuid } from "../integrations/supabase/supabase-entitlements"
  */
 function orderPaidSubject(order: { order_number: string; total_amount: number }): string {
   return order.total_amount === 0
-    ? `הגישה עבור הזמנה ${order.order_number} נפתחה — ספר חינמי, לא בוצע חיוב`
-    : `התשלום עבור הזמנה ${order.order_number} אושר — הגישה נפתחה`
+    ? `הגישה עבור הזמנה ${order.order_number} נפתחה - ספר חינמי, לא בוצע חיוב`
+    : `התשלום עבור הזמנה ${order.order_number} אושר - הגישה נפתחה`
 }
 
 export function listOrders(actor: Actor | null): Result<Order[]> {
@@ -131,7 +131,7 @@ export interface CheckoutInput {
 export interface CheckoutOutcome {
   order: Order
 
-  /** True once money is captured — either auto-approved (no gateway connected)
+  /** True once money is captured - either auto-approved (no gateway connected)
    *  or confirmed by a provider. False only while an order awaits confirmation. */
 
   payment_confirmed: boolean
@@ -152,11 +152,11 @@ export interface CheckoutOutcome {
  * browser caches what it returned.
  *
  * The product, its price and the entitlement are all resolved by
- * `create_storefront_order` from `public.products` — the request cannot
+ * `create_storefront_order` from `public.products` - the request cannot
  * name a price, and it can only grant access to `auth.uid()`. What this
  * side does is validate the form and mirror the server's answer into the local
  * document, so the success page, the admin order list and the reader's
- * entitlement cache all see one and the same order — under the server's
+ * entitlement cache all see one and the same order - under the server's
  * UUIDs, never a second local one.
  */
 async function checkoutHosted(
@@ -306,7 +306,7 @@ async function checkoutHosted(
  * The contact details a purchase may not go without.
  *
  * `CheckoutPage` marks the name, address and number as required, and
- * `docs/PRODUCT_BRIEF.md` §5 lists them among what a purchase must collect —
+ * `docs/PRODUCT_BRIEF.md` §5 lists them among what a purchase must collect -
  * but nothing behind the form agreed. Until now the order path would accept a
  * blank phone and store any string as the address, so the requirement only
  * existed for a customer who happened to use the form. Both checkout paths
@@ -331,7 +331,7 @@ export async function checkout(
 ): Promise<Result<CheckoutOutcome>> {
   /* Hosted deployment: the catalogue and the entitlement ledger live in
    * Supabase, so the purchase is resolved and written there. The local
-   * document is deliberately not consulted for the product — a cached row
+   * document is deliberately not consulted for the product - a cached row
    * could hold a stale price, or a product no server row exists for, and
    * the reader's signed-URL endpoint only recognises a real
    * `public.user_products` row. */
@@ -585,8 +585,8 @@ export interface ConfirmPaymentInput {
  * callers add the audit trail and email with the right actor and template.
  *
  * Deliberately does NOT issue an invoice. An invoice row is only ever created
- * by an explicit action — an admin today, the payment provider reporting a
- * real invoice later — so an order never claims to have one it does not.
+ * by an explicit action - an admin today, the payment provider reporting a
+ * real invoice later - so an order never claims to have one it does not.
  */
 
 function applyPaidState(order: Order, patch: Partial<Order> = {}): Order {
@@ -689,7 +689,7 @@ export function markOrderPaid(
     target_label: `${updated.order_number} · ${updated.customer_first_name} ${updated.customer_last_name}`,
 
     details:
-      `₪${updated.total_amount.toLocaleString()} · ${updated.payment_provider ?? "—"}` +
+      `₪${updated.total_amount.toLocaleString()} · ${updated.payment_provider ?? "-"}` +
       (input.transaction_reference ? ` · ${input.transaction_reference}` : "") +
       (input.note ? ` · ${input.note}` : ""),
   })
@@ -713,7 +713,7 @@ export function markOrderFailed(
   if (order.payment_status === "PAID")
     return fail(
       "CONFLICT",
-      "לא ניתן לסמן הזמנה ששולמה ככושלת — יש להשתמש בהחזר כספי.",
+      "לא ניתן לסמן הזמנה ששולמה ככושלת - יש להשתמש בהחזר כספי.",
     )
 
   const updated = mutate((d) => {
@@ -765,7 +765,7 @@ export function cancelOrder(
   if (!order) return fail("NOT_FOUND", "ההזמנה לא נמצאה.")
 
   if (order.payment_status === "PAID")
-    return fail("CONFLICT", "הזמנה ששולמה לא ניתנת לביטול — יש לבצע החזר כספי.")
+    return fail("CONFLICT", "הזמנה ששולמה לא ניתנת לביטול - יש לבצע החזר כספי.")
 
   const updated = mutate((d) => {
     const next: Order = {
@@ -790,7 +790,7 @@ export function cancelOrder(
 
     target_label: order.order_number,
 
-    details: reason ?? "—",
+    details: reason ?? "-",
   })
 
   return ok(updated)
@@ -1060,7 +1060,7 @@ export function reviewRefund(
 
 /**
  * Step 2: actually return the money. Refused unless a payment provider
- * that supports programmatic refunds is configured — recording a request
+ * that supports programmatic refunds is configured - recording a request
  * is never the same as refunding it.
  */
 
@@ -1078,7 +1078,7 @@ export function executeRefund(
     return fail(
       "PROVIDER_NOT_CONFIGURED",
 
-      "ביצוע החזר בפועל דורש חיבור לספק תשלומים שתומך בהחזרים. כרגע ניתן לרשום, לאשר או לדחות בקשות בלבד — הכסף לא הוחזר.",
+      "ביצוע החזר בפועל דורש חיבור לספק תשלומים שתומך בהחזרים. כרגע ניתן לרשום, לאשר או לדחות בקשות בלבד - הכסף לא הוחזר.",
     )
   }
 

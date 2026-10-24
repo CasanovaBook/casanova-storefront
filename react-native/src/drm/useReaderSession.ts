@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * useReaderSession — the protected-reading state machine.
+ * useReaderSession - the protected-reading state machine.
  *
  * One hook owns the whole chain from "the user tapped a book" to "bytes
  * are on screen", because every step in it is a security decision and
@@ -16,7 +16,7 @@
  *
  * The ordering is not cosmetic. Step 4 happens after step 1 because the
  * server refuses to mint for a compromised device, and it refuses based
- * on what step 1 reported — so a false "trusted" from a rooted phone is
+ * on what step 1 reported - so a false "trusted" from a rooted phone is
  * the only way past it, and that is exactly what the server's own
  * `block_rooted_devices` check at mint time exists to second-guess.
  * ───────────────────────────────────────────────────────────── */
@@ -163,7 +163,7 @@ export function useReaderSession({
   const [revoked, setRevoked] = useState(false)
 
   /* The chain is async and multi-step, so every state write is guarded by
-   * a run id. An abandoned attempt — unmount, retry, product change —
+   * a run id. An abandoned attempt - unmount, retry, product change -
    * must not land its result on top of the current one, or a slow first
    * fetch resolves after a fast second one and the reader ends up showing
    * a file whose grant was already replaced. */
@@ -255,7 +255,7 @@ export function useReaderSession({
 
       if (stale()) return
 
-      /* 1 — integrity, before anything else, so a compromised device
+      /* 1 - integrity, before anything else, so a compromised device
        * never reaches the point of holding a token or a file. */
 
       const verdict = await probeIntegrity()
@@ -281,7 +281,7 @@ export function useReaderSession({
         return
       }
 
-      /* 2 — claim a device slot. */
+      /* 2 - claim a device slot. */
 
       const registered = await registerDevice({
         device_name: `${DeviceInfo.getBrand()} ${DeviceInfo.getModel()}`,
@@ -328,7 +328,7 @@ export function useReaderSession({
 
       setPolicy(resolvedPolicy)
 
-      /* 3 — policy gate. The server enforces the same rule at mint time;
+      /* 3 - policy gate. The server enforces the same rule at mint time;
        * deciding here first is what turns it into a readable Hebrew
        * refusal instead of an opaque one. */
 
@@ -360,7 +360,7 @@ export function useReaderSession({
         return
       }
 
-      /* 4 — mint. */
+      /* 4 - mint. */
 
       setPhase("granting")
 
@@ -401,7 +401,7 @@ export function useReaderSession({
         return
       }
 
-      /* 5 — redeem. The server locks the row, re-validates and spends one
+      /* 5 - redeem. The server locks the row, re-validates and spends one
        * use; the address in the response exists only inside this call. */
 
       const redeemed = await redeemGrant(issued.data.token, productId)
@@ -425,7 +425,7 @@ export function useReaderSession({
         return
       }
 
-      /* 6 — into the vault. */
+      /* 6 - into the vault. */
 
       setPhase("fetching")
 

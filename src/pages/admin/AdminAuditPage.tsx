@@ -125,7 +125,7 @@ export default function AdminAuditPage() {
       <PageHeader
         eyebrow="Audit Log"
         title="יומן פעולות"
-        description="תיעוד מלא ובלתי הפיך של כל פעולה משמעותית שביצע מנהל — שינוי מחיר, החזר, הרשאות, חסימות והחלפות תוכן."
+        description="תיעוד מלא ובלתי הפיך של כל פעולה משמעותית שביצע מנהל - שינוי מחיר, החזר, הרשאות, חסימות והחלפות תוכן."
       />
 
       <section
@@ -203,7 +203,7 @@ export default function AdminAuditPage() {
         <div className="app-table-wrap">
           <table className="app-table" style={{ minWidth: "56rem" }}>
             <caption className="sr-only">
-              יומן פעולות — זמן, מבצע, קטגוריה, פעולה, יעד ופרטים
+              יומן פעולות - זמן, מבצע, קטגוריה, פעולה, יעד ופרטים
             </caption>
             <thead>
               <tr>

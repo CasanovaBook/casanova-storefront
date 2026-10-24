@@ -1,5 +1,5 @@
 -- ============================================================
--- 0005 — let staff read the user list   [SUPERSEDED — DO NOT APPLY]
+-- 0005 - let staff read the user list   [SUPERSEDED - DO NOT APPLY]
 --
 -- ⚠ THIS MIGRATION IS NOT NEEDED. The live database already has
 --   policies that do this job, and better. It was written from
@@ -16,7 +16,7 @@
 -- whole table, which is why the admin list renders every user today.
 -- Applying this file would add a redundant `users_read_staff` policy
 -- and a second `is_staff()` function that does the same job under a
--- different name. Two functions, two policies, one behaviour — more
+-- different name. Two functions, two policies, one behaviour - more
 -- surface to keep in sync, for no gain.
 --
 -- It is kept in the repo as a record of the original diagnosis, which
@@ -50,7 +50,7 @@ COMMENT ON FUNCTION public.is_staff() IS
   'itself. Revoked from anon; only the authenticated role may execute it.';
 
 -- Only the signed-in role needs this. anon must never be able to ask
--- "am I staff?" — it has no JWT, so it resolves to false regardless,
+-- "am I staff?" - it has no JWT, so it resolves to false regardless,
 -- but the grant is kept narrow so the function is not a public surface.
 REVOKE ALL ON FUNCTION public.is_staff() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_staff() TO authenticated;
@@ -82,9 +82,9 @@ COMMIT;
 --     → users_read_staff    | SELECT | {authenticated}
 --
 -- As an ADMIN, `SELECT count(*) FROM public.users` must return the
--- full customer count. As a CUSTOMER it must return 1 — their own row.
+-- full customer count. As a CUSTOMER it must return 1 - their own row.
 --
 -- NOTE: the signup trigger that copies an auth user into public.users
 -- (`handle_new_user()`) is owned by the Supabase dashboard, not this
--- repository — it appears in no file under migrations/ or schema.sql.
+-- repository - it appears in no file under migrations/ or schema.sql.
 -- This migration does not touch it.

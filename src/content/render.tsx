@@ -1,5 +1,6 @@
 import { Fragment, type AriaAttributes, type ReactNode } from "react";
 import { Link } from "react-router";
+import { normalizeHyphens } from "../lib/text";
 
 /** Link that understands internal routes, #anchors and external URLs. */
 export function SmartLink({
@@ -48,7 +49,7 @@ export function SmartLink({
  * Wrap it in an element with a class such as "[&_em]:text-[#d9bc7b]" to colour the accent.
  */
 export function Rich({ text }: { text: string }) {
-  const lines = text.split(/\r?\n/);
+  const lines = normalizeHyphens(text).split(/\r?\n/);
   return (
     <>
       {lines.map((line, li) => (
@@ -118,7 +119,7 @@ function inline(text: string, keyBase: string): ReactNode[] {
  * "> quote", "![alt](url)" images, **bold** and [links](/path).
  */
 export function Md({ text, className = "" }: { text: string; className?: string }) {
-  const blocks = text.replace(/\r\n/g, "\n").split(/\n{2,}/);
+  const blocks = normalizeHyphens(text).replace(/\r\n/g, "\n").split(/\n{2,}/);
   return (
     <div className={`space-y-4 ${className}`}>
       {blocks.map((block, bi) => {

@@ -1,5 +1,5 @@
 -- ============================================================
--- 0023 — checkout that writes the real order and entitlement
+-- 0023 - checkout that writes the real order and entitlement
 --        [REQUIRES A SERVER-SIDE FUNCTION]
 --
 -- THE BUG
@@ -21,13 +21,13 @@
 -- `admin_grant_access`, so a renamed or later-archived title still renders in
 -- the customer's library.
 --
--- WHY IT IS ALLOWED TO SELF-GRANT — AND WHEN IT STOPS
+-- WHY IT IS ALLOWED TO SELF-GRANT - AND WHEN IT STOPS
 --
 -- This deployment has no payment gateway, and the web checkout is already
 -- auto-approving every order for exactly that reason (src/lib/api-orders.ts,
 -- `if (!provider)`). The function keeps that behaviour: it records a PAID
 -- order and grants access in one transaction. It refuses the moment
--- `platform_settings.payment_provider` is set — at that point money must be
+-- `platform_settings.payment_provider` is set - at that point money must be
 -- captured by a webhook first, and this RPC stops being an approval path
 -- instead of quietly remaining one.
 --
@@ -171,7 +171,7 @@ BEGIN
     'AUTO-' || v_order.order_number, now()
   );
 
-  -- Snapshot from the catalogue, never from the request body — the same
+  -- Snapshot from the catalogue, never from the request body - the same
   -- contract 0015 uses for a manual grant.
   SELECT jsonb_strip_nulls(
            jsonb_build_object(
@@ -245,7 +245,7 @@ GRANT EXECUTE ON FUNCTION
 COMMIT;
 
 -- ============================================================
--- VERIFICATION — run after applying
+-- VERIFICATION - run after applying
 -- ============================================================
 -- 1. The function exists, is SECURITY DEFINER and pins search_path:
 --

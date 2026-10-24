@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * LibraryScreen — what this account may open on this device.
+ * LibraryScreen - what this account may open on this device.
  *
  * The list comes from `v_entitled_content`, the same view the web
  * dashboard reads, so an entitlement revoked in the CMS disappears from

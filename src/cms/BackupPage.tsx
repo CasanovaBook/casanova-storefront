@@ -1,5 +1,5 @@
 /**
- * Maestro Admin — backup, import & export.
+ * Maestro Admin - backup, import & export.
  *
  * Export all saved content as a JSON file.
  * Import content from a JSON file (validates keys against the registry).
@@ -179,7 +179,7 @@ export function BackupPage() {
               {exporting ? "מייצא…" : `ייצוא ${savedCount} שדות`}
             </button>
             {!savedCount && (
-              <p className="app-hint mt-2">אין תוכן שנערך לייצוא — כל השדות כבר בברירת המחדל.</p>
+              <p className="app-hint mt-2">אין תוכן שנערך לייצוא - כל השדות כבר בברירת המחדל.</p>
             )}
           </div>
         </section>

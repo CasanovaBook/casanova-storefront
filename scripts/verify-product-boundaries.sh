@@ -20,7 +20,7 @@
 #
 # Every request carries the anon key as `apikey`. Without it PostgREST
 # answers "No API key found in request", which reads like an empty
-# result rather than a refusal — worth stating because it is a silent
+# result rather than a refusal - worth stating because it is a silent
 # way to write a verification that passes when nothing worked.
 #
 # get() and rpc() set two globals rather than printing the body, and
@@ -107,11 +107,11 @@ fi
 echo
 
 # ---------------------------------------------------------------- 1
-head_ "1. Storefront read as anon — the fingerprint"
+head_ "1. Storefront read as anon - the fingerprint"
 get "products?select=product_id,slug,name,price,sale_price,status,visibility,availability"
 echo "     $BODY"
 if [ "$STATUS" != "200" ]; then
-  bad "the storefront read returned HTTP $STATUS — /store would be broken"
+  bad "the storefront read returned HTTP $STATUS - /store would be broken"
 else
   ok "anon reads the catalogue (HTTP 200)"
 fi
@@ -148,7 +148,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 2
-head_ "2. Protected columns — must be refused by Postgres, not hidden"
+head_ "2. Protected columns - must be refused by Postgres, not hidden"
 for col in content_url content_asset_id; do
   get "products?select=$col&limit=1"
   if [ "$STATUS" = "200" ]; then
@@ -161,7 +161,7 @@ for col in content_url content_asset_id; do
 done
 for col in content_url content_asset_id; do
   if [ -z "${CUSTOMER_TOKEN:-}" ]; then
-    skipped "customer read of $col — set CUSTOMER_TOKEN"
+    skipped "customer read of $col - set CUSTOMER_TOKEN"
     continue
   fi
   get "products?select=$col&limit=1" "$CUSTOMER_TOKEN"
@@ -200,9 +200,9 @@ check_anon_rpc admin_list_products       '{}'
 check_anon_rpc create_storefront_order   '{"p_product_id":"00000000-0000-0000-0000-000000000000","p_first_name":"a","p_last_name":"b","p_email":"a@b.co"}'
 
 head_ "3b. The permission helpers must not answer anon either"
-# Nothing here is writable and no other account is reachable — a customer
+# Nothing here is writable and no other account is reachable - a customer
 # asking admin_has_permission only learns their own role, which is
-# already in the bundle — but a predicate that answers anonymous callers
+# already in the bundle - but a predicate that answers anonymous callers
 # is not the shape this system is meant to have.
 check_anon_rpc admin_role_permissions    '{"p_role":"CONTENT"}'
 check_anon_rpc admin_permission_matrix  '{}'
@@ -225,10 +225,10 @@ if [ "${1:-}" = "--full" ]; then
 
   for role in SUPER_ADMIN CONTENT FINANCE SUPPORT MARKETING CUSTOMER; do
     var="${role}_TOKEN"; tok="${!var:-}"
-    if [ -z "$tok" ]; then skipped "$role — set $var"; continue; fi
+    if [ -z "$tok" ]; then skipped "$role - set $var"; continue; fi
 
     rpc admin_save_product '{"p_product":{"name":"perm-probe","slug":"perm-probe","price":1}}' "$tok"
-    if is_absent "$BODY"; then skipped "$role save_product — 0024 not applied"; continue; fi
+    if is_absent "$BODY"; then skipped "$role save_product - 0024 not applied"; continue; fi
     is_refused "$BODY" && got=0 || got=1
     if [ "$got" = "${WANT_SAVE[$role]}" ]; then
       ok "$role save_product (with price) -> $([ $got = 1 ] && echo allowed || echo refused)"

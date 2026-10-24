@@ -9,7 +9,7 @@
  *      just created (`authReady` is false). Until that settles nobody
  *      can honestly say whether verification worked, so the screen
  *      waits instead of guessing.
- *   2. A verification link can legitimately end in three states —
+ *   2. A verification link can legitimately end in three states -
  *      confirmed, expired/used, or opened in a browser that does not
  *      hold the session. A bare redirect to /login cannot express the
  *      difference, which is why the user was left staring at a login
@@ -71,7 +71,7 @@ export default function VerifyEmailPage() {
       return
     }
     /* The address was confirmed, but the link was opened somewhere that
-     * does not hold the session — a different browser, a private window,
+     * does not hold the session - a different browser, a private window,
      * or an expired sign-in. The account is still usable; the user simply
      * has to prove it by signing in. */
     setState("no-session")
@@ -111,7 +111,7 @@ export default function VerifyEmailPage() {
     },
     "no-session": {
       /* This state is reached both when a link was opened in a browser that
-       * holds no session AND when someone lands here without a link at all —
+       * holds no session AND when someone lands here without a link at all -
        * a bookmark, a crawler, a typed URL. Asserting "the address was
        * verified" would be a claim this page cannot support in the second
        * case, and a false claim on a screen that talks about the security of
@@ -119,7 +119,7 @@ export default function VerifyEmailPage() {
        * way and what to do about it. */
       title: "נשאר רק להתחבר",
       body: isSupabaseConfigured
-        ? "אם פתחת את קישור האימות מהמייל, הכתובת כבר אומתה — בדפדפן הזה צריך להתחבר איתה בשנית. אם עדיין לא אישרת, פתח את הקישור שהגיע אליך."
+        ? "אם פתחת את קישור האימות מהמייל, הכתובת כבר אומתה - בדפדפן הזה צריך להתחבר איתה בשנית. אם עדיין לא אישרת, פתח את הקישור שהגיע אליך."
         : 'אין כרגע שרת Supabase מחובר, ולכן אימות בדוא"ל אינו זמין.',
     },
   }[state]

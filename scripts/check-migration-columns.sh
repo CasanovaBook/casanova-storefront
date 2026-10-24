@@ -8,7 +8,7 @@
 # This exists because a migration that references a column which is not
 # there does not fail when it is written, and does not fail when it is
 # linted. It fails in the browser, at run time, as a raw 42703 with no
-# hint about which of several dozen references was the wrong one — which
+# hint about which of several dozen references was the wrong one - which
 # is how `product_relations.product_id` cost a round-trip: four of the
 # five child tables hang off `product_id` and the fifth does not, so the
 # loop looked uniform right up to the iteration that threw.
@@ -34,7 +34,7 @@ REST="$URL/rest/v1"
 # purpose: this is the list that has to be re-checked when the schema
 # moves, so it should read as a list, not be inferred from the SQL.
 TARGETS=(
-  # 0022 / 0024 — the columns admin_save_product writes
+  # 0022 / 0024 - the columns admin_save_product writes
   products:product_id products:name products:subtitle products:slug
   products:sku products:description products:short_description
   products:product_type products:price products:sale_price products:currency
@@ -53,11 +53,11 @@ TARGETS=(
   product_media_links:product_id product_media_links:media_link_id
   product_media_links:label product_media_links:url
   product_media_links:platform product_media_links:sort_order
-  # the one that is NOT product_id — the whole point of this script
+  # the one that is NOT product_id - the whole point of this script
   product_relations:relation_id product_relations:source_product_id
   product_relations:target_product_id product_relations:relation_type
   product_relations:sort_order
-  # 0023 — checkout
+  # 0023 - checkout
   orders:order_id orders:order_number orders:user_id orders:order_status
   orders:payment_status orders:subtotal orders:discount_amount
   orders:total_amount orders:currency orders:coupon_code
@@ -126,7 +126,7 @@ printf '\nchecked %d, missing %d\n' "$checked" "$missing"
 
 # Note: a column revoked in 0025 (content_url, content_asset_id) answers
 # 403/401 rather than 200, which probe() counts as present. That is the
-# intended behaviour — those two SHOULD stop being readable.
+# intended behaviour - those two SHOULD stop being readable.
 if [ "$missing" -gt 0 ]; then
   printf '\nA migration references a column that does not exist. Find it above.\n'
   exit 1

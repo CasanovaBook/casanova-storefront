@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * SecureFileVault — the "no download" half of the DRM.
+ * SecureFileVault - the "no download" half of the DRM.
  *
  * ScreenShield stops a capture of the screen. This stops a copy of the
  * file leaving the app, which is the harder problem and the one the
@@ -13,7 +13,7 @@
  *
  * WHY THAT IS ENOUGH
  * On Android `DocumentDir` resolves to `/data/data/<package>/files`,
- * which no other app and no file manager can reach without root — and a
+ * which no other app and no file manager can reach without root - and a
  * rooted device is refused before it ever gets a grant. On iOS it is the
  * app's own `Documents` directory, excluded from backup by
  * `excludeFromBackup()` below so an iTunes/Finder restore onto a second
@@ -298,7 +298,7 @@ export async function fetchToVault(
     const bytes = Number(stat.size) || 0
 
     /* Size is the cheap integrity check and it catches the common
-     * failure — an HTML error page written where a PDF was expected. */
+     * failure - an HTML error page written where a PDF was expected. */
 
     if (grant.file_size_bytes && bytes !== grant.file_size_bytes) {
       await RNFetchBlob.fs.unlink(path).catch(() => undefined)
@@ -452,7 +452,7 @@ export async function wipeAll(): Promise<void> {
 
 /**
  * Startup sweep. Returns the product ids whose offline copies were
- * destroyed, so the caller can report one `OFFLINE_EXPIRED` event each —
+ * destroyed, so the caller can report one `OFFLINE_EXPIRED` event each -
  * the CMS shows those as evidence that the TTL is being honoured on real
  * devices rather than only written into the policy.
  */

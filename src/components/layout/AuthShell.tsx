@@ -101,7 +101,7 @@ export default function AuthShell({
             <span>הספרים שלכם.</span>
           </h2>
           <p className="auth-panel-text">
-            מקום אחד לניהול הגישה, הרכישות והקריאה — בדפדפן, בכל מכשיר.
+            מקום אחד לניהול הגישה, הרכישות והקריאה - בדפדפן, בכל מכשיר.
           </p>
 
           <ul className="auth-panel-list">

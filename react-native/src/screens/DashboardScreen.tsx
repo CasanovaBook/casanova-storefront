@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * DashboardScreen — account, orders and the state of local storage.
+ * DashboardScreen - account, orders and the state of local storage.
  *
  * The storage section is not a convenience. A reader who cannot see that
  * a copy is on their phone cannot make an informed decision about

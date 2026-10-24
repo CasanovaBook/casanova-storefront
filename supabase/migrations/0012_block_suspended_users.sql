@@ -1,5 +1,5 @@
 -- ============================================================
--- 0012 — make suspension actually block authentication
+-- 0012 - make suspension actually block authentication
 --
 -- PROBLEM
 --

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Modal — the single dialog primitive for the admin panel.
+ * Modal - the single dialog primitive for the admin panel.
  *
  * Every admin dialog (customer profile, support ticket, manual ticket,
  * lead, order, product, categories, protection policy) renders through this
@@ -14,7 +14,7 @@
  * footer reachable at any window height. This is what `/admin/users` does
  * correctly. A `max-h` + `overflow-y-auto` on the panel instead clips the
  * dialog once the panel is taller than the viewport, and centring a panel
- * taller than the viewport (`items-center`) pushes its top out of reach —
+ * taller than the viewport (`items-center`) pushes its top out of reach -
  * do not reintroduce either. Vertically centred dialogs (`align="center"`,
  * used for short confirmations) centre with `my-auto` rather than
  * `items-center` for the same reason.

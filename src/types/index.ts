@@ -4,7 +4,7 @@
  * Relationships are expressed with IDs, never by embedding whole
  * objects. Purchase-time data that must survive a product being
  * edited, archived or deleted is stored as an explicit, bounded
- * snapshot (`OrderItem`, `ProductSnapshot`) — not as a live copy of
+ * snapshot (`OrderItem`, `ProductSnapshot`) - not as a live copy of
  * the product record.
  * ───────────────────────────────────────────────────────────── */
 
@@ -53,7 +53,7 @@ export interface User {
 
 /**
  * A user record as stored by the persistence driver. The credential
- * fields never leave the storage layer — `toPublicUser()` strips them
+ * fields never leave the storage layer - `toPublicUser()` strips them
  * before anything reaches React state or the UI.
  */
 export interface StoredUser
@@ -444,7 +444,7 @@ export const FREEFORM_SECTION_TYPES: SectionType[] = [
  * Which page a CMS section publishes to.
  *
  * HOME sections render on the storefront landing (`/`). SALES sections
- * render on the main page, which is also served at `/` — `/` and the
+ * render on the main page, which is also served at `/` - `/` and the
  * retired `/hi-kodem` alias were the same component, so both values
  * publish to the same route today. The flag is optional so legacy rows
  * (written before the sales page existed) keep publishing to home
@@ -625,8 +625,8 @@ export interface PlatformSettings {
 
 /**
  * Which client a protection policy applies to. The web reader and a
- * future native reader need different deterrents — a browser cannot
- * stop an OS-level screenshot, a native app can — so the policy is
+ * future native reader need different deterrents - a browser cannot
+ * stop an OS-level screenshot, a native app can - so the policy is
  * resolved by scope rather than being one global block of flags.
  */
 export type DrmScope = "WEB" | "MOBILE" | "ALL"
@@ -663,8 +663,8 @@ export type ContentGrantScope = "STREAM" | "OFFLINE_CACHE"
  *
  * These flags are deterrents, not encryption. A browser that can
  * render a page can be photographed, and no client-side code changes
- * that. What the policy buys is attribution — every leaked capture
- * carries the identity of the account it came from — plus a hard cap
+ * that. What the policy buys is attribution - every leaked capture
+ * carries the identity of the account it came from - plus a hard cap
  * on how many devices one purchase can be spread across.
  */
 export interface DrmPolicy {
@@ -696,7 +696,7 @@ export interface DrmPolicy {
    * is traceable to the buyer who made it.
    */
   watermark_template: string
-  /** 0–1. Low enough to read through, high enough to survive a photo. */
+  /** 0-1. Low enough to read through, high enough to survive a photo. */
   watermark_opacity: number
   max_devices_per_user: number
   session_timeout_minutes: number

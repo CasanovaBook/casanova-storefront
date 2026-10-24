@@ -1,5 +1,5 @@
 -- ============================================================
--- 0001 — Mobile reader, download-proof content delivery
+-- 0001 - Mobile reader, download-proof content delivery
 -- ============================================================
 -- Applies on top of schema.sql. Safe to re-run: every statement is
 -- either IF NOT EXISTS / IF EXISTS, or drops a constraint by its
@@ -16,7 +16,7 @@
 --      refuse to run on a rooted device. None of that was storable.
 --   B. security_events could not record a blocked download, a blocked
 --      share, a detected mirror, a compromised device or a replayed
---      content token — the CHECK list predated the mobile client.
+--      content token - the CHECK list predated the mobile client.
 --   C. device_sessions threw away the revocation reason (it reached the
 --      audit log but not the row), and stored no client build, OS
 --      version or integrity verdict, so support could not tell an
@@ -39,11 +39,11 @@
 BEGIN;
 
 -- ============================================================
--- A. DRM POLICY — download, offline and device integrity
+-- A. DRM POLICY - download, offline and device integrity
 -- ============================================================
 -- block_download is the one the native reader actually enforces: it
 -- covers saving, exporting, the share sheet and any "open in another
--- app" path, because all of them are the same act — handing the bytes
+-- app" path, because all of them are the same act - handing the bytes
 -- to something the platform no longer controls. It defaults to TRUE so
 -- an existing installation becomes stricter, not looser, and so a
 -- policy row created before this migration cannot silently permit
@@ -84,7 +84,7 @@ UPDATE drm_policies
  WHERE policy_name = 'מדיניות ברירת מחדל';
 
 -- ============================================================
--- B. SECURITY EVENTS — the mobile vocabulary
+-- B. SECURITY EVENTS - the mobile vocabulary
 -- ============================================================
 -- A CHECK list cannot be extended in place, so it is replaced. Existing
 -- rows keep their values: every new member is additive.
@@ -111,7 +111,7 @@ CREATE INDEX IF NOT EXISTS idx_security_events_session
   ON security_events (session_id, created_at DESC);
 
 -- ============================================================
--- C. DEVICE SESSIONS — attribution and client identity
+-- C. DEVICE SESSIONS - attribution and client identity
 -- ============================================================
 ALTER TABLE device_sessions
   ADD COLUMN IF NOT EXISTS revoked_at      TIMESTAMPTZ,
@@ -142,7 +142,7 @@ CREATE INDEX IF NOT EXISTS idx_device_sessions_platform
   ON device_sessions (platform) WHERE ended_at IS NULL AND NOT revoked;
 
 -- ============================================================
--- D. AUTH SESSIONS — which client holds the token
+-- D. AUTH SESSIONS - which client holds the token
 -- ============================================================
 -- Both apps authenticate against the same sessions table. Without a
 -- client column a stolen-token report cannot say whether the web or the
@@ -157,7 +157,7 @@ ALTER TABLE sessions
 CREATE INDEX IF NOT EXISTS idx_sessions_client ON sessions (user_id, client);
 
 -- ============================================================
--- E. SUPPORT & CRM SOURCES — tickets opened from the app
+-- E. SUPPORT & CRM SOURCES - tickets opened from the app
 -- ============================================================
 ALTER TABLE inquiries DROP CONSTRAINT IF EXISTS inquiries_source_check;
 ALTER TABLE inquiries
@@ -170,7 +170,7 @@ ALTER TABLE crm_leads
   CHECK (source IN ('LANDING_PAGE','STORE','REFERRAL','CAMPAIGN','MANUAL','MOBILE_APP'));
 
 -- ============================================================
--- F. PLATFORM SETTINGS — mobile kill switch and minimum build
+-- F. PLATFORM SETTINGS - mobile kill switch and minimum build
 -- ============================================================
 -- mobile_app_enabled FALSE makes the API refuse mobile logins, which is
 -- how a broken build is taken out of service without a store release.
@@ -184,7 +184,7 @@ ALTER TABLE platform_settings
     CHECK (mobile_min_build >= 0);
 
 -- ============================================================
--- G. CONTENT ACCESS GRANTS — the download-proof delivery path
+-- G. CONTENT ACCESS GRANTS - the download-proof delivery path
 -- ============================================================
 -- The rule both clients obey: nobody ever receives the address of a
 -- protected file. They receive a grant, minted for one signed-in
@@ -193,7 +193,7 @@ ALTER TABLE platform_settings
 -- re-checking the entitlement, so revoking access in the CMS also kills
 -- every URL already handed out.
 --
--- Only token_hash is stored — never the token. A leaked database
+-- Only token_hash is stored - never the token. A leaked database
 -- therefore cannot be replayed into content, exactly as with
 -- password_reset_tokens.
 --
@@ -202,9 +202,9 @@ ALTER TABLE platform_settings
 -- is renamed or deleted, which a join to users could not guarantee.
 --
 -- scope separates the two things a reader may do with a grant:
---   STREAM       — short-lived, multi-use inside one session, for the
+--   STREAM       - short-lived, multi-use inside one session, for the
 --                  page the client is displaying right now.
---   OFFLINE_CACHE — single-use, only issued when the policy allows
+--   OFFLINE_CACHE - single-use, only issued when the policy allows
 --                  offline reading; the client stores the bytes in its
 --                  private vault and must destroy them at expires_at.
 CREATE TABLE IF NOT EXISTS content_access_grants (
@@ -340,7 +340,7 @@ $$;
 --
 -- Minting a grant is only half the promise. The other half is that
 -- cutting a device off, or revoking an entitlement in the CMS, also
--- kills every URL already handed out — otherwise a revoked phone keeps
+-- kills every URL already handed out - otherwise a revoked phone keeps
 -- a live address to the file until the grant expires on its own, and
 -- "revoke access" quietly means "revoke future access".
 --
@@ -392,7 +392,7 @@ CREATE TRIGGER trg_user_product_revokes_grants
   EXECUTE FUNCTION revoke_grants_for_entitlement();
 
 -- ============================================================
--- H. VIEWS — the public catalogue stops naming the file
+-- H. VIEWS - the public catalogue stops naming the file
 -- ============================================================
 -- v_storefront_catalog is what an anonymous visitor reads. It selected
 -- products.content_url and content_assets.public_url, i.e. the direct
@@ -401,7 +401,7 @@ CREATE TRIGGER trg_user_product_revokes_grants
 -- file size) stays, because it is what a product card shows.
 --
 -- Content addresses are now reachable only through v_entitled_content,
--- which is scoped to one user and read by the grant-minting endpoint —
+-- which is scoped to one user and read by the grant-minting endpoint -
 -- never served to a client as-is.
 CREATE OR REPLACE VIEW v_storefront_catalog AS
 SELECT
@@ -575,7 +575,7 @@ $$;
 COMMIT;
 
 -- ============================================================
--- VERIFICATION — run after applying
+-- VERIFICATION - run after applying
 -- ============================================================
 --   SELECT column_name FROM information_schema.columns
 --    WHERE table_name = 'drm_policies'
@@ -589,7 +589,7 @@ COMMIT;
 --    WHERE conrelid = 'security_events'::regclass AND contype = 'c';
 --   → security_events_event_type_check
 --
---   Confirm the leak is closed — this must return no rows:
+--   Confirm the leak is closed - this must return no rows:
 --   SELECT column_name FROM information_schema.columns
 --    WHERE table_name = 'v_storefront_catalog'
 --      AND column_name IN ('content_url','content_public_url');

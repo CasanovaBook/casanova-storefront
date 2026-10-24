@@ -1,10 +1,10 @@
 -- ============================================================
--- MIGRATION 0013 — Protect staff accounts from suspension
+-- MIGRATION 0013 - Protect staff accounts from suspension
 --
 -- SYMPTOM THIS CLOSES
 --
 -- Suspending a מנהל from /admin/users. Migration 0011 lets any admin write
--- `account_status` on any row, including a row whose `role` is 'ADMIN' — and
+-- `account_status` on any row, including a row whose `role` is 'ADMIN' - and
 -- because `role` and `account_status` are two unrelated columns, a suspended
 -- admin still passes `is_admin()`. Such an account is locked out of the admin
 -- area by the gate in 0012 while remaining a staff member in the data: no
@@ -32,7 +32,7 @@
 -- code: 42501 is shared with the `admin_required` refusal above, and only the
 -- token tells the two apart. The dialog answers with its own popup.
 --
--- APPLY, THEN VERIFY — run this in the Supabase SQL editor, then confirm:
+-- APPLY, THEN VERIFY - run this in the Supabase SQL editor, then confirm:
 --
 --   1. The veto fires for a staff row:
 --        SELECT public.admin_set_account_status(

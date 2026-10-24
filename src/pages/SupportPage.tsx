@@ -86,7 +86,7 @@ function whenLabel(iso: string): string {
  * One message of the thread.
  *
  * The customer's own messages sit on the right (the reading side in RTL)
- * with the gold accent, support's on the left in the neutral surface — so
+ * with the gold accent, support's on the left in the neutral surface - so
  * the direction of the conversation is readable at a glance, and each
  * message carries its author and timestamp.
  */
@@ -148,7 +148,7 @@ function MessageBubble({
  * support team sent, and a box to answer back.
  *
  * Rendered through the shared Modal, so it is portalled to the body (the
- * page root carries `page-enter`) and its overlay scrolls from the top — a
+ * page root carries `page-enter`) and its overlay scrolls from the top - a
  * long conversation stays fully readable and the composer stays reachable
  * on any window height.
  */
@@ -177,13 +177,13 @@ function ConversationModal({
 
   const closed = inquiry.status === "RESOLVED" || inquiry.status === "CLOSED"
 
-  /* The stored resolution moment — the database's, not the visitor's clock —
+  /* The stored resolution moment - the database's, not the visitor's clock -
    * pinned to Israel time like every other timestamp in the product. An
    * unresolved (or reopened) ticket has no value here, so nothing is shown. */
   const resolvedLabel = formatIsraelDateTime(inquiry.resolved_at)
 
   /* Read from the conversation in the store, so it flips back the moment a
-   * staff reply is mirrored in — including the realtime one. The database
+   * staff reply is mirrored in - including the realtime one. The database
    * enforces the same limit; this only lets the composer explain itself. */
   const canReply = customerReplyAllowed(inquiry, user?.user_id)
 
@@ -293,7 +293,7 @@ function ConversationModal({
 
       {closed && (
         <p className="app-hint mb-3">
-          הפנייה סומנה כנפתרה. אפשר לכתוב כאן בכל זאת — ההודעה תתווסף לשיחה
+          הפנייה סומנה כנפתרה. אפשר לכתוב כאן בכל זאת - ההודעה תתווסף לשיחה
           והצוות יראה אותה.
         </p>
       )}
@@ -382,7 +382,7 @@ export default function SupportPage() {
 
   /* The ticket the conversation dialog shows. Looked up from the freshly
    * mirrored list rather than held as a snapshot, so a status the admin
-   * changed — or a reply that just arrived — is reflected in the open
+   * changed - or a reply that just arrived - is reflected in the open
    * dialog instead of a stale copy. */
   const opened = myInquiries.find((i) => i.inquiry_id === openId) ?? null
 
@@ -687,7 +687,7 @@ export default function SupportPage() {
                       }
                     />
                     <p id="support-message-hint" className="app-hint">
-                      לפחות 10 תווים — ככל שתפרטו יותר, נוכל לעזור מהר יותר.
+                      לפחות 10 תווים - ככל שתפרטו יותר, נוכל לעזור מהר יותר.
                     </p>
                   </div>
 
@@ -883,7 +883,7 @@ export default function SupportPage() {
                       style={{ color: "var(--color-primary)" }}
                       aria-hidden="true"
                     />
-                    שאלות על חיוב או חשבונית — צרפו את מספר ההזמנה כדי שנוכל
+                    שאלות על חיוב או חשבונית - צרפו את מספר ההזמנה כדי שנוכל
                     לשייך את הפנייה.
                   </li>
                   <li className="flex gap-2.5">

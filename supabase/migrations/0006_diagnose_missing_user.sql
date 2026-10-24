@@ -1,5 +1,5 @@
 -- ============================================================
--- 0006 DIAGNOSTIC — run this, it is read-only (SELECT only)
+-- 0006 DIAGNOSTIC - run this, it is read-only (SELECT only)
 --
 -- Symptom being investigated:
 --   A newly registered user does not appear in the admin list
@@ -67,7 +67,7 @@ ORDER BY policyname;
 SELECT public.is_staff() AS i_am_staff;
 
 -- ── 6. What the admin list should render right now ─────────────
--- The 4 most recent by created_at — compare against the dashboard.
+-- The 4 most recent by created_at - compare against the dashboard.
 SELECT user_id, first_name, last_name, email, role, created_at
 FROM public.users
 ORDER BY created_at DESC

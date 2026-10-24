@@ -1,11 +1,11 @@
 /* ─────────────────────────────────────────────────────────────
- * CMS — catalogue management, authoritative over the hosted catalogue.
+ * CMS - catalogue management, authoritative over the hosted catalogue.
  *
  * The list and every save on this page work against the real catalogue:
  * `public.products` / `public.categories` in Supabase when it is
  * configured, and the local document only on an install where it is not.
  * Writes go through the admin RPCs in migrations/0022_admin_product_writes.sql,
- * which re-check `is_admin()` server-side — the buttons below are hidden
+ * which re-check `is_admin()` server-side - the buttons below are hidden
  * purely as a convenience. After a successful save the catalogue is
  * re-read, so the storefront, the reader and this list all show what the
  * database now holds.
@@ -128,7 +128,7 @@ interface ContentView {
  * A verified check (the object really exists in the private `books` bucket,
  * the same place the Reader signs its URL from) is authoritative. When that
  * check has not run (no Supabase, function not deployed, product id not a
- * uuid) we fall back to the row's own recorded pointer — and when even that
+ * uuid) we fall back to the row's own recorded pointer - and when even that
  * is absent we report "unverified" rather than the old, misleading
  * "not uploaded", because a book added to Storage by path convention has no
  * pointer on the row yet is fully readable.
@@ -138,7 +138,7 @@ function resolveContent(
   status: ContentStatus | undefined,
 ): ContentView {
   if (!needsDigitalContent(product)) {
-    return { tone: "na", label: "—", hint: "מוצר פיזי — ללא קובץ דיגיטלי", icon: "box" }
+    return { tone: "na", label: "-", hint: "מוצר פיזי - ללא קובץ דיגיטלי", icon: "box" }
   }
   if (status?.state === "available") {
     const mb =
@@ -160,7 +160,7 @@ function resolveContent(
       icon: "alertTriangle",
     }
   }
-  // Not verified — fall back to the recorded pointer.
+  // Not verified - fall back to the recorded pointer.
   if (product.storage_path || product.content_file) {
     return {
       tone: "recorded",
@@ -180,7 +180,7 @@ function resolveContent(
   return {
     tone: "unverified",
     label: "לא אומת",
-    hint: "לא ניתן לאמת את קיום הקובץ כעת — ייתכן שהתוכן קיים ב־Storage",
+    hint: "לא ניתן לאמת את קיום הקובץ כעת - ייתכן שהתוכן קיים ב־Storage",
     icon: "alertTriangle",
   }
 }
@@ -474,7 +474,7 @@ function ProductModal({
    * Content files go to the private Supabase Storage bucket when Supabase
    * is configured: the CMS asks create-upload-url for a signed upload URL
    * (the object path is derived server-side from the product id), pushes the
-   * bytes, and stores only the bucket/path on the product — never a permanent
+   * bytes, and stores only the bucket/path on the product - never a permanent
    * public URL. When Supabase is not configured it falls back to the legacy
    * behaviour of inlining a small file as a data URL, so the editor still
    * works before the backend is wired up.
@@ -709,7 +709,7 @@ function ProductModal({
           <div className="grid grid-cols-2 gap-3">
             <Field
               label="כתובת URL (slug)"
-              hint="נותר ריק — תיווצר אוטומטית משם המוצר."
+              hint="נותר ריק - תיווצר אוטומטית משם המוצר."
             >
               <input
                 dir="ltr"
@@ -940,7 +940,7 @@ function ProductModal({
                 className="text-xs"
                 style={{ color: "var(--color-muted-foreground)" }}
               >
-                לא הוגדרו קטגוריות — יש ליצור אותן בלוח הקטגוריות שבעמוד זה.
+                לא הוגדרו קטגוריות - יש ליצור אותן בלוח הקטגוריות שבעמוד זה.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-2">
@@ -1298,7 +1298,7 @@ function ProductModal({
                   className="text-[11px] mt-2"
                   style={{ color: "var(--color-danger)" }}
                 >
-                  ללא קובץ תוכן הקוראים יראו הודעה שהתוכן טרם הועלה — לא יומצא
+                  ללא קובץ תוכן הקוראים יראו הודעה שהתוכן טרם הועלה - לא יומצא
                   טקסט במקומו.
                 </p>
               )}
@@ -1453,7 +1453,7 @@ function ProductModal({
           </Panel>
 
           <div className="grid grid-cols-2 gap-3">
-            <Panel icon="trendUp" title="Upsell — שדרוג בעגלה">
+            <Panel icon="trendUp" title="Upsell - שדרוג בעגלה">
               <ProductPicker
                 options={pickers}
                 selected={upsellIds}
@@ -1461,7 +1461,7 @@ function ProductModal({
                 emptyText="אין עדיין מוצרים אחרים בקטלוג."
               />
             </Panel>
-            <Panel icon="bag" title="Cross-sell — הצעה משלימה">
+            <Panel icon="bag" title="Cross-sell - הצעה משלימה">
               <ProductPicker
                 options={pickers}
                 selected={crossSellIds}
@@ -1671,13 +1671,13 @@ export default function AdminProductsPage() {
 
   /* Verified digital-content availability, keyed by product id. The truth is
    * the object in the private Storage bucket (what the Reader actually serves),
-   * not a URL/flag on the row — so we ask the admin status function rather
+   * not a URL/flag on the row - so we ask the admin status function rather
    * than trust a field the storefront never uses. */
   const [contentStatus, setContentStatus] = useState<
     Record<string, ContentStatus>
   >({})
 
-  // Re-check whenever the set of verifiable products changes — including when
+  // Re-check whenever the set of verifiable products changes - including when
   // an upload records a storage pointer on a row that had none before.
   const digitalCheckKey = useMemo(() => {
     if (!isSupabaseConfigured) return ""
@@ -1781,7 +1781,7 @@ export default function AdminProductsPage() {
               ? "נטען מהקטלוג שבשרת"
               : catalogLoading
                 ? "טוען את הקטלוג…"
-                : "קטלוג מקומי — Supabase אינו מחובר"}{" "}
+                : "קטלוג מקומי - Supabase אינו מחובר"}{" "}
             · מחירים, קבצי תוכן, עטיפות, קטגוריות וחבילות
           </>
         }
@@ -1877,7 +1877,7 @@ export default function AdminProductsPage() {
             className="text-sm mt-1 mb-5"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            כל ספר או מוצר חדש שייצרו כאן יופיע מיד בחנות, בחיפוש ובקופה — ללא
+            כל ספר או מוצר חדש שייצרו כאן יופיע מיד בחנות, בחיפוש ובקופה - ללא
             שינוי קוד.
           </p>
           <button
@@ -1906,7 +1906,7 @@ export default function AdminProductsPage() {
             style={{ tableLayout: "fixed", minWidth: "56rem" }}
           >
             <caption className="sr-only">
-              רשימת מוצרים — עמודה לפי סדר, מוצר, סוג, מחיר, מלאי, תוכן דיגיטלי,
+              רשימת מוצרים - עמודה לפי סדר, מוצר, סוג, מחיר, מלאי, תוכן דיגיטלי,
               סטטוס ופעולות
             </caption>
             {/* Column widths are intentional, not equal. Only "product" is
@@ -2025,7 +2025,7 @@ export default function AdminProductsPage() {
                             `/${product.slug}`,
                           ]
                             .filter(Boolean)
-                            .join(" · ") || "—"}
+                            .join(" · ") || "-"}
                         </p>
                       </div>
                     </div>

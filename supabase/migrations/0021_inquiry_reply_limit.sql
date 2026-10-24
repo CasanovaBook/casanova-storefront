@@ -1,5 +1,5 @@
 -- ============================================================
--- 0021 — A customer may send at most two messages in a row
+-- 0021 - A customer may send at most two messages in a row
 --
 -- WHY
 --
@@ -18,8 +18,8 @@
 --
 --   ניתן לשלוח עד 2 הודעות ברצף. לאחר תגובת האדמין ניתן לשלוח הודעה נוספת.
 --
--- The run is read from the conversation itself — never from a session
--- counter — so it survives a reload, another device, another browser and a
+-- The run is read from the conversation itself - never from a session
+-- counter - so it survives a reload, another device, another browser and a
 -- direct API call:
 --
 --   customer, customer                       → the third is refused
@@ -31,7 +31,7 @@
 --
 --   • Only `internal = FALSE` notes take part. An internal annotation is
 --     invisible to the customer, so it neither consumes their turn nor
---     restarts it — the customer is still "waiting for an answer" as far as
+--     restarts it - the customer is still "waiting for an answer" as far as
 --     they can see.
 --   • The ticket's opening message is not one of the two: this counts the
 --     messages sent from the conversation, which is what the customer sees

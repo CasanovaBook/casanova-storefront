@@ -1,12 +1,12 @@
 -- ============================================================
--- 0024 — enforce the admin role matrix in the database
+-- 0024 - enforce the admin role matrix in the database
 --        [REQUIRES SERVER-SIDE FUNCTIONS]
 --
 -- WHY
 --
 -- 0022 put every catalogue write behind a SECURITY DEFINER function
--- that checks `is_admin()`. `is_admin()` answers one question — "is
--- this account staff?" — and the app has five staff roles with
+-- that checks `is_admin()`. `is_admin()` answers one question - "is
+-- this account staff?" - and the app has five staff roles with
 -- genuinely different powers (src/lib/permissions.ts):
 --
 --   SUPER_ADMIN  everything, including delete_product
@@ -17,7 +17,7 @@
 --
 -- With 0022 as written, a SUPPORT or MARKETING account passes
 -- `is_admin()` and can therefore call `admin_save_product` with any
--- price it likes, or `admin_delete_product` on a sold title — the
+-- price it likes, or `admin_delete_product` on a sold title - the
 -- panel's `can(adminRole, "edit_price")` check is a UI affordance
 -- and a caller holding an `authenticated` token is not obliged to
 -- render the panel. The one check that actually mattered
@@ -72,7 +72,7 @@
 -- body and was refused by its own `is_admin()` check, rather than
 -- being refused by Postgres. The `REVOKE … FROM PUBLIC` in 0015 and
 -- 0022 is therefore not in force on the deployed project. Nothing was
--- ever writable through it — the in-body check held — but a body
+-- ever writable through it - the in-body check held - but a body
 -- check is one `IF` away from being the only thing standing between a
 -- stranger and the catalogue, so the grants are made explicit here
 -- and `anon` is revoked by name.
@@ -83,7 +83,7 @@
 BEGIN;
 
 -- ============================================================
--- THE MATRIX — a transcription of ROLE_PERMISSIONS
+-- THE MATRIX - a transcription of ROLE_PERMISSIONS
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_role_permissions(p_role text)
 RETURNS text[]
@@ -132,7 +132,7 @@ COMMENT ON FUNCTION public.admin_role_permissions(text) IS
   'the panel shows, this one decides what the database accepts.';
 
 -- ============================================================
--- THE MATRIX, AS DATA — so a verification query can read it back
+-- THE MATRIX, AS DATA - so a verification query can read it back
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_permission_matrix()
 RETURNS TABLE (admin_role text, permission text)
@@ -157,7 +157,7 @@ $$;
 -- `users.admin_role` only narrows what a staff member may do and is
 -- NULL for an account with no named role. An account that is staff
 -- but unassigned would otherwise be handed the empty array and read as
--- "holds nothing", which is right — but an account that is *not*
+-- "holds nothing", which is right - but an account that is *not*
 -- staff with admin_role somehow set must never be treated as staff.
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_has_permission(p_permission text)
@@ -217,7 +217,7 @@ REVOKE ALL ON FUNCTION public.admin_require_permission(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_require_permission(text) TO authenticated, service_role;
 
 -- ============================================================
--- SAVE PRODUCT — is_admin() plus a per-field check
+-- SAVE PRODUCT - is_admin() plus a per-field check
 --
 -- The payload contract is unchanged and still the one 0022 documents:
 -- a key that is present is written, a key that is absent is left
@@ -283,7 +283,7 @@ BEGIN
 
   /* The stored row, read once. The INSERT leg below cannot see
    * `products.*` the way the ON CONFLICT leg can, so every field a
-   * partial update does not carry has to fall back to these values —
+   * partial update does not carry has to fall back to these values -
    * otherwise a price-only edit would be validated against price = 0
    * on the insert attempt and rejected by the sale-price CHECK before
    * the conflict was ever seen. */
@@ -610,7 +610,7 @@ COMMENT ON FUNCTION public.admin_save_product(jsonb) IS
   'written, absent keys are left alone, null clears.';
 
 -- ============================================================
--- THE REST OF THE CATALOGUE — one permission each
+-- THE REST OF THE CATALOGUE - one permission each
 --
 -- These bodies are unchanged from 0022 apart from the added check;
 -- they are reproduced so this file leaves the deployed set consistent
@@ -675,7 +675,7 @@ BEGIN
   END IF;
 
   -- order_items.product_id is ON DELETE RESTRICT, and user_products is the
-  -- entitlement ledger. Both mean "this product has history" — archive is
+  -- entitlement ledger. Both mean "this product has history" - archive is
   -- the correct action, and the panel shows the same wording the local
   -- driver used.
   IF EXISTS (SELECT 1 FROM public.order_items WHERE product_id = p_product_id) THEN
@@ -831,10 +831,10 @@ END;
 $$;
 
 -- ============================================================
--- ENTITLEMENTS — the same gate, applied to 0015
+-- ENTITLEMENTS - the same gate, applied to 0015
 --
 -- 0015 checked `is_admin()` on its own, so a SUPPORT or MARKETING
--- account could grant, suspend, revoke and delete entitlements —
+-- account could grant, suspend, revoke and delete entitlements -
 -- capabilities the app's own matrix withholds from both of them.
 --
 -- The three bodies below are COPIED from 0015, not rewritten.
@@ -842,7 +842,7 @@ $$;
 -- the first draft of this section did exactly that: it dropped
 -- `expires_at = CASE WHEN p_status = 'ACTIVE' THEN NULL`, so restoring
 -- access would have left a lapsed expiry sitting on a row whose status
--- read ACTIVE — a book the reader would still refuse — and it renamed the
+-- read ACTIVE - a book the reader would still refuse - and it renamed the
 -- refusal from `access_not_found`, a token
 -- src/lib/supabase-entitlements.ts already translates into a message.
 --
@@ -961,7 +961,7 @@ COMMENT ON FUNCTION public.admin_grant_access(uuid, uuid, uuid) IS
   'for one account and product. SECURITY DEFINER because the entitlement '
   'table is the source of truth for content access and must not be writable '
   'from a browser; the snapshot is captured from the catalogue server-side. '
-  'Body copied verbatim from 0015 — only the grant_access gate is new.';
+  'Body copied verbatim from 0015 - only the grant_access gate is new.';
 
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_set_access_status(
@@ -1017,7 +1017,7 @@ COMMENT ON FUNCTION public.admin_set_access_status(uuid, text) IS
   'Admin-only, and only for a role carrying grant_access: changes '
   'public.user_products.access_status. A non-ACTIVE status also revokes every '
   'content_access_grant already minted for the entitlement, through '
-  'trg_user_product_revokes_grants. Body copied verbatim from 0015 — only the '
+  'trg_user_product_revokes_grants. Body copied verbatim from 0015 - only the '
   'grant_access gate is new.';
 
 -- ============================================================
@@ -1048,12 +1048,12 @@ $$;
 COMMENT ON FUNCTION public.admin_remove_access(uuid) IS
   'Admin-only, and only for a role carrying grant_access: deletes a '
   'public.user_products row. content_access_grants pointing at it are removed '
-  'by their own ON DELETE CASCADE. Body copied verbatim from 0015 — only the '
+  'by their own ON DELETE CASCADE. Body copied verbatim from 0015 - only the '
   'grant_access gate is new.';
 
 
 -- ============================================================
--- GRANTS — the boundary the probe found missing
+-- GRANTS - the boundary the probe found missing
 --
 -- `anon` is revoked by name, not only through PUBLIC, so the refusal
 -- is a grant denial and no function body is entered at all. Nothing
@@ -1096,7 +1096,7 @@ GRANT EXECUTE ON FUNCTION public.create_storefront_order(uuid, text, text, text,
 COMMIT;
 
 -- ============================================================
--- VERIFICATION — run after applying
+-- VERIFICATION - run after applying
 --
 -- 1. The matrix matches src/lib/permissions.ts:
 --
@@ -1136,7 +1136,7 @@ COMMIT;
 --      -- SUPER_ADMIN                               -> succeeds or product_not_found
 --      -- CUSTOMER                                  -> admin_required
 --
--- 4. The storefront is unaffected — as `anon`:
+-- 4. The storefront is unaffected - as `anon`:
 --
 --      SELECT product_id, slug FROM public.products;   -- only ACTIVE+PUBLIC
 --

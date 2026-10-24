@@ -1,5 +1,5 @@
 -- ============================================================
--- 0026 — the checkout contact rules, enforced where they are written
+-- 0026 - the checkout contact rules, enforced where they are written
 --        [REQUIRES A SERVER-SIDE FUNCTION]
 --
 -- WHAT THIS IS FOR
@@ -7,7 +7,7 @@
 -- 0023 moved the money out of the browser: the price is re-derived from
 -- `public.products` and a client cannot invent one. It left two rules behind
 -- in the form, though. `CheckoutPage` marks the phone as required and refuses
--- to continue without one — "חובה לרכישה — לצורכי יצירת קשר על ההזמנה" — and
+-- to continue without one - "חובה לרכישה - לצורכי יצירת קשר על ההזמנה" - and
 -- it validates the address with `emailProblem`. The RPC accepted whatever it
 -- was told: `p_phone` is written as `NULLIF(btrim(...), '')`, so an empty
 -- number is simply stored as no number, and `p_email` is written as
@@ -24,7 +24,7 @@
 -- This function is only called by the storefront checkout, and the form
 -- already collects both values on every path that reaches it, so no existing
 -- customer action is refused that would have succeeded before. Orders already
--- written are untouched — this is a guard on the INSERT, not a constraint on
+-- written are untouched - this is a guard on the INSERT, not a constraint on
 -- the column, and deliberately so: adding a NOT NULL to `orders.customer_phone`
 -- would fail on the historical rows, which the storefront does not own.
 --
@@ -47,7 +47,7 @@
 -- unwind in the rows, and `storefront_order_seq` is untouched, so order
 -- numbers keep advancing either way.
 --
--- Supabase migrations are forward-only — deleting a row from
+-- Supabase migrations are forward-only - deleting a row from
 -- `supabase_migrations.schema_migrations` does not undo SQL that already ran.
 -- To restore the previous behaviour, apply a corrective migration that
 -- re-creates the function from 0023 (that file is idempotent: `CREATE OR
@@ -60,7 +60,7 @@
 -- while an older bundle is still deployed is safe: the old client also
 -- required the phone in the form, so only crafted requests that skipped the
 -- form start being refused. Rolling the bundle back after this migration is
--- applied is the case to avoid — the client would stop refusing, and the
+-- applied is the case to avoid - the client would stop refusing, and the
 -- function would, so a form bug would surface as a database error instead of
 -- a field message.
 -- ============================================================
@@ -145,7 +145,7 @@ BEGIN
   -- The address the receipt goes to has to be a real, ASCII address. The
   -- form says as much (`emailProblem` refuses a Hebrew local part, and
   -- `isEmail` requires ASCII), and the auth account behind it can only hold
-  -- an ASCII address anyway — so a non-Latin local part here was never a
+  -- an ASCII address anyway - so a non-Latin local part here was never a
   -- deliverable address, just a string in a column.
   IF v_email = ''
      OR v_email !~ '^[A-Za-z0-9._%+!#$&''*/=?^`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' THEN
@@ -212,7 +212,7 @@ BEGIN
     'AUTO-' || v_order.order_number, now()
   );
 
-  -- Snapshot from the catalogue, never from the request body — the same
+  -- Snapshot from the catalogue, never from the request body - the same
   -- contract 0015 uses for a manual grant.
   SELECT jsonb_strip_nulls(
            jsonb_build_object(
@@ -287,7 +287,7 @@ GRANT EXECUTE ON FUNCTION
 COMMIT;
 
 -- ============================================================
--- VERIFICATION — run after applying
+-- VERIFICATION - run after applying
 --
 -- Only check 1 is safe to run against production: it reads the catalog.
 -- Checks 2, 3 and 4 CALL the function, and a successful call writes a PAID
@@ -295,7 +295,7 @@ COMMIT;
 -- whichever account `auth.uid()` resolves to. Run them on a disposable
 -- database. The SQL console cannot stand in for a customer session anyway:
 -- it runs as a role with no `auth.uid()`, so every call there returns
--- `auth_required` before any of these guards is reached — a green console run
+-- `auth_required` before any of these guards is reached - a green console run
 -- proves nothing about them. The real post-deployment check is one purchase
 -- completed in the storefront, plus check 1.
 -- ============================================================

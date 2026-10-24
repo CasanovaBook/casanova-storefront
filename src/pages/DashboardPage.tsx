@@ -47,7 +47,7 @@ function MiniCover({ snapshot }: { snapshot: ProductSnapshot }) {
   )
 }
 
-/** Coarse Hebrew "how long ago" text — a precise clock adds nothing here. */
+/** Coarse Hebrew "how long ago" text - a precise clock adds nothing here. */
 function lastSeen(iso: string): string {
   const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
   if (minutes < 1) return "עכשיו"
@@ -189,7 +189,7 @@ function ConnectedDevicesCard() {
                       </p>
                       <p className="text-[11px] app-muted">
                         {expired
-                          ? "פג תוקף — יתחדש אוטומטית בפתיחת הספר"
+                          ? "פג תוקף - יתחדש אוטומטית בפתיחת הספר"
                           : `פעילות אחרונה ${lastSeen(session.last_seen_at)}`}
                       </p>
                     </div>
@@ -252,7 +252,7 @@ export default function DashboardPage() {
   const { user, userProducts, readingProgress } = useApp()
 
   /* The claim is a network round-trip, so it cannot be read during
-   * render. Start at the value the profile already carries — a profile
+   * render. Start at the value the profile already carries - a profile
    * with greeted_at set can only be a returning customer, and showing
    * "ברוך הבא" to them for the duration of the request would be a
    * visible flicker of the wrong wording. `null` means "not yet
@@ -263,7 +263,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user?.user_id) return
-    /* Already known from the profile — no claim needed, and claiming
+    /* Already known from the profile - no claim needed, and claiming
      * would be wrong: it would consume the greeting for an account
      * that has already had it. */
     if (user.greeted_at) {
@@ -281,7 +281,7 @@ export default function DashboardPage() {
 
   /* Every entitlement the account holds, not only the readable ones: a
    * blocked or revoked book must stay visible with its status, or a
-   * customer would conclude the book — and their purchase — had
+   * customer would conclude the book - and their purchase - had
    * vanished. Visibility and authorization are separate concerns; the
    * open affordance is what carries the authorization boundary, and
    * get-content-url re-checks the status server-side regardless. */
@@ -329,7 +329,7 @@ export default function DashboardPage() {
         day: "numeric",
         month: "short",
       })
-    : "—"
+    : "-"
 
   const displayName =
     [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim() ||
@@ -340,7 +340,7 @@ export default function DashboardPage() {
     {
       icon: "trendUp",
       label: "התקדמות ממוצעת",
-      value: readableBooks.length > 0 ? `${avgProgress}%` : "—",
+      value: readableBooks.length > 0 ? `${avgProgress}%` : "-",
     },
     { icon: "clock", label: "פעילות אחרונה", value: lastActivity },
   ]
@@ -351,7 +351,7 @@ export default function DashboardPage() {
         eyebrow={isFirstLogin ? "ברוך הבא" : "ברוך שובך"}
         title={displayName}
         metaTitle="סקירה כללית"
-        description="שמחים לראות אתכם. הספרים, ההתקדמות והמכשירים שלכם — במקום אחד ושקט."
+        description="שמחים לראות אתכם. הספרים, ההתקדמות והמכשירים שלכם - במקום אחד ושקט."
       />
 
       {/* Real account figures only: titles held, average progress across

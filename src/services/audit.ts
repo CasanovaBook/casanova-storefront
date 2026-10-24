@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Audit service — the admin activity log.
+ * Audit service - the admin activity log.
  *
  * Extracted verbatim from `src/lib/api.ts` (Phase 5B / Group B). This is
  * a foundational service: many other service modules call `writeAudit`

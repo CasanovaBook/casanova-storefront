@@ -4,7 +4,7 @@
 
   Identical to `ic_launcher.xml` on purpose. From API 26 the launcher applies
   its own mask to an adaptive icon, so a separate "round" asset is a leftover
-  of the pre-adaptive era — but `android:roundIcon` is still read by enough
+  of the pre-adaptive era - but `android:roundIcon` is still read by enough
   launchers that omitting it means those devices fall back to a default icon
   instead of ours.
 -->

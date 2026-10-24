@@ -21,11 +21,11 @@
 
 Every load-bearing claim is tagged:
 
-- **[Verified]** — the source says exactly this. A file and usually a symbol are named.
-- **[Inferred]** — a conclusion drawn from source, where the source does not state it outright.
-- **[Unknown]** — the repository does not contain enough evidence to decide. These are collected in §27 and are *not* resolved by guesswork elsewhere in the document.
+- **[Verified]** - the source says exactly this. A file and usually a symbol are named.
+- **[Inferred]** - a conclusion drawn from source, where the source does not state it outright.
+- **[Unknown]** - the repository does not contain enough evidence to decide. These are collected in §27 and are *not* resolved by guesswork elsewhere in the document.
 
-### Scope of this analysis — what was read, and what was not
+### Scope of this analysis - what was read, and what was not
 
 The brief's honesty clause requires this to be stated up front rather than implied.
 
@@ -35,18 +35,18 @@ The brief's honesty clause requires this to be stated up front rather than impli
 - Build and platform: `vite.config.ts`, `package.json`, `tsconfig.json`, `.mise.toml`, `.gitignore`, `.gitattributes`, `AGENTS.md`, `CLAUDE.md`, all seven `.figma/make/*` scripts plus `site.json` and `dev.json`.
 - Database: `schema.sql` (1941 lines, complete) and `migrations/0001_mobile_reader.sql` (597 lines, complete).
 - React Native: `package.json`, `app.json`, `index.js`, `App.tsx`, `metro.config.js`, `babel.config.js`, `tsconfig.json`, `.gitignore`; all of `src/net/`, all of `src/drm/`, all of `src/store/`, all of `src/navigation/`, `src/config.ts`, `src/theme.ts`, `src/components/Watermark.tsx`, screens `ReaderScreen`, `LibraryScreen`, `GateScreen`, `DevicesScreen`; all of `android/` (`MainActivity.kt`, `MainApplication.kt`, `ScreenShieldModule.kt`, `ScreenShieldPackage.kt`, `AndroidManifest.xml`, `build.gradle` ×2, `settings.gradle`, `gradle.properties`); all of `ios/` (`ScreenShield.swift`, `ScreenShield.m`, `CasanovaReader-Bridging-Header.h`, `Podfile`).
-- Origin document: `docs/PRODUCT_BRIEF.md` (1278 lines — the founding product brief; sections 1–12, 27–40 read verbatim, structure of all 40 sections mapped).
+- Origin document: `docs/PRODUCT_BRIEF.md` (1278 lines - the founding product brief; sections 1-12, 27-40 read verbatim, structure of all 40 sections mapped).
 - Version control state: `git ls-files`, `git status --short`, `git check-ignore -v`, `git log`.
 
 **Not read in full (declared incomplete):**
 
 - `src/pages/DashboardPage.tsx` (406 lines), `src/pages/SupportPage.tsx` (read to line 120 of 319), `src/pages/ForgotPasswordPage.tsx` (159).
-- Twelve of the fourteen admin pages: `AdminProductsPage` (1565), `AdminCmsPage` (942), `AdminCrmPage` (883), `AdminOrdersPage` (814), `AdminUsersPage` (721), `AdminSupportPage` (614), `AdminSettingsPage` (492), `AdminDashboardPage` (446), `AdminFinancePage` (343), `AdminAccessPage` (301), `AdminAuditPage` (176), `AdminEmailsPage` (168), `AdminAlertsPage` (144). `AdminSecurityPage` (912) was read at lines 1–120 and 430–500. **However**, all fourteen were characterised structurally by an exhaustive grep of their `src/lib/*` imports and every `can(adminRole, …)` call site, so the permission surface and service-call map below is complete even though the JSX is not.
-- `src/components/icons.tsx` (459) — an icon-name→SVG map. Architecturally inert; its export signature `Icon, { type IconName }` was verified from consumer imports.
+- Twelve of the fourteen admin pages: `AdminProductsPage` (1565), `AdminCmsPage` (942), `AdminCrmPage` (883), `AdminOrdersPage` (814), `AdminUsersPage` (721), `AdminSupportPage` (614), `AdminSettingsPage` (492), `AdminDashboardPage` (446), `AdminFinancePage` (343), `AdminAccessPage` (301), `AdminAuditPage` (176), `AdminEmailsPage` (168), `AdminAlertsPage` (144). `AdminSecurityPage` (912) was read at lines 1-120 and 430-500. **However**, all fourteen were characterised structurally by an exhaustive grep of their `src/lib/*` imports and every `can(adminRole, …)` call site, so the permission surface and service-call map below is complete even though the JSX is not.
+- `src/components/icons.tsx` (459) - an icon-name→SVG map. Architecturally inert; its export signature `Icon, { type IconName }` was verified from consumer imports.
 - `src/components/layout/DashboardLayout.tsx`.
-- React Native: `src/components/ui.tsx`, screens `DashboardScreen`, `StoreScreen`, `LoginScreen`, `SupportScreen`, `ForgotPasswordScreen`; `android/app/proguard-rules.pro`, `res/xml/data_extraction_rules.xml`, `res/values/styles.xml`; `ios` asset catalogue (absent — see §20).
+- React Native: `src/components/ui.tsx`, screens `DashboardScreen`, `StoreScreen`, `LoginScreen`, `SupportScreen`, `ForgotPasswordScreen`; `android/app/proguard-rules.pro`, `res/xml/data_extraction_rules.xml`, `res/values/styles.xml`; `ios` asset catalogue (absent - see §20).
 - The removed legacy root `ScreenShield.tsx` was a superseded prototype (see §26).
-- `public/books/Senia_book.pdf`, `docs/Senia_book.pdf`, `src/assets/main_photo.jpg` — binary assets, not read.
+- `public/books/Senia_book.pdf`, `docs/Senia_book.pdf`, `src/assets/main_photo.jpg` - binary assets, not read.
 
 Where a section below depends on a file in the second list, that dependency is named and the confidence is reduced accordingly.
 
@@ -60,7 +60,7 @@ Where a section below depends on a file in the second list, that dependency is n
 2. **A React Native 0.79.2 mobile reader** (`react-native/`, 24 TypeScript files totalling 5 181 lines, plus 4 Kotlin files and 3 Swift/Objective-C files for the native modules) whose entire reason to exist is reading a protected PDF on a phone without that PDF becoming a file the customer can keep, copy, share or photograph.
 3. **A database contract** (`schema.sql`, 1941 lines, 38 tables, 11 views, 8 functions, 14 triggers; `migrations/0001_mobile_reader.sql`, 597 lines) describing the real backend both clients are written against.
 
-**The single most important architectural fact about this project:** *neither client currently talks to that database.* **[Verified]** The web app persists to `localStorage['casanova_db_v1']` through `src/lib/db.ts`. The mobile app talks HTTPS to `DEFAULT_API_BASE_URL = 'https://api.casanova.local'` (`react-native/src/config.ts`), a hostname that does not resolve. The SQL is not dead documentation — it is the arbiter. `react-native/src/net/types.ts` states the arrangement explicitly: *"Keeping the two in sync is a review checklist item, and the SQL schema in `schema.sql` is the arbiter when they disagree."*
+**The single most important architectural fact about this project:** *neither client currently talks to that database.* **[Verified]** The web app persists to `localStorage['casanova_db_v1']` through `src/lib/db.ts`. The mobile app talks HTTPS to `DEFAULT_API_BASE_URL = 'https://api.casanova.local'` (`react-native/src/config.ts`), a hostname that does not resolve. The SQL is not dead documentation - it is the arbiter. `react-native/src/net/types.ts` states the arrangement explicitly: *"Keeping the two in sync is a review checklist item, and the SQL schema in `schema.sql` is the arbiter when they disagree."*
 
 **The single most important product fact** comes from the founding brief, `docs/PRODUCT_BRIEF.md` §40:
 
@@ -69,9 +69,9 @@ Where a section below depends on a file in the second list, that dependency is n
 
 Every non-obvious decision in this codebase follows from that sentence. It is why the customer never receives the permanent address of a PDF; why entitlements live in a `user_products` table separate from `orders`; why revoking a device session cascades to destroy every URL already handed to it; why signing out of the phone app deletes the local copies; why a crash in the mobile reader wipes the vault.
 
-**The design philosophy, stated in the source rather than inferred:** the code is *fail-closed* and *honest*. Fail-closed: absent configuration resolves to the strictest value (`withProtectionDefaults()` on web, `RESTRICTIVE_POLICY` on mobile, `bootCheck()` returning `mobile_app_enabled: false` on a network error, `probeIntegrity()` returning `ATTESTATION_FAILED` when the native module is missing). Honest: the UI never claims something the system did not do. An unconfigured CMS field renders `CmsHint` to an administrator and **nothing at all** to a visitor, rather than invented marketing copy. `CheckoutSuccessPage` reads *"ההזמנה נרשמה במערכת והיא ממתינה לאישור תשלום"* — "the order is recorded and awaiting payment confirmation" — and never presents a `PENDING` order as a completed charge. `LandingPage` shows only statistics derivable from the catalogue and drops reader-count and satisfaction-percentage claims because *"Anything the database cannot substantiate … is left out rather than invented."*
+**The design philosophy, stated in the source rather than inferred:** the code is *fail-closed* and *honest*. Fail-closed: absent configuration resolves to the strictest value (`withProtectionDefaults()` on web, `RESTRICTIVE_POLICY` on mobile, `bootCheck()` returning `mobile_app_enabled: false` on a network error, `probeIntegrity()` returning `ATTESTATION_FAILED` when the native module is missing). Honest: the UI never claims something the system did not do. An unconfigured CMS field renders `CmsHint` to an administrator and **nothing at all** to a visitor, rather than invented marketing copy. `CheckoutSuccessPage` reads *"ההזמנה נרשמה במערכת והיא ממתינה לאישור תשלום"* - "the order is recorded and awaiting payment confirmation" - and never presents a `PENDING` order as a completed charge. `LandingPage` shows only statistics derivable from the catalogue and drops reader-count and satisfaction-percentage claims because *"Anything the database cannot substantiate … is left out rather than invented."*
 
-**Maturity assessment [Verified]:** the web application is complete, coherent, type-checked and buildable. The database contract is complete and unusually rigorous. The mobile application is source-complete and architecturally finished, but **has never been installed and cannot be built as it stands** (§20). There are **no tests anywhere**, **no CI**, **no README**, **no `.env.example`**, **no linter configuration**, and **no commits** — the repository is 82 staged files on an unborn `main` branch (§20, §26).
+**Maturity assessment [Verified]:** the web application is complete, coherent, type-checked and buildable. The database contract is complete and unusually rigorous. The mobile application is source-complete and architecturally finished, but **has never been installed and cannot be built as it stands** (§20). There are **no tests anywhere**, **no CI**, **no README**, **no `.env.example`**, **no linter configuration**, and **no commits** - the repository is 82 staged files on an unborn `main` branch (§20, §26).
 
 **Risk summary:** the highest-risk material in this repository is not the code. It is (a) the absence of any commit history, so there is no recoverable prior state; (b) the fact that the entire mobile application is untracked in git while the *only* React Native file that is tracked is an obsolete prototype branded with a different product name (§26); and (c) the `schema.sql` ↔ `migrations/0001` function-signature conflict that would make the documented migration order fail on a real PostgreSQL server (§9, §26).
 
@@ -89,11 +89,11 @@ Every non-obvious decision in this codebase follows from that sentence. It is wh
 
 > *"Casanova native reader. Hebrew RTL, DRM-hardened: no screenshots, no screen recording, no download or export of the protected PDF. Shares one database with the web storefront through the same REST contract."*
 
-**[Verified]** `.figma/make/site.json` gives the public identity: title *"Casanova — ספרייה דיגיטלית פרטית"* ("Casanova — a private digital library"), language `he`, `robots.index: false`. The `index: false` is a deliberate choice for a storefront, and it is consistent with a product whose catalogue is protected content rather than SEO inventory.
+**[Verified]** `.figma/make/site.json` gives the public identity: title *"Casanova - ספרייה דיגיטלית פרטית"* ("Casanova - a private digital library"), language `he`, `robots.index: false`. The `index: false` is a deliberate choice for a storefront, and it is consistent with a product whose catalogue is protected content rather than SEO inventory.
 
 ### 2.2 Why it exists
 
-**[Verified]** The founding brief is committed at `docs/PRODUCT_BRIEF.md` — 1278 lines, 40 numbered sections, written in Hebrew, addressed to *"אתה סוכן פיתוח Senior Full-Stack עצמאי"* ("you are an independent Senior Full-Stack development agent"). It is the specification this repository implements. Its §1 states the business goal as a funnel, not a shop:
+**[Verified]** The founding brief is committed at `docs/PRODUCT_BRIEF.md` - 1278 lines, 40 numbered sections, written in Hebrew, addressed to *"אתה סוכן פיתוח Senior Full-Stack עצמאי"* ("you are an independent Senior Full-Stack development agent"). It is the specification this repository implements. Its §1 states the business goal as a funnel, not a shop:
 
 ```
 Traffic → Landing Page → Product Selection → Checkout → Payment
@@ -102,9 +102,9 @@ Traffic → Landing Page → Product Selection → Checkout → Payment
 → Personal Library → E-Book Reader → Additional Products / Upsells → Repeat Purchase
 ```
 
-followed by: *"הרכישה הראשונה אינה סוף התהליך"* — "the first purchase is not the end of the process."
+followed by: *"הרכישה הראשונה אינה סוף התהליך"* - "the first purchase is not the end of the process."
 
-The brief explicitly rejects the narrow framing (§1): *"אל תתייחס למערכת כאל 'אתר למכירת PDF'"* — "do not treat this system as a website for selling PDFs." The product is named as **Digital Commerce + Content Access**.
+The brief explicitly rejects the narrow framing (§1): *"אל תתייחס למערכת כאל 'אתר למכירת PDF'"* - "do not treat this system as a website for selling PDFs." The product is named as **Digital Commerce + Content Access**.
 
 ### 2.3 The problem the DRM layer solves
 
@@ -114,9 +114,9 @@ The brief explicitly rejects the narrow framing (§1): *"אל תתייחס למ�
 > *"אין לחשוף public URL קבוע של PDF אם ניתן להימנע מכך."*
 > Suggested mechanisms: `Authenticated Endpoint / Signed URL / Short-Lived URL / Protected Asset Delivery`.
 
-**[Verified]** Brief §12 is titled *"כלל אבטחה קריטי"* (a critical security rule): *"אסור להסתמך על Frontend לצורך הרשאות"* — authorisation must never be trusted to the frontend. A user who bought Product A must not be able to open Product B by editing a URL. It prescribes the exact chain the code implements: `Authenticate User → Check USER_PRODUCTS → Check Access Status → Check Expiration → Allow / Deny`, with *"כל בדיקת הרשאה מתבצעת Backend Side."*
+**[Verified]** Brief §12 is titled *"כלל אבטחה קריטי"* (a critical security rule): *"אסור להסתמך על Frontend לצורך הרשאות"* - authorisation must never be trusted to the frontend. A user who bought Product A must not be able to open Product B by editing a URL. It prescribes the exact chain the code implements: `Authenticate User → Check USER_PRODUCTS → Check Access Status → Check Expiration → Allow / Deny`, with *"כל בדיקת הרשאה מתבצעת Backend Side."*
 
-**[Verified]** Brief §11 requires that entitlements not be attached to orders: *"אין לקשור רכישה ישירות רק ל־Order. יש ליצור טבלת הרשאות נפרדת: USER_PRODUCTS"* and names it *"מקור האמת לשאלה: האם המשתמש רשאי לפתוח את המוצר?"* — the single source of truth for "may this user open this product?". That table exists as `user_products` in both `src/types/index.ts` and `schema.sql`, with exactly the four `access_status` values the brief lists (`ACTIVE | EXPIRED | REVOKED | SUSPENDED`).
+**[Verified]** Brief §11 requires that entitlements not be attached to orders: *"אין לקשור רכישה ישירות רק ל־Order. יש ליצור טבלת הרשאות נפרדת: USER_PRODUCTS"* and names it *"מקור האמת לשאלה: האם המשתמש רשאי לפתוח את המוצר?"* - the single source of truth for "may this user open this product?". That table exists as `user_products` in both `src/types/index.ts` and `schema.sql`, with exactly the four `access_status` values the brief lists (`ACTIVE | EXPIRED | REVOKED | SUSPENDED`).
 
 ### 2.4 Who the system is for
 
@@ -132,9 +132,9 @@ The brief explicitly rejects the narrow framing (§1): *"אל תתייחס למ�
 
 ### 2.5 What the mobile client adds
 
-**[Verified]** `migrations/0001_mobile_reader.sql` opens with a gap analysis, sections A–F, each naming what the existing web schema could not express for a phone. In summary: DRM policies had no notion of download-blocking, offline caching or rooted devices (A); `security_events` could not record native-only events because a PostgreSQL CHECK list cannot be extended in place (B); `device_sessions` had no revocation attribution or device description (C); `sessions` could not distinguish a browser from an app build (D); inquiries and CRM leads could not originate from the app (E); and there was no kill switch (F). Sections G–I then add the grant table, its consumption function, two cascading-revocation triggers, three views and a session-sweep function.
+**[Verified]** `migrations/0001_mobile_reader.sql` opens with a gap analysis, sections A-F, each naming what the existing web schema could not express for a phone. In summary: DRM policies had no notion of download-blocking, offline caching or rooted devices (A); `security_events` could not record native-only events because a PostgreSQL CHECK list cannot be extended in place (B); `device_sessions` had no revocation attribution or device description (C); `sessions` could not distinguish a browser from an app build (D); inquiries and CRM leads could not originate from the app (E); and there was no kill switch (F). Sections G-I then add the grant table, its consumption function, two cascading-revocation triggers, three views and a session-sweep function.
 
-**[Inferred — MEDIUM]** The mobile client was therefore not a port. It was written to close a specific, enumerated set of gaps, and the migration is the design document for it. This matters for future work: a mobile feature request that needs a new column should expect to produce a migration section in the same style.
+**[Inferred - MEDIUM]** The mobile client was therefore not a port. It was written to close a specific, enumerated set of gaps, and the migration is the design document for it. This matters for future work: a mobile feature request that needs a new column should expect to produce a migration section in the same style.
 
 ---
 
@@ -142,7 +142,7 @@ The brief explicitly rejects the narrow framing (§1): *"אל תתייחס למ�
 
 ### 3.1 Web application
 
-**[Verified]** from `package.json` — the runtime dependency list is remarkably short:
+**[Verified]** from `package.json` - the runtime dependency list is remarkably short:
 
 | Layer | Choice | Version |
 |---|---|---|
@@ -186,7 +186,7 @@ Three runtime dependencies. **No state library, no data-fetching library, no UI 
 | Lint | `eslint` | `^8.57.1` |
 | TypeScript | `typescript` | `5.7.3` (exact) |
 
-Eleven runtime dependencies, every one pinned to an exact version rather than a range. **[Inferred — HIGH]** The exact pinning is deliberate for a DRM client: a floating minor version of `react-native-pdf` or `react-native-keychain` could change capture or storage behaviour without anyone deciding it should.
+Eleven runtime dependencies, every one pinned to an exact version rather than a range. **[Inferred - HIGH]** The exact pinning is deliberate for a DRM client: a floating minor version of `react-native-pdf` or `react-native-keychain` could change capture or storage behaviour without anyone deciding it should.
 
 **[Verified]** Native languages: **Kotlin** (`MainActivity.kt`, `MainApplication.kt`, `shield/ScreenShieldModule.kt` at 623 lines, `shield/ScreenShieldPackage.kt`) and **Swift** (`ios/CasanovaReader/ScreenShield.swift` at 828 lines) with an Objective-C bridge declaration (`ScreenShield.m`, `CasanovaReader-Bridging-Header.h`).
 
@@ -194,19 +194,19 @@ Eleven runtime dependencies, every one pinned to an exact version rather than a 
 
 **[Verified]** Scripts: `android`, `ios`, `start`, `pods`, `typecheck`, `lint` (`eslint .`), `clean:android` (`cd android && ./gradlew clean`), `clean:metro`. **No `test` script.**
 
-**[Verified — negative]** There is **no ESLint configuration file** anywhere in `react-native/` (`.eslintrc`, `.eslintrc.js`, `.eslintrc.json`, `eslint.config.js` all absent). ESLint 8 requires one. `pnpm lint` therefore cannot succeed. See §26.
+**[Verified - negative]** There is **no ESLint configuration file** anywhere in `react-native/` (`.eslintrc`, `.eslintrc.js`, `.eslintrc.json`, `eslint.config.js` all absent). ESLint 8 requires one. `pnpm lint` therefore cannot succeed. See §26.
 
-**[Verified]** `react-native/tsconfig.json` extends `@react-native/typescript-config/tsconfig.json` and adds `strict`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `forceConsistentCasingInFileNames`, `jsx: react-jsx`, `lib: ES2022`. `include` is `["App.tsx", "src/**/*.ts", "src/**/*.tsx"]` — so `metro.config.js`, `babel.config.js`, `android/` and `ios/` are excluded, and the obsolete root `ScreenShield.tsx` is *not* in `include` either.
+**[Verified]** `react-native/tsconfig.json` extends `@react-native/typescript-config/tsconfig.json` and adds `strict`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `forceConsistentCasingInFileNames`, `jsx: react-jsx`, `lib: ES2022`. `include` is `["App.tsx", "src/**/*.ts", "src/**/*.tsx"]` - so `metro.config.js`, `babel.config.js`, `android/` and `ios/` are excluded, and the obsolete root `ScreenShield.tsx` is *not* in `include` either.
 
 ### 3.3 Database
 
-**[Verified]** PostgreSQL. Established by syntax rather than by a declared dependency: `CREATE OR REPLACE FUNCTION … RETURNS TABLE`, `RETURNS trigger`, `EXECUTE FUNCTION`, partial unique indexes with a `WHERE` clause, `ON DELETE RESTRICT`, `information_schema`-style `IF NOT EXISTS` / `IF EXISTS` DDL, `BEGIN;`/`COMMIT;` transaction wrapping, `gen_random_uuid()`-style defaults, and `COALESCE` inside CHECK constraints with an explicit comment that *"a CHECK passes on NULL."* No version is declared anywhere. **[Unknown]** the minimum supported PostgreSQL major version — the constructs used are all long-standing, but nothing states a floor.
+**[Verified]** PostgreSQL. Established by syntax rather than by a declared dependency: `CREATE OR REPLACE FUNCTION … RETURNS TABLE`, `RETURNS trigger`, `EXECUTE FUNCTION`, partial unique indexes with a `WHERE` clause, `ON DELETE RESTRICT`, `information_schema`-style `IF NOT EXISTS` / `IF EXISTS` DDL, `BEGIN;`/`COMMIT;` transaction wrapping, `gen_random_uuid()`-style defaults, and `COALESCE` inside CHECK constraints with an explicit comment that *"a CHECK passes on NULL."* No version is declared anywhere. **[Unknown]** the minimum supported PostgreSQL major version - the constructs used are all long-standing, but nothing states a floor.
 
 There is **no ORM, no migration runner, no database client library** in either `package.json`. **[Verified]** The SQL is applied by hand.
 
 ### 3.4 What is conspicuously absent
 
-**[Verified]** Absent from the entire repository: any test framework or test file (`*.test.*`, `*.spec.*` — zero matches outside `node_modules`); any CI configuration (no `.github/`, `.gitlab-ci.yml`, `.circleci/`, no git hooks, no `.husky/`); any `README`; any `.env` or `.env.example`; any Dockerfile or compose file; any infrastructure-as-code; any analytics or error-reporting SDK; any payment provider SDK; any e-mail provider SDK.
+**[Verified]** Absent from the entire repository: any test framework or test file (`*.test.*`, `*.spec.*` - zero matches outside `node_modules`); any CI configuration (no `.github/`, `.gitlab-ci.yml`, `.circleci/`, no git hooks, no `.husky/`); any `README`; any `.env` or `.env.example`; any Dockerfile or compose file; any infrastructure-as-code; any analytics or error-reporting SDK; any payment provider SDK; any e-mail provider SDK.
 
 This absence is the gap between the repository and its own founding brief, which requires Tests (§34, fourteen named scenarios), a Definition of Done including *"Tested"* and *"No console errors"* (§35), and a deliverable list including *"Tests, README, Environment configuration example, Setup instructions"* (§39). See §19 and §26.
 
@@ -247,7 +247,7 @@ src/
 ├── index.css             Tailwind v4 import + design tokens + capability CSS
 ├── vite-env.d.ts
 ├── types/index.ts        the entire domain model (every interface, union and enum)
-├── lib/                  the whole of the business logic — 13 modules
+├── lib/                  the whole of the business logic - 13 modules
 │   ├── db.ts             localStorage persistence, mutate(), useStore binding
 │   ├── store.ts          useSyncExternalStore bridge
 │   ├── api.ts            ~1271 lines: catalogue, users, CMS, settings, DRM policies
@@ -277,7 +277,7 @@ src/
 └── imports/              the founding brief + one imported image
 ```
 
-**The structural rule [Verified]:** `pages/` and `components/` contain no business logic. Every mutation, every permission check, every validation and every audit write lives in `src/lib/`. Pages import from `context/` (which wraps `lib/`) or, in the admin screens, directly from `lib/api*`. This is not a convention that happens to hold — it is enforced by the shape of the service layer, where every mutating function takes `Actor | null` as its first parameter and cannot be called meaningfully from a component that has not obtained one.
+**The structural rule [Verified]:** `pages/` and `components/` contain no business logic. Every mutation, every permission check, every validation and every audit write lives in `src/lib/`. Pages import from `context/` (which wraps `lib/`) or, in the admin screens, directly from `lib/api*`. This is not a convention that happens to hold - it is enforced by the shape of the service layer, where every mutating function takes `Actor | null` as its first parameter and cannot be called meaningfully from a component that has not obtained one.
 
 ### 4.2 Mobile application layout
 
@@ -285,7 +285,7 @@ src/
 
 ```
 react-native/
-├── index.js              AppRegistry.registerComponent — nothing else
+├── index.js              AppRegistry.registerComponent - nothing else
 ├── App.tsx               provider composition + CrashBoundary
 ├── app.json              name "CasanovaReader", displayName "קזנובה"
 ├── metro.config.js       blockList against the sibling web project
@@ -324,14 +324,14 @@ react-native/
                         CasanovaReader-Bridging-Header.h}
 ```
 
-**The boundary rule [Verified]:** `src/net/types.ts` redeclares the domain types rather than importing them from `../../src/types`. Its header explains why: *"the web app is a Vite build and this is a Metro build"* — two bundlers, two `node_modules`, two React copies. The duplication is intentional and the SQL schema is the tie-breaker. `metro.config.js` enforces the separation from the other side with a `blockList` covering `../node_modules`, `../dist` and `../src`, because *"Metro walks the file system, not the module graph, so without an explicit block it will happily resolve `react` or `react-dom` out of `../node_modules` and bundle a web copy of React into the phone build."*
+**The boundary rule [Verified]:** `src/net/types.ts` redeclares the domain types rather than importing them from `../../src/types`. Its header explains why: *"the web app is a Vite build and this is a Metro build"* - two bundlers, two `node_modules`, two React copies. The duplication is intentional and the SQL schema is the tie-breaker. `metro.config.js` enforces the separation from the other side with a `blockList` covering `../node_modules`, `../dist` and `../src`, because *"Metro walks the file system, not the module graph, so without an explicit block it will happily resolve `react` or `react-dom` out of `../node_modules` and bundle a web copy of React into the phone build."*
 
 ### 4.3 What lives where, and why it matters
 
 **[Verified]** Two placements in this repository are wrong in a way that will cause real confusion:
 
 1. `docs/Senia_book.pdf` and `public/books/Senia_book.pdf` are, per `.gitignore`, byte-identical copies of a 48 MB title. `.gitignore` records that *"Nothing reads it"* about `docs/` and that the only reference is `vite.config.ts`'s watch-ignore, added because *"watching the file crashed the dev server."*
-2. A 13 MB Hebrew-named PDF sits in `react-native/android/gradle/wrapper/` — a directory whose entire conventional purpose is holding `gradle-wrapper.jar` and `gradle-wrapper.properties`. `react-native/.gitignore` carries `*.pdf`, so it can never be committed; but it is in the working tree in the last place a reader would look for catalogue content. **[Inferred — HIGH]** It was dropped there as a transfer location when the title was added to the catalogue, and never moved.
+2. A 13 MB Hebrew-named PDF sits in `react-native/android/gradle/wrapper/` - a directory whose entire conventional purpose is holding `gradle-wrapper.jar` and `gradle-wrapper.properties`. `react-native/.gitignore` carries `*.pdf`, so it can never be committed; but it is in the working tree in the last place a reader would look for catalogue content. **[Inferred - HIGH]** It was dropped there as a transfer location when the title was added to the catalogue, and never moved.
 
 ---
 
@@ -385,9 +385,9 @@ screens → store/{Auth,Library,Protection}Context → net/api.ts
 
 The evidence that this is a real design and not a claim:
 
-- Every mutating service function takes `Actor | null` as its **first** parameter — the shape of an authenticated request, not of a library call.
-- Every one returns `Result<T>`, never throws, and carries an `ErrorCode` from a closed union — the shape of an HTTP response, not of a JavaScript error.
-- Every one calls `guard(actor, permission)` **before** touching data — middleware, inlined.
+- Every mutating service function takes `Actor | null` as its **first** parameter - the shape of an authenticated request, not of a library call.
+- Every one returns `Result<T>`, never throws, and carries an `ErrorCode` from a closed union - the shape of an HTTP response, not of a JavaScript error.
+- Every one calls `guard(actor, permission)` **before** touching data - middleware, inlined.
 - The mobile client's `net/api.ts` maps one-to-one onto the web service functions. The correspondence is exact and complete:
 
 | Mobile endpoint function | Web service function | SQL object |
@@ -406,26 +406,26 @@ The evidence that this is a real design and not a claim:
 | `submitInquiry()` | `submitPublicInquiry()` | `inquiries` (`source = MOBILE_APP`) |
 | `bootCheck()` | *(no web equivalent)* | `platform_settings` |
 
-**[Inferred — HIGH]** This table is the strongest single piece of evidence that the two clients are one product. It is not a similarity of style; it is the same twelve operations, named differently, resolving to the same twelve SQL objects.
+**[Inferred - HIGH]** This table is the strongest single piece of evidence that the two clients are one product. It is not a similarity of style; it is the same twelve operations, named differently, resolving to the same twelve SQL objects.
 
 ### 5.3 Architectural style
 
 **[Verified]** Named patterns, each with a source citation in §16:
 
-- **Result monad / railway-oriented error handling** — no exceptions cross a service boundary.
-- **External store + `useSyncExternalStore`** — hand-rolled, no Redux/Zustand.
-- **Provider composition over nested routing** — `App.tsx` and `react-native/App.tsx` both build the tree by wrapping, and both place the security provider deliberately high.
-- **Snapshot-on-write** — purchase-time data frozen into the row that records the purchase.
-- **Derive-on-read** — revenue, alerts and refund totals recomputed rather than stored.
-- **Capability-based responsive design** — `@media (hover: none) and (pointer: coarse)` rather than breakpoints alone.
-- **Fail-closed defaults** — every absent flag resolves to the strictest value.
-- **Defence by absence** — the mobile reader has no download, save, share, print or export affordance at all; not disabled, *absent*.
+- **Result monad / railway-oriented error handling** - no exceptions cross a service boundary.
+- **External store + `useSyncExternalStore`** - hand-rolled, no Redux/Zustand.
+- **Provider composition over nested routing** - `App.tsx` and `react-native/App.tsx` both build the tree by wrapping, and both place the security provider deliberately high.
+- **Snapshot-on-write** - purchase-time data frozen into the row that records the purchase.
+- **Derive-on-read** - revenue, alerts and refund totals recomputed rather than stored.
+- **Capability-based responsive design** - `@media (hover: none) and (pointer: coarse)` rather than breakpoints alone.
+- **Fail-closed defaults** - every absent flag resolves to the strictest value.
+- **Defence by absence** - the mobile reader has no download, save, share, print or export affordance at all; not disabled, *absent*.
 
 ### 5.4 What is deliberately NOT in the architecture
 
-**[Verified]** No dependency injection container. No event bus. No message queue. No caching layer. No server-side rendering. No code-splitting beyond two `manualChunks` groups. No service worker. No WebSocket or polling on the web side. No abstraction over the persistence driver — `db.ts` is called directly by the service modules, and the "swap in HTTP" plan is a documented intention, not an implemented interface.
+**[Verified]** No dependency injection container. No event bus. No message queue. No caching layer. No server-side rendering. No code-splitting beyond two `manualChunks` groups. No service worker. No WebSocket or polling on the web side. No abstraction over the persistence driver - `db.ts` is called directly by the service modules, and the "swap in HTTP" plan is a documented intention, not an implemented interface.
 
-**[Inferred — MEDIUM]** The absence of a persistence interface is the single largest structural obstacle to the migration the codebase announces. `src/lib/api*.ts` imports `getDb` and `mutate` concretely. Making the driver swappable would require introducing an interface that does not currently exist. The claim in `api.ts` is therefore directionally true — call sites in *pages* would not change — but the service layer itself would.
+**[Inferred - MEDIUM]** The absence of a persistence interface is the single largest structural obstacle to the migration the codebase announces. `src/lib/api*.ts` imports `getDb` and `mutate` concretely. Making the driver swappable would require introducing an interface that does not currently exist. The claim in `api.ts` is therefore directionally true - call sites in *pages* would not change - but the service layer itself would.
 
 ---
 
@@ -435,10 +435,10 @@ The evidence that this is a real design and not a claim:
 
 **[Verified]** Execution order on a page load:
 
-1. `index.html` — Vite shell. Contains the `#root` element, a `<script type="module" src="/src/main.tsx">`, Figma Make region markers, and (at build time) an injected CSP `<meta>` produced by the `head-prepend` plugin in `vite.config.ts`.
-2. `src/main.tsx` — imports `./index.css` (which imports Tailwind v4 and defines every design token), then `createRoot(document.getElementById('root')!).render(<App />)`.
-3. `src/App.tsx` — composes providers in a fixed order and mounts the router from `src/routes.tsx`.
-4. `src/routes.tsx` — the route table. Layout routes wrap page routes; every branch carries an `errorElement` pointing at `RouteError`; a catch-all renders `NotFoundPage`.
+1. `index.html` - Vite shell. Contains the `#root` element, a `<script type="module" src="/src/main.tsx">`, Figma Make region markers, and (at build time) an injected CSP `<meta>` produced by the `head-prepend` plugin in `vite.config.ts`.
+2. `src/main.tsx` - imports `./index.css` (which imports Tailwind v4 and defines every design token), then `createRoot(document.getElementById('root')!).render(<App />)`.
+3. `src/App.tsx` - composes providers in a fixed order and mounts the router from `src/routes.tsx`.
+4. `src/routes.tsx` - the route table. Layout routes wrap page routes; every branch carries an `errorElement` pointing at `RouteError`; a catch-all renders `NotFoundPage`.
 
 **[Verified]** Bootstrap side effects on first run: `AppContext` reads `localStorage['casanova_db_v1']`; if absent or version-mismatched it calls `emptyDatabase()`, which returns empty arrays for every collection **except** `drm_policies`, which is seeded with `[defaultDrmPolicy()]`. `bootstrapRequired` becomes `true` when no administrator account exists, which redirects `/login` → `/setup` (`LoginPage.tsx:23-25`) and makes `SetupPage` the only reachable screen. Once one administrator exists, `setupAdmin` refuses and `SetupPage` redirects back to `/login` (`SetupPage.tsx:33-35`, and `if (!bootstrapRequired) return null` at line 64).
 
@@ -448,10 +448,10 @@ The evidence that this is a real design and not a claim:
 
 **[Verified]** Execution order on a cold start:
 
-1. **Native, before JavaScript.** `MainActivity.onCreate` sets `WindowManager.LayoutParams.FLAG_SECURE` **before** calling `super.onCreate()`. The ordering is documented as the entire point: setting it after `super` *"would leave the interval between the first frame and the call — typically a second or two on a cold start … during which the window is capturable."*
-2. `MainApplication.onCreate` — `SoLoader.init`, then `load()` for Fabric/TurboModules when the new architecture is enabled. `getPackages()` appends `ScreenShieldPackage()` to the autolinked list by hand, because the DRM layer is app source rather than a dependency.
-3. `index.js` — `AppRegistry.registerComponent(appName, () => App)`. Its header states that capture protection is deliberately **not** enabled here, because on Android the flag is already set before the bundle is parsed and on iOS the shield is installed by the native module when the reader mounts.
-4. `App.tsx` — module scope runs `I18nManager.allowRTL(true); I18nManager.forceRTL(true);` before anything renders. Tree:
+1. **Native, before JavaScript.** `MainActivity.onCreate` sets `WindowManager.LayoutParams.FLAG_SECURE` **before** calling `super.onCreate()`. The ordering is documented as the entire point: setting it after `super` *"would leave the interval between the first frame and the call - typically a second or two on a cold start … during which the window is capturable."*
+2. `MainApplication.onCreate` - `SoLoader.init`, then `load()` for Fabric/TurboModules when the new architecture is enabled. `getPackages()` appends `ScreenShieldPackage()` to the autolinked list by hand, because the DRM layer is app source rather than a dependency.
+3. `index.js` - `AppRegistry.registerComponent(appName, () => App)`. Its header states that capture protection is deliberately **not** enabled here, because on Android the flag is already set before the bundle is parsed and on iOS the shield is installed by the native module when the reader mounts.
+4. `App.tsx` - module scope runs `I18nManager.allowRTL(true); I18nManager.forceRTL(true);` before anything renders. Tree:
    ```
    CrashBoundary > SafeAreaProvider > StatusBar > AuthProvider
      > ProtectionProvider > LibraryProvider > RootNavigator
@@ -460,11 +460,11 @@ The evidence that this is a real design and not a claim:
 
 **[Verified]** The boot order is a security decision, documented as such: *"The order matters: the kill switch is evaluated before any stored credential is read, so a build that has been pulled cannot use a cached token to get as far as the library screen and render titles."*
 
-6. `RootNavigator` chooses the screen set from `phase` rather than navigating imperatively — `signed-in` exposes `Home`/`Reader`/`Devices`, `signed-out` exposes `Login`/`ForgotPassword`, anything else exposes only `Gate`. The rationale: *"when the session dies the whole authenticated stack is unmounted, which also unmounts the reader and triggers its vault cleanup."*
+6. `RootNavigator` chooses the screen set from `phase` rather than navigating imperatively - `signed-in` exposes `Home`/`Reader`/`Devices`, `signed-out` exposes `Login`/`ForgotPassword`, anything else exposes only `Gate`. The rationale: *"when the session dies the whole authenticated stack is unmounted, which also unmounts the reader and triggers its vault cleanup."*
 
 ### 6.3 Build entry points
 
-**[Verified]** `.figma/make/` holds seven extension-less bash scripts, each 3–5 lines, each `set -euo pipefail`:
+**[Verified]** `.figma/make/` holds seven extension-less bash scripts, each 3-5 lines, each `set -euo pipefail`:
 
 | Script | Body |
 |---|---|
@@ -484,7 +484,7 @@ The evidence that this is a real design and not a claim:
 
 ## 7. CORE COMPONENTS
 
-### 7.1 `src/lib/db.ts` — the persistence driver
+### 7.1 `src/lib/db.ts` - the persistence driver
 
 **[Verified]** The only module in the web application that touches `localStorage` for data. Exposes `getDb()`, `mutate(fn)`, `subscribe(listener)`, `emptyDatabase()`, and `DB_VERSION = 1`.
 
@@ -492,7 +492,7 @@ The whole database is one versioned JSON document under a single key. `mutate()`
 
 **[Verified]** The synchronicity of `mutate()` is the source of the subtlest hazard in the web codebase: a state update that fires during render, or an effect whose dependency changes as a result of its own write, produces an infinite loop. Three separate ref guards exist to prevent this (`registeredFor`, `grantedFor`, `savedProgressKey` in `ReaderPage.tsx`), plus three defensive behaviours in the service layer: `actor` is memoised on primitive fields rather than the `user` object; `registerDeviceSession` returns an existing session untouched rather than writing a new one; and `saveReadingProgress` declines no-op writes. See §25.
 
-### 7.2 `src/lib/api.ts` — the largest service module
+### 7.2 `src/lib/api.ts` - the largest service module
 
 **[Verified]** ~1271 lines. Owns the catalogue (`products`, `books`, `categories`, `product_images`, relations), users and authentication surface, CMS content (`cms_sections`, `testimonials`, `faqs`), coupons, `platform_settings`, and DRM policies. Every export follows one shape:
 
@@ -520,9 +520,9 @@ export function saveCoupon(
 }
 ```
 
-**[Verified]** That six-step order — guard, validate, conflict-check, mutate, audit, return — is the invariant of the whole service layer. `deleteCoupon` immediately below it follows the same shape. Any new mutation that skips step 1 or step 5 is a defect by this codebase's own standard, not a style preference.
+**[Verified]** That six-step order - guard, validate, conflict-check, mutate, audit, return - is the invariant of the whole service layer. `deleteCoupon` immediately below it follows the same shape. Any new mutation that skips step 1 or step 5 is a defect by this codebase's own standard, not a style preference.
 
-### 7.3 `src/lib/api-orders.ts` — money
+### 7.3 `src/lib/api-orders.ts` - money
 
 **[Verified]** `checkout(input)` is the guest-purchase path and is the best single illustration of the "money is never invented" rule:
 
@@ -552,17 +552,17 @@ export async function checkout(input: CheckoutInput): Promise<Result<CheckoutOut
 }
 ```
 
-**[Verified — security-critical]** `CheckoutPage.tsx` computes `couponDiscount` and `finalPrice` locally for display, but `handleSubmitOrder` sends **only** `product_id`, names, `email`, `phone` and `coupon_code`. The client's arithmetic never crosses the boundary. `checkout()` re-derives the discount from the stored coupon row and rejects an invalid code outright. A tampered client can change what it *shows itself*; it cannot change what it is charged.
+**[Verified - security-critical]** `CheckoutPage.tsx` computes `couponDiscount` and `finalPrice` locally for display, but `handleSubmitOrder` sends **only** `product_id`, names, `email`, `phone` and `coupon_code`. The client's arithmetic never crosses the boundary. `checkout()` re-derives the discount from the stored coupon row and rejects an invalid code outright. A tampered client can change what it *shows itself*; it cannot change what it is charged.
 
 **[Verified]** The order is created `PENDING`. Only `markOrderPaid` transitions it to `PAID` and calls `grantAccessForOrder`. `markOrderPaid` is guarded by the `mark_paid` permission (`AdminOrdersPage.tsx:269`) and is the documented hook where a payment-provider webhook would land.
 
-### 7.4 `src/lib/api-security.ts` — the DRM control plane
+### 7.4 `src/lib/api-security.ts` - the DRM control plane
 
 **[Verified]** Owns `device_sessions`, `security_events`, `content_access_grants` and `drm_policies` resolution. Exports consumed by `AdminSecurityPage`: `HIGH_SIGNAL_EVENTS`, `SCOPE_LABEL`, `SECURITY_EVENT_LABEL`, `deleteDrmPolicy`, `isSessionExpired`, `isSessionOpen`, `listDeviceSessions`, `resolveDrmPolicy`, `revokeDeviceSession`, `saveDrmPolicy`, and the `DrmPolicyInput` type.
 
 `resolveDrmPolicy(policies, scope)` resolves most-specific-first: a `WEB` or `MOBILE` policy beats an `ALL` policy. `withProtectionDefaults()` fills any absent flag with the strictest value.
 
-### 7.5 `src/lib/permissions.ts` — the authorisation matrix
+### 7.5 `src/lib/permissions.ts` - the authorisation matrix
 
 **[Verified]** `AdminRole = SUPER_ADMIN | SUPPORT | FINANCE | CONTENT | MARKETING`; 27 `AdminPermission` strings; `can(role, permission): boolean`; `ROLE_LABEL` for display. `SUPER_ADMIN` holds every permission.
 
@@ -581,53 +581,53 @@ if (!can(adminRole, 'orders')) return <AccessDenied page="הזמנות" />;
 
 | Page | Page-level permission | Finer-grained checks |
 |---|---|---|
-| `AdminDashboardPage` | *(dashboard)* | — |
+| `AdminDashboardPage` | *(dashboard)* | - |
 | `AdminProductsPage` | `products` | `edit_content`, `edit_price`, `delete_product` |
-| `AdminCmsPage` | `cms` | — |
+| `AdminCmsPage` | `cms` | - |
 | `AdminOrdersPage` | `orders` | `refund`, `execute_refund`, `finance`, `mark_paid` |
 | `AdminFinancePage` | `finance` | `finance` (as `canManage`) |
-| `AdminUsersPage` | *(users)* | — |
-| `AdminAccessPage` | *(access)* | — |
+| `AdminUsersPage` | *(users)* | - |
+| `AdminAccessPage` | *(access)* | - |
 | `AdminSupportPage` | `support` | `manage_support` |
-| `AdminCrmPage` | `crm` | — |
+| `AdminCrmPage` | `crm` | - |
 | `AdminEmailsPage` | `emails` | `resend_email` |
-| `AdminAuditPage` | `audit` | — |
-| `AdminAlertsPage` | `alerts` | — |
-| `AdminSettingsPage` | `settings` | — |
+| `AdminAuditPage` | `audit` | - |
+| `AdminAlertsPage` | `alerts` | - |
+| `AdminSettingsPage` | `settings` | - |
 | `AdminSecurityPage` | `security` | `security` (device-list scoping) |
 
 ### 7.6 `src/lib/auth.ts`, `analytics.ts`, `alerts.ts`, `sensitive.ts`, `media.ts`
 
 **[Verified]**
 
-- `auth.ts` — password hashing and verification, session lifecycle, `passwordProblem()` (the shared password-policy validator used by `LoginPage`, `SetupPage` and `SetupPasswordPage`), `normalizeEmail`, `isEmail`.
-- `analytics.ts` — revenue and product-sales figures **derived on read**, never stored. The SQL mirrors this with `v_daily_revenue` and `v_product_sales`, and by deliberately giving `orders` no `refunded_amount` or `refund_status` column.
-- `alerts.ts` — operational alerts **derived on read**, bounded and dismissible. Mirrored by nothing in SQL; this is web-only.
-- `sensitive.ts` — PII masking. Imported by `AdminOrdersPage` and `AdminUsersPage` only, which is exactly the pair of screens that display customer contact details.
-- `media.ts` — `toEmbedUrl()` (used by `LandingPage` for `VIDEO` CMS blocks) and upload helpers. `AdminProductsPage` and `AdminCmsPage` are its only other consumers.
+- `auth.ts` - password hashing and verification, session lifecycle, `passwordProblem()` (the shared password-policy validator used by `LoginPage`, `SetupPage` and `SetupPasswordPage`), `normalizeEmail`, `isEmail`.
+- `analytics.ts` - revenue and product-sales figures **derived on read**, never stored. The SQL mirrors this with `v_daily_revenue` and `v_product_sales`, and by deliberately giving `orders` no `refunded_amount` or `refund_status` column.
+- `alerts.ts` - operational alerts **derived on read**, bounded and dismissible. Mirrored by nothing in SQL; this is web-only.
+- `sensitive.ts` - PII masking. Imported by `AdminOrdersPage` and `AdminUsersPage` only, which is exactly the pair of screens that display customer contact details.
+- `media.ts` - `toEmbedUrl()` (used by `LandingPage` for `VIDEO` CMS blocks) and upload helpers. `AdminProductsPage` and `AdminCmsPage` are its only other consumers.
 
 ### 7.7 The three web contexts
 
 **[Verified]**
 
-- **`AppContext`** — customer identity (`user`, `actor`, `isAuthenticated`, `isAdmin`), theme (`theme`, `toggleTheme`), catalogue selection (`selectedProduct`, `setSelectedProduct`), entitlements (`hasAccess`, `userProducts`, `readingProgress`), orders (`orders`, `lastOrder`), cart (`cartLines`, `cartTotal`, `addToCart`, `removeFromCart`, `clearCart`), purchase (`placeOrder`), authentication (`login`, `register`, `setupAdmin`), and `bootstrapRequired`.
-  **[Verified]** `login()` returns `{ ok: true, user: found }` — carrying the freshly authenticated user *in the result* rather than relying on state. `LoginPage.tsx:50` navigates on `result.user?.role === 'ADMIN'`, with the comment *"Navigate based on the freshly-authenticated user (state hasn't re-rendered yet)"*. This is a fixed stale-closure defect; the fix pattern is load-bearing and must not be reverted (§25).
-- **`AdminContext`** — `adminRole`, `actor`, `users`, and permission-aware views of admin data. `adminRole` is synchronised from `user.admin_role`.
-- **`CmsContext`** — `publishedProducts`, `activeSections`, `testimonials`, `faqs`, `categories`, `settings`, plus lookup helpers `productById`, `categoryName`, `findCoupon`.
+- **`AppContext`** - customer identity (`user`, `actor`, `isAuthenticated`, `isAdmin`), theme (`theme`, `toggleTheme`), catalogue selection (`selectedProduct`, `setSelectedProduct`), entitlements (`hasAccess`, `userProducts`, `readingProgress`), orders (`orders`, `lastOrder`), cart (`cartLines`, `cartTotal`, `addToCart`, `removeFromCart`, `clearCart`), purchase (`placeOrder`), authentication (`login`, `register`, `setupAdmin`), and `bootstrapRequired`.
+  **[Verified]** `login()` returns `{ ok: true, user: found }` - carrying the freshly authenticated user *in the result* rather than relying on state. `LoginPage.tsx:50` navigates on `result.user?.role === 'ADMIN'`, with the comment *"Navigate based on the freshly-authenticated user (state hasn't re-rendered yet)"*. This is a fixed stale-closure defect; the fix pattern is load-bearing and must not be reverted (§25).
+- **`AdminContext`** - `adminRole`, `actor`, `users`, and permission-aware views of admin data. `adminRole` is synchronised from `user.admin_role`.
+- **`CmsContext`** - `publishedProducts`, `activeSections`, `testimonials`, `faqs`, `categories`, `settings`, plus lookup helpers `productById`, `categoryName`, `findCoupon`.
 
 ### 7.8 The mobile DRM triad
 
 **[Verified]** Three modules in `react-native/src/drm/` implement protected reading, and they have strictly separated responsibilities:
 
-- **`ScreenShield.tsx`** (478 lines) — declares the `ScreenShieldNative` contract (`enable`, `disable`, `isCaptured`, `isMirrored`, `isShieldActive`, `deviceIntegrity`, `excludeFromBackup`, `sha256File`, `restrictDocumentInteraction`, `addListener`, `removeListeners`); computes `SCREEN_SHIELD_AVAILABLE = Boolean(NativeModules.ScreenShield)`; caches `probeIntegrity()`; exports `COMPROMISED_INTEGRITY = ['ROOTED','JAILBROKEN','ATTESTATION_FAILED','EMULATOR']`, `isCompromised()`, `PLATFORM_PROTECTION_NOTE`, `ShieldOverlay` and `useScreenShield()`. Its provider sits **above the navigator** *"so the overlay covers navigation chrome too: a back-swipe animation that reveals the reader for one frame defeats the purpose."*
-- **`SecureFileVault.ts`** (358 lines) — the private file store. `vaultRoot() = ${DocumentDir}/casanova-vault`; files named by **grant id**, sanitised to `[a-zA-Z0-9_-]`, *"so nothing about the catalogue is readable from a directory listing"*; `index.json` colocated inside the vault rather than in AsyncStorage *"so one deletion removes both"*; `assertInsideVault()` **throws**; `fetchToVault()` validates status 200, declared `file_size_bytes`, a ≥1024-byte floor and a SHA-256 checksum, unlinking on any failure because *"A half-written file is worse than no file"*; plus `purge()`, `wipeAll()`, `purgeExpired()`, `vaultSizeBytes()`, `openFromVault()`.
-- **`useReaderSession.ts`** (469 lines) — the state machine that binds them: `probe integrity → claim device session → resolve policy → mint grant → redeem grant → fetch into vault → heartbeat → renew or destroy`, with `ReaderPhase = 'idle' | 'registering' | 'granting' | 'fetching' | 'ready' | 'blocked' | 'error'` and a `runId` ref guarding every async write against a superseded attempt.
+- **`ScreenShield.tsx`** (478 lines) - declares the `ScreenShieldNative` contract (`enable`, `disable`, `isCaptured`, `isMirrored`, `isShieldActive`, `deviceIntegrity`, `excludeFromBackup`, `sha256File`, `restrictDocumentInteraction`, `addListener`, `removeListeners`); computes `SCREEN_SHIELD_AVAILABLE = Boolean(NativeModules.ScreenShield)`; caches `probeIntegrity()`; exports `COMPROMISED_INTEGRITY = ['ROOTED','JAILBROKEN','ATTESTATION_FAILED','EMULATOR']`, `isCompromised()`, `PLATFORM_PROTECTION_NOTE`, `ShieldOverlay` and `useScreenShield()`. Its provider sits **above the navigator** *"so the overlay covers navigation chrome too: a back-swipe animation that reveals the reader for one frame defeats the purpose."*
+- **`SecureFileVault.ts`** (358 lines) - the private file store. `vaultRoot() = ${DocumentDir}/casanova-vault`; files named by **grant id**, sanitised to `[a-zA-Z0-9_-]`, *"so nothing about the catalogue is readable from a directory listing"*; `index.json` colocated inside the vault rather than in AsyncStorage *"so one deletion removes both"*; `assertInsideVault()` **throws**; `fetchToVault()` validates status 200, declared `file_size_bytes`, a ≥1024-byte floor and a SHA-256 checksum, unlinking on any failure because *"A half-written file is worse than no file"*; plus `purge()`, `wipeAll()`, `purgeExpired()`, `vaultSizeBytes()`, `openFromVault()`.
+- **`useReaderSession.ts`** (469 lines) - the state machine that binds them: `probe integrity → claim device session → resolve policy → mint grant → redeem grant → fetch into vault → heartbeat → renew or destroy`, with `ReaderPhase = 'idle' | 'registering' | 'granting' | 'fetching' | 'ready' | 'blocked' | 'error'` and a `runId` ref guarding every async write against a superseded attempt.
 
 ### 7.9 The native modules
 
 **[Verified]** Both implement the identical eleven-method contract, and both diverge in *how* they protect, because the operating systems differ:
 
-- **Android (`ScreenShieldModule.kt`, 623 lines) = prevention.** `FLAG_SECURE` removes the window from every capture surface, so `isCaptured()` correctly resolves **false** always and `onCaptureChanged` is never emitted — documented as the right answer rather than a stub. `enable()` **rejects** `E_NO_ACTIVITY` instead of resolving false, so a log distinguishes "no activity" from "the flag did not take". `detectIntegrity()` returns `EMULATOR` / `ROOTED` / `TRUSTED`, with a long rationale for why `ATTESTATION_FAILED` must **not** be the default: *"that value is in `COMPROMISED_INTEGRITY` on the JavaScript side, so returning it would make `drm_policies.block_rooted_devices` refuse to open a book on every unmodified Android phone in existence."*
+- **Android (`ScreenShieldModule.kt`, 623 lines) = prevention.** `FLAG_SECURE` removes the window from every capture surface, so `isCaptured()` correctly resolves **false** always and `onCaptureChanged` is never emitted - documented as the right answer rather than a stub. `enable()` **rejects** `E_NO_ACTIVITY` instead of resolving false, so a log distinguishes "no activity" from "the flag did not take". `detectIntegrity()` returns `EMULATOR` / `ROOTED` / `TRUSTED`, with a long rationale for why `ATTESTATION_FAILED` must **not** be the default: *"that value is in `COMPROMISED_INTEGRITY` on the JavaScript side, so returning it would make `drm_policies.block_rooted_devices` refuse to open a book on every unmodified Android phone in existence."*
 - **iOS (`ScreenShield.swift`, 828 lines) = detection + concealment.** No `FLAG_SECURE` equivalent exists, so the module installs an opaque `privacyCover` on `willResignActive`, listens to `capturedDidChange` / `connectDidChange`, records `userDidTakeScreenshot` for attribution, and strips `UILongPressGestureRecognizer` from any PDFKit view to remove the Copy/Share route. A secondary mechanism lifts the canvas layer through a 1×1 `isSecureTextEntry` `UITextField`; it is **excluded** from `canProtectSwitcher()` because it depends on non-public API shape, and *"Making `enable()`'s return value depend on it would mean an iOS update could stop the reader from opening books at all."*
 
 ---
@@ -646,7 +646,7 @@ localStorage['casanova_db_v1']
   → Page component                   render
 ```
 
-A write anywhere invalidates this chain in one synchronous tick: `mutate()` notifies its listener set, `useSyncExternalStore` re-reads, every subscribed selector recomputes, every consumer re-renders. There is no cache to invalidate and no query key to match — which is why the whole app feels immediate, and also why an unguarded write inside a render path loops forever.
+A write anywhere invalidates this chain in one synchronous tick: `mutate()` notifies its listener set, `useSyncExternalStore` re-reads, every subscribed selector recomputes, every consumer re-renders. There is no cache to invalidate and no query key to match - which is why the whole app feels immediate, and also why an unguarded write inside a render path loops forever.
 
 ### 8.2 Web write path
 
@@ -666,7 +666,7 @@ User gesture
   → Page renders ok / error message
 ```
 
-**[Verified]** Nothing throws. A page that forgets to check `result.ok` does not crash — it silently shows nothing, which is why every page in the codebase wraps the call in a `run(result, successMessage)`-style helper (see `AdminProductsPage.tsx:1246`).
+**[Verified]** Nothing throws. A page that forgets to check `result.ok` does not crash - it silently shows nothing, which is why every page in the codebase wraps the call in a `run(result, successMessage)`-style helper (see `AdminProductsPage.tsx:1246`).
 
 ### 8.3 Purchase → entitlement → reading (the spine of the product)
 
@@ -681,13 +681,13 @@ User gesture
 3. checkout()
      → validate product state (ACTIVE, not HIDDEN, in stock)
      → recompute price and discount from stored rows
-     → findOrCreateCustomer(email)  — guest checkout creates the account
+     → findOrCreateCustomer(email)  - guest checkout creates the account
      → mutate(): Order{PENDING}, OrderItem{snapshot of name+price}
      → writeAudit, dispatchEmail (queued)
      → Result<CheckoutOutcome>
 4. AppContext stores lastOrder → /checkout/success
      CheckoutSuccessPage reads the recorded status and says
-     "awaiting payment confirmation" — never "paid"
+     "awaiting payment confirmation" - never "paid"
 5. Staff confirm payment: markOrderPaid(actor, orderId)   [permission: mark_paid]
      → order_status/payment_status = PAID
      → grantAccessForOrder(order)
@@ -712,7 +712,7 @@ User gesture
 
 **[Verified]** Step 8's iframe `key` is not a React tidiness detail. The browser's PDF plugin honours `#page=` and `#zoom=` fragment parameters **only on a full document load**; changing the fragment of an already-loaded plugin document does nothing. Forcing a remount via `key` is the only way to make page travel and zoom work. See §14.3.
 
-### 8.4 Revocation — the flow that makes the model work
+### 8.4 Revocation - the flow that makes the model work
 
 **[Verified]** Revoking a device session must kill content the customer may already hold. The web and SQL implementations agree:
 
@@ -728,7 +728,7 @@ revokeDeviceSession(actor, sessionId, reason)
 
 The same cascade exists for entitlements: `trg_user_product_revokes_grants` fires when a `user_products` row is revoked, so withdrawing a purchase kills its grants too.
 
-**[Verified]** On the phone the cascade has a local half that no server round trip can perform. `LibraryContext`'s effect purges the vault for any entitlement that stopped being live, with the comment *"Waiting for the TTL would leave a revoked book sitting in the sandbox."* `LibraryContext.removeDevice` notes: *"The server cascades to content_access_grants, so every URL handed to that device dies there. The local bytes have to die here — there is no server round trip that can delete a file."*
+**[Verified]** On the phone the cascade has a local half that no server round trip can perform. `LibraryContext`'s effect purges the vault for any entitlement that stopped being live, with the comment *"Waiting for the TTL would leave a revoked book sitting in the sandbox."* `LibraryContext.removeDevice` notes: *"The server cascades to content_access_grants, so every URL handed to that device dies there. The local bytes have to die here - there is no server round trip that can delete a file."*
 
 ### 8.5 Mobile read path
 
@@ -761,7 +761,7 @@ Keychain (com.casanova.reader.session)  +  AsyncStorage (api_base_url)
                                        DEVICE_LIMIT_EXCEEDED
 3. resolve policy (server, else RESTRICTIVE_POLICY)
 4. issueGrant({productId, sessionId, mode})
-5. redeemGrant(token)                → RedeemedGrant — "the only place in
+5. redeemGrant(token)                → RedeemedGrant - "the only place in
                                        the whole app where the address of a
                                        protected file exists"
 6. SecureFileVault.fetchToVault()    → validate status/size/checksum,
@@ -775,10 +775,10 @@ Keychain (com.casanova.reader.session)  +  AsyncStorage (api_base_url)
 
 **[Verified]** Two design decisions worth naming:
 
-- The `runId` ref guards every async write: *"An abandoned attempt — unmount, retry, product change — must not land its result on top of the current one, or a slow first fetch resolves after a fast second one and the reader ends up showing a file whose grant was already replaced."*
+- The `runId` ref guards every async write: *"An abandoned attempt - unmount, retry, product change - must not land its result on top of the current one, or a slow first fetch resolves after a fast second one and the reader ends up showing a file whose grant was already replaced."*
 - When offline reading is requested but the policy forbids it, the hook **falls back to streaming** and reports `DOWNLOAD_BLOCKED`, because *"Refusing to open the book at all … would be worse than reading it online."* Protection failures are logged, not turned into denials of service, unless the policy says so.
 
-### 8.7 Derived data — what is never stored
+### 8.7 Derived data - what is never stored
 
 **[Verified]** A consistent rule across both TypeScript and SQL: if a value can be recomputed from rows that exist, it is recomputed on read.
 
@@ -787,32 +787,32 @@ Keychain (com.casanova.reader.session)  +  AsyncStorage (api_base_url)
 | Revenue by day | `analytics.ts` | `v_daily_revenue` |
 | Product sales | `analytics.ts` | `v_product_sales` |
 | Refunded amount per order | `analytics.ts` | `v_order_refunds` |
-| Customer lifetime summary | — | `v_customer_summary` |
+| Customer lifetime summary | - | `v_customer_summary` |
 | Operational alerts | `alerts.ts` | *(web-only)* |
 | Readable catalogue | `CmsContext.publishedProducts` | `v_storefront_catalog` |
 | Entitled content | `CmsContext` + `hasAccess` | `v_entitled_content` |
-| Live grants | — | `v_active_content_grants` |
-| Reading overview | — | `v_user_reading_overview` |
-| Support queue | — | `v_inquiry_queue` |
+| Live grants | - | `v_active_content_grants` |
+| Reading overview | - | `v_user_reading_overview` |
+| Support queue | - | `v_inquiry_queue` |
 
-**[Verified]** `schema.sql` therefore gives `orders` **no** `refunded_amount` and **no** `refund_status` column. The web `Order` type *does* carry both, and `checkout()` writes `refund_status: 'NONE', refunded_amount: 0`. This is a real, verifiable divergence between the TypeScript model and the SQL contract — see §9.4 and §26.
+**[Verified]** `schema.sql` therefore gives `orders` **no** `refunded_amount` and **no** `refund_status` column. The web `Order` type *does* carry both, and `checkout()` writes `refund_status: 'NONE', refunded_amount: 0`. This is a real, verifiable divergence between the TypeScript model and the SQL contract - see §9.4 and §26.
 
 ---
 
 ## 9. DATABASE
 
-### 9.1 `schema.sql` — scope and stated rules
+### 9.1 `schema.sql` - scope and stated rules
 
 **[Verified]** 1941 lines. Its header sets four rules, all of which the body honours:
 
-1. DDL only — no seed content.
+1. DDL only - no seed content.
 2. Relationships are IDs plus foreign keys, never embedded objects.
 3. Purchase-time history is preserved with bounded snapshots.
 4. Recomputable totals are **not** stored.
 
 And one security rule stated as the reason for the constraints:
 
-> *"Nothing is allowed to claim money moved without provider confirmation — enforced by CHECK constraints and a trigger on `refunds`, not by application convention alone."*
+> *"Nothing is allowed to claim money moved without provider confirmation - enforced by CHECK constraints and a trigger on `refunds`, not by application convention alone."*
 
 ### 9.2 Inventory
 
@@ -856,7 +856,7 @@ CREATE UNIQUE INDEX uq_device_sessions_open_slot
   WHERE ended_at IS NULL AND NOT revoked;
 ```
 
-**[Inferred — HIGH]** This is the correct primitive: two concurrent `registerDeviceSession` calls for the same user and fingerprint cannot both succeed, so the cap holds under a race that an application-level `COUNT(*)` check would lose. `max_devices_per_user` lives on `drm_policies` and is compared by the service layer; the index makes the *same-device* case unbreakable regardless.
+**[Inferred - HIGH]** This is the correct primitive: two concurrent `registerDeviceSession` calls for the same user and fingerprint cannot both succeed, so the cap holds under a race that an application-level `COUNT(*)` check would lose. `max_devices_per_user` lives on `drm_policies` and is compared by the service layer; the index makes the *same-device* case unbreakable regardless.
 
 **[Verified]** The revocation cascade:
 
@@ -883,13 +883,13 @@ CREATE VIEW v_storefront_catalog AS SELECT … WHERE p.status = 'ACTIVE' AND p.v
 
 ### 9.4 `migrations/0001_mobile_reader.sql` and a verified conflict
 
-**[Verified]** 597 lines, wrapped in `BEGIN;`/`COMMIT;`, written idempotently (`IF NOT EXISTS`, `IF EXISTS`, drop-then-re-add for constraints), and closing with a four-query VERIFICATION block including *"Confirm the leak is closed — this must return no rows."*
+**[Verified]** 597 lines, wrapped in `BEGIN;`/`COMMIT;`, written idempotently (`IF NOT EXISTS`, `IF EXISTS`, drop-then-re-add for constraints), and closing with a four-query VERIFICATION block including *"Confirm the leak is closed - this must return no rows."*
 
 Its sections:
 
 | § | Change |
 |---|---|
-| A | `drm_policies` += `block_download` (TRUE), `allow_offline` (FALSE), `offline_ttl_hours` (1–720), `block_rooted_devices` (TRUE), `chk_drm_offline_needs_ttl` |
+| A | `drm_policies` += `block_download` (TRUE), `allow_offline` (FALSE), `offline_ttl_hours` (1-720), `block_rooted_devices` (TRUE), `chk_drm_offline_needs_ttl` |
 | B | drop and re-add `security_events_event_type_check` with 6 new native event types |
 | C | `device_sessions` += `revoked_at`, `revoked_by`, `revoke_reason`, `device_model`, `os_version`, `app_version`, `device_integrity`, `chk_device_session_revocation`, 2 indexes |
 | D | `sessions` += `client` (`WEB\|ANDROID\|IOS`), `app_version`, `revoked_at` |
@@ -899,27 +899,27 @@ Its sections:
 | H | recreate `v_storefront_catalog` without the content-address columns; create `v_entitled_content`, `v_active_content_grants` |
 | I | `sweep_expired_reader_sessions()` |
 
-**[Verified — DEFECT]** Three concrete divergences between `schema.sql` and `migrations/0001_mobile_reader.sql`:
+**[Verified - DEFECT]** Three concrete divergences between `schema.sql` and `migrations/0001_mobile_reader.sql`:
 
 1. **`consume_content_grant` returns a different row type.** `schema.sql` declares **7** output columns; the migration declares **8**, adding `out_asset_id`. PostgreSQL rejects `CREATE OR REPLACE FUNCTION` when the return type changes: *"cannot change return type of existing function."* Applying `schema.sql` and then `0001` in the documented order **fails** at section G.
-2. **`content_access_grants.token_hash` uniqueness is expressed differently** — inline `VARCHAR(255) NOT NULL UNIQUE` in `schema.sql`, versus a named `CONSTRAINT chk_grant_token_unique UNIQUE (token_hash)` in the migration. Cosmetically different, but the constraint *name* differs, so any future migration that drops it by name will only work against one of the two.
-3. **`schema.sql` already contains everything the migration adds.** Every column, table, view and function in sections A–I is present in `schema.sql`. The migration is not additive to the committed baseline; it is a record of a gap analysis that has already been folded back in.
+2. **`content_access_grants.token_hash` uniqueness is expressed differently** - inline `VARCHAR(255) NOT NULL UNIQUE` in `schema.sql`, versus a named `CONSTRAINT chk_grant_token_unique UNIQUE (token_hash)` in the migration. Cosmetically different, but the constraint *name* differs, so any future migration that drops it by name will only work against one of the two.
+3. **`schema.sql` already contains everything the migration adds.** Every column, table, view and function in sections A-I is present in `schema.sql`. The migration is not additive to the committed baseline; it is a record of a gap analysis that has already been folded back in.
 
-**[Inferred — HIGH]** The practical reading: `schema.sql` is the *current* intended state and `migrations/0001` is a *historical* artefact kept for its reasoning. Running both against one database is not a supported path. Nobody has ever run either, because no PostgreSQL instance, connection string or migration runner exists in the repository (§27).
+**[Inferred - HIGH]** The practical reading: `schema.sql` is the *current* intended state and `migrations/0001` is a *historical* artefact kept for its reasoning. Running both against one database is not a supported path. Nobody has ever run either, because no PostgreSQL instance, connection string or migration runner exists in the repository (§27).
 
 ### 9.5 Constraint craft worth preserving
 
 **[Verified]** Several constraints are written with an explicit comment about the failure mode they prevent, and these comments are the reason not to "simplify" them:
 
 - `chk_drm_watermark_template` and `chk_drm_offline_needs_ttl` both wrap their operands in `COALESCE`, with a comment noting that *"a CHECK passes on NULL."* Removing the `COALESCE` silently disables the constraint for any row where the operand is NULL.
-- `chk_grant_offline_single_use`, `chk_grant_bound_to_session`, `chk_grant_revocation` — the grant table's invariants: an offline grant is single-use, every grant is bound to a device session, and revocation carries attribution.
-- `chk_order_total_arithmetic` and `chk_item_arithmetic` — the database re-derives `subtotal - discount = total` and `quantity × unit_price - discount = line_total`. The application's arithmetic is checked, not trusted.
-- `chk_refund_needs_provider_confirmation`, `chk_payment_captured_has_reference`, `chk_email_delivered_has_provider_id`, `chk_refunds_require_provider` — the four constraints that make "money is never invented" a database property rather than a code-review habit.
+- `chk_grant_offline_single_use`, `chk_grant_bound_to_session`, `chk_grant_revocation` - the grant table's invariants: an offline grant is single-use, every grant is bound to a device session, and revocation carries attribution.
+- `chk_order_total_arithmetic` and `chk_item_arithmetic` - the database re-derives `subtotal - discount = total` and `quantity × unit_price - discount = line_total`. The application's arithmetic is checked, not trusted.
+- `chk_refund_needs_provider_confirmation`, `chk_payment_captured_has_reference`, `chk_email_delivered_has_provider_id`, `chk_refunds_require_provider` - the four constraints that make "money is never invented" a database property rather than a code-review habit.
 - `order_items.product_id` and `user_products.product_id` are `ON DELETE RESTRICT`, which is the SQL expression of `deleteProduct`'s `CONFLICT` result: a product that has been sold cannot be deleted.
 
 ### 9.6 Cross-verification of TypeScript unions against SQL CHECK lists
 
-**[Verified]** This was an explicit instruction in the original tasking (*"תבדוק את סכמות הSQL MIGRATION לוודא שלא חסר כלום"* — check the SQL migration schemas to make sure nothing is missing). Result:
+**[Verified]** This was an explicit instruction in the original tasking (*"תבדוק את סכמות הSQL MIGRATION לוודא שלא חסר כלום"* - check the SQL migration schemas to make sure nothing is missing). Result:
 
 | TypeScript union | SQL CHECK | Match |
 |---|---|---|
@@ -929,9 +929,9 @@ Its sections:
 | `CrmLead.source` incl. `MOBILE_APP` | `crm_leads.source` | **exact** |
 | audit categories used by `writeAudit` (17) | `audit_logs.category` | **exact** |
 
-**Nothing is missing.** The migration's six new native event types are present in both the SQL CHECK list and the TypeScript union, and the web `SecurityEventType` includes them too — so the web admin console can filter and label events that only a phone can raise (`SECURITY_EVENT_LABEL`, `HIGH_SIGNAL_EVENTS` in `api-security.ts`).
+**Nothing is missing.** The migration's six new native event types are present in both the SQL CHECK list and the TypeScript union, and the web `SecurityEventType` includes them too - so the web admin console can filter and label events that only a phone can raise (`SECURITY_EVENT_LABEL`, `HIGH_SIGNAL_EVENTS` in `api-security.ts`).
 
-**[Verified — divergence]** One field-level mismatch: the web `Order` type carries `refund_status` and `refunded_amount`, which `schema.sql` deliberately does **not** store on `orders` (they are derived through `v_order_refunds`). If the web app is ever pointed at this schema, those two fields must become computed rather than persisted.
+**[Verified - divergence]** One field-level mismatch: the web `Order` type carries `refund_status` and `refunded_amount`, which `schema.sql` deliberately does **not** store on `orders` (they are derived through `v_order_refunds`). If the web app is ever pointed at this schema, those two fields must become computed rather than persisted.
 
 ---
 
@@ -939,7 +939,7 @@ Its sections:
 
 ### 10.1 There is no HTTP API in this repository
 
-**[Verified — HIGH]** This is the first thing a future engineer must internalise, because the directory layout suggests otherwise. `src/lib/api.ts`, `api-orders.ts`, `api-support.ts` and `api-security.ts` are **not HTTP clients**. They contain no `fetch`, no URL, no base path. They are synchronous-ish service functions that read and write `localStorage` through `db.ts`. They are *named* `api-*` because they are shaped like one.
+**[Verified - HIGH]** This is the first thing a future engineer must internalise, because the directory layout suggests otherwise. `src/lib/api.ts`, `api-orders.ts`, `api-support.ts` and `api-security.ts` are **not HTTP clients**. They contain no `fetch`, no URL, no base path. They are synchronous-ish service functions that read and write `localStorage` through `db.ts`. They are *named* `api-*` because they are shaped like one.
 
 **[Verified]** The file header of `src/lib/api.ts` states the intent directly:
 
@@ -949,11 +949,11 @@ So the contract exists in three mutually-consistent forms, and only one of them 
 
 | Form | Location | Executable today? |
 |---|---|---|
-| TypeScript service functions | `src/lib/api*.ts` | **Yes** — this is what the web app runs |
-| TypeScript HTTP client | `react-native/src/net/{client.ts,api.ts}` | No — it compiles, but `api.casanova.local` does not resolve |
-| SQL contract | `schema.sql`, `migrations/0001_mobile_reader.sql` | No — no database exists |
+| TypeScript service functions | `src/lib/api*.ts` | **Yes** - this is what the web app runs |
+| TypeScript HTTP client | `react-native/src/net/{client.ts,api.ts}` | No - it compiles, but `api.casanova.local` does not resolve |
+| SQL contract | `schema.sql`, `migrations/0001_mobile_reader.sql` | No - no database exists |
 
-**[Inferred — HIGH]** The three forms are deliberately kept in lockstep. `react-native/src/net/api.ts` carries a header table that maps each phone function to the web service function that already implements the same operation and to the table or view the server reads. That table is the API specification. It is reproduced verbatim below because it is the single most useful artefact in the repository for anyone about to write the backend.
+**[Inferred - HIGH]** The three forms are deliberately kept in lockstep. `react-native/src/net/api.ts` carries a header table that maps each phone function to the web service function that already implements the same operation and to the table or view the server reads. That table is the API specification. It is reproduced verbatim below because it is the single most useful artefact in the repository for anyone about to write the backend.
 
 ### 10.2 The shared envelope
 
@@ -980,36 +980,36 @@ export type ErrorCode =
 | `DEVICE_COMPROMISED` | `ProtectionContext` | integrity probe failed or the shield failed to install |
 | `GRANT_EXPIRED` | `ReaderScreen` | a grant's TTL or use budget was spent |
 
-**[Verified]** `error` is always a complete Hebrew sentence written for the end user, produced by the service layer — never a raw exception message, never a status code. The pages render `result.error` directly. This means **error copy is part of the API contract**: a future backend that returns its own Hebrew messages is compatible; one that returns English or stack traces is not.
+**[Verified]** `error` is always a complete Hebrew sentence written for the end user, produced by the service layer - never a raw exception message, never a status code. The pages render `result.error` directly. This means **error copy is part of the API contract**: a future backend that returns its own Hebrew messages is compatible; one that returns English or stack traces is not.
 
-**[Verified]** No exceptions cross the service boundary **except one**. Every service function is `try`-free at the call site because it cannot throw on a business failure. The single exception is `db.ts`'s `writeDocument()`, which rethrows a quota failure as `new Error('STORAGE_QUOTA_EXCEEDED')` — and **nothing in the repository catches it** (§17.8). Pages otherwise never render an error boundary for a business failure; `RouteError` and `CrashBoundary` exist for genuinely unexpected faults only (§17).
+**[Verified]** No exceptions cross the service boundary **except one**. Every service function is `try`-free at the call site because it cannot throw on a business failure. The single exception is `db.ts`'s `writeDocument()`, which rethrows a quota failure as `new Error('STORAGE_QUOTA_EXCEEDED')` - and **nothing in the repository catches it** (§17.8). Pages otherwise never render an error boundary for a business failure; `RouteError` and `CrashBoundary` exist for genuinely unexpected faults only (§17).
 
-### 10.3 The mobile endpoint surface — 18 routes
+### 10.3 The mobile endpoint surface - 18 routes
 
 **[Verified]** Complete list, read from `react-native/src/net/api.ts` and `client.ts`. `anon` = the `Authorization` header is suppressed via `{ anonymous: true }`.
 
 | # | Method | Path | Client function | Anon | Web service equivalent | Reads / writes |
 |---|---|---|---|---|---|---|
 | 1 | GET | `/settings/public` | `bootCheck()` | ✔ | `getSettings()` | `platform_settings` |
-| 2 | POST | `/auth/login` | `login()` | — | `login()` | `users`, `sessions` |
-| 3 | POST | `/auth/logout` | `logout()` | — | `logout()` | `sessions` |
-| 4 | GET | `/auth/me` | `fetchMe()` | — | `getSessionUser()` | `users` |
+| 2 | POST | `/auth/login` | `login()` | - | `login()` | `users`, `sessions` |
+| 3 | POST | `/auth/logout` | `logout()` | - | `logout()` | `sessions` |
+| 4 | GET | `/auth/me` | `fetchMe()` | - | `getSessionUser()` | `users` |
 | 5 | POST | `/auth/password-reset` | `requestPasswordReset()` | ✔ | `requestPasswordReset()` | `password_resets`, `email_log` |
 | 6 | GET | `/catalog` | `fetchCatalog()` | ✔ | `listPublicProducts()` | `v_storefront_catalog` |
-| 7 | GET | `/me/library` | `fetchLibrary()` | — | `listUserProducts()` | `v_entitled_content` |
-| 8 | GET | `/me/orders` | `fetchOrders()` | — | `listMyOrders()` | `orders`, `order_items` |
-| 9 | GET | `/me/progress/:productId` | `fetchProgress()` | — | `getReadingProgress()` | `reading_progress` |
-| 10 | PUT | `/me/progress` | `saveProgress()` | — | `saveReadingProgress()` | `reading_progress` |
-| 11 | POST | `/me/devices` | `registerDevice()` | — | `registerDeviceSession()` | `device_sessions`, `drm_policies` |
-| 12 | GET | `/me/devices` | `listDevices()` | — | `listDeviceSessions()` | `device_sessions` |
-| 13 | POST | `/me/devices/:sessionId/heartbeat` | `heartbeatDevice()` | — | `refreshDeviceSession()` | `device_sessions` |
-| 14 | DELETE | `/me/devices/:sessionId?reason=…` | `revokeDevice()` | — | `revokeDeviceSession()` | `device_sessions` + grant cascade |
-| 15 | POST | `/content/grants` | `issueGrant()` | — | `issueContentGrant()` | `content_access_grants` |
-| 16 | POST | `/content/grants/redeem` | `redeemGrant()` | — | `consumeContentGrant()` | `consume_content_grant()` function |
-| 17 | POST | `/security/events` | `reportSecurityEvent()` | — | `recordEvent()` | `security_events` |
-| 18 | POST | `/support/inquiries` | `submitInquiry()` | — | `submitPublicInquiry()` | `inquiries` (`source = MOBILE_APP`) |
+| 7 | GET | `/me/library` | `fetchLibrary()` | - | `listUserProducts()` | `v_entitled_content` |
+| 8 | GET | `/me/orders` | `fetchOrders()` | - | `listMyOrders()` | `orders`, `order_items` |
+| 9 | GET | `/me/progress/:productId` | `fetchProgress()` | - | `getReadingProgress()` | `reading_progress` |
+| 10 | PUT | `/me/progress` | `saveProgress()` | - | `saveReadingProgress()` | `reading_progress` |
+| 11 | POST | `/me/devices` | `registerDevice()` | - | `registerDeviceSession()` | `device_sessions`, `drm_policies` |
+| 12 | GET | `/me/devices` | `listDevices()` | - | `listDeviceSessions()` | `device_sessions` |
+| 13 | POST | `/me/devices/:sessionId/heartbeat` | `heartbeatDevice()` | - | `refreshDeviceSession()` | `device_sessions` |
+| 14 | DELETE | `/me/devices/:sessionId?reason=…` | `revokeDevice()` | - | `revokeDeviceSession()` | `device_sessions` + grant cascade |
+| 15 | POST | `/content/grants` | `issueGrant()` | - | `issueContentGrant()` | `content_access_grants` |
+| 16 | POST | `/content/grants/redeem` | `redeemGrant()` | - | `consumeContentGrant()` | `consume_content_grant()` function |
+| 17 | POST | `/security/events` | `reportSecurityEvent()` | - | `recordEvent()` | `security_events` |
+| 18 | POST | `/support/inquiries` | `submitInquiry()` | - | `submitPublicInquiry()` | `inquiries` (`source = MOBILE_APP`) |
 
-**[Verified]** Notably absent from the mobile surface: **every admin endpoint, every product-mutation endpoint, and checkout.** The phone cannot buy, cannot edit, cannot administer. **[Inferred — HIGH]** This is a deliberate narrowing — a mobile client is a reader, and the smaller the authenticated surface on a device that can be physically seized, the smaller the damage from a stolen session.
+**[Verified]** Notably absent from the mobile surface: **every admin endpoint, every product-mutation endpoint, and checkout.** The phone cannot buy, cannot edit, cannot administer. **[Inferred - HIGH]** This is a deliberate narrowing - a mobile client is a reader, and the smaller the authenticated surface on a device that can be physically seized, the smaller the damage from a stolen session.
 
 ### 10.4 How a request is constructed
 
@@ -1028,19 +1028,19 @@ X-Casanova-Device-Model:  DeviceInfo.getModel()
 X-Casanova-OS-Version:    DeviceInfo.getSystemVersion()
 ```
 
-The header comment explains why the server must not trust the client to volunteer them: *"A kill switch that only works for clients that volunteer their version is not a kill switch."* **[Inferred — HIGH]** A future backend must therefore reject a request missing `X-Casanova-Build` rather than defaulting it to something permissive.
+The header comment explains why the server must not trust the client to volunteer them: *"A kill switch that only works for clients that volunteer their version is not a kill switch."* **[Inferred - HIGH]** A future backend must therefore reject a request missing `X-Casanova-Build` rather than defaulting it to something permissive.
 
 4. Response handling, in this exact order: `204` → success with `undefined`; parse JSON tolerantly (`.catch(() => null)`); on `!response.ok` prefer the server's own `{ ok: false, code, error }` payload; otherwise map `401 → UNAUTHENTICATED`, `403 → FORBIDDEN`, `404 → NOT_FOUND`, anything else → `STORAGE`; on a null payload return `STORAGE` with `'תגובת השרת אינה תקינה.'`.
 5. **A `401` or a server-issued `UNAUTHENTICATED` clears the keychain immediately** (`await clearSession()`), before returning. This is what makes session expiry self-healing rather than a stuck state.
-6. `finally { clearTimeout(timer) }` — the timer is always cancelled.
+6. `finally { clearTimeout(timer) }` - the timer is always cancelled.
 
 ### 10.5 Request/response properties a future backend must honour
 
-**[Derived from source — HIGH]** These are not documented anywhere as a list; they are reconstructed from the client's behaviour, which means a backend that violates one produces a client bug rather than a clean error.
+**[Derived from source - HIGH]** These are not documented anywhere as a list; they are reconstructed from the client's behaviour, which means a backend that violates one produces a client bug rather than a clean error.
 
 | Property | Evidence |
 |---|---|
-| `POST /content/grants` returns a **token, never a URL** | `issueGrant` returns `IssuedGrant`; `redeemGrant` returns `RedeemedGrant` — the address only exists after redemption |
+| `POST /content/grants` returns a **token, never a URL** | `issueGrant` returns `IssuedGrant`; `redeemGrant` returns `RedeemedGrant` - the address only exists after redemption |
 | Redemption is **single-use and row-locked** | `consume_content_grant()` in `schema.sql` takes a row lock and re-validates expiry, budget, revocation and entitlement in one transaction |
 | Redemption is **bound to the product named in the request** | `redeemGrant(token, productId)` sends both; the SQL rejects a mismatch |
 | `POST /me/devices` answers `DEVICE_LIMIT_EXCEEDED` at the cap | `registerDevice` doc comment; `drm_policies.max_devices_per_user`; `uq_device_sessions_open_slot` |
@@ -1051,7 +1051,7 @@ The header comment explains why the server must not trust the client to voluntee
 | `secure_flag_active: false` must be **recorded, not rejected** | `RegisterDeviceInput` doc: *"The server records it either way; a false here is what makes the CMS show the row as unprotected instead of silently trusting it"* |
 | `/settings/public` must be reachable **without a session** | `bootCheck()` runs before any credential is read |
 
-### 10.6 The web "API" — the six-step service discipline
+### 10.6 The web "API" - the six-step service discipline
 
 **[Verified]** `guard()` is the whole authorisation mechanism, and its signature matters: it returns a **failure or null**, not a boolean.
 
@@ -1067,7 +1067,7 @@ export function guard(actor: Actor | null, permission: AdminPermission): Failure
 }
 ```
 
-Three checks in a fixed order — *is there an actor*, *is the actor staff*, *does the role hold the permission* — and the denial message names the role in Hebrew so an administrator who hits it learns which hat to put on. Every mutating function in `src/lib/api*.ts` then follows the same six steps, and the order is the security property. From `api.ts:1001`:
+Three checks in a fixed order - *is there an actor*, *is the actor staff*, *does the role hold the permission* - and the denial message names the role in Hebrew so an administrator who hits it learns which hat to put on. Every mutating function in `src/lib/api*.ts` then follows the same six steps, and the order is the security property. From `api.ts:1001`:
 
 ```ts
 export function saveCoupon(
@@ -1090,27 +1090,27 @@ export function saveCoupon(
 
 **[Verified]** Step 1 is never skipped and never moved. `guard()` is the authoritative check; the `can()` calls in layouts and pages are cosmetic (§12).
 
-**[Verified]** Note the shape of `data: Omit<Coupon, 'coupon_id' | 'times_used'>` — the caller cannot supply the primary key or the usage counter. Server-assigned and server-incremented fields are removed from the input type rather than validated at runtime. This idiom recurs and is worth copying.
+**[Verified]** Note the shape of `data: Omit<Coupon, 'coupon_id' | 'times_used'>` - the caller cannot supply the primary key or the usage counter. Server-assigned and server-incremented fields are removed from the input type rather than validated at runtime. This idiom recurs and is worth copying.
 
 **[Verified]** `writeAudit` takes an **object** (`{ category, action, target_type, target_id, target_label, details }`), not positional arguments. `category` is a 17-member `AuditCategory` union that matches `audit_logs.category` in `schema.sql` exactly (§9.6).
 
 **[Verified]** Read-only functions omit steps 4 and 5 but still begin with `guard()` where the data is privileged. `listDeviceSessions(actor)` is the example that matters: it returns every session for a `security`-permissioned caller and only the caller's own sessions otherwise.
 
-**[Verified]** Not every service function is `async`. `saveCoupon`, `deleteCoupon`, `guard`, `findCoupon` and most CMS functions are synchronous and return `Result<T>` directly; `checkout`, `login` and `createInquiry` are `async` and return `Promise<Result<T>>`. Callers `await` both — awaiting a non-promise is legal — which is why `SupportPage` can wrap a synchronous `createInquiry` in `await Promise.resolve(…)` without breaking. **[Inferred — MEDIUM]** The `async` marking follows the functions that were written with a future network hop in mind, not any present behaviour.
+**[Verified]** Not every service function is `async`. `saveCoupon`, `deleteCoupon`, `guard`, `findCoupon` and most CMS functions are synchronous and return `Result<T>` directly; `checkout`, `login` and `createInquiry` are `async` and return `Promise<Result<T>>`. Callers `await` both - awaiting a non-promise is legal - which is why `SupportPage` can wrap a synchronous `createInquiry` in `await Promise.resolve(…)` without breaking. **[Inferred - MEDIUM]** The `async` marking follows the functions that were written with a future network hop in mind, not any present behaviour.
 
-**[Verified — drift]** One permission is assigned to the wrong place. `saveCoupon`/`deleteCoupon` guard on `'cms'`, and the coupon UI lives in `AdminCmsPage.tsx`. But `ROLE_DESCRIPTION.FINANCE` promises *"הזמנות, תשלומים, חשבוניות, החזרים, **קופונים** ומנויים"* while `ROLE_PERMISSIONS.FINANCE` contains **no `'cms'`** — so a FINANCE administrator is told coupons are their domain and is then refused when they touch one. Conversely `MARKETING` holds `'finance'` (page access) although its own description does not mention finance. This is a cosmetic mismatch today; it becomes a real authorisation bug the moment the permission strings are lifted into server-side claims, which `permissions.ts` explicitly anticipates.
+**[Verified - drift]** One permission is assigned to the wrong place. `saveCoupon`/`deleteCoupon` guard on `'cms'`, and the coupon UI lives in `AdminCmsPage.tsx`. But `ROLE_DESCRIPTION.FINANCE` promises *"הזמנות, תשלומים, חשבוניות, החזרים, **קופונים** ומנויים"* while `ROLE_PERMISSIONS.FINANCE` contains **no `'cms'`** - so a FINANCE administrator is told coupons are their domain and is then refused when they touch one. Conversely `MARKETING` holds `'finance'` (page access) although its own description does not mention finance. This is a cosmetic mismatch today; it becomes a real authorisation bug the moment the permission strings are lifted into server-side claims, which `permissions.ts` explicitly anticipates.
 
-### 10.7 Outbound e-mail — a queue, not a send
+### 10.7 Outbound e-mail - a queue, not a send
 
 **[Verified]** `resendEmail()` in `api.ts:202` shows the whole model in twelve lines. It reads `db.settings.email_provider`; when there is none it still writes the row, still flips `status` to `'QUEUED'`, and records the reason as data:
 
 ```ts
-failure_reason: provider ? undefined : 'לא הוגדר ספק שליחת מיילים — ההודעה ממתינה בתור.',
+failure_reason: provider ? undefined : 'לא הוגדר ספק שליחת מיילים - ההודעה ממתינה בתור.',
 ```
 
-*"No e-mail provider is configured — the message is waiting in the queue."* The administrator sees the truth in `AdminEmailsPage`. **`PROVIDER_NOT_CONFIGURED`** is the error code reserved for the moment a real provider is wired in and is missing.
+*"No e-mail provider is configured - the message is waiting in the queue."* The administrator sees the truth in `AdminEmailsPage`. **`PROVIDER_NOT_CONFIGURED`** is the error code reserved for the moment a real provider is wired in and is missing.
 
-**[Inferred — HIGH]** This is the pattern to copy for every future external integration: write the intent as a row, mark it queued, and let an administrator see it. The database enforces the same discipline with `chk_email_delivered_has_provider_id` — a row may not claim `DELIVERED` without a provider reference. Nothing can silently pretend an e-mail was sent.
+**[Inferred - HIGH]** This is the pattern to copy for every future external integration: write the intent as a row, mark it queued, and let an administrator see it. The database enforces the same discipline with `chk_email_delivered_has_provider_id` - a row may not claim `DELIVERED` without a provider reference. Nothing can silently pretend an e-mail was sent.
 
 ---
 
@@ -1118,7 +1118,7 @@ failure_reason: provider ? undefined : 'לא הוגדר ספק שליחת מיי
 
 ### 11.1 There are none
 
-**[Verified — HIGH]** The repository integrates with **zero** external services. There is no payment gateway, no mail provider, no SMS provider, no analytics service, no error reporter, no CDN, no object store, no OAuth provider, no CRM webhook. No SDK for any of these appears in either `package.json`, and no HTTP egress exists anywhere in the web application.
+**[Verified - HIGH]** The repository integrates with **zero** external services. There is no payment gateway, no mail provider, no SMS provider, no analytics service, no error reporter, no CDN, no object store, no OAuth provider, no CRM webhook. No SDK for any of these appears in either `package.json`, and no HTTP egress exists anywhere in the web application.
 
 This is unusual enough to be worth stating plainly: **a complete e-commerce storefront with a checkout flow, an invoice concept, a password-reset flow and a welcome-e-mail concept, none of which touches the internet.**
 
@@ -1128,38 +1128,38 @@ This is unusual enough to be worth stating plainly: **a complete e-commerce stor
 
 | Integration point | Seam in the code | Current behaviour | What turning it on requires |
 |---|---|---|---|
-| Payment capture | `markOrderPaid(actor, orderId, reference)` in `api-orders.ts`, permission `mark_paid` | An administrator clicks it by hand; the order becomes `PAID` and `grantAccessForOrder` runs | Replace the manual call with a verified provider webhook. **The function already has the right signature** — it takes a provider reference and refuses without one |
+| Payment capture | `markOrderPaid(actor, orderId, reference)` in `api-orders.ts`, permission `mark_paid` | An administrator clicks it by hand; the order becomes `PAID` and `grantAccessForOrder` runs | Replace the manual call with a verified provider webhook. **The function already has the right signature** - it takes a provider reference and refuses without one |
 | Refunds | `refundOrder()` / the `refunds` table | Recorded, `provider` required by `chk_refunds_require_provider` | Provider API call, then record the confirmation |
 | Transactional e-mail | `dispatchEmail()` → `email_log` | Rows queue with `status: 'QUEUED'` forever | A mail provider + a worker that flips `QUEUED → SENT/DELIVERED` and stores `provider_message_id` |
 | Password reset | `requestPasswordReset()` → `password_resets` | A token row is created; `ForgotPasswordPage` accepts it | The same mail provider, to deliver the link |
 | Invoices / receipts | `orders.invoice_number`, the `Invoice` concept in the brief | Number generated locally; no PDF produced | A document renderer |
-| Analytics | `src/lib/analytics.ts` | Recomputes revenue and product stats from the local database on every read | Nothing — unless an external BI feed is wanted, in which case the views in `schema.sql` (`v_daily_revenue`, `v_product_sales`, `v_customer_summary`) are already the right shape |
+| Analytics | `src/lib/analytics.ts` | Recomputes revenue and product stats from the local database on every read | Nothing - unless an external BI feed is wanted, in which case the views in `schema.sql` (`v_daily_revenue`, `v_product_sales`, `v_customer_summary`) are already the right shape |
 | Mobile backend | `react-native/src/net/client.ts` | Every request fails with `NETWORK` | **The entire backend.** This is the one integration that blocks a whole client |
 
 ### 11.3 The only network calls that exist
 
 **[Verified]** Exactly two places in the whole repository perform `fetch`:
 
-1. `react-native/src/net/client.ts` — the eighteen routes in §10.3, all to a base URL that does not resolve.
+1. `react-native/src/net/client.ts` - the eighteen routes in §10.3, all to a base URL that does not resolve.
 2. `react-native/src/drm/`'s grant redemption path, which downloads the PDF bytes from the short-lived URL returned by `redeemGrant()` via `react-native-blob-util`.
 
 The web application performs **no `fetch` at all**. **[Verified]** Its only I/O is `localStorage.getItem` / `setItem` and an `<iframe>`/`<embed>` `src` pointing at `/books/*.pdf` in its own bundle.
 
 ### 11.4 Why the absence is a strength, not just a gap
 
-**[Inferred — HIGH]** A less disciplined implementation would have stubbed these with a mock provider — a fake Stripe, a `console.log` mailer. That would be worse, because a mock that returns success teaches the UI to claim things that did not happen, and the founding brief's central rule is that the UI must never do that. Instead every seam returns a **queued** or **pending** state that an administrator can see and act on:
+**[Inferred - HIGH]** A less disciplined implementation would have stubbed these with a mock provider - a fake Stripe, a `console.log` mailer. That would be worse, because a mock that returns success teaches the UI to claim things that did not happen, and the founding brief's central rule is that the UI must never do that. Instead every seam returns a **queued** or **pending** state that an administrator can see and act on:
 
-- `CheckoutSuccessPage`: *"ההזמנה נרשמה במערכת והיא ממתינה לאישור תשלום"* — recorded, awaiting payment confirmation.
+- `CheckoutSuccessPage`: *"ההזמנה נרשמה במערכת והיא ממתינה לאישור תשלום"* - recorded, awaiting payment confirmation.
 - `AdminEmailsPage`: a queue with no send button that pretends to work.
 - `orders.payment_status` stays `PENDING` until a human with `mark_paid` says otherwise.
 
 The consequence for future work is a rule: **when an integration is added, the honest pending state must be replaced, not supplemented.** A `PAID` order that was never captured by a provider is the single worst thing this system could record, and four separate CHECK constraints in `schema.sql` exist to make it unrepresentable.
 
-### 11.5 Figma Make — the one real external dependency
+### 11.5 Figma Make - the one real external dependency
 
 **[Verified]** The web project is built to run inside Figma Make. `.figma/make/site.json` and `dev.json` are consumed by `vite.config.ts`; seven extension-less bash scripts in `.figma/make/` wrap `pnpm` and the `figma make` CLI (`install`, `dev`, `format`, `langserver`, `analyze-routes`, `deploy`, `deploy-preview`). `index.html` carries Figma Make region markers.
 
-This is a **build-and-deploy** integration rather than a runtime one — nothing in the shipped bundle calls Figma. But it does mean `vite.config.ts` is not free to be rewritten: four bespoke plugins and a dev-only kit plugin live there, and removing them breaks the Figma Make workflow even though the app would still build.
+This is a **build-and-deploy** integration rather than a runtime one - nothing in the shipped bundle calls Figma. But it does mean `vite.config.ts` is not free to be rewritten: four bespoke plugins and a dev-only kit plugin live there, and removing them breaks the Figma Make workflow even though the app would still build.
 
 ---
 
@@ -1183,9 +1183,9 @@ export function hasPassword(u: StoredUser): boolean {
 }
 ```
 
-**[Inferred — HIGH]** This is the deliberate resolution of a real product tension: the brief's funnel requires that a purchase not be blocked by account creation (§1 puts *User Creation / Identification* **after** *Payment*), but a protected library is worthless without a credential. The answer is to let the purchase complete and make the password a *later* obligation gated by a dedicated route.
+**[Inferred - HIGH]** This is the deliberate resolution of a real product tension: the brief's funnel requires that a purchase not be blocked by account creation (§1 puts *User Creation / Identification* **after** *Payment*), but a protected library is worthless without a credential. The answer is to let the purchase complete and make the password a *later* obligation gated by a dedicated route.
 
-### 12.2 Credential storage — and its stated limits
+### 12.2 Credential storage - and its stated limits
 
 **[Verified]** `src/lib/auth.ts` header comment is unusually candid and must be read before touching this module:
 
@@ -1193,28 +1193,28 @@ export function hasPassword(u: StoredUser): boolean {
 
 The mechanics:
 
-- `randomSalt()` — 16 bytes from `crypto.getRandomValues`, hex-encoded, with a `Math.random()` fallback.
-- `hashPassword(password, salt)` — `SHA-256("<salt>:<password>")` via `crypto.subtle`, falling back to `fallbackDigest()`, a 4-round FNV-1a variant explicitly commented *"Not cryptographic — a placeholder so the app never keeps plaintext passwords even without WebCrypto."*
-- `verifyPassword()` — a constant-length XOR-accumulate comparison, commented *"avoids leaking hash length differences."*
-- `passwordProblem()` — 8 to 72 characters, printable ASCII only (`^[\x21-\x7E]+$`: no Hebrew, Arabic, emoji, spaces or control characters; every ASCII symbol stays allowed), and at least one letter and one digit. Four Hebrew messages, one of them exported as `PASSWORD_CHAR_RULE` because the same sentence is shown live under the field and again as the refusal. It runs wherever a password is *set* — `LoginPage` in register mode, `SetupPage`, `SetupPasswordPage`, the `api.ts` service layer, and the `signUpWithEmail` / `updatePassword` chokepoints in `supabase-auth.ts` — and never on the way in, so an account opened under the older, looser rule still signs in. **[Verified — customer-facing copy]** None of this is briefed on the screen beforehand: the register and recovery forms carry no standing password hint, and the ceiling refusal is a plain "הסיסמה ארוכה מדי." The number itself is an artefact of bcrypt truncating at 72 bytes — the auth server's detail, not something a customer is asked to memorise.
+- `randomSalt()` - 16 bytes from `crypto.getRandomValues`, hex-encoded, with a `Math.random()` fallback.
+- `hashPassword(password, salt)` - `SHA-256("<salt>:<password>")` via `crypto.subtle`, falling back to `fallbackDigest()`, a 4-round FNV-1a variant explicitly commented *"Not cryptographic - a placeholder so the app never keeps plaintext passwords even without WebCrypto."*
+- `verifyPassword()` - a constant-length XOR-accumulate comparison, commented *"avoids leaking hash length differences."*
+- `passwordProblem()` - 8 to 72 characters, printable ASCII only (`^[\x21-\x7E]+$`: no Hebrew, Arabic, emoji, spaces or control characters; every ASCII symbol stays allowed), and at least one letter and one digit. Four Hebrew messages, one of them exported as `PASSWORD_CHAR_RULE` because the same sentence is shown live under the field and again as the refusal. It runs wherever a password is *set* - `LoginPage` in register mode, `SetupPage`, `SetupPasswordPage`, the `api.ts` service layer, and the `signUpWithEmail` / `updatePassword` chokepoints in `supabase-auth.ts` - and never on the way in, so an account opened under the older, looser rule still signs in. **[Verified - customer-facing copy]** None of this is briefed on the screen beforehand: the register and recovery forms carry no standing password hint, and the ceiling refusal is a plain "הסיסמה ארוכה מדי." The number itself is an artefact of bcrypt truncating at 72 bytes - the auth server's detail, not something a customer is asked to memorise.
 
-**[Verified — enforcement boundary]** The ASCII-only rule is an **application-level** rule. **It cannot currently be guaranteed against direct requests to Supabase Auth**, and no available configuration makes it server-enforced. Checked against the auth server's own source and the current hooks reference:
+**[Verified - enforcement boundary]** The ASCII-only rule is an **application-level** rule. **It cannot currently be guaranteed against direct requests to Supabase Auth**, and no available configuration makes it server-enforced. Checked against the auth server's own source and the current hooks reference:
 
 | Candidate | Verdict |
 |---|---|
-| Required-character setting | composition only — implemented as `strings.ContainsAny`, which requires a class to *appear* and never refuses a character outside the listed sets |
+| Required-character setting | composition only - implemented as `strings.ContainsAny`, which requires a class to *appear* and never refuses a character outside the listed sets |
 | Minimum length | server-enforced, but a length rule says nothing about script |
 | 72-character cap | server-enforced (bcrypt limit); mirrored client-side so the refusal reaches the customer in Hebrew |
-| `password_verification_attempt` hook (Teams/Enterprise) | payload is `{user_id, valid}` and it runs on sign-in — it never receives the password |
+| `password_verification_attempt` hook (Teams/Enterprise) | payload is `{user_id, valid}` and it runs on sign-in - it never receives the password |
 | `before_user_created` hook (Free/Pro) | receives the user record about to be inserted, not the secret |
 | Signup proxied through an Edge Function | does **not** close it: `/auth/v1/signup` stays reachable with the public anon key, so the proxy is one more client, not a gate |
 
-What the server *can* enforce — minimum length, character classes, HaveIBeenPwned rejection — is listed in `supabase/config.toml`, where this boundary is recorded too. Raising the server-side minimum must be staged: an existing account below the new bar receives a `WeakPasswordError` on sign-in. Treat the character rule as a quality-and-supportability rule, not an access-control boundary: a caller who bypasses it affects only their own credential.
-- `toPublicUser(u)` — destructures away `password_hash`, `password_salt` and `password_set` before the record reaches React state. **This is the only thing standing between credential material and the component tree**, and it is applied at every service-layer exit.
+What the server *can* enforce - minimum length, character classes, HaveIBeenPwned rejection - is listed in `supabase/config.toml`, where this boundary is recorded too. Raising the server-side minimum must be staged: an existing account below the new bar receives a `WeakPasswordError` on sign-in. Treat the character rule as a quality-and-supportability rule, not an access-control boundary: a caller who bypasses it affects only their own credential.
+- `toPublicUser(u)` - destructures away `password_hash`, `password_salt` and `password_set` before the record reaches React state. **This is the only thing standing between credential material and the component tree**, and it is applied at every service-layer exit.
 
-**[Verified — CRITICAL]** SHA-256 is a fast hash. Even with a per-user salt, an attacker holding the `localStorage` blob can brute-force it offline at GPU speed. The code says so itself. **This is acceptable only because the entire database is already in the attacker's hands** — anyone who can read `localStorage['casanova_db_v1']` can read every entitlement, order and e-mail in it. The hash is not the boundary; it is a courtesy. When a real backend arrives, `auth.ts` is replaced wholesale, not adapted.
+**[Verified - CRITICAL]** SHA-256 is a fast hash. Even with a per-user salt, an attacker holding the `localStorage` blob can brute-force it offline at GPU speed. The code says so itself. **This is acceptable only because the entire database is already in the attacker's hands** - anyone who can read `localStorage['casanova_db_v1']` can read every entitlement, order and e-mail in it. The hash is not the boundary; it is a courtesy. When a real backend arrives, `auth.ts` is replaced wholesale, not adapted.
 
-### 12.3 Session handling (web) — a user id, not a token
+### 12.3 Session handling (web) - a user id, not a token
 
 **[Verified]** This is the most important thing to know about web authentication, and it is easy to miss because the code looks tidy:
 
@@ -1226,15 +1226,15 @@ export function writeSessionUserId(userId: string | null): void { … }
 
 The entire web session is **a plaintext user id in `localStorage`**. There is no token, no signature, no expiry, no server round trip. **[Verified]** Any script or browser extension with origin access can sign in as any user by writing one string.
 
-**[Inferred — HIGH]** This is not an oversight; it is the correct choice for a static bundle with no server, and the surrounding code is consistent with it — `AppContext` re-derives `user` from the id on every load, and `login()` fixes a stale closure by re-reading rather than trusting captured state. But it means: **no client-side authorisation decision in this app has any security value.** The `guard()`/`can()` machinery is *architecturally* correct and *operationally* meaningless until the service layer runs server-side. §21 treats this at length.
+**[Inferred - HIGH]** This is not an oversight; it is the correct choice for a static bundle with no server, and the surrounding code is consistent with it - `AppContext` re-derives `user` from the id on every load, and `login()` fixes a stale closure by re-reading rather than trusting captured state. But it means: **no client-side authorisation decision in this app has any security value.** The `guard()`/`can()` machinery is *architecturally* correct and *operationally* meaningless until the service layer runs server-side. §21 treats this at length.
 
 ### 12.4 Two-tier authorisation, called twice on purpose
 
 **[Verified]** `src/lib/permissions.ts` states the design in its own header:
 
-> *"`can(role, permission)` is used in two places on purpose: 1. by the layout and pages, to avoid rendering actions a role may not run; 2. by every mutating function in `src/lib/api.ts`, which refuses the operation regardless of what the UI showed. Hiding a button is cosmetic — the service layer check is the one that actually enforces the policy. When this app moves to a real backend the same permission strings become the server-side authorization claims."*
+> *"`can(role, permission)` is used in two places on purpose: 1. by the layout and pages, to avoid rendering actions a role may not run; 2. by every mutating function in `src/lib/api.ts`, which refuses the operation regardless of what the UI showed. Hiding a button is cosmetic - the service layer check is the one that actually enforces the policy. When this app moves to a real backend the same permission strings become the server-side authorization claims."*
 
-**The role → permission matrix [Verified]** — 5 roles, 27 permissions:
+**The role → permission matrix [Verified]** - 5 roles, 27 permissions:
 
 | Permission | SUPER_ADMIN | SUPPORT | FINANCE | CONTENT | MARKETING |
 |---|:-:|:-:|:-:|:-:|:-:|
@@ -1266,15 +1266,15 @@ The entire web session is **a plaintext user id in `localStorage`**. There is no
 | `manage_support` | ✔ | ✔ | | | |
 | `manage_drm` | ✔ | | | | |
 
-Fourteen permissions are `SUPER_ADMIN`-only. **`audit`, `settings`, `security`, `delete_product`, `manage_roles` and `manage_drm` are held by nobody else** — the six capabilities that could conceal or reconfigure the system itself. **[Inferred — HIGH]** That set is the real privilege boundary and should be treated as such in review.
+Fourteen permissions are `SUPER_ADMIN`-only. **`audit`, `settings`, `security`, `delete_product`, `manage_roles` and `manage_drm` are held by nobody else** - the six capabilities that could conceal or reconfigure the system itself. **[Inferred - HIGH]** That set is the real privilege boundary and should be treated as such in review.
 
 **[Verified]** `can()` fails closed on `undefined`: `if (!role) return false;` and `ROLE_PERMISSIONS[role]?.includes(permission) ?? false`. There is no path by which an unrecognised role gains anything.
 
-**[Verified]** A nested guard exists for role escalation. `updateUser()` checks `'users'` first and then, *if the patch touches `admin_role` or `role`*, checks `'manage_roles'` as well — so a SUPPORT administrator can edit a customer but cannot promote anyone. This is the only two-permission function in the codebase and is the pattern to copy for any future field-level privilege.
+**[Verified]** A nested guard exists for role escalation. `updateUser()` checks `'users'` first and then, *if the patch touches `admin_role` or `role`*, checks `'manage_roles'` as well - so a SUPPORT administrator can edit a customer but cannot promote anyone. This is the only two-permission function in the codebase and is the pattern to copy for any future field-level privilege.
 
 ### 12.5 The route-level guard and why it produces an error page
 
-**[Verified]** `src/components/RouteError.tsx` (88 lines) is what an unauthorised route renders. Its rationale, in its own words, is that a silently redirected route teaches a user that the URL they typed was wrong rather than that they lack the role — and that a 404 for an existing page leaks nothing but explains nothing either.
+**[Verified]** `src/components/RouteError.tsx` (88 lines) is what an unauthorised route renders. Its rationale, in its own words, is that a silently redirected route teaches a user that the URL they typed was wrong rather than that they lack the role - and that a 404 for an existing page leaks nothing but explains nothing either.
 
 **[Verified]** All fourteen admin pages use the identical idiom, and the order within it is load-bearing:
 
@@ -1291,36 +1291,36 @@ export default function AdminSecurityPage() {
 
 Hooks before the guard, because an early `return` before `useState` would break React's rules-of-hooks on the render where the role changes. **Do not "optimise" this by moving the guard to the top of the function.**
 
-**[Verified]** `AccessDenied.tsx` (30 lines) takes a `page` prop and renders a Hebrew explanation. It is not a redirect. `AdminLayout.tsx` additionally filters `SideNav` entries by permission, so the denied page is normally unreachable by clicking — which is exactly why the page-level guard still has to exist: the URL bar is not filtered.
+**[Verified]** `AccessDenied.tsx` (30 lines) takes a `page` prop and renders a Hebrew explanation. It is not a redirect. `AdminLayout.tsx` additionally filters `SideNav` entries by permission, so the denied page is normally unreachable by clicking - which is exactly why the page-level guard still has to exist: the URL bar is not filtered.
 
-### 12.6 Mobile authentication — the keychain rules
+### 12.6 Mobile authentication - the keychain rules
 
 **[Verified]** `react-native/src/net/client.ts`'s three rules, quoted from its header because each names a concrete attack:
 
 1. *"The session token lives in the platform keychain, never in AsyncStorage. AsyncStorage is a plaintext XML/plist file that `adb backup`, an iOS unencrypted backup, or any debugging tool can read. A stolen token is a stolen library."*
-2. *"The token is stored `THIS_DEVICE_ONLY`. Restoring a backup onto a second phone must not hand that phone a signed-in session — the device cap in `drm_policies.max_devices_per_user` is meaningless if a backup can clone a slot."* Concretely: `Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY`.
+2. *"The token is stored `THIS_DEVICE_ONLY`. Restoring a backup onto a second phone must not hand that phone a signed-in session - the device cap in `drm_policies.max_devices_per_user` is meaningless if a backup can clone a slot."* Concretely: `Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY`.
 3. Every request carries the client identity headers, so the kill switch cannot be opted out of.
 
 Implementation details worth preserving:
 
 - Service name is a constant: `TOKEN_SERVICE = 'com.casanova.reader.session'`.
-- The keychain **username slot carries the user id**, not a name — commented *"so a cold start can render 'signed in as' before the first network round trip."*
+- The keychain **username slot carries the user id**, not a name - commented *"so a cold start can render 'signed in as' before the first network round trip."*
 - Both values are mirrored into module-level `cachedToken` / `cachedUserId`, and `request()` prefers the cache, falling back to a keychain read. `clearSession()` nulls the cache **before** attempting the keychain reset, commented *"the in-memory copy above is already gone, which is what matters."*
-- A keychain **read** failure returns `null` (treated as signed out) rather than throwing — *"A keychain read fails on a device whose secure enclave is unavailable or after an OS restore."*
+- A keychain **read** failure returns `null` (treated as signed out) rather than throwing - *"A keychain read fails on a device whose secure enclave is unavailable or after an OS restore."*
 
 **[Verified]** `AuthContext`'s cold start treats the stored token as unproven: *"A stored token is a claim, not proof."* It calls `fetchMe()`; a failure clears the session and sets `phase: 'signed-out'`. There is no code path that renders authenticated UI from the keychain alone.
 
-### 12.7 Device authorisation — the third axis
+### 12.7 Device authorisation - the third axis
 
 **[Verified]** Authentication here is not two-factor (who you are + what you know) but three-axis: **account** (who), **session** (token), **device session** (where). A grant is bound to all three, and revoking any one kills access immediately:
 
 | Axis | Row | Revoked by | Effect |
 |---|---|---|---|
-| Account | `users.account_status` | `setAccountStatus()` (`block_user`) | `SUSPENDED`/`CLOSED` — login refused |
+| Account | `users.account_status` | `setAccountStatus()` (`block_user`) | `SUSPENDED`/`CLOSED` - login refused |
 | Entitlement | `user_products.access_status` | `revokeAccess()` (`grant_access`) | `trg_user_product_revokes_grants` revokes every grant |
 | Device | `device_sessions.revoked` | `revokeDeviceSession()` (`security`) or the customer's own button | `trg_device_session_revokes_grants` revokes every grant |
 
-**[Verified]** `revokeAccess()`'s comment explains why the grants are kept rather than deleted: *"Deleting the entitlement row removes the thing the grants point at, but not the grants themselves — they are kept, marked revoked, so the audit trail still shows which file was in whose hands when access was pulled."* **Revocation is a state change, never a deletion.** This holds in both clients and in SQL, and it is the reason the CMS can answer "was this book on that phone last Tuesday?".
+**[Verified]** `revokeAccess()`'s comment explains why the grants are kept rather than deleted: *"Deleting the entitlement row removes the thing the grants point at, but not the grants themselves - they are kept, marked revoked, so the audit trail still shows which file was in whose hands when access was pulled."* **Revocation is a state change, never a deletion.** This holds in both clients and in SQL, and it is the reason the CMS can answer "was this book on that phone last Tuesday?".
 
 **[Verified]** The customer can revoke their own device (`DevicesScreen.tsx` → `revokeDevice()`), and the UI warns when it is the device currently in use: *"זהו המכשיר שבו אתם משתמשים כרגע. ההסרה תנתק את הקריאה מיידית ותמחק כל עותק שמור במכשיר זה."* Allowed, but not by accident.
 
@@ -1330,7 +1330,7 @@ Implementation details worth preserving:
 
 > *"Destroying every local copy is not optional and is not the user's choice."*
 
-`wipeAll()` deletes every cached PDF in the app sandbox. The same destruction runs on a `blocked` boot (kill switch, forced upgrade) and in `App.tsx`'s `CrashBoundary`. **[Inferred — HIGH]** Three independent triggers converging on one destructive function is the mobile expression of "we sell permission, not a file": there is no state in which the app is unusable but the bytes remain.
+`wipeAll()` deletes every cached PDF in the app sandbox. The same destruction runs on a `blocked` boot (kill switch, forced upgrade) and in `App.tsx`'s `CrashBoundary`. **[Inferred - HIGH]** Three independent triggers converging on one destructive function is the mobile expression of "we sell permission, not a file": there is no state in which the app is unusable but the bytes remain.
 
 ---
 
@@ -1338,9 +1338,9 @@ Implementation details worth preserving:
 
 ### 13.1 There is no environment configuration
 
-**[Verified — HIGH]** No `.env`, no `.env.example`, no `import.meta.env.*` read anywhere in `src/`, no `process.env` read in application code, no config file loaded at runtime. The `.gitignore` contains `.env` patterns **pre-emptively** — they are there for a future that has not arrived.
+**[Verified - HIGH]** No `.env`, no `.env.example`, no `import.meta.env.*` read anywhere in `src/`, no `process.env` read in application code, no config file loaded at runtime. The `.gitignore` contains `.env` patterns **pre-emptively** - they are there for a future that has not arrived.
 
-**[Inferred — HIGH]** This follows from the architecture. A Vite static bundle has no secret to hold: anything compiled into it is public. So instead of environment variables, **all runtime configuration is data**.
+**[Inferred - HIGH]** This follows from the architecture. A Vite static bundle has no secret to hold: anything compiled into it is public. So instead of environment variables, **all runtime configuration is data**.
 
 ### 13.2 Configuration is a database row
 
@@ -1368,7 +1368,7 @@ and `bootCheck()` overrides them from `/settings/public`. **Two of those four ar
 | DRM policy per scope | `drm_policies` | `AdminSecurityPage` |
 | Coupons | `coupons` | `AdminCmsPage` |
 | Categories | `categories` | `AdminProductsPage` |
-| Mobile API base URL | `AsyncStorage['casanova.api_base_url']` | `setApiBaseUrl()` — a QA affordance, **not** exposed in any shipped screen |
+| Mobile API base URL | `AsyncStorage['casanova.api_base_url']` | `setApiBaseUrl()` - a QA affordance, **not** exposed in any shipped screen |
 
 ### 13.3 The mobile base-URL override
 
@@ -1379,11 +1379,11 @@ export const DEFAULT_API_BASE_URL = 'https://api.casanova.local';
 const OVERRIDE_KEY = 'casanova.api_base_url';
 ```
 
-`loadApiBaseUrl()` reads the override, validates it against `/^https?:\/\//`, strips trailing slashes, and falls back to the default on a corrupt store — *"Falling back to the compiled default keeps the app bootable rather than stranded on an error screen the user cannot act on."* `setApiBaseUrl()` **throws** (the only throwing function in the mobile codebase) with a Hebrew message, because it is a developer affordance with no UI to render a `Result`.
+`loadApiBaseUrl()` reads the override, validates it against `/^https?:\/\//`, strips trailing slashes, and falls back to the default on a corrupt store - *"Falling back to the compiled default keeps the app bootable rather than stranded on an error screen the user cannot act on."* `setApiBaseUrl()` **throws** (the only throwing function in the mobile codebase) with a Hebrew message, because it is a developer affordance with no UI to render a `Result`.
 
 The doc comment states the whole wiring plan in one sentence: *"Pointing `API_BASE_URL` at the deployed backend is the only wiring this file needs before a real device can sign in."*
 
-**[Verified]** `https://api.casanova.local` does not resolve. `.local` is mDNS-reserved. **[Inferred — HIGH]** It was chosen so that a misconfigured build fails loudly and immediately rather than silently reaching a real host.
+**[Verified]** `https://api.casanova.local` does not resolve. `.local` is mDNS-reserved. **[Inferred - HIGH]** It was chosen so that a misconfigured build fails loudly and immediately rather than silently reaching a real host.
 
 ### 13.4 Mobile timing constants
 
@@ -1396,9 +1396,9 @@ The doc comment states the whole wiring plan in one sentence: *"Pointing `API_BA
 | `ACTIVITY_WINDOW_MS` | `120_000` | Activity newer than this counts as "the reader is in use" |
 | `GRANT_REVALIDATION_MS` | `60_000` | *"A grant is minted for 30 minutes at most; this is the interval at which the reader notices an administrator revoked it."* |
 
-**[Inferred — HIGH]** These are coupled to server-side values by inequality, not by configuration. **If an administrator sets `session_timeout_minutes` below ~2 in the CMS, or a future backend mints grants with a TTL under 60 s, the mobile reader breaks silently.** Nothing validates the relationship. This is a real coupling to check before changing either side.
+**[Inferred - HIGH]** These are coupled to server-side values by inequality, not by configuration. **If an administrator sets `session_timeout_minutes` below ~2 in the CMS, or a future backend mints grants with a TTL under 60 s, the mobile reader breaks silently.** Nothing validates the relationship. This is a real coupling to check before changing either side.
 
-`CLIENT`, `APP_VERSION` (`DeviceInfo.getVersion()`), `BUILD_NUMBER` (`Number(DeviceInfo.getBuildNumber()) || 0`) and `DEVICE_PLATFORM` complete the identity block. The comment on `BUILD_NUMBER` explains the integer choice: *"a semver string cannot be compared safely in SQL — a forced-update check has to be `build_number >= mobile_min_build`."*
+`CLIENT`, `APP_VERSION` (`DeviceInfo.getVersion()`), `BUILD_NUMBER` (`Number(DeviceInfo.getBuildNumber()) || 0`) and `DEVICE_PLATFORM` complete the identity block. The comment on `BUILD_NUMBER` explains the integer choice: *"a semver string cannot be compared safely in SQL - a forced-update check has to be `build_number >= mobile_min_build`."*
 
 ### 13.5 Build configuration
 
@@ -1410,7 +1410,7 @@ The doc comment states the whole wiring plan in one sentence: *"Pointing `API_BA
 
 ### 13.6 Content Security Policy
 
-**[Verified]** The CSP is not in `index.html`. It is injected as a `<meta http-equiv>` by the `figma-content-security-policy` plugin at `injectTo: 'head-prepend'`, with a comment explaining why not `head`: *"a meta policy only governs resources discovered after it is parsed, and appending to the head puts it after the entry `<script>` the build injects — which would leave the application bundle itself outside the policy."*
+**[Verified]** The CSP is not in `index.html`. It is injected as a `<meta http-equiv>` by the `figma-content-security-policy` plugin at `injectTo: 'head-prepend'`, with a comment explaining why not `head`: *"a meta policy only governs resources discovered after it is parsed, and appending to the head puts it after the entry `<script>` the build injects - which would leave the application bundle itself outside the policy."*
 
 Production directives, verbatim:
 
@@ -1428,11 +1428,11 @@ The dev policy adds `'unsafe-inline'` to `script-src` (React Refresh preamble) a
 
 Three decisions in the source are reasoned rather than defaulted, and each is a warning against tightening blindly:
 
-- `object-src 'none'` — *"The reader embeds PDFs through an `<iframe>`, so no plugin document is ever legitimate here and `<object>`/`<embed>` are refused outright."*
-- `style-src 'unsafe-inline'` **stays in both policies** — *"`useScreenProtection` injects a `<style>` element at runtime to blank the page for printing, and a nonce cannot cover an element application code creates itself."* Removing it breaks the print deterrent.
-- `img-src … https:` — *"Covers and gallery images come from the CMS and may point at any https origin, so img-src cannot be narrowed to 'self' without breaking assets an administrator uploaded."*
+- `object-src 'none'` - *"The reader embeds PDFs through an `<iframe>`, so no plugin document is ever legitimate here and `<object>`/`<embed>` are refused outright."*
+- `style-src 'unsafe-inline'` **stays in both policies** - *"`useScreenProtection` injects a `<style>` element at runtime to blank the page for printing, and a nonce cannot cover an element application code creates itself."* Removing it breaks the print deterrent.
+- `img-src … https:` - *"Covers and gallery images come from the CMS and may point at any https origin, so img-src cannot be narrowed to 'self' without breaking assets an administrator uploaded."*
 
-**[Verified — acknowledged gap]** The plugin's own doc comment names the hole: *"A meta policy cannot express `frame-ancestors`, `report-uri` or `sandbox`, so clickjacking protection still has to be delivered as a real HTTP header by whatever serves the built files."* **Nothing in this repository serves that header.** For an app whose reader is an iframe, clickjacking protection is an open deployment task, not a code task.
+**[Verified - acknowledged gap]** The plugin's own doc comment names the hole: *"A meta policy cannot express `frame-ancestors`, `report-uri` or `sandbox`, so clickjacking protection still has to be delivered as a real HTTP header by whatever serves the built files."* **Nothing in this repository serves that header.** For an app whose reader is an iframe, clickjacking protection is an open deployment task, not a code task.
 
 **[Verified]** A second comment records a future hazard: *"Turning on analytics in `site.json` injects an inline gtag snippet and a googletagmanager.com script; both would be blocked until script-src is widened to match."* `site.json` currently has analytics off.
 
@@ -1440,7 +1440,7 @@ Three decisions in the source are reasoned rather than defaulted, and each is a 
 
 **[Verified]** `.gitattributes` (58 lines) pins `eol=lf` on the seven `.figma/make/*` scripts, with the reason spelled out: *"a CRLF after the shebang makes `#!/usr/bin/env bash\r` an interpreter that does not exist."* On a Windows workstation this is the difference between a working deploy script and a mysterious one.
 
-**[Verified]** `react-native/android/gradle.properties`: `newArchEnabled=true`, `hermesEnabled=true`, all four ABIs, `org.gradle.jvmargs=-Xmx4096m`. `android/build.gradle`: `buildToolsVersion 35.0.0`, `minSdkVersion 24`, `compileSdk 35`, `targetSdk 35`, `ndkVersion 27.1.12297006`, `kotlinVersion 2.0.21`. `versionCode = 1`, `versionName = "1.0.0"` — and `versionCode` is what `mobile_min_build` gates on.
+**[Verified]** `react-native/android/gradle.properties`: `newArchEnabled=true`, `hermesEnabled=true`, all four ABIs, `org.gradle.jvmargs=-Xmx4096m`. `android/build.gradle`: `buildToolsVersion 35.0.0`, `minSdkVersion 24`, `compileSdk 35`, `targetSdk 35`, `ndkVersion 27.1.12297006`, `kotlinVersion 2.0.21`. `versionCode = 1`, `versionName = "1.0.0"` - and `versionCode` is what `mobile_min_build` gates on.
 
 **[Verified]** `react-native/metro.config.js` carries a `blockList` excluding `../node_modules`, `../dist` and `../src`, because *"Metro walks the file system, not the module graph, so without an explicit block it will happily resolve `react` or `react-dom` out of `../node_modules` and bundle a web copy of React into the phone build."* **This is the single most fragile configuration line in the mobile project**: the two projects are sibling directories, and deleting this block produces a build that succeeds and an app that does not run.
 
@@ -1452,13 +1452,13 @@ Nine features carry the product. Each is described by what it does, where it liv
 
 ### 14.1 First-run bootstrap (the no-code CMS)
 
-**[Verified]** `emptyDatabase()` in `db.ts` returns empty arrays for everything except `drm_policies: [defaultDrmPolicy()]` and a neutral `settings` row. There is **no seed data at all** — no demo product, no lorem-ipsum landing copy. A fresh visitor sees a structurally complete site with nothing in it.
+**[Verified]** `emptyDatabase()` in `db.ts` returns empty arrays for everything except `drm_policies: [defaultDrmPolicy()]` and a neutral `settings` row. There is **no seed data at all** - no demo product, no lorem-ipsum landing copy. A fresh visitor sees a structurally complete site with nothing in it.
 
 `isBootstrapRequired()` returns true while no administrator exists. `AppContext` exposes it as `bootstrapRequired`, `AdminLayout` redirects to `/setup` before checking authentication, and `SetupPage` (156 lines) creates the first `SUPER_ADMIN` via `bootstrapAdmin()`.
 
-**[Verified — the deadlock this creates]** `bootstrapRequired` gates the admin, the admin is the only route to the CMS, and the CMS is the only source of landing-page copy. So a brand-new deployment shows a visitor an empty storefront until someone navigates to `/setup` by hand. Nothing links to `/setup` from the public pages. **[Inferred — HIGH]** This is intentional — the alternative is seeded marketing copy the operator did not write — but it means **the first task on any new deployment is `/#/setup`, and that is documented nowhere** (there is no README, §26).
+**[Verified - the deadlock this creates]** `bootstrapRequired` gates the admin, the admin is the only route to the CMS, and the CMS is the only source of landing-page copy. So a brand-new deployment shows a visitor an empty storefront until someone navigates to `/setup` by hand. Nothing links to `/setup` from the public pages. **[Inferred - HIGH]** This is intentional - the alternative is seeded marketing copy the operator did not write - but it means **the first task on any new deployment is `/#/setup`, and that is documented nowhere** (there is no README, §26).
 
-### 14.2 CMS — fixed slots and free-form sections
+### 14.2 CMS - fixed slots and free-form sections
 
 **[Verified]** Two distinct content models live side by side, and confusing them is the most common way to break the landing page:
 
@@ -1470,11 +1470,11 @@ Nine features carry the product. Each is described by what it does, where it liv
 
 **[Verified]** `CmsHint.tsx` (27 lines) is the mechanism that makes the empty state honest. An unset slot renders `CmsHint` **to an administrator and nothing at all to a visitor**. It never falls back to placeholder copy.
 
-**[Verified]** `AdminSettingsPage` writes the copy fields **even when empty**, with the reason inline: *"Written even when empty on purpose: clearing a field here has to clear it on the page, not silently leave last month's copy up."* `trust_badges` is edited one entry per line — the same convention the HERO block uses for a multi-line title.
+**[Verified]** `AdminSettingsPage` writes the copy fields **even when empty**, with the reason inline: *"Written even when empty on purpose: clearing a field here has to clear it on the page, not silently leave last month's copy up."* `trust_badges` is edited one entry per line - the same convention the HERO block uses for a multi-line title.
 
-**[Verified]** CMS backup and restore exist (`api.ts`, "CMS backup / restore" section) — the only import/export surface in the app.
+**[Verified]** CMS backup and restore exist (`api.ts`, "CMS backup / restore" section) - the only import/export surface in the app.
 
-### 14.3 Commerce — catalogue, checkout, entitlement
+### 14.3 Commerce - catalogue, checkout, entitlement
 
 **[Verified]** The spine, already traced in §8.3, restated as a feature:
 
@@ -1482,12 +1482,12 @@ Nine features carry the product. Each is described by what it does, where it liv
 
 The two properties that make this a commerce system rather than a form:
 
-1. **The client's arithmetic is display-only.** `CheckoutPage` computes `couponDiscount` and `finalPrice` locally to render them, then sends `product_id`, names, `email`, `phone` and `coupon_code` — never a price. `checkout()` re-derives the unit price with `effectivePrice(product)`, looks the coupon up with `findCoupon(code)`, rejects an unknown or expired code with `VALIDATION`, and recomputes the discount from the stored row. **[Verified]** A tampered client can change what it shows itself but not what it is charged.
-2. **Money is never invented.** `checkout()` cannot produce a `PAID` order. `refund_execution_enabled` cannot be turned on without a `payment_provider`, and `AdminSettingsPage` refuses with: *"לא ניתן לאפשר ביצוע החזרים ללא הגדרת ספק תשלומים — המערכת לא תטען שהכסף הוחזר"* — "the system will not claim the money was refunded."
+1. **The client's arithmetic is display-only.** `CheckoutPage` computes `couponDiscount` and `finalPrice` locally to render them, then sends `product_id`, names, `email`, `phone` and `coupon_code` - never a price. `checkout()` re-derives the unit price with `effectivePrice(product)`, looks the coupon up with `findCoupon(code)`, rejects an unknown or expired code with `VALIDATION`, and recomputes the discount from the stored row. **[Verified]** A tampered client can change what it shows itself but not what it is charged.
+2. **Money is never invented.** `checkout()` cannot produce a `PAID` order. `refund_execution_enabled` cannot be turned on without a `payment_provider`, and `AdminSettingsPage` refuses with: *"לא ניתן לאפשר ביצוע החזרים ללא הגדרת ספק תשלומים - המערכת לא תטען שהכסף הוחזר"* - "the system will not claim the money was refunded."
 
-**[Verified]** Coupons: `PERCENTAGE` or `FIXED_AMOUNT`, `minimum_order`, `usage_limit`, `status`, `times_used`. `findCoupon()` normalises to upper case and returns `undefined` for expired or exhausted codes, so an invalid code is indistinguishable from a nonexistent one. `redeemCoupon()` increments `times_used` — and is called from `checkout()`, not from the UI.
+**[Verified]** Coupons: `PERCENTAGE` or `FIXED_AMOUNT`, `minimum_order`, `usage_limit`, `status`, `times_used`. `findCoupon()` normalises to upper case and returns `undefined` for expired or exhausted codes, so an invalid code is indistinguishable from a nonexistent one. `redeemCoupon()` increments `times_used` - and is called from `checkout()`, not from the UI.
 
-**[Verified — dead feature]** `AppContext` exposes a complete cart API (`cart`, `cartLines`, `cartTotal`, `addToCart`, `removeFromCart`, `clearCart`, `selectedProduct`, `setSelectedProduct`) and **no page uses it**. `checkout()` is single-item with `quantity: 1` hardcoded, and `order_items` is always a one-element array. The multi-item data model exists in the types and in SQL (`chk_item_arithmetic`, `chk_order_total_arithmetic` both handle `quantity > 1`), so this is a UI gap, not a schema gap.
+**[Verified - dead feature]** `AppContext` exposes a complete cart API (`cart`, `cartLines`, `cartTotal`, `addToCart`, `removeFromCart`, `clearCart`, `selectedProduct`, `setSelectedProduct`) and **no page uses it**. `checkout()` is single-item with `quantity: 1` hardcoded, and `order_items` is always a one-element array. The multi-item data model exists in the types and in SQL (`chk_item_arithmetic`, `chk_order_total_arithmetic` both handle `quantity > 1`), so this is a UI gap, not a schema gap.
 
 ### 14.4 The web protected reader
 
@@ -1506,13 +1506,13 @@ return `${base}#${params.join('&')}`;
 
 Four consequences, each verified in the source comments:
 
-- `toolbar=0&navpanes=0&scrollbar=0` removes the viewer's download and print buttons — *"That toolbar is otherwise a one-click download and print path sitting inside the reader, and it is not covered by any DOM-level deterrent because it belongs to the browser's PDF viewer, not to our document."*
-- **`view=FitH` and an explicit `zoom` are mutually exclusive** — *"sending both leaves the viewer free to honour either — so exactly one is emitted."*
+- `toolbar=0&navpanes=0&scrollbar=0` removes the viewer's download and print buttons - *"That toolbar is otherwise a one-click download and print path sitting inside the reader, and it is not covered by any DOM-level deterrent because it belongs to the browser's PDF viewer, not to our document."*
+- **`view=FitH` and an explicit `zoom` are mutually exclusive** - *"sending both leaves the viewer free to honour either - so exactly one is emitted."*
 - Chromium's PDFium honours the fragment **only on a full document load**. A hash-only change to an open PDF is ignored. The reader therefore keys its `<iframe>` on page **and** zoom so either one remounts the element.
-- That remount costs a re-parse per step, *"which is why the controls move in discrete rungs rather than tracking a slider or a pinch gesture."* **This is the origin of the +/− text-size buttons** — a smooth zoom is not implementable in this architecture, and the discrete rungs are a consequence, not a design preference.
-- The comments are explicit that these are *"viewer hints rather than a security boundary — a determined visitor can still reach the file through developer tools."*
+- That remount costs a re-parse per step, *"which is why the controls move in discrete rungs rather than tracking a slider or a pinch gesture."* **This is the origin of the +/− text-size buttons** - a smooth zoom is not implementable in this architecture, and the discrete rungs are a consequence, not a design preference.
+- The comments are explicit that these are *"viewer hints rather than a security boundary - a determined visitor can still reach the file through developer tools."*
 
-**`useScreenProtection(options)`** — the behaviour layer. Seven policy flags map to five deterrents:
+**`useScreenProtection(options)`** - the behaviour layer. Seven policy flags map to five deterrents:
 
 | Deterrent | Events | Listeners |
 |---|---|---|
@@ -1525,10 +1525,10 @@ Four consequences, each verified in the source comments:
 Three details that must not be broken by a refactor:
 
 1. **The effect installs its listeners exactly once** (`}, []`). Policy changes are read through `optionsRef.current`. The comment: *"tearing down and re-adding document listeners on each policy object identity change would open gaps where nothing is protected."*
-2. **Ctrl/Cmd+U is gated on `blockCopy`, not on the capture flags**, and is placed *before* the early `return` — *"Ctrl/Cmd+U opens view-source for this page, which prints the reader's markup — including the iframe src, i.e. a direct URL to the content file. That is the shortest path from 'protected reader' to 'download link'."*
-3. **Ctrl+Shift+C is deliberately not intercepted** — *"it is the element picker, and reporting it would fill the log with noise that hides real capture attempts."*
+2. **Ctrl/Cmd+U is gated on `blockCopy`, not on the capture flags**, and is placed *before* the early `return` - *"Ctrl/Cmd+U opens view-source for this page, which prints the reader's markup - including the iframe src, i.e. a direct URL to the content file. That is the shortest path from 'protected reader' to 'download link'."*
+3. **Ctrl+Shift+C is deliberately not intercepted** - *"it is the element picker, and reporting it would fill the log with noise that hides real capture attempts."*
 
-The hook's own scope statement is the honest summary: *"a web page cannot stop a camera, an OS-level screenshot, or a browser extension."* Attribution — *"the part that actually deters redistribution"* — is the watermark, not this hook.
+The hook's own scope statement is the honest summary: *"a web page cannot stop a camera, an OS-level screenshot, or a browser extension."* Attribution - *"the part that actually deters redistribution"* - is the watermark, not this hook.
 
 ### 14.5 Watermarking and attribution
 
@@ -1539,10 +1539,10 @@ The hook's own scope statement is the honest summary: *"a web page cannot stop a
 
 **[Verified]** `AdminSecurityPage`'s `FLAG_FIELDS` attach an honest `hint` to each of the seven toggles. Two are load-bearing because they contradict what the toggle's name implies:
 
-- `block_print`: *"הדפסה מתוך תצוגת ה־PDF של הדפדפן אינה נחסמת בדפדפן"* — printing from inside the browser's PDF view is **not** blocked.
-- `block_screenshots`: *"אינה עוצרת צילום ברמת מערכת ההפעלה"* — does not stop an OS-level screenshot.
+- `block_print`: *"הדפסה מתוך תצוגת ה־PDF של הדפדפן אינה נחסמת בדפדפן"* - printing from inside the browser's PDF view is **not** blocked.
+- `block_screenshots`: *"אינה עוצרת צילום ברמת מערכת ההפעלה"* - does not stop an OS-level screenshot.
 
-**[Inferred — HIGH]** These hints are the reason the mobile client exists. The web reader deters; the phone prevents.
+**[Inferred - HIGH]** These hints are the reason the mobile client exists. The web reader deters; the phone prevents.
 
 ### 14.6 The mobile protected reader
 
@@ -1551,20 +1551,20 @@ The hook's own scope statement is the honest summary: *"a web page cannot stop a
 - `ReaderScreen` calls `issueGrant()` → receives a **token** → `redeemGrant(token, productId)` → receives a short-lived URL → downloads with `react-native-blob-util` into the app sandbox → renders with `react-native-pdf`.
 - Re-validation every `GRANT_REVALIDATION_MS` (60 s) and a heartbeat every `SESSION_HEARTBEAT_MS` (60 s), gated on `ACTIVITY_WINDOW_MS` (120 s) so an idle reader does not extend its own session.
 - `LibraryContext` reloads on **focus**, not on a timer: *"a phone that polls every few seconds is a phone with a flat battery."* A second effect purges the vault copy of any entitlement that stopped being live: *"Waiting for the TTL would leave a revoked book sitting in the sandbox."*
-- Offline caching is a **grant scope** (`OFFLINE_CACHE`), single-use by `chk_grant_offline_single_use`, with a TTL required by `chk_drm_offline_needs_ttl`, and purged at boot by `purgeExpired()` — which reports `OFFLINE_EXPIRED` for each title it deletes.
+- Offline caching is a **grant scope** (`OFFLINE_CACHE`), single-use by `chk_grant_offline_single_use`, with a TTL required by `chk_drm_offline_needs_ttl`, and purged at boot by `purgeExpired()` - which reports `OFFLINE_EXPIRED` for each title it deletes.
 
-### 14.7 Native capture protection — prevention on Android, detection on iOS
+### 14.7 Native capture protection - prevention on Android, detection on iOS
 
 **[Verified]** The asymmetry is imposed by the platforms, not chosen:
 
 | | Android | iOS |
 |---|---|---|
 | Mechanism | `FLAG_SECURE` on the window | Privacy cover + capture notifications |
-| Kind | **Prevention** — the OS refuses to render into a capture buffer | **Detection and concealment** — the OS permits capture and reports it |
+| Kind | **Prevention** - the OS refuses to render into a capture buffer | **Detection and concealment** - the OS permits capture and reports it |
 | Where | `MainActivity.kt`: set **before** `super.onCreate()`, re-asserted in `onWindowFocusChanged` when `!isShieldSuppressedByPolicy` | `ScreenShield.swift` (828 lines): cover on `willResignActive`, `capturedDidChange`, `connectDidChange`, `userDidTakeScreenshot` |
-| Extras | — | Secure-text-field layer lift, excluded from `canProtectSwitcher()`; PDFKit long-press removal by class-name walking |
+| Extras | - | Secure-text-field layer lift, excluded from `canProtectSwitcher()`; PDFKit long-press removal by class-name walking |
 
-**[Verified]** `userDidTakeScreenshot` exists for **attribution**, not prevention — it cannot stop the screenshot, so it records who took one.
+**[Verified]** `userDidTakeScreenshot` exists for **attribution**, not prevention - it cannot stop the screenshot, so it records who took one.
 
 **[Verified]** `ScreenShield.m` declares nine `RCT_EXTERN_METHOD`s against the Swift module, with a warning that is the most fragile thing in the mobile codebase:
 
@@ -1574,14 +1574,14 @@ The hook's own scope statement is the honest summary: *"a web page cannot stop a
 
 **[Verified]** `platform_settings.mobile_app_enabled` + `mobile_min_build`, evaluated in `bootCheck()` **before any stored credential is read**. `BUILD_NUMBER` (an integer) is compared against `mobile_min_build`; `X-Casanova-Build` carries it on every request so the server can enforce the same rule independently.
 
-On a network failure `bootCheck()` returns `mobile_app_enabled: false` with the neutral message *"לא ניתן לאמת את תקינות האפליקציה מול השרת. נסו שוב בעוד כמה דקות."* — **fail closed**. The comment: *"Failing open here would let a network outage become a way to run a build that was pulled for a security reason."*
+On a network failure `bootCheck()` returns `mobile_app_enabled: false` with the neutral message *"לא ניתן לאמת את תקינות האפליקציה מול השרת. נסו שוב בעוד כמה דקות."* - **fail closed**. The comment: *"Failing open here would let a network outage become a way to run a build that was pulled for a security reason."*
 
 Two distinct Hebrew refusals, because *"'the app is disabled' reads very differently from 'you need to update'"*:
 
 - `mobile_app_enabled === false` → *"האפליקציה אינה זמינה כרגע. הספרים שלכם זמינים לקריאה דרך האתר."*
 - `BUILD_NUMBER < mobile_min_build` → *"גרסה N של האפליקציה אינה נתמכת יותר. עדכנו לגרסה החדשה כדי להמשיך לקרוא."*
 
-Both set `phase: 'blocked'`, which `RootNavigator` renders as `GateScreen` — and `AuthContext` responds by wiping the vault and clearing the session (§12.8).
+Both set `phase: 'blocked'`, which `RootNavigator` renders as `GateScreen` - and `AuthContext` responds by wiping the vault and clearing the session (§12.8).
 
 **[Verified]** `android/build.gradle` has `versionCode = 1` / `versionName = "1.0.0"`. **Releasing a security fix therefore requires bumping `versionCode` and then raising `mobile_min_build` in the CMS.** Forgetting the bump makes the kill switch unable to target the vulnerable build. This coupling is documented nowhere outside the source comments.
 
@@ -1589,53 +1589,53 @@ Both set `phase: 'blocked'`, which `RootNavigator` renders as `GateScreen` — a
 
 **[Verified]** `SupportPage` → `createInquiry()` → a real ticket number from `settings.inquiry_prefix` → visible immediately in `AdminSupportPage`. The page header is explicit that nothing is faked: *"Nothing is emailed to a third party and nothing is faked: while no mail provider is configured the acknowledgement stays queued in the CMS mail log."* `listMyInquiries(actor)` lets a signed-in visitor track their own tickets.
 
-**[Verified]** `AdminCrmPage` (883 lines) manages `crm_leads`; `source` includes `MOBILE_APP` in both the TypeScript union and the SQL CHECK (§9.6). `api-support.ts`'s `getCustomerProfile()` aggregates orders, paid totals, refunds, entitlements, inquiries and first/last purchase into one view — the only cross-entity read in the service layer.
+**[Verified]** `AdminCrmPage` (883 lines) manages `crm_leads`; `source` includes `MOBILE_APP` in both the TypeScript union and the SQL CHECK (§9.6). `api-support.ts`'s `getCustomerProfile()` aggregates orders, paid totals, refunds, entitlements, inquiries and first/last purchase into one view - the only cross-entity read in the service layer.
 
-**[Verified]** `analytics.ts` and `alerts.ts` **store nothing**. Both recompute on every read. `AdminDashboardPage` and `AdminFinancePage` consume them; `AdminAlertsPage` renders the alert list and its count badges `SideNav`. SQL mirrors the same philosophy with `v_daily_revenue`, `v_product_sales`, `v_customer_summary` and `v_order_refunds` — and by deliberately giving `orders` **no** `refunded_amount` or `refund_status` column.
+**[Verified]** `analytics.ts` and `alerts.ts` **store nothing**. Both recompute on every read. `AdminDashboardPage` and `AdminFinancePage` consume them; `AdminAlertsPage` renders the alert list and its count badges `SideNav`. SQL mirrors the same philosophy with `v_daily_revenue`, `v_product_sales`, `v_customer_summary` and `v_order_refunds` - and by deliberately giving `orders` **no** `refunded_amount` or `refund_status` column.
 
-**[Inferred — HIGH]** Deriving rather than storing is what keeps the four CHECK constraints honest. A stored `refunded_amount` could drift from the `refunds` table; a view cannot.
+**[Inferred - HIGH]** Deriving rather than storing is what keeps the four CHECK constraints honest. A stored `refunded_amount` could drift from the `refunds` table; a view cannot.
 
-### 14.10 Content upload — and its hard ceiling
+### 14.10 Content upload - and its hard ceiling
 
 **[Verified]** `readAssetFile(file)` in `api.ts:827` is the only ingest path. It checks `settings.max_upload_bytes` (default `10_485_760` = 10 MB), then reads the file with `FileReader.readAsDataURL` and returns a **data URL**. That string becomes `products.content_url` and is persisted inside `localStorage['casanova_db_v1']`.
 
-**[Verified — STRUCTURAL LIMIT]** A data URL inflates the payload by 4/3. The 10 MB default therefore writes **~13.3 MB of base64 into a single `localStorage` key**, against a browser quota that is typically 5 MB per origin. The upload will fail at the `setItem`, not at the size check. The error message anticipates exactly this and says what to do instead:
+**[Verified - STRUCTURAL LIMIT]** A data URL inflates the payload by 4/3. The 10 MB default therefore writes **~13.3 MB of base64 into a single `localStorage` key**, against a browser quota that is typically 5 MB per origin. The upload will fail at the `setItem`, not at the size check. The error message anticipates exactly this and says what to do instead:
 
-> *"הקובץ גדול מדי … המגבלה היא …KB — יש להעלות קבצים גדולים לאחסון חיצוני ולהדביק את הכתובת שלהם."*
+> *"הקובץ גדול מדי … המגבלה היא …KB - יש להעלות קבצים גדולים לאחסון חיצוני ולהדביק את הכתובת שלהם."*
 > *"…upload large files to external storage and paste their address."*
 
-**[Inferred — HIGH]** The intended production path is a pasted URL to external storage, and `content_url` is designed to hold either. `public/books/Senia_book.pdf` is served from the bundle instead — a third path. **Any feature that touches content delivery must decide which of the three it means**, and the DRM model in §14.4/§14.6 assumes the URL is short-lived and grant-issued, which none of the three currently is on the web side.
+**[Inferred - HIGH]** The intended production path is a pasted URL to external storage, and `content_url` is designed to hold either. `public/books/Senia_book.pdf` is served from the bundle instead - a third path. **Any feature that touches content delivery must decide which of the three it means**, and the DRM model in §14.4/§14.6 assumes the URL is short-lived and grant-issued, which none of the three currently is on the web side.
 
 ---
 
 ## 15. IMPORTANT CLASSES & FUNCTIONS
 
-There are no classes in this codebase. **[Verified]** Both projects are function- and hook-only; the word `class` appears in TypeScript source only in `extends React.Component` for the two error boundaries. What follows are the load-bearing symbols — the ones whose behaviour other code assumes without checking.
+There are no classes in this codebase. **[Verified]** Both projects are function- and hook-only; the word `class` appears in TypeScript source only in `extends React.Component` for the two error boundaries. What follows are the load-bearing symbols - the ones whose behaviour other code assumes without checking.
 
 ### 15.1 Persistence (`src/lib/db.ts`, `src/lib/store.ts`)
 
 | Symbol | Signature | Why it matters |
 |---|---|---|
 | `DB_KEY` | `'casanova_db_v1'` | The one localStorage key holding all data. `initCrossTabSync` filters `storage` events on it |
-| `DB_VERSION` | `1` (module-private) | Written into `Database.version`. **[Unknown]** what a bump does with existing data — §27 |
+| `DB_VERSION` | `1` (module-private) | Written into `Database.version`. **[Unknown]** what a bump does with existing data - §27 |
 | `SECURITY_EVENT_LIMIT` | `400` | Bound on `security_events`, oldest first. The comment: unbounded growth means *"you do not notice it until the storage quota fails and real writes start being lost"* |
 | `CONTENT_GRANT_LIMIT` | `200` | Bound on minted grants, *"oldest settled rows go first"* |
-| `LEGACY_KEYS` | `['eliteread_cms_v2', 'eliteread_admin_v2', 'rp_user']` | Cleared on first run. **[Verified]** This is the archaeological link to the removed `ELITEREAD` prototype — the project was renamed, and the old storage keys are still swept |
+| `LEGACY_KEYS` | `['eliteread_cms_v2', 'eliteread_admin_v2', 'rp_user']` | Cleared on first run. **[Verified]** This is the archaeological link to the removed `ELITEREAD` prototype - the project was renamed, and the old storage keys are still swept |
 | `Database` | interface | ~25 collections plus `version`, `settings` and `sequences`. Every collection is an array of records keyed by an `_id` field |
 | `emptyDatabase()` | `() => Database` | **No demo records of any kind** (its own comment). Only `settings: defaultSettings()` and `drm_policies: [defaultDrmPolicy()]` |
 | `defaultDrmPolicy()` | `() => DrmPolicy` | `policy_id: 'drp_default'`, timestamps `new Date(0).toISOString()`. The comment explains why it exists: so protection does not depend on *"an administrator remembering to switch DRM on before the first sale"* |
-| `getDb()` | `() => Database` | `ensureLoaded()` — parses once, caches the object, returns a **stable reference between writes and a new one after each** |
+| `getDb()` | `() => Database` | `ensureLoaded()` - parses once, caches the object, returns a **stable reference between writes and a new one after each** |
 | `mutate(fn)` | `<T>(fn: (draft: Database) => T) => T` | **The only write path.** Shallow-copies, runs `fn`, persists, then notifies listeners **synchronously**. Can throw: the inner `writeDocument()` rethrows a quota failure as `STORAGE_QUOTA_EXCEEDED` and nothing catches it (§17.8) |
 | `subscribe(listener)` | `(Listener) => () => void` | Backs `useSyncExternalStore` |
 | `initCrossTabSync()` | `() => () => void` | `storage` event → re-read the document → notify |
 | `resetDatabase()` | `() => void` | The CMS "clear all data" action |
 | `uid(prefix)` | `(string) => string` | `crypto.randomUUID().slice(0, 8)` with a fallback |
-| `nextSequence(db, key)` | `(Database, string) => number` | Monotonic counter backing `CNV-2026-0001`-style references. **Must be called inside `mutate()`** — its own comment says so, because it writes to `db.sequences` |
+| `nextSequence(db, key)` | `(Database, string) => number` | Monotonic counter backing `CNV-2026-0001`-style references. **Must be called inside `mutate()`** - its own comment says so, because it writes to `db.sequences` |
 | `nowIso()` | `() => string` | Single source of timestamps |
-| `useStore()` | `() => Database` | `useSyncExternalStore(subscribe, getDb, getDb)` — the same function for both the client and server snapshots, because there is no server |
+| `useStore()` | `() => Database` | `useSyncExternalStore(subscribe, getDb, getDb)` - the same function for both the client and server snapshots, because there is no server |
 | `ensureCrossTabSync()` | `() => void` | Idempotent via a module-level boolean |
 
-**[Verified — the hazard]** `mutate()` notifies **synchronously**. A listener that triggers another write produces a nested `mutate()` during the outer notification, and a React component that writes during render produces an infinite loop. Three ref guards in `ReaderPage.tsx` (`registeredFor`, `grantedFor`, `savedProgressKey`) exist purely to prevent this. `store.ts`'s header explains why the design is still worth it: *"`getDb()` returns a new object reference on every write, so `useSyncExternalStore` gives every consumer a re-render without any provider, selector boilerplate or duplicated local state."*
+**[Verified - the hazard]** `mutate()` notifies **synchronously**. A listener that triggers another write produces a nested `mutate()` during the outer notification, and a React component that writes during render produces an infinite loop. Three ref guards in `ReaderPage.tsx` (`registeredFor`, `grantedFor`, `savedProgressKey`) exist purely to prevent this. `store.ts`'s header explains why the design is still worth it: *"`getDb()` returns a new object reference on every write, so `useSyncExternalStore` gives every consumer a re-render without any provider, selector boilerplate or duplicated local state."*
 
 ### 15.2 Service layer (`src/lib/api.ts` and friends)
 
@@ -1647,7 +1647,7 @@ There are no classes in this codebase. **[Verified]** Both projects are function
 | `Actor`, `actorFromUser(user)` | The identity carried into every service call |
 | `toPublicUser(u)` | Strips `password_hash`, `password_salt`, `password_set`. **Applied at every exit** |
 | `login()`, `registerCustomer()`, `bootstrapAdmin()`, `isBootstrapRequired()` | The four session entry points |
-| `saveCoupon()`, `findCoupon()`, `redeemCoupon()`, `listCoupons()`, `deleteCoupon()` | Coupons. Note `findCoupon` and `redeemCoupon` take **no actor** — they are called from inside `checkout()` |
+| `saveCoupon()`, `findCoupon()`, `redeemCoupon()`, `listCoupons()`, `deleteCoupon()` | Coupons. Note `findCoupon` and `redeemCoupon` take **no actor** - they are called from inside `checkout()` |
 | `updateSettings()`, `getSettings()` | `platform_settings` |
 | `readAssetFile(file)` | File → data URL, bounded by `max_upload_bytes` (§14.10) |
 | `saveSection()`, `listSections()` and the slot equivalents | CMS |
@@ -1655,7 +1655,7 @@ There are no classes in this codebase. **[Verified]** Both projects are function
 | `resetPasswordWithToken()`, `requestPasswordReset()` | Reset flow; the token is *"validated against its stored hash and burned on use"* |
 | `checkout()`, `markOrderPaid()`, `grantAccessForOrder()`, `refundOrder()`, `listMyOrders()`, `listOrdersForUser()` | `api-orders.ts` |
 | `createInquiry()`, `listMyInquiries()`, `updateInquiry()`, `addInquiryNote()`, `linkInquiryToOrder()`, `getCustomerProfile()` | `api-support.ts` |
-| `registerDeviceSession()`, `refreshDeviceSession()`, `revokeDeviceSession()`, `listDeviceSessions()`, `issueContentGrant()`, `consumeContentGrant()`, `revokeGrantsForEntitlement()`, `recordEvent()`, `resolveDrmPolicy()`, `withProtectionDefaults()` | `api-security.ts` — the DRM control plane |
+| `registerDeviceSession()`, `refreshDeviceSession()`, `revokeDeviceSession()`, `listDeviceSessions()`, `issueContentGrant()`, `consumeContentGrant()`, `revokeGrantsForEntitlement()`, `recordEvent()`, `resolveDrmPolicy()`, `withProtectionDefaults()` | `api-security.ts` - the DRM control plane |
 | `computeRevenue()`, `productSales()` and the rest of `analytics.ts` | Derived, never stored |
 | `evaluateAlerts()`, `HIGH_SIGNAL_EVENTS`, `SECURITY_EVENT_LABEL` | `alerts.ts` / `api-security.ts` |
 
@@ -1670,13 +1670,13 @@ There are no classes in this codebase. **[Verified]** Both projects are function
 | `bootCheck()` | `net/api.ts` | Kill switch + forced upgrade, fail-closed |
 | `issueGrant()`, `redeemGrant()` | `net/api.ts` | The two-step content handshake |
 | `registerDevice()`, `heartbeatDevice()`, `revokeDevice()`, `listDevices()` | `net/api.ts` | Device lifecycle |
-| `reportSecurityEvent()` | `net/api.ts` | **Fire and forget, returns `void`** — *"Reporting is evidence, not a precondition for protection"* |
+| `reportSecurityEvent()` | `net/api.ts` | **Fire and forget, returns `void`** - *"Reporting is evidence, not a precondition for protection"* |
 | `AuthContext` / `useAuth()` | `store/AuthContext.tsx` | `phase: 'booting' \| 'blocked' \| 'signed-out' \| 'signed-in'`; the only owner of vault destruction |
 | `LibraryContext` / `useLibrary()` | `store/LibraryContext.tsx` | Reload-on-focus, vault purge on entitlement loss, `removeDevice` |
 | `ProtectionContext` / `useProtection()` | `store/ProtectionContext.tsx` | Policy, `active` shield flag, `reporterRef`, one-shot `DEVICE_COMPROMISED` |
 | `RootNavigator` | `navigation/RootNavigator.tsx` | Phase-derived screen sets; module-level `navigationTheme` |
 | `withProtectionDefaults()`, `RESTRICTIVE_POLICY`, `probeIntegrity()`, `ShieldOverlay` | `drm/` | Fail-closed policy resolution and the integrity probe |
-| `apiBaseUrl()`, `loadApiBaseUrl()`, `setApiBaseUrl()`, `CLIENT`, `APP_VERSION`, `BUILD_NUMBER`, the four timing constants | `config.ts` | §13.3–§13.4 |
+| `apiBaseUrl()`, `loadApiBaseUrl()`, `setApiBaseUrl()`, `CLIENT`, `APP_VERSION`, `BUILD_NUMBER`, the four timing constants | `config.ts` | §13.3-§13.4 |
 | `colors`, `spacing`, `fontSize`, `TAP_TARGET = 44`, `shield: '#000000'` | `theme.ts` | Tokens copied from `src/index.css` |
 
 ### 15.4 Native modules
@@ -1684,11 +1684,11 @@ There are no classes in this codebase. **[Verified]** Both projects are function
 | Symbol | File | Role |
 |---|---|---|
 | `ScreenShieldModule` | `android/.../shield/ScreenShieldModule.kt` (623 lines) | The eleven-method Android bridge; `FLAG_SECURE`, integrity detection, event emission |
-| `detectIntegrity()` | same | **Deliberately returns `TRUSTED`, never `ATTESTATION_FAILED`** — that value is in `COMPROMISED_INTEGRITY` and would block every unmodified Android phone |
+| `detectIntegrity()` | same | **Deliberately returns `TRUSTED`, never `ATTESTATION_FAILED`** - that value is in `COMPROMISED_INTEGRITY` and would block every unmodified Android phone |
 | `ScreenShieldPackage` | `shield/ScreenShieldPackage.kt` (31 lines) | Registers the module; referenced from `MainApplication.kt` |
 | `MainActivity` | `MainActivity.kt` | Sets `FLAG_SECURE` **before** `super.onCreate()`; re-asserts on `onWindowFocusChanged` |
 | `ScreenShield` (Swift) | `ios/CasanovaReader/ScreenShield.swift` (828 lines) | `RCTEventEmitter` subclass; the whole iOS detection-and-concealment layer |
-| `RCT_EXTERN_MODULE` / 9× `RCT_EXTERN_METHOD` | `ios/CasanovaReader/ScreenShield.m` (61 lines) | The hand-maintained bridge — §14.7 |
+| `RCT_EXTERN_MODULE` / 9× `RCT_EXTERN_METHOD` | `ios/CasanovaReader/ScreenShield.m` (61 lines) | The hand-maintained bridge - §14.7 |
 
 ### 15.5 Domain types (`src/types/index.ts`)
 
@@ -1697,7 +1697,7 @@ There are no classes in this codebase. **[Verified]** Both projects are function
 | Type | Note |
 |---|---|
 | `StoredUser` vs `User` | The credential-bearing record and its public projection. **Never let a `StoredUser` reach React state** |
-| `Actor` | `{ kind, user_id, name, role, admin_role? }` — memoised on **primitives**, not on the `user` object, to avoid a re-render cascade |
+| `Actor` | `{ kind, user_id, name, role, admin_role? }` - memoised on **primitives**, not on the `user` object, to avoid a re-render cascade |
 | `Product`, `OrderItem`, `Order` | `Order` carries `refund_status`/`refunded_amount`, which SQL does not (§9.6) |
 | `UserProduct` | The entitlement. `product_snapshot` via `snapshotProduct()`; `access_status: ACTIVE \| EXPIRED \| REVOKED \| SUSPENDED` |
 | `DrmPolicy` | `scope: WEB \| MOBILE \| ALL`, seven block flags, `max_devices_per_user`, `session_timeout_minutes`, watermark template |
@@ -1752,10 +1752,10 @@ Fourteen patterns recur often enough that new code is expected to use them. Each
 | Pattern | Used by | Shape |
 |---|---|---|
 | Inline form error | `LoginPage`, `CheckoutPage`, `SupportPage`, `SetupPasswordPage`, `AdminSettingsPage`, every admin form | `const [error, setError] = useState('')`, then `if (!result.ok) { setError(result.error); return; }`, rendered in a red box |
-| Status message object | `AdminSettingsPage` | `setMessage({ kind: 'ok' \| 'error', text })` — one channel for both outcomes |
+| Status message object | `AdminSettingsPage` | `setMessage({ kind: 'ok' \| 'error', text })` - one channel for both outcomes |
 | Notice / empty state | mobile screens | `<Notice tone="warn">{error}</Notice>`, `<EmptyState … />` |
 
-**[Verified]** No page ever renders `result.error` from a *successful* call, and no page swallows a failure silently. `AdminSettingsPage` even validates **before** calling the service — `if (Number.isNaN(maxUpload) || maxUpload < 1024)` — and shows its own Hebrew message rather than round-tripping to the guard.
+**[Verified]** No page ever renders `result.error` from a *successful* call, and no page swallows a failure silently. `AdminSettingsPage` even validates **before** calling the service - `if (Number.isNaN(maxUpload) || maxUpload < 1024)` - and shows its own Hebrew message rather than round-tripping to the guard.
 
 ### 17.3 Web route-level boundaries
 
@@ -1763,20 +1763,20 @@ Fourteen patterns recur often enough that new code is expected to use them. Each
 
 > *"Shared by the error boundary and the catch-all, because 'this address does not exist' and 'this screen threw' are the same screen with different words: both need a way out, and neither needs a stack trace."*
 
-- `RouteError` (default export) — `useRouteError()` + `isRouteErrorResponse(error) && error.status === 404` selects the copy.
-- `NotFoundPage` (named export) — `<RouteErrorView missing />`, wired as `{ path: '*', Component: NotFoundPage }` **inside** the storefront shell so a stale link still gets the header and navigation. `routes.tsx` comments: *"Left out entirely, the router answers with its own English 404 screen."*
+- `RouteError` (default export) - `useRouteError()` + `isRouteErrorResponse(error) && error.status === 404` selects the copy.
+- `NotFoundPage` (named export) - `<RouteErrorView missing />`, wired as `{ path: '*', Component: NotFoundPage }` **inside** the storefront shell so a stale link still gets the header and navigation. `routes.tsx` comments: *"Left out entirely, the router answers with its own English 404 screen."*
 
 The reason `errorElement` is set on every route at all:
 
-> *"Without an `errorElement`, React Router renders its own developer screen: an English 'Unexpected Application Error!' page carrying the component stack. Showing that to a paying reader is wrong twice over — it is untranslated, and it prints application internals into the page."*
+> *"Without an `errorElement`, React Router renders its own developer screen: an English 'Unexpected Application Error!' page carrying the component stack. Showing that to a paying reader is wrong twice over - it is untranslated, and it prints application internals into the page."*
 
 And the JSX carries an inline note that is a standing instruction:
 
 > *"Deliberately no error text, no component stack and no source frames. React Router already logs the real error to the console … repeating it into the DOM would hand internals to anyone who manages to trigger a bug."*
 
-**[Verified]** The recovery affordance differs by case: `missing` → a link to `/store`; a thrown screen → `window.location.reload()` plus a link home. The copy is honest about the odds: *"רענון אחד פותר את זה כמעט תמיד"* — one refresh almost always fixes this.
+**[Verified]** The recovery affordance differs by case: `missing` → a link to `/store`; a thrown screen → `window.location.reload()` plus a link home. The copy is honest about the odds: *"רענון אחד פותר את זה כמעט תמיד"* - one refresh almost always fixes this.
 
-**[Verified — gap]** `src/App.tsx` is 20 lines and contains **no** application-level error boundary. Protection is per-route only. An error thrown in `AppProvider`, `CmsProvider` or `AdminProvider` — i.e. above the `RouterProvider` — is not caught by anything and reaches React's default handling.
+**[Verified - gap]** `src/App.tsx` is 20 lines and contains **no** application-level error boundary. Protection is per-route only. An error thrown in `AppProvider`, `CmsProvider` or `AdminProvider` - i.e. above the `RouterProvider` - is not caught by anything and reaches React's default handling.
 
 ### 17.4 The mobile crash boundary is a security control
 
@@ -1797,15 +1797,15 @@ and deliberately does **not** report to `security_events`:
 
 The fallback UI is pure black (`colors.shield`), matching the shield overlay, because *"this screen can appear over a partially rendered reader, and a lighter background would make whatever is behind it legible in a capture."* No diagnostic detail reaches the screen: *"A React error box renders the component stack, and on a device that is being recorded that text is visible in the capture; the useful part of it goes to the console, where a developer can read it and a screenshot cannot."*
 
-The user-facing copy states the consequence plainly: *"האפליקציה נסגרה להגנה על התוכן … כל עותק שנשמר במכשיר זה נמחק"* — the app closed to protect the content; every copy saved on this device was deleted.
+The user-facing copy states the consequence plainly: *"האפליקציה נסגרה להגנה על התוכן … כל עותק שנשמר במכשיר זה נמחק"* - the app closed to protect the content; every copy saved on this device was deleted.
 
-### 17.5 Swallowed errors — each one reasoned
+### 17.5 Swallowed errors - each one reasoned
 
 **[Verified]** Every empty `catch` in the repository carries a comment explaining why swallowing is correct. They are:
 
 | Location | Swallowed | Reason in source |
 |---|---|---|
-| `auth.ts` `readSessionUserId` / `writeSessionUserId` | `localStorage` access | *"storage unavailable — session stays in memory only"* |
+| `auth.ts` `readSessionUserId` / `writeSessionUserId` | `localStorage` access | *"storage unavailable - session stays in memory only"* |
 | `db.ts` JSON parse | corrupt document | falls back to `emptyDatabase()` |
 | `client.ts` `readStoredSession` | keychain read | *"A keychain read fails on a device whose secure enclave is unavailable or after an OS restore. Treat it as signed out rather than crashing the boot sequence."* |
 | `client.ts` `clearSession` | keychain reset | *"Nothing was stored, or the keychain is unavailable. Either way the in-memory copy above is already gone, which is what matters."* |
@@ -1813,15 +1813,15 @@ The user-facing copy states the consequence plainly: *"האפליקציה נסג
 | `client.ts` `response.json()` | malformed body | `.catch(() => null)`, then a `STORAGE` result |
 | `config.ts` `loadApiBaseUrl` | AsyncStorage throw | *"keeps the app bootable rather than stranded on an error screen the user cannot act on"* |
 | `api.ts` `reportSecurityEvent` | the whole POST | *"a phone that cannot reach the server must still hide its content"* |
-| `AuthContext` boot | `wipeAll()`, `clearSession()`, `purgeExpired()` | `.catch(() => …)` — boot must complete |
+| `AuthContext` boot | `wipeAll()`, `clearSession()`, `purgeExpired()` | `.catch(() => …)` - boot must complete |
 | `CrashBoundary` | `wipeAll()` | a failed cleanup must not mask the crash |
-| `useScreenProtection` | `navigator.clipboard.writeText('')` | `.catch(noop)` — the clipboard may be locked |
+| `useScreenProtection` | `navigator.clipboard.writeText('')` | `.catch(noop)` - the clipboard may be locked |
 
-**[Inferred — HIGH]** The pattern is: **swallow only when the alternative is a worse failure**, and say so. No error is swallowed for convenience.
+**[Inferred - HIGH]** The pattern is: **swallow only when the alternative is a worse failure**, and say so. No error is swallowed for convenience.
 
 ### 17.6 Validation failures
 
-**[Verified]** Validation lives in the service layer, produces `VALIDATION`, and is written as a Hebrew sentence naming the field and the rule: `'קוד הקופון חובה.'`, `'כותרת הסקטור חובה.'`, `'תוכן ההערה חובה.'`. Normalisation happens **before** validation — `data.code.trim().toUpperCase()`, `email.trim().toLowerCase()` — so `' SUMMER25 '` and `'summer25'` are the same coupon.
+**[Verified]** Validation lives in the service layer, produces `VALIDATION`, and is written as a Hebrew sentence naming the field and the rule: `'קוד הקופון חובה.'`, `'כותרת הסקטור חובה.'`, `'תוכן ההערה חובה.'`. Normalisation happens **before** validation - `data.code.trim().toUpperCase()`, `email.trim().toLowerCase()` - so `' SUMMER25 '` and `'summer25'` are the same coupon.
 
 `isEmail()` is a deliberately permissive regex with an ASCII guard: `/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && /^[\x20-\x7E]+$/.test(value)`. The second clause is what rejects RTL marks and zero-width characters inside an address.
 
@@ -1846,11 +1846,11 @@ function writeDocument(db: Database): void {
 }
 ```
 
-**[Verified — UNCAUGHT]** A grep for `STORAGE_QUOTA_EXCEEDED` across `src/` returns exactly one match: the `throw` itself. Nothing catches it. `mutate()` has no `try`, no service function has one, and no page has one. **A quota failure therefore propagates out of the click handler as an unhandled exception**, and — because there is no application-level error boundary on the web side (§17.3) — reaches React Router's route `errorElement` at best and the browser's default handling at worst.
+**[Verified - UNCAUGHT]** A grep for `STORAGE_QUOTA_EXCEEDED` across `src/` returns exactly one match: the `throw` itself. Nothing catches it. `mutate()` has no `try`, no service function has one, and no page has one. **A quota failure therefore propagates out of the click handler as an unhandled exception**, and - because there is no application-level error boundary on the web side (§17.3) - reaches React Router's route `errorElement` at best and the browser's default handling at worst.
 
 The comment explains the intent correctly (*"surface it instead of pretending the write succeeded"*) and the intent is right: a silent write failure would be far worse, since the UI would show a saved product that is not there. **What is missing is a catcher.** Given §14.10, the most likely trigger is a large PDF upload: `readAssetFile` rejects files over `max_upload_bytes` (default 10 MB) with helpful Hebrew guidance, but a 6 MB file passes that check and then exceeds a 5 MB quota at the `setItem`, producing an unhandled throw instead of a message.
 
-**[Inferred — HIGH]** This is the one place in the web application where the "errors are values" rule is broken, and it is broken in the direction of loudness rather than silence — which is the safer direction, but still a bug.
+**[Inferred - HIGH]** This is the one place in the web application where the "errors are values" rule is broken, and it is broken in the direction of loudness rather than silence - which is the safer direction, but still a bug.
 
 ---
 
@@ -1858,10 +1858,10 @@ The comment explains the intent correctly (*"surface it instead of pretending th
 
 ### 18.1 There is no logging infrastructure
 
-**[Verified — HIGH]** No logger, no log level, no structured logging, no Sentry, no OpenTelemetry, no analytics SDK. Exactly **two** `console` calls exist in the entire repository:
+**[Verified - HIGH]** No logger, no log level, no structured logging, no Sentry, no OpenTelemetry, no analytics SDK. Exactly **two** `console` calls exist in the entire repository:
 
-1. `db.ts:275` — `console.error('[db] persistence failed', err)`, immediately before the uncaught `STORAGE_QUOTA_EXCEEDED` throw (§17.8).
-2. `react-native/App.tsx:77` — `console.error('[CasanovaReader] fatal render error', …)` in `CrashBoundary.componentDidCatch`.
+1. `db.ts:275` - `console.error('[db] persistence failed', err)`, immediately before the uncaught `STORAGE_QUOTA_EXCEEDED` throw (§17.8).
+2. `react-native/App.tsx:77` - `console.error('[CasanovaReader] fatal render error', …)` in `CrashBoundary.componentDidCatch`.
 
 Both are `console.error`, both are last-resort, and neither is a logging system. Observability is therefore not a stream. It is **three in-product surfaces an administrator reads**.
 
@@ -1869,7 +1869,7 @@ Both are `console.error`, both are last-resort, and neither is a logging system.
 
 **[Verified]** `audit_logs` / `db.audit_log`, written by `writeAudit(actor, AuditInput)` from **every** mutating service function without exception. Fields: `category` (17-member union), `action` (Hebrew verb phrase), `target_type`, `target_id`, `target_label`, `details`, plus the actor and a timestamp. Rendered by `AdminAuditPage` (permission `audit`, **SUPER_ADMIN-only**).
 
-The `target_label` convention is what makes the log readable: `${owner.first_name} ${owner.last_name} · ${target.product_snapshot.name}` — a person and a thing, not two UUIDs.
+The `target_label` convention is what makes the log readable: `${owner.first_name} ${owner.last_name} · ${target.product_snapshot.name}` - a person and a thing, not two UUIDs.
 
 **[Verified]** `details` carries the *transition*, not the new state: `` `${existing.account_status} → ${status}` ``, `'תוקף חדש עד ' + new Date(expiresAt).toLocaleDateString('he-IL')`, `changed.join(', ')` for a settings patch (so only the keys that moved are recorded).
 
@@ -1885,7 +1885,7 @@ The noise-control decision is explicit: Ctrl+Shift+C is *not* reported because *
 
 ### 18.4 The e-mail log
 
-**[Verified]** `email_log` / `db.email_logs` records every message the system *intends* to send, with `status` (`QUEUED` / `SENT` / `DELIVERED` / `FAILED`), `sent_at`, `failure_reason` and a provider message id. Rendered by `AdminEmailsPage` (permission `emails`). This is the observability surface for an integration that does not exist — and `failure_reason` explains the absence in Hebrew rather than leaving a blank column.
+**[Verified]** `email_log` / `db.email_logs` records every message the system *intends* to send, with `status` (`QUEUED` / `SENT` / `DELIVERED` / `FAILED`), `sent_at`, `failure_reason` and a provider message id. Rendered by `AdminEmailsPage` (permission `emails`). This is the observability surface for an integration that does not exist - and `failure_reason` explains the absence in Hebrew rather than leaving a blank column.
 
 ### 18.5 What is deliberately never logged
 
@@ -1896,15 +1896,15 @@ The noise-control decision is explicit: Ctrl+Shift+C is *not* reported because *
 | Passwords, in any form | `auth.ts` header: *"Passwords are never stored or logged in clear text"*; `toPublicUser()` strips the fields before they can reach a log call |
 | Session tokens | The web session is a user id, not a token; the mobile token lives only in the keychain and the in-memory mirror |
 | Content URLs in telemetry | `reportSecurityEvent` takes `product_id` and `session_id`, never a grant token or a URL |
-| Error detail in the DOM | §17.3 and §17.4 — both boundaries route diagnostics to the console and keep the screen clean |
+| Error detail in the DOM | §17.3 and §17.4 - both boundaries route diagnostics to the console and keep the screen clean |
 
 ### 18.6 Derived signals as observability
 
-**[Verified]** `alerts.ts` recomputes an alert list on every read from the audit log, the security events and the orders. `AdminAlertsPage` renders it and its count badges `SideNav` (`AdminLayout` computes `openAlerts.length` and `openInquiries`). **Nothing is stored, so an alert cannot go stale** — and nothing can be acknowledged and forgotten either. **[Inferred — MEDIUM]** This is fine for a single-operator CMS and would need a `read_at` column the moment alerts are shared between staff.
+**[Verified]** `alerts.ts` recomputes an alert list on every read from the audit log, the security events and the orders. `AdminAlertsPage` renders it and its count badges `SideNav` (`AdminLayout` computes `openAlerts.length` and `openInquiries`). **Nothing is stored, so an alert cannot go stale** - and nothing can be acknowledged and forgotten either. **[Inferred - MEDIUM]** This is fine for a single-operator CMS and would need a `read_at` column the moment alerts are shared between staff.
 
 ### 18.7 Mobile observability
 
-**[Verified]** The phone has two channels: `reportSecurityEvent()` (fire-and-forget, discarded result) and the local `Notice`/`EmptyState` UI. There is no crash reporter. `AuthContext` records `expiredAtBoot` — the titles whose offline copies were purged — and reports `OFFLINE_EXPIRED` for each, so the CMS can see a device losing its cache.
+**[Verified]** The phone has two channels: `reportSecurityEvent()` (fire-and-forget, discarded result) and the local `Notice`/`EmptyState` UI. There is no crash reporter. `AuthContext` records `expiredAtBoot` - the titles whose offline copies were purged - and reports `OFFLINE_EXPIRED` for each, so the CMS can see a device losing its cache.
 
 **[Verified]** `ProtectionContext` reports `DEVICE_COMPROMISED` **once**, via a `reportedFailure` ref, so a flapping integrity probe does not fill the bounded event table.
 
@@ -1914,7 +1914,7 @@ The noise-control decision is explicit: Ctrl+Shift+C is *not* reported because *
 
 ### 19.1 There are no tests
 
-**[Verified — HIGH]** Zero. No test framework in either `package.json`, no `test` script in either, no `*.test.*` or `*.spec.*` file anywhere outside `node_modules`, no `__tests__` directory, no `jest.config`, no `vitest.config`, no Playwright or Cypress, no snapshot files.
+**[Verified - HIGH]** Zero. No test framework in either `package.json`, no `test` script in either, no `*.test.*` or `*.spec.*` file anywhere outside `node_modules`, no `__tests__` directory, no `jest.config`, no `vitest.config`, no Playwright or Cypress, no snapshot files.
 
 **[Verified]** The only quality gates that exist are `pnpm typecheck` (`tsc --noEmit`) in both projects and `pnpm format` (`oxfmt`) in the web project.
 
@@ -1936,23 +1936,23 @@ Ten of the fourteen scenarios are nevertheless **implemented** and were verified
 | Revoked entitlement stops reading | `revokeAccess()` + `revokeGrantsForEntitlement()` + `trg_user_product_revokes_grants` |
 | Role may not exceed its permissions | `guard()` on all 27 permissions across 40+ call sites |
 | Protection flags change reader behaviour | `useScreenProtection()` reads through `optionsRef`; `withProtectionDefaults()` fills gaps |
-| **Duplicate webhook arrives** | **Schema only** — `chk_payment_captured_has_reference` and the `payments` table; no webhook handler exists |
-| **Invoice generation** | **Schema only** — `orders.invoice_number` and `settings.invoice_prefix`; no document is produced |
+| **Duplicate webhook arrives** | **Schema only** - `chk_payment_captured_has_reference` and the `payments` table; no webhook handler exists |
+| **Invoice generation** | **Schema only** - `orders.invoice_number` and `settings.invoice_prefix`; no document is produced |
 
 ### 19.3 What substitutes for tests today
 
 **[Verified]** Three things, none of which is a test:
 
 1. **The type checker.** `strict` in both `tsconfig`s, `noImplicitOverride` and `noFallthroughCasesInSwitch` in the mobile one. The 15-member `SecurityEventType` and 17-member `AuditCategory` unions mean adding a SQL CHECK value without a TypeScript member is a compile error at every exhaustive `Record<…>`.
-2. **The database constraints.** §9.5. Fourteen triggers and six arithmetic/uniqueness CHECKs express the invariants a test suite would otherwise assert. **They are the real test suite — they just have never been run.**
-3. **Manual smoke evidence.** Twenty-two PNGs in the repository root, named `smoke_stage1_landing_empty.png` through `smoke_stage7_dashboard_devices.png`, `step1_landing.png` through `step9_admin_support_detail.png`, and `verify_*.png`. `.gitignore` covers `/smoke_*.png`, `/step*.png` and `/verify_*.png`. **[Inferred — HIGH]** These are screenshots from a scripted manual walkthrough — a human-executed test plan with no runner. Two names are findings in themselves: `smoke_stage6_reader_crash.png` and `step2_store_404.png`.
+2. **The database constraints.** §9.5. Fourteen triggers and six arithmetic/uniqueness CHECKs express the invariants a test suite would otherwise assert. **They are the real test suite - they just have never been run.**
+3. **Manual smoke evidence.** Twenty-two PNGs in the repository root, named `smoke_stage1_landing_empty.png` through `smoke_stage7_dashboard_devices.png`, `step1_landing.png` through `step9_admin_support_detail.png`, and `verify_*.png`. `.gitignore` covers `/smoke_*.png`, `/step*.png` and `/verify_*.png`. **[Inferred - HIGH]** These are screenshots from a scripted manual walkthrough - a human-executed test plan with no runner. Two names are findings in themselves: `smoke_stage6_reader_crash.png` and `step2_store_404.png`.
 
 ### 19.4 Why `src/lib/` is ideal test material
 
-**[Inferred — HIGH]** If tests are ever added, the service layer is where they belong first, and the architecture is unusually favourable:
+**[Inferred - HIGH]** If tests are ever added, the service layer is where they belong first, and the architecture is unusually favourable:
 
 - Every function is pure with respect to its inputs **except** for `getDb()`/`mutate()`. Resetting `localStorage['casanova_db_v1']` resets the world; `resetDatabase()` does it in one call.
-- No mocking of HTTP, timers or the DOM is needed — there is no HTTP.
+- No mocking of HTTP, timers or the DOM is needed - there is no HTTP.
 - `Result<T>` means assertions are structural: `expect(r.ok).toBe(false); expect(r.code).toBe('FORBIDDEN')`.
 - The six-step discipline gives a natural test matrix: for each mutating function × each of the five roles, assert allow/deny. That is ~200 cases and it is the single highest-value suite in the project.
 - `Vitest` is not installed but is the obvious choice given Vite 8; adding it is a devDependency and a `test` script, with no source changes required.
@@ -1963,11 +1963,11 @@ Ten of the fourteen scenarios are nevertheless **implemented** and were verified
 
 ## 20. BUILD, CI/CD & DEPLOYMENT
 
-### 20.1 Web build — works
+### 20.1 Web build - works
 
 **[Verified]** `pnpm install` → `pnpm dev` / `pnpm build` / `pnpm preview`. Node 22 and pnpm 10.34.3 pinned by `.mise.toml`; `pnpm-lock.yaml` committed; `node_modules` present. `pnpm typecheck` and `pnpm format` both runnable. `dist/` exists in the working tree, so a build has been produced at least once.
 
-**[Verified — EXPOSURE]** `.figma/make/deploy-preview`:
+**[Verified - EXPOSURE]** `.figma/make/deploy-preview`:
 
 ```bash
 #!/usr/bin/env bash
@@ -1977,28 +1977,28 @@ pnpm run build --mode development
 figma make deploy-preview --build-dir dist
 ```
 
-Combined with `vite.config.ts`'s `build.sourcemap: 'inline'` when `mode === 'development'`, **preview deployments ship the complete TypeScript source inline in the bundle.** For a DRM client whose whole threat model assumes the visitor is adversarial, this hands them the annotated source — including every comment explaining what the protection does and does not stop. `.figma/make/deploy` (the non-preview path) does not pass `--mode development`.
+Combined with `vite.config.ts`'s `build.sourcemap: 'inline'` when `mode === 'development'`, **preview deployments ship the complete TypeScript source inline in the bundle.** For a DRM client whose whole threat model assumes the visitor is adversarial, this hands them the annotated source - including every comment explaining what the protection does and does not stop. `.figma/make/deploy` (the non-preview path) does not pass `--mode development`.
 
-**[Verified — inconsistency]** `.figma/make/install` runs `pnpm install --prefer-offline --no-frozen-lockfile`, which undercuts the byte-for-byte care `.gitattributes` takes with the lockfile.
+**[Verified - inconsistency]** `.figma/make/install` runs `pnpm install --prefer-offline --no-frozen-lockfile`, which undercuts the byte-for-byte care `.gitattributes` takes with the lockfile.
 
 ### 20.2 There is no CI
 
-**[Verified — HIGH]** No `.github/`, no `.gitlab-ci.yml`, no `.circleci/`, no `Jenkinsfile`, no git hooks, no `.husky/`. Nothing runs `typecheck` automatically. **The only thing standing between a change and a broken build is a human remembering to run `pnpm typecheck`.**
+**[Verified - HIGH]** No `.github/`, no `.gitlab-ci.yml`, no `.circleci/`, no `Jenkinsfile`, no git hooks, no `.husky/`. Nothing runs `typecheck` automatically. **The only thing standing between a change and a broken build is a human remembering to run `pnpm typecheck`.**
 
-### 20.3 Android — source-complete, cannot run its own scripts
+### 20.3 Android - source-complete, cannot run its own scripts
 
 **[Verified]** `android/` contains `settings.gradle`, `build.gradle` (root and app), `gradle.properties`, `app/src/main/AndroidManifest.xml`, `MainActivity.kt`, `MainApplication.kt`, `shield/ScreenShieldModule.kt`, `shield/ScreenShieldPackage.kt`, and resources. **It does not contain `gradlew`, `gradlew.bat` or `gradle/wrapper/gradle-wrapper.jar`.**
 
-The wrapper *directory* does exist — and contains a 13 MB Hebrew-named PDF (`היא קודם (6).pdf`), not a wrapper jar. `react-native/.gitignore` excludes `*.pdf`, so it can never be committed.
+The wrapper *directory* does exist - and contains a 13 MB Hebrew-named PDF (`היא קודם (6).pdf`), not a wrapper jar. `react-native/.gitignore` excludes `*.pdf`, so it can never be committed.
 
 Consequences, all verified:
 
 - `pnpm clean:android` (`cd android && ./gradlew clean`) **cannot run**.
 - Any documented `./gradlew` invocation fails.
-- `android/build.gradle` declares `classpath("com.android.tools.build:gradle")` with **no version**, which relies on a version catalog or a wrapper-provided resolution that is not present. **[Unknown]** which Gradle version is intended — §27.
+- `android/build.gradle` declares `classpath("com.android.tools.build:gradle")` with **no version**, which relies on a version catalog or a wrapper-provided resolution that is not present. **[Unknown]** which Gradle version is intended - §27.
 - A developer must run `npx @react-native-community/cli run-android` (which can generate the wrapper) or install Gradle independently.
 
-### 20.4 iOS — cannot be built at all
+### 20.4 iOS - cannot be built at all
 
 **[Verified]** The complete `ios/` tree is **four files**: `Podfile`, `CasanovaReader/ScreenShield.swift`, `CasanovaReader/ScreenShield.m`, `CasanovaReader/CasanovaReader-Bridging-Header.h`.
 
@@ -2006,13 +2006,13 @@ Absent: `CasanovaReader.xcodeproj` / `.xcworkspace`, `Info.plist`, `AppDelegate.
 
 Five independently fatal consequences:
 
-1. `pnpm pods` (`cd ios && pod install`) fails — the `Podfile` names `target 'CasanovaReader'` and there is no project for it to attach to.
+1. `pnpm pods` (`cd ios && pod install`) fails - the `Podfile` names `target 'CasanovaReader'` and there is no project for it to attach to.
 2. Nothing can compile: there is no Xcode project.
-3. `CasanovaReader-Bridging-Header.h`'s own comment says it is *"Referenced by the `SWIFT_OBJC_BRIDGING_HEADER` build setting in project.yml"* — **`project.yml` does not exist**, and no XcodeGen or Tuist configuration is present anywhere.
+3. `CasanovaReader-Bridging-Header.h`'s own comment says it is *"Referenced by the `SWIFT_OBJC_BRIDGING_HEADER` build setting in project.yml"* - **`project.yml` does not exist**, and no XcodeGen or Tuist configuration is present anywhere.
 4. `ScreenShield.swift`'s jailbreak detection uses `canOpenURL` on custom schemes, which requires an `LSApplicationQueriesSchemes` entry in an `Info.plist` that does not exist. Even with a project, those checks would silently fail.
 5. The Swift would not be linked into any target.
 
-**[Inferred — HIGH]** `project.yml` strongly suggests **XcodeGen** was the intended project generator and that the generated artefacts were never committed (correctly — they are derived). But no `project.yml` was committed either, so the generation recipe is lost. Recreating the iOS project is a task in itself, not a configuration step.
+**[Inferred - HIGH]** `project.yml` strongly suggests **XcodeGen** was the intended project generator and that the generated artefacts were never committed (correctly - they are derived). But no `project.yml` was committed either, so the generation recipe is lost. Recreating the iOS project is a task in itself, not a configuration step.
 
 ### 20.5 Documentation drift
 
@@ -2020,21 +2020,21 @@ Five independently fatal consequences:
 
 | Document | Claim | Reality |
 |---|---|---|
-| `AGENTS.md` | *"A Vite development server is **already running** on `$PORT` (default 8443). You don't need to start it manually."* | Verified false — nothing is listening; the server must be started |
-| `AGENTS.md` | *"`src/App.tsx` — Primary application component and the usual starting point for UI work"*; describes a 7-file scaffold | `App.tsx` is 20 lines of provider composition. The real entry points are `src/routes.tsx` and `src/lib/`. `AGENTS.md` never mentions `src/lib/`, `src/types/`, `schema.sql`, `migrations/` or `react-native/` |
+| `AGENTS.md` | *"A Vite development server is **already running** on `$PORT` (default 8443). You don't need to start it manually."* | Verified false - nothing is listening; the server must be started |
+| `AGENTS.md` | *"`src/App.tsx` - Primary application component and the usual starting point for UI work"*; describes a 7-file scaffold | `App.tsx` is 20 lines of provider composition. The real entry points are `src/routes.tsx` and `src/lib/`. `AGENTS.md` never mentions `src/lib/`, `src/types/`, `schema.sql`, `migrations/` or `react-native/` |
 | `ios/Podfile` | `restrictDocumentInteraction()` uses `responds(to:)` guards | The Swift uses class-name walking with no `responds(to:)` call |
 
-`CLAUDE.md` is two lines and contains only `@AGENTS.md` — it inherits every one of these.
+`CLAUDE.md` is two lines and contains only `@AGENTS.md` - it inherits every one of these.
 
-**[Inferred — HIGH]** `AGENTS.md` is the untouched Figma Make scaffold README. It describes the project as it was on day one, not as it is now. **An AI agent following `AGENTS.md` literally would start in the wrong file and assume a server that is not running.**
+**[Inferred - HIGH]** `AGENTS.md` is the untouched Figma Make scaffold README. It describes the project as it was on day one, not as it is now. **An AI agent following `AGENTS.md` literally would start in the wrong file and assume a server that is not running.**
 
-### 20.6 Version control state — the most consequential finding
+### 20.6 Version control state - the most consequential finding
 
 **[Verified]** Re-confirmed during this analysis by `git log`, `git ls-files`, `git status --short` and `git check-ignore -v`:
 
 - **Zero commits.** `git log` exits with `fatal: your current branch 'main' does not have any commits yet`. There is no history, no baseline, no revert target, no `git blame`, no authored attribution.
 - **82 files staged**, **33 untracked entries**.
-- `git check-ignore -v` returns nothing for the React Native paths — **they are not ignored, they were simply never `git add`ed.**
+- `git check-ignore -v` returns nothing for the React Native paths - **they are not ignored, they were simply never `git add`ed.**
 
 | | Status |
 |---|---|
@@ -2042,13 +2042,13 @@ Five independently fatal consequences:
 | `index.html`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `vite.config.ts`, `.mise.toml`, `.gitignore`, `.gitattributes`, `AGENTS.md`, `CLAUDE.md`, `schema.sql`, `.figma/make/*`, `src/assets/main_photo.jpg`, `public/books/.gitkeep` | **Tracked** |
 | Removed legacy root `ScreenShield.tsx` | Deleted during repository cleanup; it was the obsolete `ELITEREAD` prototype (§26) |
 | `migrations/` (the entire directory, including `0001_mobile_reader.sql`) | **Untracked** |
-| `react-native/{App.tsx, index.js, app.json, package.json, tsconfig.json, metro.config.js, babel.config.js, .gitignore, src/, android/, ios/}` | **Untracked** — the entire real mobile application |
-| ~20 PNGs with `exp_*` and `screenshot_*` prefixes | **Untracked** — `.gitignore` covers `smoke_*`, `step*` and `verify_*` but not these two patterns |
+| `react-native/{App.tsx, index.js, app.json, package.json, tsconfig.json, metro.config.js, babel.config.js, .gitignore, src/, android/, ios/}` | **Untracked** - the entire real mobile application |
+| ~20 PNGs with `exp_*` and `screenshot_*` prefixes | **Untracked** - `.gitignore` covers `smoke_*`, `step*` and `verify_*` but not these two patterns |
 | `docs/Senia_book.pdf`, `public/books/Senia_book.pdf` | Ignored by design (`/docs/`, `/public/books/*` with `!.gitkeep`) |
 
-**The consequence, stated plainly:** a fresh `git clone` of this repository produces a working web storefront and **one** React Native file — a 244-line `@ts-nocheck` prototype branded `ELITEREAD`, whose three-method native contract contradicts the shipped eleven-method one, and whose header instructs the reader to *"paste the Android/iOS classes at the bottom of this file into the native projects"* — classes that would not exist in the clone. **The mobile application, and the migration that documents its schema requirements, would be gone.**
+**The consequence, stated plainly:** a fresh `git clone` of this repository produces a working web storefront and **one** React Native file - a 244-line `@ts-nocheck` prototype branded `ELITEREAD`, whose three-method native contract contradicts the shipped eleven-method one, and whose header instructs the reader to *"paste the Android/iOS classes at the bottom of this file into the native projects"* - classes that would not exist in the clone. **The mobile application, and the migration that documents its schema requirements, would be gone.**
 
-**[Verified — a second, subtler hazard]** 13 of the 82 tracked files are in status `AM`: staged, **and modified again in the working tree**. They are not a random sample — they are the security core:
+**[Verified - a second, subtler hazard]** 13 of the 82 tracked files are in status `AM`: staged, **and modified again in the working tree**. They are not a random sample - they are the security core:
 
 ```
 schema.sql                        src/lib/useScreenProtection.ts
@@ -2060,13 +2060,13 @@ src/types/index.ts                src/components/icons.tsx
 vite.config.ts
 ```
 
-**A `git commit` right now — without `git add -A` — would commit an older version of the DRM core, the persistence layer, the domain types and the database contract**, and the working tree would still hold the newer one, invisibly. This is the specific mechanism by which the absence of commits becomes data loss rather than mere inconvenience.
+**A `git commit` right now - without `git add -A` - would commit an older version of the DRM core, the persistence layer, the domain types and the database contract**, and the working tree would still hold the newer one, invisibly. This is the specific mechanism by which the absence of commits becomes data loss rather than mere inconvenience.
 
-**[Inferred — HIGH]** This is the single highest-priority remediation in the repository, and it is not a code change. It is `git add -A migrations react-native src schema.sql vite.config.ts && git commit`.
+**[Inferred - HIGH]** This is the single highest-priority remediation in the repository, and it is not a code change. It is `git add -A migrations react-native src schema.sql vite.config.ts && git commit`.
 
 ### 20.7 Deployment target
 
-**[Verified]** Figma Make. `figma make deploy --build-dir dist` and `figma make deploy-preview --build-dir dist`. `site.json` sets `robots.index: false`, and `vite.config.ts` emits a matching `robots.txt` from that field. **[Unknown]** who can reach a preview URL — §27. This matters because of §20.1: if a preview URL is public, the inline sourcemaps are public.
+**[Verified]** Figma Make. `figma make deploy --build-dir dist` and `figma make deploy-preview --build-dir dist`. `site.json` sets `robots.index: false`, and `vite.config.ts` emits a matching `robots.txt` from that field. **[Unknown]** who can reach a preview URL - §27. This matters because of §20.1: if a preview URL is public, the inline sourcemaps are public.
 
 There is no Dockerfile, no compose file, no infrastructure-as-code, no server component of any kind. **The deployed artefact is a directory of static files.**
 
@@ -2078,11 +2078,11 @@ There is no Dockerfile, no compose file, no infrastructure-as-code, no server co
 
 **[Verified]** This is not a generic e-commerce threat model. It is stated in three places and is consistent across all of them:
 
-- Brief §12: *"אסור להסתמך על Frontend לצורך הרשאות"* — authorisation must never be trusted to the frontend.
-- Brief §15: *"אין לחשוף public URL קבוע של PDF אם ניתן להימבע מכך"* — no permanent public PDF URL if it can be avoided.
+- Brief §12: *"אסור להסתמך על Frontend לצורך הרשאות"* - authorisation must never be trusted to the frontend.
+- Brief §15: *"אין לחשוף public URL קבוע של PDF אם ניתן להימבע מכך"* - no permanent public PDF URL if it can be avoided.
 - Brief §40: *"אנחנו לא מוכרים קובץ. אנחנו מוכרים הרשאה לתוכן בתוך מערכת."*
 
-**The adversary is the paying customer.** Not an outside attacker — the person who legitimately bought the book and wants to photograph it, print it, extract the URL or keep it after a refund. That is why the watermark carries their identity, why `block_print` blanks the paper rather than only intercepting the keystroke, and why `userDidTakeScreenshot` exists for attribution rather than prevention.
+**The adversary is the paying customer.** Not an outside attacker - the person who legitimately bought the book and wants to photograph it, print it, extract the URL or keep it after a refund. That is why the watermark carries their identity, why `block_print` blanks the paper rather than only intercepting the keystroke, and why `userDidTakeScreenshot` exists for attribution rather than prevention.
 
 ### 21.2 The central invariant
 
@@ -2094,21 +2094,21 @@ Web: `issueContentGrant()` → `consumeContentGrant()`, bounded at `CONTENT_GRAN
 Mobile: `issueGrant()` returns a **token**, `redeemGrant(token, productId)` returns the address, server-side `consume_content_grant()` takes a row lock and re-validates expiry, budget, revocation and entitlement **inside one transaction**.
 SQL: `chk_grant_bound_to_session`, `chk_grant_offline_single_use`, `chk_grant_revocation`, `trg_device_session_revokes_grants`, `trg_user_product_revokes_grants`.
 
-**[Verified — the web gap]** The web `ReaderPage` does not currently go through this path for `public/books/*.pdf`. `pdfEmbedUrl()` is handed a `content_url` that, for the bundled book, is a **permanent public path in the static bundle**. The grant machinery exists and is exercised for uploaded/pasted URLs, but a file in `public/books/` is downloadable by anyone who knows the name. **[Inferred — HIGH]** This is the single largest divergence between the stated model and the running web app, and it is a consequence of having no server to issue short-lived URLs from.
+**[Verified - the web gap]** The web `ReaderPage` does not currently go through this path for `public/books/*.pdf`. `pdfEmbedUrl()` is handed a `content_url` that, for the bundled book, is a **permanent public path in the static bundle**. The grant machinery exists and is exercised for uploaded/pasted URLs, but a file in `public/books/` is downloadable by anyone who knows the name. **[Inferred - HIGH]** This is the single largest divergence between the stated model and the running web app, and it is a consequence of having no server to issue short-lived URLs from.
 
-### 21.3 Defence in depth — five layers
+### 21.3 Defence in depth - five layers
 
 | Layer | Web | Mobile | Verifiable? |
 |---|---|---|---|
 | **1. Authorisation** | `guard()` on every mutation; 27 permissions; two-tier `can()`/`guard()` | Bearer token from the keychain; server re-checks every grant | Yes, in source |
 | **2. Address withholding** | `issueContentGrant` / `consumeContentGrant`; `v_storefront_catalog` excludes the content URL | `issueGrant` → token → `redeemGrant` → short-lived URL | Yes |
-| **3. Behavioural deterrence** | `useScreenProtection`: copy/print/view-source/capture-key suppression, blur shield, clipboard wiping, injected print stylesheet | `FLAG_SECURE` (Android); privacy cover + capture notifications (iOS) | Partially — §21.5 |
+| **3. Behavioural deterrence** | `useScreenProtection`: copy/print/view-source/capture-key suppression, blur shield, clipboard wiping, injected print stylesheet | `FLAG_SECURE` (Android); privacy cover + capture notifications (iOS) | Partially - §21.5 |
 | **4. Attribution** | Watermark overlay with the reader's identity | Watermark frozen into the grant at issue time | Yes |
-| **5. Destruction** | — | `wipeAll()` on sign-out, on a `blocked` boot, and on a render crash; vault purge when an entitlement dies or a TTL expires | Yes |
+| **5. Destruction** | - | `wipeAll()` on sign-out, on a `blocked` boot, and on a render crash; vault purge when an entitlement dies or a TTL expires | Yes |
 
-**Layer 5 exists only on mobile**, because only mobile holds bytes. The web reader never possesses the file — the browser's PDF plugin streams it.
+**Layer 5 exists only on mobile**, because only mobile holds bytes. The web reader never possesses the file - the browser's PDF plugin streams it.
 
-### 21.4 Fail-closed — the enumeration
+### 21.4 Fail-closed - the enumeration
 
 **[Verified]** Every place where an absent or broken input resolves to the strictest value:
 
@@ -2125,14 +2125,14 @@ SQL: `chk_grant_bound_to_session`, `chk_grant_offline_single_use`, `chk_grant_re
 | `readStoredSession()` | keychain unavailable | `null` → signed out |
 | `CrashBoundary` | a render error | opaque black + `wipeAll()` |
 
-**[Verified — the one deliberate exception]** `ScreenShieldModule.detectIntegrity()` in Kotlin returns `TRUSTED` and **never** `ATTESTATION_FAILED`, because that value is in `COMPROMISED_INTEGRITY` and would block every unmodified Android phone. This is the single place where the codebase fails *open* on purpose, and it is the correct call: Play Integrity is not available on every device, and refusing to run on a legitimate phone is a worse outcome than recording `TRUSTED` without proof. **Note the asymmetry with the JS side**: `probeIntegrity()` fails closed when the *module* is missing; the module fails open when the *attestation service* is missing.
+**[Verified - the one deliberate exception]** `ScreenShieldModule.detectIntegrity()` in Kotlin returns `TRUSTED` and **never** `ATTESTATION_FAILED`, because that value is in `COMPROMISED_INTEGRITY` and would block every unmodified Android phone. This is the single place where the codebase fails *open* on purpose, and it is the correct call: Play Integrity is not available on every device, and refusing to run on a legitimate phone is a worse outcome than recording `TRUSTED` without proof. **Note the asymmetry with the JS side**: `probeIntegrity()` fails closed when the *module* is missing; the module fails open when the *attestation service* is missing.
 
 ### 21.5 What the protection does not do
 
 **[Verified]** The codebase is unusually explicit about its own limits, and these statements should be quoted rather than paraphrased in any future security discussion:
 
 - `useScreenProtection` header: *"a web page cannot stop a camera, an OS-level screenshot, or a browser extension."*
-- `pdfEmbedUrl` doc: *"These are viewer hints rather than a security boundary — a determined visitor can still reach the file through developer tools — but they remove the accidental path, which is where nearly all real leakage starts."*
+- `pdfEmbedUrl` doc: *"These are viewer hints rather than a security boundary - a determined visitor can still reach the file through developer tools - but they remove the accidental path, which is where nearly all real leakage starts."*
 - `AdminSecurityPage` `FLAG_FIELDS` hint on `block_print`: printing from inside the browser's PDF view is **not** blocked.
 - `FLAG_FIELDS` hint on `block_screenshots`: does **not** stop an OS-level screenshot.
 - `deviceId()` doc: *"not a hardware serial and is not a security boundary … Spoofing it buys an attacker a fresh device slot, which `max_devices_per_user` is there to make expensive, not impossible."*
@@ -2147,7 +2147,7 @@ SQL: `chk_grant_bound_to_session`, `chk_grant_offline_single_use`, `chk_grant_re
 
 `guard()` is architecturally correct and operationally meaningless today. Editing `localStorage` to `{"casanova_session_v1":"<admin-user-id>"}` yields a `SUPER_ADMIN` session with no credential.
 
-**[Inferred — HIGH]** This is not a defect to be fixed in place. It is the expected state of a static bundle with no backend, the code says so repeatedly, and the fix is the backend migration the architecture was designed for. **What must not happen is a security review that treats `guard()` as a control.** It is a *specification* of a control.
+**[Inferred - HIGH]** This is not a defect to be fixed in place. It is the expected state of a static bundle with no backend, the code says so repeatedly, and the fix is the backend migration the architecture was designed for. **What must not happen is a security review that treats `guard()` as a control.** It is a *specification* of a control.
 
 ### 21.7 Sensitive-data handling in the admin panel
 
@@ -2158,30 +2158,30 @@ SQL: `chk_grant_bound_to_session`, `chk_grant_offline_single_use`, `chk_grant_re
 | Helper | Output |
 |---|---|
 | `maskCard(last4?)` | `•••• •••• •••• 1234`, or all dots when there is no tail. Strips non-digits and takes the last four |
-| `maskEmail(email)` | `a•••@domain` — first character plus the full domain |
-| `maskSecret(label)` | `"<label> מוסתר"` — a fixed opaque placeholder, never a partial reveal |
-| `maskCvv()` | `•••` — takes no argument, so a CVV cannot be passed in to be masked |
+| `maskEmail(email)` | `a•••@domain` - first character plus the full domain |
+| `maskSecret(label)` | `"<label> מוסתר"` - a fixed opaque placeholder, never a partial reveal |
+| `maskCvv()` | `•••` - takes no argument, so a CVV cannot be passed in to be masked |
 | `SECURITY_NOTE` | The Hebrew sentence the panel displays alongside masked fields |
 
-**[Inferred — HIGH]** The signatures are the design. `maskCvv()` accepts nothing, so there is no way to call it with a real CVV. `maskSecret()` returns a constant. **The API makes the insecure call unrepresentable** — a pattern worth extending to any future secret-handling code.
+**[Inferred - HIGH]** The signatures are the design. `maskCvv()` accepts nothing, so there is no way to call it with a real CVV. `maskSecret()` returns a constant. **The API makes the insecure call unrepresentable** - a pattern worth extending to any future secret-handling code.
 
 Note that `maskEmail` keeps the domain, which is what lets support tell two `gmail.com` customers apart while still not displaying the address.
 
 ### 21.8 Dependency and supply-chain posture
 
-**[Verified]** Web: three runtime dependencies (`react`, `react-dom`, `react-router`). No HTTP client, no utility library, no UI kit — so the transitive surface is unusually small and there is nothing that phones home.
+**[Verified]** Web: three runtime dependencies (`react`, `react-dom`, `react-router`). No HTTP client, no utility library, no UI kit - so the transitive surface is unusually small and there is nothing that phones home.
 
-**[Verified]** Mobile: eleven runtime dependencies, **every one pinned to an exact version**. **[Inferred — HIGH]** Deliberate for a DRM client: a floating minor of `react-native-pdf` or `react-native-keychain` could change capture or storage behaviour without anyone deciding it should.
+**[Verified]** Mobile: eleven runtime dependencies, **every one pinned to an exact version**. **[Inferred - HIGH]** Deliberate for a DRM client: a floating minor of `react-native-pdf` or `react-native-keychain` could change capture or storage behaviour without anyone deciding it should.
 
 **[Verified]** No `react-native/node_modules`, **no mobile lockfile**. `pnpm-lock.yaml` exists only for the web project. A mobile install today resolves eleven exact top-level versions but an unpinned transitive tree.
 
-**[Verified]** `.gitignore` excludes `android/keystore.properties`, `*.keystore` and `*.jks` with `!android/app/debug.keystore` — the signing material is deliberately never committed. `react-native/.gitignore` also excludes `vault/`, the on-device cache directory.
+**[Verified]** `.gitignore` excludes `android/keystore.properties`, `*.keystore` and `*.jks` with `!android/app/debug.keystore` - the signing material is deliberately never committed. `react-native/.gitignore` also excludes `vault/`, the on-device cache directory.
 
 ### 21.9 Security review summary
 
 | Finding | Severity | Type |
 |---|---|---|
-| Web session is a plaintext user id; all authorisation is client-side | **Critical** | Architectural — resolved only by the backend migration |
+| Web session is a plaintext user id; all authorisation is client-side | **Critical** | Architectural - resolved only by the backend migration |
 | `public/books/*.pdf` is a permanent public path in the static bundle | **High** | Contradicts §21.2 for the one real title in the repository |
 | Preview deployments ship inline sourcemaps with all security comments | **High** | `.figma/make/deploy-preview` + `build.sourcemap: 'inline'` |
 | No `frame-ancestors` header anywhere; the reader is an iframe | **Medium** | Acknowledged in source; a deployment task |
@@ -2195,7 +2195,7 @@ Note that `maskEmail` keeps the domain, which is what lets support tell two `gma
 
 ## 22. CODING CONVENTIONS
 
-These are observed conventions, not documented ones — with the exception of `AGENTS.md`, which documents three and is stale on everything else (§20.5).
+These are observed conventions, not documented ones - with the exception of `AGENTS.md`, which documents three and is stale on everything else (§20.5).
 
 ### 22.1 The file-header box
 
@@ -2213,7 +2213,7 @@ These are observed conventions, not documented ones — with the exception of `A
 
 Present in all 13 `src/lib/` modules, all three contexts, `App.tsx` (both projects), `client.ts`, `api.ts`, `config.ts`, `metro.config.js`, and every screen with a non-obvious constraint. **The convention is that the header carries the reasoning a reviewer would otherwise have to reconstruct.** Several of the most important facts in this document are quotations from these headers.
 
-Inline `/* … */` comments follow the same rule at statement level: they explain a hazard, a rejected alternative, or a coupling — never the syntax.
+Inline `/* … */` comments follow the same rule at statement level: they explain a hazard, a rejected alternative, or a coupling - never the syntax.
 
 ### 22.2 Language
 
@@ -2222,9 +2222,9 @@ Inline `/* … */` comments follow the same rule at statement level: they explai
 | Language | Used for |
 |---|---|
 | **English** | All identifiers, all comments, all type names, all SQL, all commit-adjacent documentation |
-| **Hebrew** | Every user-facing string — UI copy, validation messages, error messages, audit `action`/`details`, alert text, e-mail subjects |
+| **Hebrew** | Every user-facing string - UI copy, validation messages, error messages, audit `action`/`details`, alert text, e-mail subjects |
 
-Hebrew strings appear inline in JSX and in service-layer `fail()` calls. There is **no i18n layer, no message catalogue, no translation keys** — the product is Hebrew-only and the strings are literals. Label maps for enums are `Record<Enum, string>` constants co-located with their use: `ROLE_LABEL`, `INQUIRY_STATUS_LABEL`, `SECURITY_EVENT_LABEL`, `PLATFORM_LABEL`, `INTEGRITY_LABEL`.
+Hebrew strings appear inline in JSX and in service-layer `fail()` calls. There is **no i18n layer, no message catalogue, no translation keys** - the product is Hebrew-only and the strings are literals. Label maps for enums are `Record<Enum, string>` constants co-located with their use: `ROLE_LABEL`, `INQUIRY_STATUS_LABEL`, `SECURITY_EVENT_LABEL`, `PLATFORM_LABEL`, `INTEGRITY_LABEL`.
 
 ### 22.3 Quoting and escaping
 
@@ -2236,7 +2236,7 @@ Hebrew strings appear inline in JSX and in service-layer `fail()` calls. There i
 
 **[Verified]** `<html lang="he" dir="rtl">`. Two consequences that recur:
 
-- **Anything machine-shaped is wrapped in `dir="ltr"`** — e-mail addresses, coupon codes, ticket numbers, order references, build numbers. `<p dir="ltr" className="font-mono …">{submitted.ticket_number}</p>`. Without it, RTL bidi reordering scrambles them.
+- **Anything machine-shaped is wrapped in `dir="ltr"`** - e-mail addresses, coupon codes, ticket numbers, order references, build numbers. `<p dir="ltr" className="font-mono …">{submitted.ticket_number}</p>`. Without it, RTL bidi reordering scrambles them.
 - **The mobile app forces RTL at module scope**, before the first render:
 
 ```ts
@@ -2265,13 +2265,13 @@ The reason is theme switching: `ThemeToggle` flips a class on the root, the `@th
 | `.card-glow` | The elevated card with a gold border on hover |
 | `.font-display` / `.font-mono` | The two typefaces |
 | `.page-enter` | `animation: fadeUp 0.4s ease both` |
-| `.tap-target` | `min-height: 44px; min-width: 44px` — *"44px is the Apple HIG floor; 48dp is Android's. Applied to controls that a thumb has to find by feel."* |
+| `.tap-target` | `min-height: 44px; min-width: 44px` - *"44px is the Apple HIG floor; 48dp is Android's. Applied to controls that a thumb has to find by feel."* |
 | `.safe-top` / `.safe-bottom` / `.safe-x` | `env(safe-area-inset-*)`, zero on desktop |
 | `.swipe-zone` / `.swipe-hint` | Capability-gated by `@media (hover: none) and (pointer: coarse)` |
 
 **[Verified]** Capability-based rather than breakpoint-based responsive CSS throughout: `@media (hover: none) and (pointer: coarse)` instead of `@media (max-width: …)`, `min-height: 100vh` immediately followed by `min-height: 100dvh` so the mobile URL bar does not push the bottom navigation off-screen, and `prefers-reduced-motion` respected.
 
-**[Verified]** The mobile `theme.ts` **copies** the token values from `src/index.css` rather than importing them, and adds `shield: '#000000'` and `TAP_TARGET = 44`. Metro's `blockList` makes importing impossible (§13.7). **The two token sets must be kept in step by hand** — the same class of hazard as `ScreenShield.m` ↔ `ScreenShield.swift`.
+**[Verified]** The mobile `theme.ts` **copies** the token values from `src/index.css` rather than importing them, and adds `shield: '#000000'` and `TAP_TARGET = 44`. Metro's `blockList` makes importing impossible (§13.7). **The two token sets must be kept in step by hand** - the same class of hazard as `ScreenShield.m` ↔ `ScreenShield.swift`.
 
 ### 22.6 Component conventions
 
@@ -2282,7 +2282,7 @@ The reason is theme switching: `ThemeToggle` flips a class on the root, the `@th
 - **Function components only.** The two `class` components in the repository are error boundaries, where React requires it.
 - **Hooks before guards.** §12.5. Non-negotiable.
 - **Sub-components are file-local** and defined above the default export (`StatusPill` in `SupportPage.tsx`, the coupon modal in `AdminCmsPage.tsx`). They are not exported.
-- **`as const` on shared style objects** — `const inputStyle = { … } as const;` at the top of pages that reuse it across many inputs.
+- **`as const` on shared style objects** - `const inputStyle = { … } as const;` at the top of pages that reuse it across many inputs.
 - **State is local.** `useState` per form; the three contexts hold only cross-page state (session, admin aggregates, CMS content).
 
 ### 22.7 Naming
@@ -2316,23 +2316,23 @@ Five recipes. Each is what the existing code does, so a new feature built the sa
 
 The full sequence, in the order the existing fourteen pages follow:
 
-1. **`src/types/index.ts`** — add the entity, its status union and its `*_id` field. Use `snake_case` field names matching the SQL you will write in step 8.
-2. **`src/lib/db.ts`** — add the collection to the `Database` interface and to `emptyDatabase()` as `[]`. **Do NOT bump `DB_VERSION`** without first resolving §27's unknown about migration behaviour.
-3. **`src/lib/permissions.ts`** — add the `AdminPermission` string to the union, to `SUPER`, and to whichever other roles should hold it. If it should be SUPER_ADMIN-only, add it only to `SUPER`.
-4. **`src/lib/api*.ts`** — add the service functions, actor-first, following the six steps. Every mutation ends with `writeAudit(actor, { … })`. Add the `AuditCategory` member if none fits.
-5. **`src/pages/admin/Admin<Domain>Page.tsx`** — hooks first, then `if (!can(adminRole, '<perm>')) return <AccessDenied page="<Hebrew name>" />;`.
-6. **`src/components/layout/SideNav.tsx`** — add the nav item with its `perm` so `AdminLayout`'s filter picks it up.
-7. **`src/routes.tsx`** — add the route under the `/admin` parent with `lazyPage(() => import(…))` and `errorElement: <RouteError />`.
-8. **`schema.sql`** — add the table, its CHECK constraints (with a comment on each failure mode), its foreign keys (`ON DELETE RESTRICT` where a reference must survive), and a view if the feature is read-heavy. **Also add the `AuditCategory` and any status value to the matching SQL CHECK list** — §9.6 verified these are exact matches today, and that is worth preserving.
+1. **`src/types/index.ts`** - add the entity, its status union and its `*_id` field. Use `snake_case` field names matching the SQL you will write in step 8.
+2. **`src/lib/db.ts`** - add the collection to the `Database` interface and to `emptyDatabase()` as `[]`. **Do NOT bump `DB_VERSION`** without first resolving §27's unknown about migration behaviour.
+3. **`src/lib/permissions.ts`** - add the `AdminPermission` string to the union, to `SUPER`, and to whichever other roles should hold it. If it should be SUPER_ADMIN-only, add it only to `SUPER`.
+4. **`src/lib/api*.ts`** - add the service functions, actor-first, following the six steps. Every mutation ends with `writeAudit(actor, { … })`. Add the `AuditCategory` member if none fits.
+5. **`src/pages/admin/Admin<Domain>Page.tsx`** - hooks first, then `if (!can(adminRole, '<perm>')) return <AccessDenied page="<Hebrew name>" />;`.
+6. **`src/components/layout/SideNav.tsx`** - add the nav item with its `perm` so `AdminLayout`'s filter picks it up.
+7. **`src/routes.tsx`** - add the route under the `/admin` parent with `lazyPage(() => import(…))` and `errorElement: <RouteError />`.
+8. **`schema.sql`** - add the table, its CHECK constraints (with a comment on each failure mode), its foreign keys (`ON DELETE RESTRICT` where a reference must survive), and a view if the feature is read-heavy. **Also add the `AuditCategory` and any status value to the matching SQL CHECK list** - §9.6 verified these are exact matches today, and that is worth preserving.
 
-**What you must not skip:** step 3 without step 4 leaves a permission nothing enforces. Step 4 without `writeAudit` leaves a mutation nobody can account for — there is no exception in the existing code.
+**What you must not skip:** step 3 without step 4 leaves a permission nothing enforces. Step 4 without `writeAudit` leaves a mutation nobody can account for - there is no exception in the existing code.
 
 ### 23.2 Recipe: add a public/customer feature
 
 1. Service function in `src/lib/api*.ts`, taking `Actor | null` first. For customer-scoped reads, follow `listMyInquiries(actor)` / `listMyOrders(actor)`: filter by `actor.user_id` **and** by `customer_email`, because guest checkout creates orders before the account exists. `getCustomerProfile()` does exactly this: `o.user_id === userId || o.customer_email === stored.email`.
 2. Page in `src/pages/`, default export, `page-enter` class, `max-w-5xl mx-auto px-6 py-16` shell.
 3. Route in `src/routes.tsx` under the storefront parent so the header and navigation are inherited.
-4. Context exposure only if the state is cross-page — otherwise keep it in the page.
+4. Context exposure only if the state is cross-page - otherwise keep it in the page.
 
 ### 23.3 Recipe: add a CMS-editable piece of copy
 
@@ -2351,17 +2351,17 @@ Three distinct mechanisms; picking the wrong one is the most common mistake here
 Four places must change together, or the type checker catches three of them and the database catches the fourth:
 
 1. `SecurityEventType` union in `src/types/index.ts`.
-2. The **same** union in `react-native/src/net/types.ts` (the duplication is intentional and enforced — §15.5).
-3. `security_events_event_type_check` in `schema.sql` — a PostgreSQL CHECK list cannot be extended in place, which is exactly why `migrations/0001` section B replaces the whole constraint. **Copy that approach.**
+2. The **same** union in `react-native/src/net/types.ts` (the duplication is intentional and enforced - §15.5).
+3. `security_events_event_type_check` in `schema.sql` - a PostgreSQL CHECK list cannot be extended in place, which is exactly why `migrations/0001` section B replaces the whole constraint. **Copy that approach.**
 4. `SECURITY_EVENT_LABEL` (Hebrew display name) and, if it deserves attention, `HIGH_SIGNAL_EVENTS` in `api-security.ts`.
 
 Because `SECURITY_EVENT_LABEL` is typed `Record<SecurityEventType, string>`, step 1 without step 4 is a **compile error**. That is the design working.
 
 ### 23.5 Recipe: add a mobile endpoint
 
-1. `net/types.ts` — the request and response types, `snake_case` fields matching the SQL.
-2. `net/api.ts` — the function, using `get`/`post`/`put`/`del`. Add `{ anonymous: true }` only if it must work before sign-in.
-3. **Update the header mapping table** in `net/api.ts` — phone function → web service function → SQL table. This is the API specification (§10.1) and an endpoint missing from it is an endpoint the backend author will not implement.
+1. `net/types.ts` - the request and response types, `snake_case` fields matching the SQL.
+2. `net/api.ts` - the function, using `get`/`post`/`put`/`del`. Add `{ anonymous: true }` only if it must work before sign-in.
+3. **Update the header mapping table** in `net/api.ts` - phone function → web service function → SQL table. This is the API specification (§10.1) and an endpoint missing from it is an endpoint the backend author will not implement.
 4. The web service function that does the same thing against `localStorage`, so the two stay comparable.
 5. The SQL view or table the server will read.
 
@@ -2371,9 +2371,9 @@ Because `SECURITY_EVENT_LABEL` is typed `Record<SecurityEventType, string>`, ste
 
 The most hazardous change in the repository, because nothing validates it:
 
-1. `ScreenShieldModule.kt` (Android) and `ScreenShield.swift` (iOS) — both, with matching semantics. **Android prevents; iOS detects and conceals.** Do not assume one implementation can mirror the other.
-2. `ScreenShield.m` — add the `RCT_EXTERN_METHOD`. The header's warning is the whole reason this is hazardous: *"Nothing in the toolchain checks that a selector declared here exists in Swift, and the failure is not a build error: it is `undefined` returned from the JS side at call time."*
-3. `drm/ScreenShield.tsx` — the JS wrapper, with a fallback for the method being `undefined`.
+1. `ScreenShieldModule.kt` (Android) and `ScreenShield.swift` (iOS) - both, with matching semantics. **Android prevents; iOS detects and conceals.** Do not assume one implementation can mirror the other.
+2. `ScreenShield.m` - add the `RCT_EXTERN_METHOD`. The header's warning is the whole reason this is hazardous: *"Nothing in the toolchain checks that a selector declared here exists in Swift, and the failure is not a build error: it is `undefined` returned from the JS side at call time."*
+3. `drm/ScreenShield.tsx` - the JS wrapper, with a fallback for the method being `undefined`.
 4. The obsolete root `ScreenShield.tsx` was deleted during repository cleanup; do not restore it.
 
 ---
@@ -2382,7 +2382,7 @@ The most hazardous change in the repository, because nothing validates it:
 
 ### 24.1 Web module graph
 
-**[Verified]** Arrows mean "is imported by". The graph is a strict layering — **no layer imports from a layer above it**, and there are no cycles.
+**[Verified]** Arrows mean "is imported by". The graph is a strict layering - **no layer imports from a layer above it**, and there are no cycles.
 
 ```
 index.html
@@ -2414,7 +2414,7 @@ index.html
 2. **Only `db.ts` touches `localStorage` for data.** `auth.ts` touches it for the session key alone; `store.ts` touches neither.
 3. **`types/index.ts` is a leaf.** It imports nothing from the application.
 
-### 24.2 What depends on what — the blast-radius view
+### 24.2 What depends on what - the blast-radius view
 
 | If you change… | Everything that breaks |
 |---|---|
@@ -2422,16 +2422,16 @@ index.html
 | `db.ts`'s `Database` shape | Every service function, every context, every page; **and every existing user's stored data** |
 | `db.ts`'s `mutate()` notification timing | Every `useStore()` consumer; the three `ReaderPage` ref guards become insufficient |
 | `permissions.ts` | All 14 admin pages, `SideNav`, `AdminLayout`, and every `guard()` call site |
-| `guard()` | Every mutating service function — 40+ call sites |
+| `guard()` | Every mutating service function - 40+ call sites |
 | `api.ts`'s `Result`/`ErrorCode` | Every page's error branch, and `net/types.ts` by hand |
-| `useScreenProtection` | `ReaderPage` only — but the CSP `style-src 'unsafe-inline'` exception exists for it (§13.6) |
+| `useScreenProtection` | `ReaderPage` only - but the CSP `style-src 'unsafe-inline'` exception exists for it (§13.6) |
 | `vite.config.ts` | The Figma Make integration, the CSP, `robots.txt`, the `@` alias, and sourcemap policy |
 | `src/index.css` `@theme` tokens | Every page's inline `style={{ … var(--color-…) }}`, and `react-native/src/theme.ts` by hand |
 | `metro.config.js`'s `blockList` | The mobile build silently bundles web React (§13.7) |
 | `config.ts` timing constants | Coupled by inequality to server-side `session_timeout_minutes` and grant TTL (§13.4) |
 | `android/build.gradle` `versionCode` | The `mobile_min_build` kill switch's ability to target a build (§14.8) |
 | `ScreenShield.swift` | `ScreenShield.m` by hand; nothing detects the mismatch (§14.7) |
-| `schema.sql` | Nothing at runtime — but it is the declared arbiter, so every divergence becomes a future bug |
+| `schema.sql` | Nothing at runtime - but it is the declared arbiter, so every divergence becomes a future bug |
 
 ### 24.3 Mobile module graph
 
@@ -2464,7 +2464,7 @@ index.js ─> App.tsx
 | The design tokens | `src/index.css` `@theme` | `src/theme.ts` | Nothing |
 | The behavioural contract | `src/lib/api*.ts` | `src/net/api.ts` + the header mapping table | Nothing |
 
-**[Inferred — HIGH]** This is the correct decision — a shared package would mean a build system for both projects and a Metro/Vite interop problem — but it means **every change to the domain model is a three-place edit**. §28 makes that a checklist item.
+**[Inferred - HIGH]** This is the correct decision - a shared package would mean a build system for both projects and a Metro/Vite interop problem - but it means **every change to the domain model is a three-place edit**. §28 makes that a checklist item.
 
 ### 24.5 External runtime dependencies
 
@@ -2476,43 +2476,43 @@ index.js ─> App.tsx
 
 Ranked by how much damage a well-intentioned edit can do. "Fragile" here means *the code looks ordinary and the failure is not local*.
 
-### 25.1 Tier 1 — do not touch without a plan
+### 25.1 Tier 1 - do not touch without a plan
 
 | Area | Why it is sensitive | The specific trap |
 |---|---|---|
-| **`src/lib/db.ts`** — `Database`, `DB_VERSION`, `mutate()` | Every byte of every user's data lives in one localStorage document. There is no migration path and no backup | `mutate()` notifies **synchronously**. Changing that to async, batching, or `queueMicrotask` breaks the three `ReaderPage` ref guards and every `useStore()` consumer's assumptions at once. Adding a collection without adding it to `emptyDatabase()` produces `undefined` for every existing user |
-| **`src/lib/permissions.ts`** | 27 strings, 5 roles, 14 admin pages, 40+ `guard()` call sites | Removing a permission from a role silently disables a page — `can()` returns false, the page renders `AccessDenied`, and nothing errors. Adding one to `SUPER` alone is the safe default |
-| **`schema.sql`** — the CHECK constraints | Four of them are the only thing preventing a false financial claim | Removing a `COALESCE` from `chk_drm_watermark_template` or `chk_drm_offline_needs_ttl` **silently disables the constraint for NULL rows** — the source says so. Removing `chk_payment_captured_has_reference` allows a `PAID` order with no provider reference |
-| **`metro.config.js`** — `blockList` | One line separates two projects that both contain React | Deleting it produces a build that **succeeds** and an app that bundles web React. There is no error to see |
-| **`useScreenProtection.ts`** — the `}, []` dependency array | The listeners are installed once and read policy through `optionsRef` | Adding `options` to the dependency array re-installs listeners on every policy object identity change, opening windows where nothing is protected. The comment states this explicitly |
-| **`react-native/src/net/client.ts`** — `identityHeaders()` | The kill switch depends on `X-Casanova-Build` arriving on **every** request | Making the headers conditional on authentication, or omitting them for anonymous calls, breaks `bootCheck()`'s server-side counterpart |
+| **`src/lib/db.ts`** - `Database`, `DB_VERSION`, `mutate()` | Every byte of every user's data lives in one localStorage document. There is no migration path and no backup | `mutate()` notifies **synchronously**. Changing that to async, batching, or `queueMicrotask` breaks the three `ReaderPage` ref guards and every `useStore()` consumer's assumptions at once. Adding a collection without adding it to `emptyDatabase()` produces `undefined` for every existing user |
+| **`src/lib/permissions.ts`** | 27 strings, 5 roles, 14 admin pages, 40+ `guard()` call sites | Removing a permission from a role silently disables a page - `can()` returns false, the page renders `AccessDenied`, and nothing errors. Adding one to `SUPER` alone is the safe default |
+| **`schema.sql`** - the CHECK constraints | Four of them are the only thing preventing a false financial claim | Removing a `COALESCE` from `chk_drm_watermark_template` or `chk_drm_offline_needs_ttl` **silently disables the constraint for NULL rows** - the source says so. Removing `chk_payment_captured_has_reference` allows a `PAID` order with no provider reference |
+| **`metro.config.js`** - `blockList` | One line separates two projects that both contain React | Deleting it produces a build that **succeeds** and an app that bundles web React. There is no error to see |
+| **`useScreenProtection.ts`** - the `}, []` dependency array | The listeners are installed once and read policy through `optionsRef` | Adding `options` to the dependency array re-installs listeners on every policy object identity change, opening windows where nothing is protected. The comment states this explicitly |
+| **`react-native/src/net/client.ts`** - `identityHeaders()` | The kill switch depends on `X-Casanova-Build` arriving on **every** request | Making the headers conditional on authentication, or omitting them for anonymous calls, breaks `bootCheck()`'s server-side counterpart |
 
-### 25.2 Tier 2 — high coupling, moderate blast radius
+### 25.2 Tier 2 - high coupling, moderate blast radius
 
 | Area | Coupling |
 |---|---|
 | **`src/types/index.ts`** | Imported by everything. A rename is a three-place edit (§24.4) |
-| **`api-security.ts`** — `resolveDrmPolicy`, `withProtectionDefaults` | Policy resolution is most-specific-first (`WEB`/`MOBILE` then `ALL`). Reordering it changes which policy wins for every user |
+| **`api-security.ts`** - `resolveDrmPolicy`, `withProtectionDefaults` | Policy resolution is most-specific-first (`WEB`/`MOBILE` then `ALL`). Reordering it changes which policy wins for every user |
 | **`ReaderPage.tsx`** | Three ref guards + `pdfEmbedUrl` + the iframe `key`. All four exist because of browser PDF-viewer behaviour that is not obvious from the code (§14.4) |
 | **`react-native/src/config.ts`** timing constants | Coupled by **inequality** to server values nobody validates (§13.4) |
 | **`ScreenShield.m` ↔ `ScreenShield.swift`** | Hand-maintained; a mismatch returns `undefined` at call time, not a build error |
 | **`android/build.gradle` `versionCode`** | The kill switch's targeting key. A security release that does not bump it cannot be forced |
-| **`api-orders.ts` `checkout()`** | Recomputes the price server-side. Accepting a client-supplied total here — even "for convenience" — destroys the property verified in §14.3 |
+| **`api-orders.ts` `checkout()`** | Recomputes the price server-side. Accepting a client-supplied total here - even "for convenience" - destroys the property verified in §14.3 |
 
-### 25.3 Tier 3 — safe to change freely
+### 25.3 Tier 3 - safe to change freely
 
 **[Verified]** These are leaf modules with local effects:
 
-- `src/components/icons.tsx` (459 lines) — an icon-name→SVG map. Adding an icon cannot break anything.
-- `src/lib/media.ts` (27 lines) — YouTube/Vimeo URL detection and embed conversion.
-- `src/lib/sensitive.ts` (35 lines) — pure masking functions.
-- `src/components/{ThemeToggle,AccessDenied,CmsHint}.tsx` — presentational.
+- `src/components/icons.tsx` (459 lines) - an icon-name→SVG map. Adding an icon cannot break anything.
+- `src/lib/media.ts` (27 lines) - YouTube/Vimeo URL detection and embed conversion.
+- `src/lib/sensitive.ts` (35 lines) - pure masking functions.
+- `src/components/{ThemeToggle,AccessDenied,CmsHint}.tsx` - presentational.
 - Any page's JSX and layout, provided the hooks-before-guard order is preserved.
 - `src/index.css` visual values (not the token *names*, which pages reference by `var()`).
 
 ### 25.4 Areas where the failure is silent
 
-**[Inferred — HIGH]** The dangerous characteristic of this codebase is that **most breakages produce no error**. Concretely:
+**[Inferred - HIGH]** The dangerous characteristic of this codebase is that **most breakages produce no error**. Concretely:
 
 | Change | Symptom |
 |---|---|
@@ -2521,7 +2521,7 @@ Ranked by how much damage a well-intentioned edit can do. "Fragile" here means *
 | Add `options` to `useScreenProtection`'s dependency array | Protection intermittently absent. Nothing logs it |
 | Remove a `COALESCE` from a CHECK | The constraint passes on NULL. No error until data is wrong |
 | Rename a `SecurityEventType` in one project only | The web admin console shows an unlabelled event. The type checker catches it only if the `Record<…>` map is touched |
-| Bump `DB_VERSION` without a migration | **[Unknown]** — §27. Possibly every user's data is discarded |
+| Bump `DB_VERSION` without a migration | **[Unknown]** - §27. Possibly every user's data is discarded |
 | Forget `writeAudit` on a new mutation | Everything works. The audit log has a hole nobody notices |
 | Ship a mobile build without bumping `versionCode` | The kill switch cannot target it. Nothing indicates the omission |
 
@@ -2554,18 +2554,18 @@ Ordered by consequence. Every item was verified during this analysis.
 At the time of the initial assessment, `git log` reported that `main` had no commits and the obsolete root `ScreenShield.tsx` was the only tracked React Native file. The cleanup removed that dead prototype. Evidence it was obsolete:
 
 - Branded **`ELITEREAD`**, a different product name. `db.ts`'s `LEGACY_KEYS = ['eliteread_cms_v2', 'eliteread_admin_v2', 'rp_user']` confirms the rename happened and the old storage keys are still swept on first run.
-- Opens with `// @ts-nocheck`, justified by a comment saying *"'react-native' is not a dependency of this web project"* — true of the web project, irrelevant to the mobile one, and it means the file has never been type-checked.
+- Opens with `// @ts-nocheck`, justified by a comment saying *"'react-native' is not a dependency of this web project"* - true of the web project, irrelevant to the mobile one, and it means the file has never been type-checked.
 - Declares a **three-method** native contract (`enable(): Promise<void>`, `disable(): Promise<void>`, `isCaptured(): Promise<boolean>`) against a shipped **eleven-method** module, with a different return type on the first one (`Promise<boolean>`).
-- Instructs the reader to *"paste the Android/iOS classes at the bottom of this file into the native projects (they are kept here as the single source of truth)"* — the native projects exist, are 1 450+ lines of Kotlin and Swift, and are not in this file.
+- Instructs the reader to *"paste the Android/iOS classes at the bottom of this file into the native projects (they are kept here as the single source of truth)"* - the native projects exist, are 1 450+ lines of Kotlin and Swift, and are not in this file.
 - It is **not** in `react-native/tsconfig.json`'s `include`, so `pnpm typecheck` never sees it.
 
 **A fresh clone yields a working web app and this file.** The mobile application and its migration would be gone. This is not a code problem; it is `git add migrations react-native && git commit`, and the obsolete file should be deleted or moved out of the tracked tree at the same time.
 
 **2. `schema.sql` ↔ `migrations/0001_mobile_reader.sql` cannot both be applied.**
-`consume_content_grant` returns **7** columns in `schema.sql` and **8** in the migration (adding `out_asset_id`). PostgreSQL rejects `CREATE OR REPLACE FUNCTION` when the return type changes: *"cannot change return type of existing function."* Applying `schema.sql` then `0001` **fails at section G**. Two further divergences: `content_access_grants.token_hash` uniqueness is inline `UNIQUE` in one and a named `CONSTRAINT chk_grant_token_unique UNIQUE (token_hash)` in the other (so a future drop-by-name works against only one); and `schema.sql` already contains everything the migration adds, so the migration is not additive to the committed baseline. **Nobody has run either** — there is no PostgreSQL instance, connection string or migration runner in the repository.
+`consume_content_grant` returns **7** columns in `schema.sql` and **8** in the migration (adding `out_asset_id`). PostgreSQL rejects `CREATE OR REPLACE FUNCTION` when the return type changes: *"cannot change return type of existing function."* Applying `schema.sql` then `0001` **fails at section G**. Two further divergences: `content_access_grants.token_hash` uniqueness is inline `UNIQUE` in one and a named `CONSTRAINT chk_grant_token_unique UNIQUE (token_hash)` in the other (so a future drop-by-name works against only one); and `schema.sql` already contains everything the migration adds, so the migration is not additive to the committed baseline. **Nobody has run either** - there is no PostgreSQL instance, connection string or migration runner in the repository.
 
 **3. The iOS target cannot be built.**
-The complete `ios/` tree is four files. No `.xcodeproj`, no `Info.plist`, no `AppDelegate`, no `LaunchScreen`, no asset catalogue, no `project.yml` — although `CasanovaReader-Bridging-Header.h`'s own comment references *"the `SWIFT_OBJC_BRIDGING_HEADER` build setting in project.yml"*. Five independent fatal consequences are listed in §20.4. Recreating the project is a task, not a configuration step.
+The complete `ios/` tree is four files. No `.xcodeproj`, no `Info.plist`, no `AppDelegate`, no `LaunchScreen`, no asset catalogue, no `project.yml` - although `CasanovaReader-Bridging-Header.h`'s own comment references *"the `SWIFT_OBJC_BRIDGING_HEADER` build setting in project.yml"*. Five independent fatal consequences are listed in §20.4. Recreating the project is a task, not a configuration step.
 
 ### 26.2 High
 
@@ -2573,9 +2573,9 @@ The complete `ios/` tree is four files. No `.xcodeproj`, no `Info.plist`, no `Ap
 
 **5. `pnpm lint` cannot succeed.** `react-native/package.json` declares `"lint": "eslint ."` with `eslint ^8.57.1` and `@react-native/eslint-config 0.79.2` installed, but **no ESLint configuration file exists** anywhere in `react-native/`. ESLint 8 requires one.
 
-**6. No tests, no README, no `.env.example`, no setup instructions — all four mandated by the founding brief.** §34 requires fourteen named scenarios; §35's Definition of Done includes *"Tested"* and *"No console errors"*; §39 lists all four as deliverables. Ten of the fourteen scenarios are implemented and were verified by reading source; two (`Duplicate webhook arrives`, `Invoice generation`) are schema-only. §19.
+**6. No tests, no README, no `.env.example`, no setup instructions - all four mandated by the founding brief.** §34 requires fourteen named scenarios; §35's Definition of Done includes *"Tested"* and *"No console errors"*; §39 lists all four as deliverables. Ten of the fourteen scenarios are implemented and were verified by reading source; two (`Duplicate webhook arrives`, `Invoice generation`) are schema-only. §19.
 
-**7. Preview deployments ship inline sourcemaps.** `.figma/make/deploy-preview` runs `pnpm run build --mode development`, and `vite.config.ts` sets `build.sourcemap: 'inline'` in that mode. The complete annotated TypeScript source — including every comment explaining what the DRM does and does not stop — is delivered to anyone who can reach the preview URL. §20.1.
+**7. Preview deployments ship inline sourcemaps.** `.figma/make/deploy-preview` runs `pnpm run build --mode development`, and `vite.config.ts` sets `build.sourcemap: 'inline'` in that mode. The complete annotated TypeScript source - including every comment explaining what the DRM does and does not stop - is delivered to anyone who can reach the preview URL. §20.1.
 
 **8. The web reader's real content is a permanent public path.** `public/books/Senia_book.pdf` is served from the static bundle. `pdfEmbedUrl()` receives it as `content_url`. The grant machinery exists but is not on this path, so §21.2's central invariant does not hold for the one real title in the repository.
 
@@ -2585,11 +2585,11 @@ The complete `ios/` tree is four files. No `.xcodeproj`, no `Info.plist`, no `Ap
 
 ### 26.3 Medium
 
-**11. `AdminSecurityPage.tsx` contains unreachable code with a misleading comment.** Lines 446–458 build a device list that falls back to a caller-scoped `listDeviceSessions(actor)` when `can(adminRole, 'security')` is false, with a comment explaining that *"the page degrades to a personal device list rather than becoming a way to enumerate other customers."* Line 475 already returned `<AccessDenied />` for exactly that condition. **The behaviour is over-restrictive and therefore safe; the comment describes a degradation that cannot happen.** A reader who trusts the comment will believe a permission tier exists that does not.
+**11. `AdminSecurityPage.tsx` contains unreachable code with a misleading comment.** Lines 446-458 build a device list that falls back to a caller-scoped `listDeviceSessions(actor)` when `can(adminRole, 'security')` is false, with a comment explaining that *"the page degrades to a personal device list rather than becoming a way to enumerate other customers."* Line 475 already returned `<AccessDenied />` for exactly that condition. **The behaviour is over-restrictive and therefore safe; the comment describes a degradation that cannot happen.** A reader who trusts the comment will believe a permission tier exists that does not.
 
 **12. The upload path can exceed the storage quota.** `max_upload_bytes` defaults to 10 MB; `readAssetFile` base64-encodes to ~13.3 MB into a single localStorage key against a typical 5 MB origin quota. The failure surfaces as a generic `STORAGE` error rather than the specific "upload it externally" guidance the size check gives. §14.10.
 
-**13. `RESTRICTIVE_POLICY` diverges from `defaultDrmPolicy()`.** The mobile fail-closed default uses watermark opacity **0.14** and an offline timeout of **30 minutes**; the web default uses **0.07** and **120 minutes**. Both are defensible in isolation. **[Unknown]** whether the divergence is a deliberate platform difference or drift — §27.
+**13. `RESTRICTIVE_POLICY` diverges from `defaultDrmPolicy()`.** The mobile fail-closed default uses watermark opacity **0.14** and an offline timeout of **30 minutes**; the web default uses **0.07** and **120 minutes**. Both are defensible in isolation. **[Unknown]** whether the divergence is a deliberate platform difference or drift - §27.
 
 **14. The `FINANCE` role description promises permissions the role does not have.** `ROLE_DESCRIPTION.FINANCE` names קופונים (coupons); `ROLE_PERMISSIONS.FINANCE` has no `'cms'`, which is what `saveCoupon`/`deleteCoupon` guard on. `MARKETING` holds `'finance'` although its description does not mention it. §10.6.
 
@@ -2605,7 +2605,7 @@ The complete `ios/` tree is four files. No `.xcodeproj`, no `Info.plist`, no `Ap
 
 ### 26.4 Low
 
-**20. Twenty-two smoke-test PNGs in the repository root**, and `.gitignore` covers `smoke_*`, `step*` and `verify_*` but **not `exp_*` or `screenshot_*`** — which is why ~20 of them show as untracked. Two names are findings in themselves: `smoke_stage6_reader_crash.png`, `step2_store_404.png`.
+**20. Twenty-two smoke-test PNGs in the repository root**, and `.gitignore` covers `smoke_*`, `step*` and `verify_*` but **not `exp_*` or `screenshot_*`** - which is why ~20 of them show as untracked. Two names are findings in themselves: `smoke_stage6_reader_crash.png`, `step2_store_404.png`.
 
 **21. Two duplicate and two mis-placed PDFs.** `docs/Senia_book.pdf` and `public/books/Senia_book.pdf` are byte-identical (~48 MB); `.gitignore` records that the `docs/` copy is read by nothing. A 13 MB Hebrew-named PDF sits in `react-native/android/gradle/wrapper/`, where the wrapper jar should be, and `react-native/.gitignore`'s `*.pdf` rule keeps it out of git but not out of the working tree.
 
@@ -2617,7 +2617,7 @@ The complete `ios/` tree is four files. No `.xcodeproj`, no `Info.plist`, no `Ap
 
 Worth stating, because several of these look like debt and are decisions:
 
-- **Three runtime dependencies** on the web side. Not a gap — a deliberate refusal of third-party abstraction (§3.1).
+- **Three runtime dependencies** on the web side. Not a gap - a deliberate refusal of third-party abstraction (§3.1).
 - **`net/types.ts` redeclaring web types.** Intentional and enforced by Metro's `blockList` (§15.5).
 - **No seed data.** Deliberate, so no invented marketing copy can ship (§14.1).
 - **No mock payment provider.** Deliberate, so the UI cannot claim a charge that did not happen (§11.4).
@@ -2652,7 +2652,7 @@ merged.version = DB_VERSION;
 **[Verified]** The consequences, which are a de facto migration policy that nobody has written down:
 
 1. **`version` is overwritten, never compared.** Bumping `DB_VERSION` does **nothing**. There is no migration branch, no discard path, no upgrade hook.
-2. **Iteration is over `Object.keys(base)`, not over the parsed document.** So a collection **removed** from `Database` is silently dropped on read — old data disappears without error.
+2. **Iteration is over `Object.keys(base)`, not over the parsed document.** So a collection **removed** from `Database` is silently dropped on read - old data disappears without error.
 3. **A collection added** to `Database` starts as `[]` for every existing user, because `base` supplies it and `parsed[key]` is `undefined`.
 4. **`settings` is shallow-merged** with `defaultSettings()`, so a new setting gets its default for existing users. Safe.
 5. **`drm_policies` and `device_sessions` are re-run through defaults-fillers** (`withProtectionDefaults`, `withSessionDefaults`), so a new policy flag gets the strictest value for existing rows. Safe, and fail-closed.
@@ -2660,19 +2660,19 @@ merged.version = DB_VERSION;
 
 The header comment states the intent: *"Merge key-by-key so a document written by an older build can never silently inject records that no longer exist in the schema, and a missing collection can never fall back to fabricated content."* **That intent is achieved at the collection level and not at the record level.**
 
-**The remaining unknown, and it is the one that matters:** how to migrate a *record* shape. There is no mechanism. Any change to an existing record's fields either has to tolerate `undefined` forever or has to add a per-collection normaliser alongside `withProtectionDefaults`/`withSessionDefaults` — which is the pattern the code already establishes but has only used twice.
+**The remaining unknown, and it is the one that matters:** how to migrate a *record* shape. There is no mechanism. Any change to an existing record's fields either has to tolerate `undefined` forever or has to add a per-collection normaliser alongside `withProtectionDefaults`/`withSessionDefaults` - which is the pattern the code already establishes but has only used twice.
 
 ### 27.2 Genuine unknowns
 
 | # | Unknown | Why the repository cannot settle it | Why it matters |
 |---|---|---|---|
 | 1 | **Minimum supported PostgreSQL major version** | No version declared anywhere; no `.tool-versions`, no Docker image, no CI matrix. The constructs used (`RETURNS TABLE`, partial unique indexes, `gen_random_uuid()`, `EXECUTE FUNCTION`) are long-standing, but nothing states a floor | `gen_random_uuid()` moved into core in PG 13; before that it needed `pgcrypto`. Choosing a target version is the first decision of the backend migration |
-| 2 | **The intended migration order** | `schema.sql` already contains everything `migrations/0001` adds, and applying both fails (§26.1). No runner, no `schema_migrations` table, no ordering metadata | Determines whether `0001` is a historical record or an unapplied step. §9.4 argues historical, **[Inferred — HIGH]**, but it is not stated |
+| 2 | **The intended migration order** | `schema.sql` already contains everything `migrations/0001` adds, and applying both fails (§26.1). No runner, no `schema_migrations` table, no ordering metadata | Determines whether `0001` is a historical record or an unapplied step. §9.4 argues historical, **[Inferred - HIGH]**, but it is not stated |
 | 3 | **Which Gradle version the Android build needs** | `classpath("com.android.tools.build:gradle")` is version-less; no wrapper, no `gradle/libs.versions.toml`, no `buildscript` version | The Android build cannot be reproduced without guessing. AGP 8.x requires Gradle 8.x and JDK 17 |
 | 4 | **Whether XcodeGen was the intended iOS project generator** | `CasanovaReader-Bridging-Header.h` references `project.yml`, which does not exist. No `project.yml`, no `.xcodegen.yml`, no Tuist config, no `.xcodeproj` | Determines whether the iOS project is regenerable from a lost recipe or must be authored from scratch |
 | 5 | **Who can reach a Figma Make preview URL** | Nothing in the repository describes the deployment's access control. `site.json` sets `robots.index: false`, which suggests an intent to be unlisted but is not an access control | Decides whether §26.2's inline-sourcemap exposure is internal-only or public |
 | 6 | **Why `RESTRICTIVE_POLICY` and `defaultDrmPolicy()` diverge** | Mobile defaults: watermark opacity 0.14, offline timeout 30 min. Web defaults: 0.07, 120 min. Both are literals with no comment explaining the difference | If it is drift, one of them is wrong. If it is deliberate (a phone is held closer, so a stronger watermark; a phone is more often offline, so a shorter TTL), that reasoning should be written down before someone "fixes" it |
-| 7 | **Whether a pdf.js migration for the web reader was ever considered** | `pdfEmbedUrl`'s comments explain at length what the browser plugin *cannot* do, which reads like a conclusion reached after trying — but no decision record, no ADR, no alternative branch exists | A canvas-based renderer would allow real text selection blocking, in-page watermarking and smooth zoom. It would also be a large dependency, against the project's three-runtime-dependency discipline |
+| 7 | **Whether a pdf.js migration for the web reader was ever considered** | `pdfEmbedUrl`'s comments explain at length what the browser plugin *cannot* do, which reads like a conclusion reached after trying - but no decision record, no ADR, no alternative branch exists | A canvas-based renderer would allow real text selection blocking, in-page watermarking and smooth zoom. It would also be a large dependency, against the project's three-runtime-dependency discipline |
 | 8 | **What `admin/access` is for** | `AdminAccessPage.tsx` (301 lines) guards on `'access'`, held by SUPER_ADMIN and SUPPORT. `src/lib/permissions.ts` does not describe it, and the page was not read in full | The permission name suggests entitlement management, which overlaps `grant_access`. Whether they are two views of one thing or two features is not settled |
 | 9 | **The production content-delivery path** | Three coexist: data URL in localStorage, a pasted external URL, and a bundled `public/books/*.pdf`. `readAssetFile`'s error message recommends external storage; the DRM model assumes grant-issued short-lived URLs; the one real title uses the bundle | Any feature touching content delivery must pick one, and the repository does not say which is intended for production |
 | 10 | **Whether `exp_*` and `screenshot_*` PNGs are evidence to keep or debris to delete** | `.gitignore` covers three of the five screenshot prefixes. The two uncovered ones are either a gap in the ignore file or deliberately preserved artefacts | Determines whether §26.4 item 20 is fixed by editing `.gitignore` or by deleting files |
@@ -2681,17 +2681,17 @@ The header comment states the intent: *"Merge key-by-key so a document written b
 
 Stated so a reader can disagree with them explicitly:
 
-1. **`schema.sql` is the current intended state and `migrations/0001` is historical.** [Inferred — HIGH] from the three divergences in §9.4 and from `schema.sql` already containing everything the migration adds.
-2. **The web application is the shipping product and the mobile application is not yet shipped.** [Inferred — HIGH] from the web side being buildable with a committed lockfile while the mobile side has no `node_modules`, no lockfile, no Gradle wrapper and no Xcode project.
-3. **The Figma Make scripts are the intended build path**, not an accidental artefact of the scaffold. [Inferred — MEDIUM] — they are tracked in git and `.gitattributes` takes explicit care with their line endings, which is not effort spent on something disposable.
-4. **`AGENTS.md` is stale rather than aspirational.** [Verified] on the "dev server is already running" claim; [Inferred — HIGH] on the rest.
-5. **The absence of tests is a gap against the brief, not a decision to forgo them.** [Inferred — HIGH] — the brief mandates fourteen scenarios and a Definition of Done including "Tested", and nothing in the repository records a decision to deviate.
-6. **The removed legacy root `ScreenShield.tsx` was superseded rather than parallel.** [Verified] — it had a different brand name, `@ts-nocheck`, a three-method contract against a shipped eleven-method module, and was excluded from the mobile `tsconfig.json` `include`.
-7. **Hebrew-only is a product decision, not an unfinished i18n.** [Inferred — HIGH] — there is no i18n layer, no key indirection, no locale detection, and `site.json` hardcodes `language: he`.
+1. **`schema.sql` is the current intended state and `migrations/0001` is historical.** [Inferred - HIGH] from the three divergences in §9.4 and from `schema.sql` already containing everything the migration adds.
+2. **The web application is the shipping product and the mobile application is not yet shipped.** [Inferred - HIGH] from the web side being buildable with a committed lockfile while the mobile side has no `node_modules`, no lockfile, no Gradle wrapper and no Xcode project.
+3. **The Figma Make scripts are the intended build path**, not an accidental artefact of the scaffold. [Inferred - MEDIUM] - they are tracked in git and `.gitattributes` takes explicit care with their line endings, which is not effort spent on something disposable.
+4. **`AGENTS.md` is stale rather than aspirational.** [Verified] on the "dev server is already running" claim; [Inferred - HIGH] on the rest.
+5. **The absence of tests is a gap against the brief, not a decision to forgo them.** [Inferred - HIGH] - the brief mandates fourteen scenarios and a Definition of Done including "Tested", and nothing in the repository records a decision to deviate.
+6. **The removed legacy root `ScreenShield.tsx` was superseded rather than parallel.** [Verified] - it had a different brand name, `@ts-nocheck`, a three-method contract against a shipped eleven-method module, and was excluded from the mobile `tsconfig.json` `include`.
+7. **Hebrew-only is a product decision, not an unfinished i18n.** [Inferred - HIGH] - there is no i18n layer, no key indirection, no locale detection, and `site.json` hardcodes `language: he`.
 
 ---
 
-## 28. DEVELOPER GUIDE — HOW TO SAFELY MODIFY THIS PROJECT
+## 28. DEVELOPER GUIDE - HOW TO SAFELY MODIFY THIS PROJECT
 
 ### 28.0 Before anything else
 
@@ -2710,7 +2710,7 @@ Note `react-native/.gitignore` already excludes `node_modules`, build artefacts,
 ### 28.1 Environment
 
 ```powershell
-# PowerShell — '&&' is not a statement separator; use ';'
+# PowerShell - '&&' is not a statement separator; use ';'
 mise install                       # node 22, pnpm 10.34.3
 pnpm install
 pnpm dev                           # Vite on :5173 unless $PORT says otherwise
@@ -2733,7 +2733,7 @@ The mobile project cannot be installed or built today (§20.3, §20.4). `pnpm ty
 4. **Never accept a client-supplied price, total, discount or `source`.** `checkout()` re-derives the discount from the stored coupon row; `submitInquiry`'s `source` is set server-side from a header because *"a value the client chooses is a value the client can forge"*.
 5. **Never invent content the system did not produce.** No placeholder marketing copy, no `PAID` without a provider reference, no `DELIVERED` without a provider message id. `CmsHint` renders nothing to a visitor on purpose.
 
-### 28.3 Adding a feature — the walkthrough
+### 28.3 Adding a feature - the walkthrough
 
 Use the recipes in §23. The order that matters:
 
@@ -2749,7 +2749,7 @@ Do not start at the page. Starting at the page produces a component that calls `
 |---|---|---|
 | `src/types/index.ts` | `react-native/src/net/types.ts` | `schema.sql` |
 
-When they disagree, **`schema.sql` wins** — `net/types.ts` says so explicitly: *"the SQL schema in `schema.sql` is the arbiter when they disagree."*
+When they disagree, **`schema.sql` wins** - `net/types.ts` says so explicitly: *"the SQL schema in `schema.sql` is the arbiter when they disagree."*
 
 The same three-place discipline applies to:
 
@@ -2762,7 +2762,7 @@ The same three-place discipline applies to:
 Read §14.4 before touching `ReaderPage.tsx` or `useScreenProtection.ts`. The four facts that are not visible in the code:
 
 1. The browser's PDF plugin is **out-of-process** with an empty host DOM. The parent cannot set its zoom, intercept its keys, or block its text selection.
-2. Zoom and page travel go in the **URL fragment**, honoured by Chromium only on a **full document load** — hence the `key`-forced iframe remount.
+2. Zoom and page travel go in the **URL fragment**, honoured by Chromium only on a **full document load** - hence the `key`-forced iframe remount.
 3. `view=FitH` and an explicit `zoom` are **mutually exclusive**; exactly one is emitted.
 4. The listeners install **once** (`}, []`) and read policy through `optionsRef`. Adding a dependency creates protection gaps.
 
@@ -2780,7 +2780,7 @@ And the CSP consequence: `style-src 'unsafe-inline'` exists **for** `useScreenPr
 The invariant is *"money is never invented"*:
 
 - `checkout()` writes `PENDING`. It cannot write `PAID`.
-- Only `markOrderPaid()` (permission `mark_paid`) flips it, and it takes a provider reference. **That function is the future webhook handler** — its signature is already right.
+- Only `markOrderPaid()` (permission `mark_paid`) flips it, and it takes a provider reference. **That function is the future webhook handler** - its signature is already right.
 - `grantAccessForOrder()` runs only from `markOrderPaid()`. An entitlement created any other way is a manual grant, which is a different permission (`grant_access`) and a different audit category.
 - `refund_execution_enabled` cannot be turned on without a `payment_provider`, and the refusal message says why: *"המערכת לא תטען שהכסף הוחזר"*.
 - SQL backs all of it with `chk_payment_captured_has_reference`, `chk_refund_needs_provider_confirmation`, `chk_refunds_require_provider`, `chk_order_total_arithmetic`, `chk_item_arithmetic`.
@@ -2799,7 +2799,7 @@ The invariant is *"money is never invented"*:
 
 - `ProtectionProvider` sits **above** `RootNavigator`, and `ShieldOverlay` renders as a **sibling** of `{children}`. A per-screen shield leaves transition frames exposed, and only one thing can own `FLAG_SECURE`.
 - Navigation is **phase-derived**, not imperative. Adding a screen means adding it to the right phase's screen set in `RootNavigator`, not calling `navigate()`.
-- `reporterRef` in `ProtectionContext` is a **ref, not state** — *"attaching a reporter must not re-render the shield, because re-rendering re-runs its effect and a capture event arriving in that window would be dropped."*
+- `reporterRef` in `ProtectionContext` is a **ref, not state** - *"attaching a reporter must not re-render the shield, because re-rendering re-runs its effect and a capture event arriving in that window would be dropped."*
 - `reportSecurityEvent()` is **fire-and-forget by design**. Do not `await` it and do not gate protection on its result.
 - **Android prevents, iOS detects and conceals.** Do not assume symmetry.
 - Any change to `ScreenShield.swift` requires a matching `ScreenShield.m` declaration, and **nothing checks it** (§14.7).
@@ -2813,7 +2813,7 @@ The invariant is *"money is never invented"*:
 | Web format | `pnpm format` | Style drift |
 | Web build | `pnpm build` | Import resolution, the `@` alias |
 | Mobile types | `cd react-native; pnpm typecheck` | The mobile half of a three-place edit |
-| Mobile lint | `cd react-native; pnpm lint` | **Nothing — the script cannot succeed** (§26.2) |
+| Mobile lint | `cd react-native; pnpm lint` | **Nothing - the script cannot succeed** (§26.2) |
 | SQL | none available | **Nothing. There is no database to run it against** |
 | Tests | none exist | **Nothing** (§19) |
 
@@ -2916,7 +2916,7 @@ The brief asks for *the most important files, not every file*. The repository ha
 
 | File | Purpose | Importance | What depends on it | Change Risk |
 |---|---|---|---|---|
-| Removed legacy root `ScreenShield.tsx` | **Deleted during cleanup.** It was an obsolete prototype carrying `@ts-nocheck`, the old `ELITEREAD` name, and a **3-method** contract against the shipped **11-method** native module | None — it was dead | Nothing. The active implementation remains `react-native/src/drm/ScreenShield.tsx`. |
+| Removed legacy root `ScreenShield.tsx` | **Deleted during cleanup.** It was an obsolete prototype carrying `@ts-nocheck`, the old `ELITEREAD` name, and a **3-method** contract against the shipped **11-method** native module | None - it was dead | Nothing. The active implementation remains `react-native/src/drm/ScreenShield.tsx`. |
 
 ---
 

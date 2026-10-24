@@ -4,7 +4,7 @@
  * Every read and write in the application goes through this module or
  * one of its siblings (`api-orders.ts`, `api-support.ts`). Each
  * mutating operation receives the calling principal and refuses the
- * call unless that principal holds the matching permission — so
+ * call unless that principal holds the matching permission - so
  * authorization is enforced by the service, not by whether a button
  * happened to be rendered.
  *
@@ -182,7 +182,7 @@ export async function bootstrapAdmin(
   input: BootstrapInput,
 ): Promise<Result<User>> {
   if (!isBootstrapRequired())
-    return fail("FORBIDDEN", "כבר קיים חשבון מנהל — ההתקנה הראשונית הושלמה.")
+    return fail("FORBIDDEN", "כבר קיים חשבון מנהל - ההתקנה הראשונית הושלמה.")
 
   if (hasHebrewChars(input.email))
     return fail("VALIDATION", "כתובת אימייל אינה יכולה להכיל אותיות בעברית.")
@@ -314,7 +314,7 @@ export interface RegisterOptions {
   /**
    * Session id of the caller. When that account is a passwordless guest
    * (created at checkout), registration must finish *that* row instead of
-   * inserting a second CUSTOMER — otherwise orders and entitlements stay
+   * inserting a second CUSTOMER - otherwise orders and entitlements stay
    * attached to the abandoned guest identity.
    */
   upgradeUserId?: string | null
@@ -480,7 +480,7 @@ export async function findOrCreateCustomer(
      * the till: the checkout form has always collected it while the account was
      * created without one. The order keeps it either way; carrying it onto the
      * profile is what stops the support form and the next checkout from asking
-     * again for something the customer already gave — and it is the local
+     * again for something the customer already gave - and it is the local
      * mirror of what `syncAccountPhone` does on the hosted backend.
      *
      * Only ever fills a blank. A profile that already holds a number was set
@@ -655,7 +655,7 @@ export async function resetPasswordWithToken(
 
 /**
  * Admin-issued reset link. Only the digest of the token is stored, so the
- * raw value is returned exactly once and cannot be read back later — it is
+ * raw value is returned exactly once and cannot be read back later - it is
  * the fallback path for resetting a customer's password while no email
  * provider is connected.
  */

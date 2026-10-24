@@ -1,4 +1,4 @@
-/*  ScreenShield.m — the Objective-C half of the native module.
+/*  ScreenShield.m - the Objective-C half of the native module.
  *
  *  There is no implementation here, only the declaration React Native needs to
  *  see the Swift class. `RCT_EXTERN_MODULE` expands to an `@interface` and an
@@ -9,7 +9,7 @@
  *  The two files must be kept in step by hand. Nothing in the toolchain checks
  *  that a selector declared here exists in Swift, and the failure is not a build
  *  error: it is `undefined` returned from the JS side at call time, which
- *  `src/drm/ScreenShield.tsx` turns into `shieldFailed` — so the reader refuses
+ *  `src/drm/ScreenShield.tsx` turns into `shieldFailed` - so the reader refuses
  *  to open a book and says only that the protection could not be verified.
  *
  *  Argument labels here must match the Swift declaration exactly, including the
@@ -45,7 +45,7 @@ RCT_EXTERN_METHOD(deviceIntegrity:(RCTPromiseResolveBlock)resolve
 
 /* The two file helpers take a path first. `resolver:` rather than `resolve:`
  * because the Swift signature has to name its second parameter something other
- * than `resolve` once the first is `path` — the labels are part of the selector. */
+ * than `resolve` once the first is `path` - the labels are part of the selector. */
 RCT_EXTERN_METHOD(excludeFromBackup:(NSString *)path
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)

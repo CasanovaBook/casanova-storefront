@@ -1,5 +1,5 @@
 -- ============================================================
--- 0002 — Maestro CMS database tables
+-- 0002 - Maestro CMS database tables
 -- ============================================================
 -- Applies on top of schema.sql + 0001_mobile_reader.sql.
 -- Safe to re-run: every statement is IF NOT EXISTS or conditional.
@@ -9,9 +9,9 @@
 --   connector (localStorage). The Supabase connector existed but
 --   referenced tables that were never created in the database schema:
 --
---     - site_content   — did not exist at all
---     - audit_log      — schema has audit_logs (different columns)
---     - media          — schema has content_assets (different columns)
+--     - site_content   - did not exist at all
+--     - audit_log      - schema has audit_logs (different columns)
+--     - media          - schema has content_assets (different columns)
 --
 --   This migration creates the three tables Maestro needs, with the
 --   exact column shapes its connector expects. They live alongside the
@@ -24,7 +24,7 @@
 BEGIN;
 
 -- ============================================================
--- SITE_CONTENT — key/value store for all editable site text
+-- SITE_CONTENT - key/value store for all editable site text
 -- ============================================================
 -- Each row is one content field. The `id` is the stable key from the
 -- registry (e.g. "global.brand", "ui.auth.loginTitle", "terms.sections").
@@ -72,7 +72,7 @@ END;
 $$;
 
 -- ============================================================
--- MAESTRO_AUDIT_LOG — change trail for CMS operations
+-- MAESTRO_AUDIT_LOG - change trail for CMS operations
 -- ============================================================
 -- Separate from the Casanova audit_logs table (which tracks admin CRM
 -- operations with its own column shape). This table records every
@@ -103,7 +103,7 @@ CREATE INDEX IF NOT EXISTS idx_maestro_audit_created
   ON maestro_audit_log (created_at DESC);
 
 -- ============================================================
--- MEDIA — uploaded images and files managed through Maestro
+-- MEDIA - uploaded images and files managed through Maestro
 -- ============================================================
 -- Separate from content_assets (which holds DRM-protected book files
 -- tied to products). This table holds editorial media: hero images,
@@ -129,7 +129,7 @@ CREATE INDEX IF NOT EXISTS idx_media_created
   ON media (created_at DESC);
 
 -- ============================================================
--- RLS POLICIES — security lives in the database
+-- RLS POLICIES - security lives in the database
 -- ============================================================
 -- When Supabase RLS is enabled, these policies control who can read
 -- and write the Maestro tables. The anon key can read published
@@ -193,7 +193,7 @@ END;
 $$;
 
 -- ============================================================
--- SEED — initial content from registry defaults
+-- SEED - initial content from registry defaults
 -- ============================================================
 -- No seed data here. The site falls back to the registry defaults
 -- when no row exists in site_content. The first time an admin edits
@@ -204,7 +204,7 @@ $$;
 COMMIT;
 
 -- ============================================================
--- VERIFICATION — run after applying
+-- VERIFICATION - run after applying
 -- ============================================================
 --   SELECT table_name FROM information_schema.tables
 --    WHERE table_name IN ('site_content','maestro_audit_log','media');

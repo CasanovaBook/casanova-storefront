@@ -1,9 +1,9 @@
 /**
- * Maestro Core — connector interface contract.
+ * Maestro Core - connector interface contract.
  *
  * A connector is the swappable boundary between Maestro and a data source
  * (localStorage today, Supabase in production, any REST API later).
- * UI code never imports a connector — it only talks to `maestro` from "@/maestro".
+ * UI code never imports a connector - it only talks to `maestro` from "@/maestro".
  */
 
 import type {

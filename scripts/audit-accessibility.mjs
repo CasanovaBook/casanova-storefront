@@ -2,7 +2,7 @@
  * Automated accessibility audit.
  *
  * Runs axe-core (deque) against the public routes of a running build, once with
- * the settings panel open and — with A11Y_ALL_SETTINGS=1 — again with every
+ * the settings panel open and - with A11Y_ALL_SETTINGS=1 - again with every
  * accessibility preference enabled at 160% text. It also reports the structural
  * facts this project now guarantees: one accessibility interface, one `<main>`,
  * the skip link, one `<nav>`, one `<h1>` and no duplicate ids.
@@ -22,7 +22,7 @@
  *   CHROME_PATH        path to the Chrome binary, if it is not in a standard place
  *
  * What this cannot do: axe covers roughly a third of WCAG's success criteria.
- * Zero violations is not a compliance statement — see docs/ACCESSIBILITY.md.
+ * Zero violations is not a compliance statement - see docs/ACCESSIBILITY.md.
  */
 
 import { spawn } from "node:child_process"
@@ -270,7 +270,7 @@ async function main() {
       for (const violation of audit.violations) {
         totalViolationNodes += violation.nodes
         console.log(
-          `  ${violation.impact} :: ${violation.id} (${violation.nodes}) — ${violation.help}`,
+          `  ${violation.impact} :: ${violation.id} (${violation.nodes}) - ${violation.help}`,
         )
         for (const target of violation.targets) console.log(`      ${target}`)
       }

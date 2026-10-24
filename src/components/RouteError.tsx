@@ -77,7 +77,7 @@ function RouteErrorView({
           <p className="app-subtitle" style={{ marginTop: 0 }}>
             {missing
               ? "הכתובת שביקשתם אינה קיימת, או שהקישור השתנה מאז ששותף."
-              : "קרתה תקלה בלתי צפויה במסך הזה. רענון אחד פותר את זה כמעט תמיד — ואם לא, נשמח לשמוע מכם ונתקן."}
+              : "קרתה תקלה בלתי צפויה במסך הזה. רענון אחד פותר את זה כמעט תמיד - ואם לא, נשמח לשמוע מכם ונתקן."}
           </p>
 
           <div className="mt-3 flex w-full flex-wrap items-center justify-center gap-2.5">
@@ -147,7 +147,7 @@ function RouteErrorView({
             to="/"
             className="inline-flex items-center gap-2.5 no-underline"
             style={{ color: "var(--color-foreground)" }}
-            aria-label="Casanova — דף הבית"
+            aria-label="Casanova - דף הבית"
           >
             <span
               className="flex h-9 w-9 items-center justify-center rounded-full"
@@ -202,7 +202,7 @@ function RouteErrorView({
  *
  * Without an `errorElement`, React Router renders its own developer screen:
  * an English "Unexpected Application Error!" page carrying the component
- * stack. Showing that to a paying reader is wrong twice over — it is
+ * stack. Showing that to a paying reader is wrong twice over - it is
  * untranslated, and it prints application internals into the page.
  */
 

@@ -8,7 +8,7 @@ import type { AdminRole } from "../types"
  *   2. by every mutating function in `src/lib/api.ts`, which refuses the
  *      operation regardless of what the UI showed.
  *
- * Hiding a button is cosmetic — the service layer check is the one that
+ * Hiding a button is cosmetic - the service layer check is the one that
  * actually enforces the policy. When this app moves to a real backend the
  * same permission strings become the server-side authorization claims.
  */

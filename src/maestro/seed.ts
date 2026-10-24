@@ -16,7 +16,7 @@ const ts = "2026-01-01T00:00:00.000Z";
 const base = { created_at: ts, updated_at: ts };
 
 /**
- * Platform settings seed. Neutral defaults — no brand name, no payment
+ * Platform settings seed. Neutral defaults - no brand name, no payment
  * provider, no email provider. An administrator must configure these
  * from the CMS before the platform is operational.
  */

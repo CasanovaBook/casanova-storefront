@@ -3,7 +3,7 @@
  *
  * Declared once so every `navigation.navigate()` call is checked
  * against the parameter list. A reader screen that receives a product
- * id it did not ask for is not a crash — it is a screen that mints a
+ * id it did not ask for is not a crash - it is a screen that mints a
  * grant for the wrong book.
  * ───────────────────────────────────────────────────────────── */
 
@@ -25,7 +25,7 @@ export type RootStackParamList = {
    *
    * `title` is carried on the params rather than looked up from the
    * catalogue, because the catalogue may not contain the product any
-   * more by the time the reader opens it — an archived title still has
+   * more by the time the reader opens it - an archived title still has
    * to be readable by the customer who bought it.
    */
 

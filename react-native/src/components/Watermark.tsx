@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Watermark — attribution, not encryption.
+ * Watermark - attribution, not encryption.
  *
  * A watermark cannot stop a determined person from removing it. What it
  * does is make every leaked page name the account it came from, which is
@@ -25,7 +25,7 @@ export interface WatermarkProps {
 
   text: string | null
 
-  /** 0–1, from `drm_policies.watermark_opacity`. */
+  /** 0-1, from `drm_policies.watermark_opacity`. */
 
   opacity?: number
 
@@ -92,7 +92,7 @@ export function Watermark({
 const styles = StyleSheet.create({
   /* Sits above the PDF but below the shield overlay, which is at 9999.
    * If the shield ever rendered under the watermark, a capture would
-   * show the stamp over a black rectangle and nothing else — harmless,
+   * show the stamp over a black rectangle and nothing else - harmless,
    * but the ordering here keeps the intent obvious. */
 
   grid: {

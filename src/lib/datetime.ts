@@ -7,7 +7,7 @@
  * and no `timeZone` option. That silently renders in whatever zone the
  * *viewer's browser* is set to, so the same event could read differently on
  * two admins' screens, or be shifted by hours for a travelling admin. The
- * value that matters — a customer's actual login time — belongs to a fixed
+ * value that matters - a customer's actual login time - belongs to a fixed
  * wall clock, not to the reader's.
  *
  * WHY `Asia/Jerusalem` AND NOT A FIXED "+03"
@@ -39,7 +39,7 @@ const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
 /**
  * Formats an ISO timestamp as `28.9.2026, 16:35` in Israel time (24-hour).
  *
- * Returns an empty string for `null`/`undefined`/empty/unparseable input —
+ * Returns an empty string for `null`/`undefined`/empty/unparseable input -
  * `new Date("nope").toLocaleString(...)` would otherwise yield the literal
  * string `"Invalid Date"` and render that into the UI. Callers pair this
  * with `|| "מעולם"` (or a similar fallback) so the missing case stays under

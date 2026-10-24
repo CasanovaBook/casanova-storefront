@@ -9,7 +9,7 @@ import Alert from "../components/ui/Alert"
  * docs/ACCESSIBILITY.md. Only lists accommodations that have been
  * technically verified. Items marked [דרושה השלמה] require human input.
  *
- * This is NOT a compliance certificate — it is a transparency document.
+ * This is NOT a compliance certificate - it is a transparency document.
  * See docs/ACCESSIBILITY.md section 9 for the full list of items
  * requiring human or legal verification.
  */
@@ -17,7 +17,7 @@ export default function AccessibilityStatementPage() {
   return (
     <div className="px-4 sm:px-6 lg:px-8">
       <LegalShell eyebrow="נגישות" title="הצהרת נגישות">
-        <Alert tone="warning" title="טיוטה — הצהרה זו אינה סופית.">
+        <Alert tone="warning" title="טיוטה - הצהרה זו אינה סופית.">
           טרם עברה בדיקת צד שלישי עם טכנולוגיה מסייעת אמיתית. סעיפים המסומנים
           ב־[דרושה השלמה] מחייבים הזנת פרטים.
         </Alert>
@@ -130,7 +130,7 @@ export default function AccessibilityStatementPage() {
 
         <section>
           <h2>רכז נגישות</h2>
-          <p>[דרושה השלמה — שם רכז הנגישות ופרטי התקשרות]</p>
+          <p>[דרושה השלמה - שם רכז הנגישות ופרטי התקשרות]</p>
           <p>
             לפניות בנושאי נגישות ניתן גם לפנות דרך{" "}
             <Link to="/support">עמוד התמיכה</Link>.

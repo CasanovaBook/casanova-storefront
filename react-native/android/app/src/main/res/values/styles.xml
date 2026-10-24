@@ -7,7 +7,7 @@
   setting and would paint a white `windowBackground` on a device in light
   mode. The app itself is dark-only (see `src/theme.ts`), so the native frame
   has to be dark-only too, otherwise the window behind the first React frame
-  is white — and a screen recording that starts at launch captures a white
+  is white - and a screen recording that starts at launch captures a white
   flash exactly where the reader will be.
 
   `android:editTextBackground` is deliberately not overridden. The React

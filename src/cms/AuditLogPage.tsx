@@ -1,5 +1,5 @@
 /**
- * Maestro Admin — audit log viewer.
+ * Maestro Admin - audit log viewer.
  *
  * Fetches audit entries from the Maestro connector and displays them in a
  * filterable table. Shows who changed what, when.
@@ -119,7 +119,7 @@ export function AuditLogPage() {
       <PageHeader
         eyebrow="Maestro CMS"
         title="יומן שינויים"
-        description="מעקב אחר מי שינה מה ומתי — רשומות קריאה מתוך יומן הביקורת של המערכת."
+        description="מעקב אחר מי שינה מה ומתי - רשומות קריאה מתוך יומן הביקורת של המערכת."
         actions={
           <button
             type="button"
@@ -224,7 +224,7 @@ export function AuditLogPage() {
       ) : (
         <>
           <p className="mb-3 text-xs app-muted">
-            מציג {page * perPage + 1}–{Math.min((page + 1) * perPage, filtered.length)} מתוך {filtered.length}
+            מציג {page * perPage + 1}-{Math.min((page + 1) * perPage, filtered.length)} מתוך {filtered.length}
           </p>
           <div className="app-table-wrap">
             <table className="app-table" aria-label="יומן שינויים">

@@ -152,8 +152,8 @@ export default function LoginPage() {
    * the business rule, not an oversight: `docs/PRODUCT_BRIEF.md` §5 lists the
    * number among what a purchase must collect, while §7 identifies an account
    * by email alone and `users.phone` is nullable. Offering the field at
-   * registration is still worth it — `signUpWithEmail` already forwards it into
-   * the account metadata and `buildAppUser` already reads it back — so a
+   * registration is still worth it - `signUpWithEmail` already forwards it into
+   * the account metadata and `buildAppUser` already reads it back - so a
    * customer who gives the number once is not asked for it again at checkout,
    * and the support form (which prefills from `user.phone`) finally has it.
    */
@@ -415,7 +415,7 @@ export default function LoginPage() {
     : {
         lead: c("ui.auth.guestCheckout") || "ניתן גם לרכוש ישירות מ־",
         link: c("ui.auth.guestCheckoutStore") || "החנות",
-        tail: c("ui.auth.guestCheckoutSuffix") || "— החשבון ייווצר אוטומטית.",
+        tail: c("ui.auth.guestCheckoutSuffix") || "- החשבון ייווצר אוטומטית.",
       }
 
   return (
@@ -469,7 +469,7 @@ export default function LoginPage() {
       }
     >
       {/* The browser's own validation bubbles are English, unstyled and
-       * fire before anything here — on a Hebrew form whose every message is
+       * fire before anything here - on a Hebrew form whose every message is
        * already written in Hebrew. `noValidate` hands the answering to
        * `emailProblem` / `passwordProblem`, while the `required` attributes
        * stay for assistive technology and for the field semantics. */}

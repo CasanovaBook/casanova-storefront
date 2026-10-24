@@ -11,11 +11,11 @@ import { useContent } from "../content/useContent"
  * Content is fully editable through Maestro CMS. The registry defines
  * privacy.eyebrow, privacy.title and privacy.sections (a list of
  * heading+text). When no sections have been saved, the registry defaults
- * render — a Hebrew privacy policy based on the site's actual data practices.
+ * render - a Hebrew privacy policy based on the site's actual data practices.
  *
  * IMPORTANT: This page contains PLACEHOLDER content marked with [ריק]
  * where business-specific details must be filled in by the site operator.
- * These placeholders are NOT fabricated facts — they are clearly marked
+ * These placeholders are NOT fabricated facts - they are clearly marked
  * gaps requiring human input before publication.
  */
 export default function PrivacyPage() {
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
           ))
         ) : (
           <>
-            <Alert tone="warning" title="טיוטה — מסמך זה אינו סופי.">
+            <Alert tone="warning" title="טיוטה - מסמך זה אינו סופי.">
               סעיפים המסומנים ב־[דרושה השלמה] מחייבים הזנת פרטים אמיתיים על ידי
               בעל האתר. יש לעבור על המסמך עם עורך דין לפני פרסומו. אין לפרסם
               מסמך זה כשהוא מכיל סימוני השלמה.
@@ -49,12 +49,12 @@ export default function PrivacyPage() {
             <section>
               <h2>1. מי אנחנו</h2>
               <p>
-                האתר <strong>{brandName}</strong> מופעל על ידי [דרושה השלמה — שם
+                האתר <strong>{brandName}</strong> מופעל על ידי [דרושה השלמה - שם
                 העסק/החברה המלא, כפי שרשום ברשם העוסקים/חברות].
               </p>
-              <p>כתובת: [דרושה השלמה — כתובת פיזית של העסק]</p>
+              <p>כתובת: [דרושה השלמה - כתובת פיזית של העסק]</p>
               <p>
-                דוא“ל ליצירת קשר בנושאי פרטיות: [דרושה השלמה — כתובת דוא“ל
+                דוא“ל ליצירת קשר בנושאי פרטיות: [דרושה השלמה - כתובת דוא“ל
                 ייעודית לנושאי פרטיות]
               </p>
             </section>
@@ -66,31 +66,31 @@ export default function PrivacyPage() {
               </p>
               <ul className="list-disc">
                 <li>
-                  <strong>כתובת דוא"ל</strong> — לצורך יצירת חשבון, התחברות,
+                  <strong>כתובת דוא"ל</strong> - לצורך יצירת חשבון, התחברות,
                   שליחת קבלות ואימות זהות.
                 </li>
                 <li>
-                  <strong>שם פרטי ושם משפחה</strong> — לצורך רישום חשבון וביצוע
+                  <strong>שם פרטי ושם משפחה</strong> - לצורך רישום חשבון וביצוע
                   הזמנות.
                 </li>
                 <li>
-                  <strong>מספר טלפון</strong> — נאסף בעת ביצוע רכישה, לצורכי
+                  <strong>מספר טלפון</strong> - נאסף בעת ביצוע רכישה, לצורכי
                   יצירת קשר בנוגע להזמנה. בעת יצירת חשבון בלבד, המספר אופציונלי.
                 </li>
                 <li>
-                  <strong>סיסמה (מוצפנת)</strong> — הסיסמה נשמרת בגיבוב
+                  <strong>סיסמה (מוצפנת)</strong> - הסיסמה נשמרת בגיבוב
                   חד-כיווני עם מלח אקראי. אנחנו לא שומרים את הסיסמה עצמה.
                 </li>
                 <li>
-                  <strong>היסטוריית הזמנות ורכישות</strong> — מספרי הזמנה,
+                  <strong>היסטוריית הזמנות ורכישות</strong> - מספרי הזמנה,
                   מוצרים שנרכשו, תאריכים וסכומים.
                 </li>
                 <li>
-                  <strong>התקדמות קריאה</strong> — מעקב אחרי העמוד האחרון שנקרא
+                  <strong>התקדמות קריאה</strong> - מעקב אחרי העמוד האחרון שנקרא
                   בכל ספר דיגיטלי.
                 </li>
                 <li>
-                  <strong>פניות תמיכה</strong> — תוכן הפנייה, נושא, והתכתובת עם
+                  <strong>פניות תמיכה</strong> - תוכן הפנייה, נושא, והתכתובת עם
                   צוות התמיכה.
                 </li>
               </ul>
@@ -145,15 +145,15 @@ export default function PrivacyPage() {
               <p>האתר משתמש בשירותי הצד השלישי הבאים:</p>
               <ul className="list-disc">
                 <li>
-                  <strong>Supabase</strong> — מסד נתונים, אימות משתמשים ואחסון
+                  <strong>Supabase</strong> - מסד נתונים, אימות משתמשים ואחסון
                   קבצים מאובטח. מידע אישי נשלח לשרתי Supabase.
                 </li>
                 <li>
-                  <strong>Google Fonts</strong> — גופנים נטענים משרתי Google.
+                  <strong>Google Fonts</strong> - גופנים נטענים משרתי Google.
                   Google עשוי לקבל את כתובת ה-IP שלך בעת הטעינה.
                 </li>
                 <li>
-                  <strong>Google Analytics</strong> (אופציונלי) — אם הופעל על
+                  <strong>Google Analytics</strong> (אופציונלי) - אם הופעל על
                   ידי מנהל האתר, נאסף מידע סטטיסטי אנונימי על ביקורים באתר.
                 </li>
               </ul>
@@ -203,7 +203,7 @@ export default function PrivacyPage() {
                 <li>להתנגד לעיבוד מידע אישי.</li>
               </ul>
               <p>
-                לבקשות אלה, ניתן לפנות אלינו בכתובת: [דרושה השלמה — כתובת דוא“ל
+                לבקשות אלה, ניתן לפנות אלינו בכתובת: [דרושה השלמה - כתובת דוא“ל
                 ליצירת קשר בנושאי פרטיות]
               </p>
             </section>
@@ -246,7 +246,7 @@ export default function PrivacyPage() {
                 <li>
                   באמצעות <Link to="/support">עמוד התמיכה</Link>
                 </li>
-                <li>בכתובת דוא“ל: [דרושה השלמה — כתובת דוא“ל]</li>
+                <li>בכתובת דוא“ל: [דרושה השלמה - כתובת דוא“ל]</li>
               </ul>
             </section>
           </>

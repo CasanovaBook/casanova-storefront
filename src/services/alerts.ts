@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Alerts service — dismissal bookkeeping for derived system alerts.
+ * Alerts service - dismissal bookkeeping for derived system alerts.
  *
  * Extracted verbatim from `src/lib/api.ts` (Phase 5B / Group B).
  * Behaviour is unchanged.

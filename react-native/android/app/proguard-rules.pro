@@ -11,7 +11,7 @@
 # ── React Native ───────────────────────────────────────────
 # Keep the classes the bridge reaches by name. Every @ReactMethod is invoked
 # through reflection on the module name, so an obfuscated module name means the
-# JavaScript side resolves `NativeModules.ScreenShield` to undefined — which in
+# JavaScript side resolves `NativeModules.ScreenShield` to undefined - which in
 # this app presents as "protection unavailable" rather than as a crash, and is
 # therefore very easy to ship by accident.
 -keep class com.facebook.react.** { *; }
@@ -24,7 +24,7 @@
 # ── This app's DRM layer ───────────────────────────────────
 # Kept explicitly rather than relying on the rule above, because these are the
 # two classes whose absence is silent. If R8 ever strips or renames them, the
-# app still runs, still signs in and still lists the library — it just cannot
+# app still runs, still signs in and still lists the library - it just cannot
 # protect a page.
 -keep class com.casanova.reader.MainActivity { *; }
 -keep class com.casanova.reader.MainApplication { *; }
@@ -48,8 +48,8 @@
 -keep class com.RNFetchBlob.** { *; }
 
 # ── react-native-keychain ──────────────────────────────────
-# Holds the session token. Obfuscation here does not make it more secure — the
-# Keystore binding is what does — but breaking it locks every customer out.
+# Holds the session token. Obfuscation here does not make it more secure - the
+# Keystore binding is what does - but breaking it locks every customer out.
 -keep class com.oblador.keychain.** { *; }
 
 # ── react-native-device-info ───────────────────────────────
@@ -69,7 +69,7 @@
 # ── General ────────────────────────────────────────────────
 # Keep line numbers so a crash report from a customer's phone can be matched to
 # a source line. Without this, every release stack trace is a list of offsets
-# and `mapping.txt` has to be archived per build — which is worth doing anyway,
+# and `mapping.txt` has to be archived per build - which is worth doing anyway,
 # but is not a reason to make the traces unreadable in the meantime.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile

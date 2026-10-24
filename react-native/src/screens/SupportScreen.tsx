@@ -150,7 +150,7 @@ export function SupportScreen() {
 
           <Card style={styles.context}>
             <Text style={styles.contextTitle}>מצורף לפנייה אוטומטית</Text>
-            <Text style={styles.contextLine}>חשבון: {user?.email ?? "—"}</Text>
+            <Text style={styles.contextLine}>חשבון: {user?.email ?? "-"}</Text>
             <Text style={styles.contextLine}>
               ספרים פעילים: {readable.length}
             </Text>

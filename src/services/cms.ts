@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * CMS service — editable content sections, testimonials, FAQs, and
+ * CMS service - editable content sections, testimonials, FAQs, and
  * catalog/content backup & restore.
  *
  * Extracted verbatim from `src/lib/api.ts` (Phase 5B / Group B).
@@ -312,7 +312,7 @@ export function restoreCmsBackup(
 
     target_id: "backup",
 
-    target_label: backup.backed_up_at ?? "—",
+    target_label: backup.backed_up_at ?? "-",
 
     details: "התוכן והקטלוג שוחזרו מקובץ גיבוי",
   })

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Notifications service — transactional email logging.
+ * Notifications service - transactional email logging.
  *
  * Extracted verbatim from `src/lib/api.ts` (Phase 5B / Group B).
  * Behaviour is unchanged: without a configured provider the message is
@@ -39,7 +39,7 @@ export interface EmailInput {
 
 /**
  * Records an outgoing message. Without a configured provider the
- * message is queued, never marked as sent — the admin panel must not
+ * message is queued, never marked as sent - the admin panel must not
  * claim a delivery that did not happen.
  */
 
@@ -68,7 +68,7 @@ export function dispatchEmail(input: EmailInput): EmailLog {
 
       failure_reason: provider
         ? undefined
-        : "לא הוגדר ספק שליחת מיילים — ההודעה ממתינה בתור.",
+        : "לא הוגדר ספק שליחת מיילים - ההודעה ממתינה בתור.",
     }
 
     db.email_logs = [log, ...db.email_logs]
@@ -111,7 +111,7 @@ export function resendEmail(
 
       failure_reason: provider
         ? undefined
-        : "לא הוגדר ספק שליחת מיילים — ההודעה ממתינה בתור.",
+        : "לא הוגדר ספק שליחת מיילים - ההודעה ממתינה בתור.",
     }
 
     d.email_logs = d.email_logs.map((e) =>

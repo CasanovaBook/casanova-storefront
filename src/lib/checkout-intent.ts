@@ -4,7 +4,7 @@
  * Registering during a purchase costs the customer a round trip to
  * their inbox: they leave the SPA to click the verification link, and
  * the link opens a fresh document in which nothing of the purchase
- * survives — the selected book lives in React state, and the
+ * survives - the selected book lives in React state, and the
  * `/register?redirect=/checkout` hint lived in the URL of a page they
  * are no longer on. The result was a verified account dumped on the
  * library with no order in progress, on a funnel whose only job is to
@@ -20,7 +20,7 @@
  * This is navigation state, not business data: the order, the
  * entitlement and the account are all owned by Supabase. It is
  * expiring (an hour) and single-use for the path, so a stale intent
- * cannot hijack a later visit, and every write is guarded — a browser
+ * cannot hijack a later visit, and every write is guarded - a browser
  * that refuses storage simply keeps the pre-existing behaviour.
  * ───────────────────────────────────────────────────────────── */
 
@@ -67,7 +67,7 @@ function write(next: CheckoutIntent | null): void {
       localStorage.removeItem(INTENT_KEY)
     else localStorage.setItem(INTENT_KEY, JSON.stringify(next))
   } catch {
-    /* storage unavailable — the funnel falls back to losing the intent,
+    /* storage unavailable - the funnel falls back to losing the intent,
      * which is exactly what happened before this module existed. */
   }
 }
@@ -110,7 +110,7 @@ export function rememberProductId(productId: string): void {
   write({ ...intent, product_id: productId, saved_at: Date.now() })
 }
 
-/** Where to go once the address is confirmed — read without consuming it. */
+/** Where to go once the address is confirmed - read without consuming it. */
 export function peekReturnPath(): string | null {
   return read()?.return_path ?? null
 }

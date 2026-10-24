@@ -9,7 +9,7 @@
  *     can read. A stolen token is a stolen library.
  *
  *  2. The token is stored `THIS_DEVICE_ONLY`. Restoring a backup onto
- *     a second phone must not hand that phone a signed-in session —
+ *     a second phone must not hand that phone a signed-in session -
  *     the device cap in `drm_policies.max_devices_per_user` is
  *     meaningless if a backup can clone a slot.
  *
@@ -117,7 +117,7 @@ let cachedDeviceId: string | null = null
  * Stable per-install identifier.
  *
  * `getUniqueId()` is not a hardware serial and is not a security
- * boundary — it is the value the server hashes into
+ * boundary - it is the value the server hashes into
  * `device_sessions.device_fingerprint` so one phone reappears as one
  * row instead of a new device on every launch. Spoofing it buys an
  * attacker a fresh device slot, which `max_devices_per_user` is there
@@ -249,7 +249,7 @@ export async function request<T>(
 
         return failure<T>(
           "UNAUTHENTICATED",
-          "יש להתחבר מחדש — פג תוקף ההתחברות.",
+          "יש להתחבר מחדש - פג תוקף ההתחברות.",
         )
       }
 

@@ -7,7 +7,7 @@ import PageHeader from "../components/ui/PageHeader"
 
 /**
  * Reflects the order exactly as it was recorded. The copy changes with the
- * real payment status — a pending order is never presented as a completed
+ * real payment status - a pending order is never presented as a completed
  * charge, and access is only promised once it has actually been granted.
  */
 export default function CheckoutSuccessPage() {
@@ -62,7 +62,7 @@ export default function CheckoutSuccessPage() {
     ? "לא הצלחנו לרשום את התשלום עבור ההזמנה. הצוות עודכן וייצור איתך קשר."
     : paid
       ? isFree
-        ? "תודה. הספר החינמי נפתח בספרייה שלך — לא בוצע חיוב."
+        ? "תודה. הספר החינמי נפתח בספרייה שלך - לא בוצע חיוב."
         : "תודה שרכשת. הגישה שלך למוצר נפתחה."
       : "תודה. ההזמנה נרשמה במערכת והיא ממתינה לאישור תשלום. נעדכן אותך ברגע שהתשלום יאושר והגישה תיפתח."
 
@@ -144,7 +144,7 @@ export default function CheckoutSuccessPage() {
         />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start">
-          {/* Order summary — read straight from the recorded order */}
+          {/* Order summary - read straight from the recorded order */}
           <section
             className="app-surface"
             aria-labelledby="checkout-success-order-title"

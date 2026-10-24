@@ -1,5 +1,5 @@
 /**
- * Maestro Admin — dashboard page.
+ * Maestro Admin - dashboard page.
  *
  * Shows connector info, content statistics, quick links and recent audit entries.
  * Styled to match the Casanova admin design system.
@@ -217,7 +217,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* Group cards — direct edit links */}
+      {/* Group cards - direct edit links */}
       <section className="mb-6" aria-labelledby="dashboard-groups-title">
         <h2
           id="dashboard-groups-title"

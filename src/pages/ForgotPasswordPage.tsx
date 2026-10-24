@@ -4,7 +4,7 @@
  * Calls the service layer, which records a real single-use token and
  * queues the outgoing message. The response deliberately does not say
  * whether the address exists, so this screen cannot be used to
- * enumerate accounts — and when no mail provider is configured it says
+ * enumerate accounts - and when no mail provider is configured it says
  * so plainly instead of implying a delivery that never happened.
  * ───────────────────────────────────────────────────────────── */
 
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
 
-  /* Read once at submit time — the provider may be configured mid-session. */
+  /* Read once at submit time - the provider may be configured mid-session. */
   const [delivered, setDelivered] = useState(true)
 
   const handleSubmit = async (e: React.FormEvent) => {

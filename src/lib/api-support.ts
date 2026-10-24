@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Service layer — customers, entitlements and support inquiries.
+ * Service layer - customers, entitlements and support inquiries.
  * ───────────────────────────────────────────────────────────── */
 
 import type {
@@ -117,7 +117,7 @@ export async function createInquiry(
 ): Promise<Result<Inquiry>> {
   /* The authenticated account is the authoritative sender: for a signed-in
    * customer the stored profile supplies the name and address, and the
-   * submitted values are ignored — a crafted request cannot open a ticket
+   * submitted values are ignored - a crafted request cannot open a ticket
    * under someone else's identity. `CMS` submissions are the deliberate
    * exception: an admin logging a phone call enters the caller's details
    * by hand. */
@@ -151,7 +151,7 @@ export async function createInquiry(
   if (!subject) return fail("VALIDATION", "יש למלא נושא.")
 
   if (message.length < 10)
-    return fail("VALIDATION", "ההודעה קצרה מדי — יש לתאר את הפנייה בפירוט.")
+    return fail("VALIDATION", "ההודעה קצרה מדי - יש לתאר את הפנייה בפירוט.")
 
   const db = getDb()
 
@@ -163,8 +163,8 @@ export async function createInquiry(
       ? input.related_order_id
       : undefined
 
-  /* Authenticated website submissions persist to `public.inquiries` — the
-   * shared queue the admin dashboard reads — through the create_my_inquiry
+  /* Authenticated website submissions persist to `public.inquiries` - the
+   * shared queue the admin dashboard reads - through the create_my_inquiry
    * RPC, which stamps the identity from the JWT and profile server-side.
    * The local document stays the fallback for an unconfigured install,
    * anonymous visitors and admin-logged phone tickets. */
@@ -196,7 +196,7 @@ export async function createInquiry(
 
       template: "INQUIRY_RECEIVED",
 
-      subject: `קיבלנו את פנייתך — ${remote.data.ticket_number}`,
+      subject: `קיבלנו את פנייתך - ${remote.data.ticket_number}`,
 
       related_type: "INQUIRY",
 
@@ -253,7 +253,7 @@ export async function createInquiry(
 
     template: "INQUIRY_RECEIVED",
 
-    subject: `קיבלנו את פנייתך — ${inquiry.ticket_number}`,
+    subject: `קיבלנו את פנייתך - ${inquiry.ticket_number}`,
 
     related_type: "INQUIRY",
 
@@ -346,7 +346,7 @@ export async function updateInquiry(
       : undefined
 
   /* A remote-owned ticket (uuid id) is updated in Postgres, and the row
-   * that lands there — not the patch — becomes the local record. The
+   * that lands there - not the patch - becomes the local record. The
    * realtime event this write produces carries the same change to the
    * customer's open page. */
   if (isSupabaseConfigured && isUuid(inquiryId)) {
@@ -494,7 +494,7 @@ export async function addInquiryNote(
 
   /* A server-owned ticket keeps its whole conversation in Postgres: the
    * reply has to land there or the customer will never see it, so a
-   * refused write is surfaced instead of being parked in this browser —
+   * refused write is surfaced instead of being parked in this browser -
    * which is exactly how a "תגובה ללקוח" used to disappear. */
   if (isSupabaseConfigured && isUuid(inquiryId)) {
     const authorId = actor?.user_id ?? ""
@@ -518,7 +518,7 @@ export async function addInquiryNote(
     if (!remote.ok) return remote
 
     /* The freshness stamp and the NEW→OPEN transition belong to the ticket,
-     * not the note, so they are pushed too — otherwise the next sync would
+     * not the note, so they are pushed too - otherwise the next sync would
      * revert them. */
     const bump = await updateInquiryRemote(inquiryId, {
       status: inquiry.status === "NEW" ? "OPEN" : inquiry.status,
@@ -593,7 +593,7 @@ export const CUSTOMER_REPLY_LIMIT_MESSAGE = `ניתן לשלוח עד ${CUSTOMER
  * Whether the owner of this ticket may send another message yet.
  *
  * Mirrors the rule the database enforces (see the constant above) so the
- * customer's composer can explain itself BEFORE a send is refused — but it is
+ * customer's composer can explain itself BEFORE a send is refused - but it is
  * only a mirror: `reply_to_my_inquiry` re-derives the same thing server-side
  * and refuses the write, so a disabled button is never what stops the third
  * message.
@@ -601,8 +601,8 @@ export const CUSTOMER_REPLY_LIMIT_MESSAGE = `ניתן לשלוח עד ${CUSTOMER
  * The count is read from the stored conversation, not from this browser
  * session, and only customer-visible messages take part: an internal staff
  * annotation is invisible to the customer, so it neither consumes their turn
- * nor restarts it. Every author is backend data — the session's user id, or
- * the ticket's owner as the database recorded it — so nothing here guesses
+ * nor restarts it. Every author is backend data - the session's user id, or
+ * the ticket's owner as the database recorded it - so nothing here guesses
  * who wrote what.
  */
 export function customerReplyAllowed(
@@ -730,7 +730,7 @@ export async function replyToInquiry(
 /* ── Support ticket mirror ───────────────────────────── */
 
 /**
- * Merges server-held tickets into the local document without pruning —
+ * Merges server-held tickets into the local document without pruning -
  * used for the single row a create/update just returned, so the change
  * shows immediately even before the next full read (or realtime event).
  */
@@ -760,7 +760,7 @@ export function upsertRemoteInquiries(rows: Inquiry[]): void {
  *
  * `ownerId` is the account the read covers, or `null` for the staff-wide
  * queue. Server-owned rows (uuid ids) are replaced by what the server now
- * holds, and rows the read no longer covers are REMOVED — a ticket the
+ * holds, and rows the read no longer covers are REMOVED - a ticket the
  * backend no longer lists must not live on in the browser. Local-only rows
  * (the `inq_…` ids the offline driver, anonymous visitors and admin-logged
  * phone tickets mint) are preserved, and a null read (failed fetch)
@@ -808,7 +808,7 @@ export function mirrorRemoteInquiries(
  * (there is no DELETE policy anywhere), so a merge can never lose one.
  * That also means a customer's browser, which only ever reads the public
  * half of its own conversations, can never prune an internal annotation
- * belonging to a staff session sharing the same document — each side keeps
+ * belonging to a staff session sharing the same document - each side keeps
  * what it may read, and neither side loses what the other holds.
  */
 export function upsertRemoteInquiryNotes(rows: InquiryNote[]): void {
@@ -1034,7 +1034,7 @@ export async function setUserStatus(
 
   /* Supabase owns authenticated accounts; `db.users` only ever holds records
    * this browser created. Resolving the customer locally is what made every
-   * ban report "המשתמש לא נמצא." for an account that had in fact registered —
+   * ban report "המשתמש לא נמצא." for an account that had in fact registered -
    * the same read/write split that once hid those users from the admin list.
    */
   if (isSupabaseConfigured) {
@@ -1053,7 +1053,7 @@ export async function setUserStatus(
 
       if (remote.code === "NOT_FOUND") return fail("NOT_FOUND", remote.error)
 
-      /* Anything else — an unmapped migration token included — is a refusal
+      /* Anything else - an unmapped migration token included - is a refusal
        * from the server, never a claim that the account is absent. */
       return fail("VALIDATION", remote.error)
     }
@@ -1140,11 +1140,11 @@ export function listUserProducts(): UserProduct[] {
  *
  * The reader and the library read entitlements from the store, so a book
  * bought or granted on the server has to be visible there before it can
- * be opened. Callers pass only the signed-in user's own rows — this is a
+ * be opened. Callers pass only the signed-in user's own rows - this is a
  * cache of one account's access, never a copy of anyone else's.
  *
  * Merge is by `user_id` + `product_id`. Rows that came from Supabase are
- * replaced by what the server now holds and — crucially — rows the
+ * replaced by what the server now holds and - crucially - rows the
  * server no longer holds are REMOVED: otherwise הסרה מלאה deleted the
  * row in Postgres while `hasAccess` went on reading a stale local copy
  * forever, and the customer kept a book the database said they did not
@@ -1153,13 +1153,13 @@ export function listUserProducts(): UserProduct[] {
  *
  * Local-only rows are preserved. They carry a local `up_…` id (Supabase
  * rows always carry a uuid), which is also what keeps a non-Supabase
- * install working: there `fetchMyEntitlements` resolves to null — as it
- * does on any failed read — and null is treated as "no data, touch
+ * install working: there `fetchMyEntitlements` resolves to null - as it
+ * does on any failed read - and null is treated as "no data, touch
  * nothing", so the document is never wiped on a hiccup.
  */
 export function mirrorRemoteEntitlements(remote: UserProduct[] | null): void {
   /* null = the fetch itself failed (network/refused). Cache must not
-   * prune on absent data — only on a successful read that proves the
+   * prune on absent data - only on a successful read that proves the
    * rows are gone. */
   if (remote === null) return
 
@@ -1189,7 +1189,7 @@ export function mirrorRemoteEntitlements(remote: UserProduct[] | null): void {
     /* Build the next document from the union, not by mapping over the
      * existing rows: a row the server added (החזרת הרשאה after הסרה
      * מלאה) has no existing counterpart, and mapping over what is
-     * already here would drop it — the mirror could then never re-add
+     * already here would drop it - the mirror could then never re-add
      * an entitlement the admin had removed and re-granted. */
     const next = new Map<string, UserProduct>()
 
@@ -1213,7 +1213,7 @@ export function mirrorRemoteEntitlements(remote: UserProduct[] | null): void {
  * The hosted `public.products` / `public.categories` tables are the
  * catalogue. The local document is the cache the rest of the app reads
  * synchronously (cart lines, the reader's product lookup, the admin
- * editor's lists), so a successful hosted read is mirrored here — the
+ * editor's lists), so a successful hosted read is mirrored here - the
  * same arrangement `mirrorRemoteEntitlements` already uses for access.
  *
  * Merge rules:
@@ -1225,8 +1225,8 @@ export function mirrorRemoteEntitlements(remote: UserProduct[] | null): void {
  *     since it is the offline stand-in for that very product and keeping
  *     both would shadow the real one in slug lookups.
  *
- * A failed read (null) must leave the cache untouched — pruning on a
- * dropped request would flash the catalogue empty — while a successful
+ * A failed read (null) must leave the cache untouched - pruning on a
+ * dropped request would flash the catalogue empty - while a successful
  * empty read is a real answer and does prune.
  */
 
@@ -1379,7 +1379,7 @@ export function grantAccessForOrder(order: Order, products: Product[]): void {
  * a real account (`public.users.user_id`, a uuid) the write goes through
  * the admin-guarded `admin_grant_access` function. Resolving the customer
  * in `db.users` first is what made every manual grant to a registered
- * user fail with "המשתמש לא נמצא." — the same read/write split already
+ * user fail with "המשתמש לא נמצא." - the same read/write split already
  * repaired for `setUserStatus`. Only the local, non-Supabase install
  * still resolves and writes locally, where the id is genuinely local.
  */
@@ -1567,7 +1567,7 @@ export async function setAccessStatus(
   })
 
   /* A status that is not ACTIVE means the customer may not open the file, so
-   * every grant already minted for this entitlement has to die with it — one
+   * every grant already minted for this entitlement has to die with it - one
    * may be sitting in a reader tab or on a phone right now. The SQL schema
    * does the same through trg_user_product_revokes_grants. */
 
@@ -1645,7 +1645,7 @@ export async function removeAccess(
   })
 
   /* Deleting the entitlement row removes the thing the grants point at, but
-   * not the grants themselves — they are kept, marked revoked, so the audit
+   * not the grants themselves - they are kept, marked revoked, so the audit
    * trail still shows which file was in whose hands when access was pulled. */
 
   revokeGrantsForEntitlement(
@@ -1734,7 +1734,7 @@ export function saveReadingProgress(
    * mutate() replaces the whole document object and notifies every store
    * subscriber synchronously, so a write here is never local: it re-renders
    * AppContext, which rebuilds `user` and `actor`, which rebuilds every
-   * callback keyed on them — including the one the reader's "save on page
+   * callback keyed on them - including the one the reader's "save on page
    * change" effect depends on. Saving progress therefore re-ran the effect
    * that saved it, and React bailed out with "maximum update depth
    * exceeded" before the book ever reached the screen. Writing only what

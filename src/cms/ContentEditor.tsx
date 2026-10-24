@@ -1,5 +1,5 @@
 /**
- * Maestro Admin — content editor.
+ * Maestro Admin - content editor.
  *
  * Group-based sidebar with field editors for all content fields defined in the registry.
  * Supports draft system with publish/discard workflow.
@@ -1191,7 +1191,7 @@ export function ContentEditor() {
                     color: "var(--color-primary)",
                   }}
                 >
-                  שמור כטיוטה — רק מנהל יכול לפרסם
+                  שמור כטיוטה - רק מנהל יכול לפרסם
                 </span>
               )}
             </div>
@@ -1339,7 +1339,7 @@ export function ContentEditor() {
           </div>
         </div>
 
-        {/* Live preview pane — desktop only; tablets use the new-tab
+        {/* Live preview pane - desktop only; tablets use the new-tab
          * preview so the field editor keeps a usable width. */}
         {showPreview && inlinePreviewAvailable && (
           <div

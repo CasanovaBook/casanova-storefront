@@ -1,8 +1,8 @@
 /**
  * The logo inside the accessibility launcher.
  *
- * This is the emblem from the reference artwork (`src/assets/accessability.jpeg`) —
- * the ring, the seated figure and the wheel — vector-traced from that image
+ * This is the emblem from the reference artwork (`src/assets/accessability.jpeg`) -
+ * the ring, the seated figure and the wheel - vector-traced from that image
  * rather than redrawn, so the launcher keeps the exact shapes and proportions
  * of the reference at any size, on any display, at any device pixel ratio.
  *
@@ -11,7 +11,7 @@
  * decimals. Checked against the source image's own silhouette, the traced shape
  * reproduces it at an intersection-over-union of 0.976 (luminance threshold
  * 60/255, closing radius 2px, blur sigma 1.2, simplification tolerance 0.003
- * ring units — the parameters the trace was run with).
+ * ring units - the parameters the trace was run with).
  *
  * It is filled with `currentColor`, so it takes the launcher's own foreground
  * colour: near-black on the gold button in dark and light themes, black on
@@ -19,7 +19,7 @@
  * mode. Nothing here paints its own palette.
  *
  * Decorative by design: the button already carries its accessible name
- * ("נגישות — פתיחת התפריט"), so the glyph is `aria-hidden` and adds no second
+ * ("נגישות - פתיחת התפריט"), so the glyph is `aria-hidden` and adds no second
  * name to the control.
  */
 export default function AccessibilityLauncherLogo({
@@ -56,7 +56,7 @@ const LOGO_PATH =
   "L12.07 -0.32L11.97 -1.44L11.81 -2.36L11.61 -3.19L11.26 -4.24L10.69 -5.49L10.14 -6.45L10.1 -6.67" +
   "L9.95 -6.96L9.44 -7.76L8.72 -8.58L7.88 -9.25L6.76 -9.99L5.48 -10.62L5.32 -10.75L5.13 -10.78" +
   "L3.69 -11.4L1.84 -11.85L1.01 -11.95Z" +
-  /* The ring's inner edge — the hole the even-odd fill rule cuts out. */
+  /* The ring's inner edge - the hole the even-odd fill rule cuts out. */
   "M0.71 -10.98L1.62 -10.93L2.7 -10.73L3.85 -10.41L4.81 -10.02L5.8 -9.52L6.64 -8.94L7.43 -8.31" +
   "L8.27 -7.47L8.97 -6.64L9.57 -5.81L10.15 -4.75L10.66 -3.51L10.98 -2.36L11.11 -1.63L11.24 -0.29" +
   "L11.21 0.8L10.98 2.3L10.69 3.38L10.34 4.31L9.83 5.33L9.32 6.16L8.69 6.99L8.24 7.5L7.4 8.31" +

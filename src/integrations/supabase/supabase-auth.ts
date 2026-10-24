@@ -133,7 +133,7 @@ export function translateAuthError(err: { message?: string; status?: number; cod
 
   if (lower.includes("password cannot be longer than")) {
     /* The provider names its number; the customer is not told it. A ceiling
-     * that exists because of a hashing library is an implementation detail —
+     * that exists because of a hashing library is an implementation detail -
      * "too long" is everything they need to act on. */
     return {
       message: "הסיסמה ארוכה מדי.",
@@ -162,7 +162,7 @@ export function translateAuthError(err: { message?: string; status?: number; cod
   }
 
   /* GoTrue's mail failure, raised when the signup confirmation message cannot
-   * be delivered — an unconfigured SMTP provider, an unverified sender, a
+   * be delivered - an unconfigured SMTP provider, an unverified sender, a
    * quota. It is answered as `unexpected_failure` with this bare English
    * sentence, which otherwise reaches a Hebrew screen verbatim (observed on a
    * live signup: the customer read "Error sending confirmation email").
@@ -170,7 +170,7 @@ export function translateAuthError(err: { message?: string; status?: number; cod
    * `isUnconfirmed` stays false on purpose: GoTrue aborts the signup when the
    * mail fails, so no account exists and offering "send it again" would point
    * at nothing. It also means a taken address reports THIS failure rather than
-   * "already registered" — the mail breaks before the duplicate is reached —
+   * "already registered" - the mail breaks before the duplicate is reached -
    * which is why the wording asks for a retry instead of claiming a conflict. */
   if (
     lower.includes("error sending confirmation email") ||
@@ -252,7 +252,7 @@ export async function fetchProfile(authUserId: string): Promise<User | null> {
 }
 
 /**
- * Fetches every row in `public.users` — the source of truth for
+ * Fetches every row in `public.users` - the source of truth for
  * authenticated accounts.
  *
  * Ordered newest-first by `created_at` so both the dashboard's
@@ -261,9 +261,9 @@ export async function fetchProfile(authUserId: string): Promise<User | null> {
  *
  * Returns an empty array when Supabase is unconfigured or the read is
  * refused. The read is gated by the live RLS policies on `public.users`
- * — "Users can view own profile" / "Admins have full access to users",
+ * - "Users can view own profile" / "Admins have full access to users",
  * both keyed on `is_admin()`. Callers must treat an empty result as "no
- * remote data", never as "there are no users" — an empty table and a
+ * remote data", never as "there are no users" - an empty table and a
  * denied query look identical, so the caller falls back to the local
  * store rather than blanking the screen.
  */
@@ -289,7 +289,7 @@ export async function fetchAllProfiles(): Promise<User[]> {
  *
  * Every one of them is a bare `snake_case` token passed to `RAISE EXCEPTION`
  * (migrations 0011 and 0013), not a sentence. Translating them here is what
- * keeps a machine token off a Hebrew screen — reading only the SQLSTATE left
+ * keeps a machine token off a Hebrew screen - reading only the SQLSTATE left
  * `admin_protected` rendered verbatim in the customer dialog, and reading only
  * the message text would break the moment PostgREST stops echoing it.
  */
@@ -342,14 +342,14 @@ function describeStatusRefusal(
 
 
 /**
- * Admin-only: sets `account_status` on a `public.users` row — the write half
+ * Admin-only: sets `account_status` on a `public.users` row - the write half
  * of the admin user list.
  *
  * `fetchAllProfiles` above was moved onto Supabase because `db.users` only
  * ever holds records this browser created. The admin *actions* were left
  * behind on the local store, so suspending a real customer resolved that
  * customer locally and failed with "המשתמש לא נמצא." for every account that
- * had actually registered — no matter that the same row was rendering in the
+ * had actually registered - no matter that the same row was rendering in the
  * list right behind the dialog.
  *
  * This calls the `admin_set_account_status` RPC rather than PATCHing the
@@ -407,8 +407,8 @@ export async function updateAccountStatus(
  *
  * `public.users` wins for any `user_id` present in both, because it is
  * the source of truth for authenticated accounts. Local-only rows are
- * kept so an install that predates Supabase — or a browser holding
- * records the remote table does not have — does not suddenly lose data.
+ * kept so an install that predates Supabase - or a browser holding
+ * records the remote table does not have - does not suddenly lose data.
  * Deduplication is by `user_id`, so no user can appear twice.
  */
 export function mergeUserSources(local: StoredUser[], remote: User[]): User[] {
@@ -461,7 +461,7 @@ async function completeSignIn(
    * before. The session is torn down rather than merely ignored, so they do
    * not walk away holding a valid token for a blocked account.
    *
-   * A missing profile row is allowed through — an account can exist without
+   * A missing profile row is allowed through - an account can exist without
    * one, and only an explicit status should ever bar the door. */
   if (profile && profile.account_status !== "ACTIVE") {
     await client.auth.signOut()
@@ -730,11 +730,11 @@ export async function requestPasswordReset(email: string): Promise<AuthResult<vo
  * `create_storefront_order` has no business writing a profile, and migration
  * 0004 leaves `authenticated` with UPDATE on `greeted_at` only, so the
  * browser is not allowed to write `users.phone` at all. The auth user's own
- * metadata is the one place it may — GoTrue writes it for the session holder,
+ * metadata is the one place it may - GoTrue writes it for the session holder,
  * and `buildAppUser` already reads it as the fallback for the profile value.
  *
  * The whole metadata object is sent rather than the single key, so the write
- * is correct whether the server merges it or replaces it — losing
+ * is correct whether the server merges it or replaces it - losing
  * `first_name`/`last_name` here would quietly change what the storefront
  * renders for that customer.
  */
@@ -778,7 +778,7 @@ export async function updatePassword(newPassword: string): Promise<AuthResult<vo
     return authFail("שרת Supabase אינו מוגדר.")
   }
 
-  /* Same gate as signup. Only ever reached while a password is being set —
+  /* Same gate as signup. Only ever reached while a password is being set -
    * sign-in never runs the policy, so an account opened under the older,
    * looser rule keeps working. */
   const policy = passwordProblem(newPassword)

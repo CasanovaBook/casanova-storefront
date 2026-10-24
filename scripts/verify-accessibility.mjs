@@ -219,7 +219,7 @@ async function main() {
     )
     check(
       "launcher keeps its collapsed label as the accessible name",
-      launcher.name === "נגישות — פתיחת התפריט",
+      launcher.name === "נגישות - פתיחת התפריט",
       launcher.name,
     )
     /* The launcher is an icon-only 52px circle, so the logo is its whole face:
@@ -588,7 +588,7 @@ async function main() {
     )
     await cdp.key("Escape", "Escape", { vk: 27 })
 
-    // Small viewport — the layout a phone actually gives the widget.
+    // Small viewport - the layout a phone actually gives the widget.
     await cdp.send("Emulation.setDeviceMetricsOverride", {
       width: 360,
       height: 640,

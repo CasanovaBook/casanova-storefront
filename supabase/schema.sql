@@ -1,5 +1,5 @@
 -- ============================================================
--- Casanova — Digital E-Book Commerce Platform
+-- Casanova - Digital E-Book Commerce Platform
 -- PostgreSQL schema
 -- ============================================================
 --
@@ -10,7 +10,7 @@
 -- creates real content through the CMS.
 --
 -- The single exception is one `platform_settings` row, which is
--- configuration rather than content — every value in it is a neutral
+-- configuration rather than content - every value in it is a neutral
 -- empty default. See the note above that table.
 --
 -- MODELLING RULES
@@ -24,7 +24,7 @@
 --      stored. Revenue, refunds per order and product sales figures
 --      are derived in the views at the bottom of this file.
 --   4. Nothing is allowed to claim money moved without provider
---      confirmation — enforced by CHECK constraints and a trigger on
+--      confirmation - enforced by CHECK constraints and a trigger on
 --      `refunds`, not by application convention alone.
 --
 -- CLIENT ID MAPPING
@@ -37,7 +37,7 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================================
--- PLATFORM SETTINGS — singleton configuration row
+-- PLATFORM SETTINGS - singleton configuration row
 -- ============================================================
 -- Everything that would normally live in server environment variables
 -- is managed from the CMS so the business can change it without a
@@ -94,7 +94,7 @@ CREATE TABLE platform_settings (
 );
 
 -- ============================================================
--- CONTENT ASSETS — managed file storage references
+-- CONTENT ASSETS - managed file storage references
 -- ============================================================
 -- Covers, PDFs and any other uploaded binary. Products point at an
 -- asset by id; the asset row is where size, mime type, checksum and
@@ -116,7 +116,7 @@ CREATE TABLE content_assets (
 CREATE INDEX idx_content_assets_mime ON content_assets (mime_type);
 
 -- ============================================================
--- USERS — customers and CMS/admin accounts in one table
+-- USERS - customers and CMS/admin accounts in one table
 -- ============================================================
 -- Credential columns (password_hash, password_salt) must never be
 -- selected into an API response. `role` decides customer vs staff;
@@ -161,7 +161,7 @@ ALTER TABLE platform_settings
   FOREIGN KEY (updated_by) REFERENCES users (user_id) ON DELETE SET NULL;
 
 -- ============================================================
--- PASSWORD RESET TOKENS — one-time setup or reset links
+-- PASSWORD RESET TOKENS - one-time setup or reset links
 -- ============================================================
 -- Only the digest is stored, so a leaked database cannot be used to
 -- sign in. A token is burned by setting used_at.
@@ -181,7 +181,7 @@ CREATE INDEX idx_prt_user_id     ON password_reset_tokens (user_id);
 CREATE INDEX idx_prt_unused_hash ON password_reset_tokens (token_hash) WHERE used_at IS NULL;
 
 -- ============================================================
--- SESSIONS — server-side session tracking
+-- SESSIONS - server-side session tracking
 -- ============================================================
 CREATE TABLE sessions (
   session_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -221,7 +221,7 @@ CREATE TABLE categories (
 CREATE INDEX idx_categories_order ON categories (display_order);
 
 -- ============================================================
--- PRODUCTS — the general catalog entity
+-- PRODUCTS - the general catalog entity
 -- ============================================================
 -- Books, bundles, subscriptions, courses and physical goods all live
 -- here. Book-specific metadata sits in the 1:1 `books` extension
@@ -232,9 +232,9 @@ CREATE INDEX idx_categories_order ON categories (display_order);
 -- makes an inverted or pointless sale price impossible.
 --
 -- `visibility` controls catalog exposure independently of `status`:
---   PUBLIC   — listed everywhere
---   UNLISTED — reachable only by direct link
---   HIDDEN   — staff only
+--   PUBLIC   - listed everywhere
+--   UNLISTED - reachable only by direct link
+--   HIDDEN   - staff only
 -- `inventory` NULL means unlimited, which is the normal case for
 -- digital goods.
 -- ============================================================
@@ -288,7 +288,7 @@ CREATE INDEX idx_products_storefront ON products (status, visibility, availabili
   WHERE status = 'ACTIVE' AND visibility = 'PUBLIC';
 
 -- ============================================================
--- BOOKS — 1:1 metadata extension for EBOOK products
+-- BOOKS - 1:1 metadata extension for EBOOK products
 -- ============================================================
 CREATE TABLE books (
   product_id       UUID         PRIMARY KEY REFERENCES products (product_id) ON DELETE CASCADE,
@@ -321,7 +321,7 @@ CREATE TRIGGER trg_books_is_ebook
   FOR EACH ROW EXECUTE FUNCTION assert_book_product_is_ebook();
 
 -- ============================================================
--- PRODUCT_CATEGORIES — many-to-many
+-- PRODUCT_CATEGORIES - many-to-many
 -- ============================================================
 CREATE TABLE product_categories (
   product_id  UUID NOT NULL REFERENCES products   (product_id)  ON DELETE CASCADE,
@@ -332,7 +332,7 @@ CREATE TABLE product_categories (
 CREATE INDEX idx_product_categories_category ON product_categories (category_id);
 
 -- ============================================================
--- PRODUCT_IMAGES — gallery beyond the cover
+-- PRODUCT_IMAGES - gallery beyond the cover
 -- ============================================================
 -- The cover itself is products.image_url; this table holds the extra
 -- shots. Each row points at either an uploaded asset or an external
@@ -352,7 +352,7 @@ CREATE TABLE product_images (
 CREATE INDEX idx_product_images_product ON product_images (product_id, sort_order);
 
 -- ============================================================
--- PRODUCT_MEDIA_LINKS — external live-view links
+-- PRODUCT_MEDIA_LINKS - external live-view links
 -- ============================================================
 CREATE TABLE product_media_links (
   media_link_id UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -367,7 +367,7 @@ CREATE TABLE product_media_links (
 CREATE INDEX idx_product_media_links_product ON product_media_links (product_id, sort_order);
 
 -- ============================================================
--- PRODUCT_RELATIONS — bundles, related, upsells, cross-sells
+-- PRODUCT_RELATIONS - bundles, related, upsells, cross-sells
 -- ============================================================
 -- One directed edge table replaces four parallel arrays. The source
 -- product owns the relation; `relation_type` says what it means.
@@ -389,7 +389,7 @@ CREATE INDEX idx_product_relations_source ON product_relations (source_product_i
 CREATE INDEX idx_product_relations_target ON product_relations (target_product_id, relation_type);
 
 -- ============================================================
--- CMS SECTIONS — storefront content blocks
+-- CMS SECTIONS - storefront content blocks
 -- ============================================================
 -- HERO, TESTIMONIALS, FAQ and CTA each own one fixed slot on the landing
 -- page. TEXT, VIDEO, GALLERY and PRODUCTS are free-form: any number of them
@@ -422,7 +422,7 @@ CREATE TABLE cms_sections (
 CREATE INDEX idx_cms_sections_order ON cms_sections (active, display_order);
 
 -- ============================================================
--- TESTIMONIALS — CMS-managed, never hardcoded
+-- TESTIMONIALS - CMS-managed, never hardcoded
 -- ============================================================
 CREATE TABLE testimonials (
   testimonial_id UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -439,7 +439,7 @@ CREATE TABLE testimonials (
 CREATE INDEX idx_testimonials_active_order ON testimonials (active, display_order);
 
 -- ============================================================
--- FAQS — CMS-managed
+-- FAQS - CMS-managed
 -- ============================================================
 CREATE TABLE faqs (
   faq_id        UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -482,7 +482,7 @@ CREATE TABLE coupons (
 -- ============================================================
 -- Stores only authoritative order facts. Provider details live on the
 -- `payments` row that settled the charge, and refund figures are
--- derived from `refunds` — see v_orders. Nothing here duplicates a
+-- derived from `refunds` - see v_orders. Nothing here duplicates a
 -- total that can be recomputed from a source transaction.
 --
 -- `coupon_code` is a deliberate purchase-time snapshot: a coupon may
@@ -527,7 +527,7 @@ CREATE INDEX idx_orders_paid_at        ON orders (paid_at DESC) WHERE paid_at IS
 CREATE INDEX idx_orders_customer_email ON orders (LOWER(customer_email));
 
 -- ============================================================
--- ORDER ITEMS — purchase-time snapshot per line
+-- ORDER ITEMS - purchase-time snapshot per line
 -- ============================================================
 -- product_name, unit_price and discount_amount are frozen at checkout.
 -- product_id stays for analytics and navigation, but no report may
@@ -558,7 +558,7 @@ CREATE INDEX idx_order_items_order_id   ON order_items (order_id);
 CREATE INDEX idx_order_items_product_id ON order_items (product_id);
 
 -- ============================================================
--- PAYMENTS — one row per charge attempt
+-- PAYMENTS - one row per charge attempt
 -- ============================================================
 -- The single source of truth for who the money went through, the
 -- provider transaction reference and the card's last four digits.
@@ -587,7 +587,7 @@ CREATE INDEX idx_payments_status  ON payments (status);
 CREATE INDEX idx_payments_capture ON payments (order_id) WHERE status = 'CAPTURED';
 
 -- ============================================================
--- REFUNDS — request, review and execution lifecycle
+-- REFUNDS - request, review and execution lifecycle
 -- ============================================================
 -- REQUESTED -> PENDING -> APPROVED | REJECTED
 --                     -> PROCESSING -> REFUNDED | FAILED
@@ -682,7 +682,7 @@ CREATE TABLE invoices (
 CREATE UNIQUE INDEX idx_invoices_order_id ON invoices (order_id);
 
 -- ============================================================
--- COUPON USAGE — one redemption per coupon per order
+-- COUPON USAGE - one redemption per coupon per order
 -- ============================================================
 CREATE TABLE coupon_usage (
   usage_id         UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -697,7 +697,7 @@ CREATE TABLE coupon_usage (
 CREATE INDEX idx_coupon_usage_user ON coupon_usage (user_id);
 
 -- ============================================================
--- USER_PRODUCTS — entitlements, the access-control source of truth
+-- USER_PRODUCTS - entitlements, the access-control source of truth
 -- ============================================================
 -- Before serving protected content, check this table. `product_snapshot`
 -- is a bounded copy of the display fields captured at grant time, so
@@ -770,7 +770,7 @@ CREATE INDEX idx_subscriptions_status ON subscriptions (status);
 CREATE INDEX idx_subscriptions_next   ON subscriptions (next_billing_date) WHERE status = 'ACTIVE';
 
 -- ============================================================
--- INQUIRIES — customer support tickets
+-- INQUIRIES - customer support tickets
 -- ============================================================
 -- Created by the public support form, logged by staff over the phone,
 -- or imported from email. `user_id` is matched automatically when the
@@ -832,7 +832,7 @@ CREATE INDEX idx_inquiries_assigned ON inquiries (assigned_to) WHERE assigned_to
 CREATE INDEX idx_inquiries_created  ON inquiries (created_at DESC);
 
 -- ============================================================
--- INQUIRY NOTES — internal or customer-visible replies
+-- INQUIRY NOTES - internal or customer-visible replies
 -- ============================================================
 CREATE TABLE inquiry_notes (
   note_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -846,7 +846,7 @@ CREATE TABLE inquiry_notes (
 CREATE INDEX idx_inquiry_notes_inquiry ON inquiry_notes (inquiry_id, created_at DESC);
 
 -- ============================================================
--- EMAIL LOGS — every outbound transactional message
+-- EMAIL LOGS - every outbound transactional message
 -- ============================================================
 -- A message stays QUEUED and carries failure_reason while no provider
 -- is configured. Nothing may be marked SENT or DELIVERED without a
@@ -876,7 +876,7 @@ CREATE INDEX idx_email_logs_related  ON email_logs (related_type, related_id);
 CREATE INDEX idx_email_logs_created  ON email_logs (created_at DESC);
 
 -- ============================================================
--- AUDIT LOGS — every privileged CMS operation
+-- AUDIT LOGS - every privileged CMS operation
 -- ============================================================
 -- Actor name and role are snapshotted so the trail survives account
 -- deletion. Never log passwords, tokens or card data here.
@@ -910,7 +910,7 @@ CREATE INDEX idx_audit_logs_target   ON audit_logs (target_type, target_id);
 CREATE INDEX idx_audit_logs_created  ON audit_logs (created_at DESC);
 
 -- ============================================================
--- WEBHOOK EVENTS — provider callbacks, idempotent by design
+-- WEBHOOK EVENTS - provider callbacks, idempotent by design
 -- ============================================================
 CREATE TABLE webhook_events (
   event_id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -932,7 +932,7 @@ CREATE INDEX idx_webhook_events_status     ON webhook_events (status);
 CREATE INDEX idx_webhook_events_created_at ON webhook_events (created_at DESC);
 
 -- ============================================================
--- RATE LIMIT BUCKETS — in-database fallback (Redis preferred)
+-- RATE LIMIT BUCKETS - in-database fallback (Redis preferred)
 -- ============================================================
 CREATE TABLE rate_limit_buckets (
   bucket_key VARCHAR(255) PRIMARY KEY,
@@ -942,7 +942,7 @@ CREATE TABLE rate_limit_buckets (
 );
 
 -- ============================================================
--- CRM LEADS / TASKS / NOTES — staff-only pipeline
+-- CRM LEADS / TASKS / NOTES - staff-only pipeline
 -- ============================================================
 CREATE TABLE crm_leads (
   lead_id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1055,7 +1055,7 @@ CREATE TABLE drm_policies (
   -- Mirrors the validation in src/lib/api-security.ts: a watermark switched
   -- on with no template would stamp nothing and quietly stop attributing
   -- copies, which is the one failure mode that cannot be seen on screen.
-  -- COALESCE matters — a CHECK passes on NULL, so without it a NULL template
+  -- COALESCE matters - a CHECK passes on NULL, so without it a NULL template
   -- would satisfy the constraint and defeat the rule entirely.
   CONSTRAINT chk_drm_watermark_template
     CHECK (NOT watermark_enabled
@@ -1153,17 +1153,17 @@ CREATE INDEX idx_security_events_type      ON security_events (event_type);
 CREATE INDEX idx_security_events_session   ON security_events (session_id, created_at DESC);
 
 -- ============================================================
--- CONTENT ACCESS GRANTS — the download-proof delivery path
+-- CONTENT ACCESS GRANTS - the download-proof delivery path
 -- ============================================================
 -- The rule both clients obey: nobody is ever given the address of a
--- protected file. They are given a grant — minted for one signed-in
+-- protected file. They are given a grant - minted for one signed-in
 -- account, one entitled product, one device session, with an expiry and
 -- a use budget. The API resolves a grant to an asset only after
 -- re-checking the entitlement, so revoking access in the CMS also kills
 -- every URL already handed out.
 --
 -- Only token_hash is stored, never the token, so a leaked database
--- cannot be replayed into content — the same rule password_reset_tokens
+-- cannot be replayed into content - the same rule password_reset_tokens
 -- follows.
 --
 -- watermark_text is frozen at mint time on purpose. The stamp on a
@@ -1172,9 +1172,9 @@ CREATE INDEX idx_security_events_session   ON security_events (session_id, creat
 -- guarantee.
 --
 -- scope separates the two things a reader may do with a grant:
---   STREAM        — short-lived, may be reused inside one session, for
+--   STREAM        - short-lived, may be reused inside one session, for
 --                   the page the client is displaying right now.
---   OFFLINE_CACHE — single-use, issued only when the policy allows
+--   OFFLINE_CACHE - single-use, issued only when the policy allows
 --                   offline reading. The client keeps the bytes in its
 --                   private vault and must destroy them at expires_at.
 -- ============================================================
@@ -1229,8 +1229,8 @@ CREATE INDEX idx_content_grants_session
 -- A single-use token checked with SELECT-then-UPDATE from application
 -- code is a race: two concurrent readers both pass the check and both
 -- receive the file. This function locks the row, re-verifies the
--- entitlement — which may have been revoked or have expired since the
--- grant was minted — and consumes one use in the same statement.
+-- entitlement - which may have been revoked or have expired since the
+-- grant was minted - and consumes one use in the same statement.
 --
 -- It raises rather than returning NULL on rejection so a caller cannot
 -- forget to check the outcome.
@@ -1302,7 +1302,7 @@ $$;
 --
 -- Minting a grant is only half the promise. The other half is that
 -- cutting a device off, or revoking an entitlement in the CMS, also
--- kills every URL already handed out — otherwise a revoked phone keeps
+-- kills every URL already handed out - otherwise a revoked phone keeps
 -- a live address to the file until the grant expires on its own, and
 -- "revoke access" quietly means "revoke future access".
 --
@@ -1353,7 +1353,7 @@ CREATE TRIGGER trg_user_product_revokes_grants
 
 
 -- ============================================================
--- TRIGGERS — keep updated_at honest
+-- TRIGGERS - keep updated_at honest
 -- ============================================================
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -1387,7 +1387,7 @@ CREATE TRIGGER trg_platform_settings_updated_at
   BEFORE UPDATE ON platform_settings FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
--- JOBS — reader session and grant expiry
+-- JOBS - reader session and grant expiry
 -- ============================================================
 -- Closes device sessions that idled past the governing policy and
 -- revokes grants that lapsed, in one call a scheduler can make. Returns
@@ -1440,7 +1440,7 @@ END;
 $$;
 
 -- ============================================================
--- VIEWS — every derived figure is computed here, never stored
+-- VIEWS - every derived figure is computed here, never stored
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -1822,8 +1822,8 @@ LEFT JOIN content_assets ca ON ca.asset_id = p.content_asset_id;
 -- PRODUCTS         1:N  PRODUCT_RELATIONS      (source: bundle/related/upsell/cross-sell)
 -- PRODUCTS         1:N  PRODUCT_RELATIONS      (target)
 -- PRODUCTS         N:1  CONTENT_ASSETS         (content_asset_id)
--- PRODUCTS         1:N  ORDER_ITEMS            (RESTRICT — sold products cannot be deleted)
--- PRODUCTS         1:N  USER_PRODUCTS          (RESTRICT — entitlements cannot be destroyed)
+-- PRODUCTS         1:N  ORDER_ITEMS            (RESTRICT - sold products cannot be deleted)
+-- PRODUCTS         1:N  USER_PRODUCTS          (RESTRICT - entitlements cannot be destroyed)
 -- PRODUCTS         1:N  SUBSCRIPTIONS
 -- PRODUCTS         1:N  READING_PROGRESS
 -- PRODUCTS         1:N  CRM_LEADS              (interested_product_id)
@@ -1831,7 +1831,7 @@ LEFT JOIN content_assets ca ON ca.asset_id = p.content_asset_id;
 --
 -- ORDERS           1:N  ORDER_ITEMS
 -- ORDERS           1:N  PAYMENTS
--- ORDERS           1:N  REFUNDS                (RESTRICT — financial history is preserved)
+-- ORDERS           1:N  REFUNDS                (RESTRICT - financial history is preserved)
 -- ORDERS           1:1  INVOICES
 -- ORDERS           1:N  USER_PRODUCTS          (source_order_id)
 -- ORDERS           1:N  COUPON_USAGE
@@ -1845,7 +1845,7 @@ LEFT JOIN content_assets ca ON ca.asset_id = p.content_asset_id;
 -- CRM_LEADS        1:N  CRM_NOTES
 -- DEVICE_SESSIONS  1:N  SECURITY_EVENTS
 -- DEVICE_SESSIONS  1:N  CONTENT_ACCESS_GRANTS
--- USER_PRODUCTS    1:N  CONTENT_ACCESS_GRANTS  (CASCADE — losing the
+-- USER_PRODUCTS    1:N  CONTENT_ACCESS_GRANTS  (CASCADE - losing the
 --                                               entitlement loses every
 --                                               URL minted from it)
 -- PRODUCTS         1:N  CONTENT_ACCESS_GRANTS  (RESTRICT)
@@ -1867,7 +1867,7 @@ LEFT JOIN content_assets ca ON ca.asset_id = p.content_asset_id;
 --              (own inquiries, internal = FALSE only), products,
 --              categories, books, product_images, cms_sections,
 --              testimonials, faqs, device_sessions (own),
---              content_access_grants (own — and only as a redeemed
+--              content_access_grants (own - and only as a redeemed
 --              token, never as a readable row)
 --
 --   staff only platform_settings, refunds, audit_logs, email_logs,
@@ -1902,7 +1902,7 @@ LEFT JOIN content_assets ca ON ca.asset_id = p.content_asset_id;
 -- transactions, refunds, inquiries, reviews, coupons or CMS sections.
 -- An empty database must produce empty states in the UI, and the
 -- first administrator is created interactively through the one-time
--- installation screen at /setup — never by a script.
+-- installation screen at /setup - never by a script.
 -- ============================================================
 -- The site-copy columns (tagline, trust_badges, catalogue_*, pricing_*,
 -- footer_text) are deliberately absent from this list so that they take
@@ -1940,7 +1940,7 @@ INSERT INTO drm_policies (
 ON CONFLICT (policy_name) DO NOTHING;
 
 -- ============================================================
--- MAESTRO CMS — content management tables
+-- MAESTRO CMS - content management tables
 -- ============================================================
 -- These three tables power the Maestro CMS editor. They live alongside
 -- the Casanova CRM tables and are accessed through the Supabase
@@ -1948,7 +1948,7 @@ ON CONFLICT (policy_name) DO NOTHING;
 -- See migrations/0002_maestro_cms.sql for the standalone migration.
 -- ============================================================
 
--- SITE_CONTENT — key/value store for all editable site text.
+-- SITE_CONTENT - key/value store for all editable site text.
 -- Each row is one content field. The `id` is the stable key from the
 -- registry (e.g. "global.brand", "ui.auth.loginTitle"). The `value`
 -- is JSONB so it holds strings, arrays, or any shape the registry defines.
@@ -1964,7 +1964,7 @@ CREATE TABLE IF NOT EXISTS site_content (
 CREATE INDEX IF NOT EXISTS idx_site_content_updated
   ON site_content (updated_at DESC);
 
--- MAESTRO_AUDIT_LOG — change trail for CMS operations.
+-- MAESTRO_AUDIT_LOG - change trail for CMS operations.
 -- Separate from the Casanova audit_logs (which tracks CRM admin operations).
 -- Records every content save, reset, media upload and settings change
 -- made through the Maestro CMS editor.
@@ -1985,7 +1985,7 @@ CREATE INDEX IF NOT EXISTS idx_maestro_audit_entity
 CREATE INDEX IF NOT EXISTS idx_maestro_audit_created
   ON maestro_audit_log (created_at DESC);
 
--- MEDIA — uploaded images and files managed through the Maestro CMS.
+-- MEDIA - uploaded images and files managed through the Maestro CMS.
 -- Separate from content_assets (which holds DRM-protected book files).
 -- This holds editorial media: hero images, blog photos, etc.
 CREATE TABLE IF NOT EXISTS media (
@@ -2004,7 +2004,7 @@ CREATE INDEX IF NOT EXISTS idx_media_created
   ON media (created_at DESC);
 
 -- ============================================================
--- CMS_CATEGORIES — grouping for custom pages (Maestro CMS)
+-- CMS_CATEGORIES - grouping for custom pages (Maestro CMS)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cms_categories (
   id            VARCHAR(255) PRIMARY KEY,
@@ -2020,7 +2020,7 @@ CREATE INDEX IF NOT EXISTS idx_cms_categories_order
   ON cms_categories (display_order, name);
 
 -- ============================================================
--- CMS_PAGES — custom content pages created from Maestro CMS
+-- CMS_PAGES - custom content pages created from Maestro CMS
 -- ============================================================
 -- Each page has a slug that becomes its public URL (/pages/<slug>).
 -- Content is stored as Markdown. Staff can create, edit and categorise

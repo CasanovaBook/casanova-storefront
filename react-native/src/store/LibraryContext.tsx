@@ -133,7 +133,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const removeDevice = useCallback(
     async (sessionId: string): Promise<string | null> => {
       /* The server cascades to content_access_grants, so every URL handed
-       * to that device dies there. The local bytes have to die here —
+       * to that device dies there. The local bytes have to die here -
        * there is no server round trip that can delete a file. */
 
       const result = await revokeDevice(

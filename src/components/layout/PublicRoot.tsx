@@ -204,7 +204,7 @@ export default function PublicRoot() {
 
       <header className="site-header">
         <div className="site-container site-header-inner">
-          <Link to="/" className="site-brand" aria-label={`${brand} — דף הבית`}>
+          <Link to="/" className="site-brand" aria-label={`${brand} - דף הבית`}>
             <img src={logoSrc} alt="" />
             <span className="site-brand-word" dir="ltr" lang="en">
               {brand}

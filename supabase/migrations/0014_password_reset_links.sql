@@ -1,10 +1,10 @@
--- 0014 — password_reset_links: server-side seal for admin-minted recovery links.
+-- 0014 - password_reset_links: server-side seal for admin-minted recovery links.
 --
 -- WHY THIS TABLE EXISTS
 --
 -- `admin-password-reset` mints a real Supabase recovery link through
 -- `auth.admin.generateLink` (service_role only). That link is a live
--- credential on the Supabase project domain — exposing it in the admin UI or
+-- credential on the Supabase project domain - exposing it in the admin UI or
 -- in an email leaks infrastructure and leaves the raw recovery token sitting
 -- in inboxes and chat history. Instead the link is sealed here, behind a
 -- random 128-bit id, and the admin UI only ever sees
@@ -18,13 +18,13 @@
 -- The table deliberately lives in `public` (so the service_role functions
 -- reach it through the normal REST path) but with RLS enabled and **no**
 -- policies at all: the anon/authenticated keys can neither read nor write
--- it, and only the service role — used exclusively inside the two Edge
--- Functions — touches it. The raw recovery token never leaves the trusted
+-- it, and only the service role - used exclusively inside the two Edge
+-- Functions - touches it. The raw recovery token never leaves the trusted
 -- runtime.
 
 CREATE TABLE IF NOT EXISTS password_reset_links (
   -- The redeemable secret: a full crypto.randomUUID with the dashes
-  -- stripped — 128 bits of entropy, unguessable and un enumerable.
+  -- stripped - 128 bits of entropy, unguessable and un enumerable.
   id           UUID         PRIMARY KEY,
   -- The sealed Supabase action link. Readable only by the service role.
   action_link  TEXT         NOT NULL,

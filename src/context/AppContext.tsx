@@ -7,7 +7,7 @@
  * through the service layer so authorization is enforced there rather
  * than in the component that triggered it.
  *
- * Only genuinely ephemeral UI state lives here — the theme and the
+ * Only genuinely ephemeral UI state lives here - the theme and the
  * in-progress cart.
  * ───────────────────────────────────────────────────────────── */
 
@@ -92,7 +92,7 @@ import { fetchMyInquiries, fetchMyInquiryNotes } from "../integrations/supabase/
  * Resolves a stored session to an app user, refusing a blocked account.
  *
  * The suspension status lives in public.users and is not part of the JWT, so
- * it is re-read on every restore — otherwise suspending a customer would
+ * it is re-read on every restore - otherwise suspending a customer would
  * leave them working until their token happened to expire. The session is
  * torn down rather than merely hidden, so they do not keep a valid token for
  * a blocked account.
@@ -135,7 +135,7 @@ export interface AuthOutcome {
 }
 
 interface AppContextValue {
-  /** Live database snapshot — the single source of truth for every screen. */
+  /** Live database snapshot - the single source of truth for every screen. */
   user: User | null
   actor: Actor | null
   isAuthenticated: boolean
@@ -148,7 +148,7 @@ interface AppContextValue {
    * session asynchronously, so on a cold load `isAuthenticated` is `false`
    * for a moment even when a valid session exists. A guard that reads
    * `isAuthenticated` without also reading `authReady` therefore sees
-   * "logged out" during that window and redirects away — which is exactly
+   * "logged out" during that window and redirects away - which is exactly
    * what happened to the user who followed a verification link: Supabase
    * had signed them in, but the dashboard guard had not yet heard about it.
    */
@@ -337,7 +337,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /* ── Entitlements ───────────────────────────────────────
    *
    * A purchase approved by a payment provider, or a book an admin granted
-   * by hand, is recorded in Supabase — but the library and the reader read
+   * by hand, is recorded in Supabase - but the library and the reader read
    * the local store, so the signed-in account's own rows are cached there.
    * Without this a paying customer saw an empty library no matter what the
    * server held.
@@ -346,7 +346,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * rewrite (a `last_activity_at` stamp is enough) hands back a fresh
    * object and would otherwise re-run this on every store write. Only the
    * signed-in user's own rows are fetched, and the cache is merged, never
-   * replaced — a local purchase must survive. */
+   * replaced - a local purchase must survive. */
   const refreshEntitlements = useCallback(
     async (uid: string) => {
       if (!isSupabaseConfigured) return
@@ -354,7 +354,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const rows = await fetchMyEntitlements(uid)
 
       /* null (failed read) leaves the cache untouched; a real empty
-       * result prunes rows the server has removed — הסרה מלאה must
+       * result prunes rows the server has removed - הסרה מלאה must
        * reach this browser, not just the database. */
       if (rows !== null) mirrorRemoteEntitlements(rows)
     },
@@ -385,7 +385,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void sync()
 
     /* Also on return to the tab, so access granted while the reader was
-     * elsewhere shows up without a full reload — but no more than once a
+     * elsewhere shows up without a full reload - but no more than once a
      * minute. The reader triggers focus/visibility events constantly
      * (fullscreen switches, iframe interactions, device-session writes
      * that touch the document), and each one used to re-fan into a
@@ -415,7 +415,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * The fetch paths above all share one weakness: something must
    * trigger them. While a customer sits on the Reader with the tab
    * visible, neither focus nor the throttled refetch fires, and the
-   * 30 s revalidation beat in the Reader is a poll, not a push — an
+   * 30 s revalidation beat in the Reader is a poll, not a push - an
    * access change landed up to 30 s late, and a Library customer saw
    * it only on the next focus.
    *
@@ -423,7 +423,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * postgres_changes events for public.user_products, filtered by the
    * table's RLS to the signed-in account's own rows (migration 0017
    * added the table to the supabase_realtime publication). On every
-   * event the client refetches its rows and mirrors them — the event
+   * event the client refetches its rows and mirrors them - the event
    * itself is treated as a hint, not as data, so the payload's shape
    * can never inject state; only a fresh RLS-scoped SELECT writes to
    * the mirror.
@@ -469,12 +469,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * reliably: RLS is not applied to deletes (there is no row left to
    * check the policy against) and a column filter is evaluated against
    * the old record, which on an RLS-protected table carries only the
-   * primary key — so הסרה מלאה produced no event the subscription could
+   * primary key - so הסרה מלאה produced no event the subscription could
    * match, and the removed book sat in the customer's Library until a
    * manual refresh. INSERT and UPDATE (grant, חסימה, שלילה) are
    * unaffected: they carry the full row and arrive instantly.
    *
-   * A short polling beat therefore backs the push for every screen —
+   * A short polling beat therefore backs the push for every screen -
    * not just the Reader, whose own 30 s beat covers only the reader
    * route. Thirty seconds bounds how long a removed book lingers in the
    * Library; each beat is one cheap RLS-scoped SELECT of the account's
@@ -499,8 +499,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
    *
    * The same split the entitlements had: a ticket created or answered on
    * another device lives in Supabase, while `db.inquiries` only ever held
-   * rows this browser wrote. The signed-in account's own tickets — and the
-   * customer-visible half of their conversations — are mirrored into the
+   * rows this browser wrote. The signed-in account's own tickets - and the
+   * customer-visible half of their conversations - are mirrored into the
    * store so the support page can show them, and so an admin's reply or
    * status change reaches an open page within seconds of the click. The
    * channel's event is treated as a hint and answered with a fresh
@@ -508,7 +508,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    *
    * One read drives both: the ticket list supplies the ids, and the notes
    * read is scoped to exactly those ids and to `internal = FALSE`, so a
-   * staff annotation never reaches a customer's store — the database's
+   * staff annotation never reaches a customer's store - the database's
    * policies are the guarantee, this is the shape of the request.
    */
   const refreshMyInquiries = useCallback(
@@ -520,7 +520,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       mirrorRemoteInquiries(rows, uid)
 
       /* A failed ticket read leaves the mirror untouched, so the ids come
-       * from the store instead — a transient error must not blank out a
+       * from the store instead - a transient error must not blank out a
        * conversation that is already on screen. */
       const ids = (
         rows ?? getDb().inquiries.filter((i) => i.user_id === uid)
@@ -601,8 +601,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [sessionId, user])
 
   /* Keyed on the primitives actorFromUser actually reads, not on the `user`
-   * object. `user` is rebuilt whenever the users table changes identity —
-   * which a `last_activity_at` stamp alone is enough to do — and handing back
+   * object. `user` is rebuilt whenever the users table changes identity -
+   * which a `last_activity_at` stamp alone is enough to do - and handing back
    * a fresh `actor` each time would churn every callback keyed on it and
    * re-run effects in screens that only care about *who* is signed in. */
   const actor = useMemo(
@@ -797,7 +797,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         // Hosted purchases write the entitlement server-side. Pull the
         // account's rows now so the library and the reader see the book
-        // immediately instead of waiting for the next sync beat — the reader
+        // immediately instead of waiting for the next sync beat - the reader
         // re-verifies the entitlement server-side either way.
         if (isSupabaseConfigured && result.data.customer.user_id) {
           void refreshEntitlements(result.data.customer.user_id)
@@ -806,7 +806,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
            * dies there: `create_storefront_order` writes it into
            * `orders.customer_phone` only, and the browser has no UPDATE grant
            * on `users.phone`. Meanwhile every screen that wants a phone reads
-           * the account — the checkout form prefills from `user.phone`, and so
+           * the account - the checkout form prefills from `user.phone`, and so
            * does the support ticket. Recording it on the session's own
            * metadata is the one write the client is allowed to make, and it is
            * the one `buildAppUser` already reads back.

@@ -1,13 +1,13 @@
 /* ─────────────────────────────────────────────────────────────
- * Supabase client — the single browser-facing connection to the
+ * Supabase client - the single browser-facing connection to the
  * hosted Postgres/Auth/Storage backend.
  *
  * Only the two client-safe values are read here, and only through
  * `VITE_`-prefixed variables, because Vite inlines every `VITE_`
  * value into the public bundle at build time:
  *
- *   • VITE_SUPABASE_URL      — the project URL
- *   • VITE_SUPABASE_ANON_KEY — the publishable/anon key, which is
+ *   • VITE_SUPABASE_URL      - the project URL
+ *   • VITE_SUPABASE_ANON_KEY - the publishable/anon key, which is
  *     meant to ship to the browser and is only as powerful as the
  *     Row Level Security policies allow.
  *

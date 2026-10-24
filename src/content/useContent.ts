@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { getRaw, useContentVersion } from "./store";
+import { normalizeHyphens, normalizeHyphensDeep } from "../lib/text";
 
 /** Replaces {placeholders} in a text: fmt("{n} ספרים", { n: 3 }). */
 export function fmt(text: string, vars: Record<string, string | number>): string {
@@ -14,19 +15,19 @@ export interface LinkItem {
 /** Text of a key ("" when empty). */
 function text(key: string): string {
   const v = getRaw(key);
-  return typeof v === "string" ? v : v == null ? "" : String(v);
+  return normalizeHyphens(typeof v === "string" ? v : v == null ? "" : String(v));
 }
 
 function strings(key: string): string[] {
   const v = getRaw(key);
-  if (Array.isArray(v)) return v.map(String).map((s) => s.trim()).filter(Boolean);
-  if (typeof v === "string") return v.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  if (Array.isArray(v)) return v.map(String).map((s) => normalizeHyphens(s.trim())).filter(Boolean);
+  if (typeof v === "string") return v.split(/\r?\n/).map((s) => normalizeHyphens(s.trim())).filter(Boolean);
   return [];
 }
 
 function list<T = Record<string, string>>(key: string): T[] {
   const v = getRaw(key);
-  return Array.isArray(v) ? (v as T[]) : [];
+  return Array.isArray(v) ? normalizeHyphensDeep(v as T[]) : [];
 }
 
 /** "label|/path" per line → links. */
@@ -37,7 +38,7 @@ export function parseLinks(raw: string): LinkItem[] {
     .filter(Boolean)
     .map((l) => {
       const [label, to] = l.split("|");
-      return { label: (label ?? "").trim(), to: (to ?? "#").trim() };
+      return { label: normalizeHyphens((label ?? "").trim()), to: (to ?? "#").trim() };
     })
     .filter((l) => l.label);
 }

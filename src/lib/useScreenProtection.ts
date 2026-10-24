@@ -6,7 +6,7 @@ import type { SecurityEventType } from "../types"
  * What the DRM policy asks the browser to deter.
  *
  * Every flag maps to a policy column, so relaxing protection is a CMS
- * edit rather than a code change — and turning a flag off is recorded in
+ * edit rather than a code change - and turning a flag off is recorded in
  * the audit trail by whoever did it.
  */
 
@@ -43,7 +43,7 @@ export interface ScreenProtectionOptions {
 /**
  * Injected only while `blockPrint` is on. Browsers ignore
  * `preventDefault()` on a print dialog, so the reliable client-side
- * deterrent is to make the printed output blank — the reader still
+ * deterrent is to make the printed output blank - the reader still
  * cannot be stopped from pressing the keys, but the paper comes out
  * empty.
  */
@@ -58,13 +58,13 @@ const noop = () => undefined
  *
  * Scoped honestly: a web page cannot stop a camera, an OS-level
  * screenshot, or a browser extension. What this does is (a) remove the
- * effortless paths — right-click save, select-and-copy, Ctrl+P,
- * PrintScreen-to-clipboard — (b) blank the page when it is not the
+ * effortless paths - right-click save, select-and-copy, Ctrl+P,
+ * PrintScreen-to-clipboard - (b) blank the page when it is not the
  * focused window so a screen-share or an alt-tab does not leave the
  * content on display, and (c) report each blocked attempt so the CMS
  * can show which accounts are probing the protection.
  *
- * Attribution — the part that actually deters redistribution — is the
+ * Attribution - the part that actually deters redistribution - is the
  * watermark the reader draws on top; this hook only handles behaviour.
  */
 
@@ -130,7 +130,7 @@ export function useScreenProtection(options: ScreenProtectionOptions): void {
       }
 
       /* Ctrl/Cmd+U opens view-source for this page, which prints the reader's
-       * markup — including the iframe src, i.e. a direct URL to the content
+       * markup - including the iframe src, i.e. a direct URL to the content
        * file. That is the shortest path from "protected reader" to "download
        * link", so it is gated on copy blocking rather than on the capture
        * flags. Placed before the early return below, which would otherwise

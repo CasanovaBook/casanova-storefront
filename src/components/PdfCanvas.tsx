@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react"
 
 /* ─────────────────────────────────────────────────────────────
- * PdfCanvas — protected-content PDF renderer (v2).
+ * PdfCanvas - protected-content PDF renderer (v2).
  *
  * Renders a PDF into a <canvas> the page owns, instead of handing
  * the bytes to the browser's native PDF plugin inside an <iframe>
  * (whose toolbar is a one-click download/print path no page code
- * can reach — Chromium ignores #toolbar=0).
+ * can reach - Chromium ignores #toolbar=0).
  *
  * ── Why v1 corrupted text, and how this version is built ──
  *
  * v1 rendered every page straight into the one visible <canvas> and
- * only set a `cancelled` flag when the page changed — it never
+ * only set a `cancelled` flag when the page changed - it never
  * cancelled the in-flight pdf.js RenderTask before starting the next
  * one. pdf.js shares a page's translated operator list between
  * concurrent renders of the same page, so the old and new glyph
@@ -30,7 +30,7 @@ import { useEffect, useRef, useState } from "react"
  *     so rapid flipping never queues a backlog of stale renders.
  *  4. Finished pages are cached as ImageBitmaps keyed by
  *     (url, page, zoom, dpr). A page you flip back to is presented
- *     with one drawImage — no re-render at all.
+ *     with one drawImage - no re-render at all.
  *  5. The neighbouring pages are rendered into the cache after the
  *     current page paints, so normal next/previous navigation hits
  *     the cache and feels immediate.
@@ -41,7 +41,7 @@ import { useEffect, useRef, useState } from "react"
  *
  * Security honesty: canvas rendering removes the accidental download
  * path and composes with the copy/print deterrents in the host page,
- * but it is NOT strong DRM — pixels can always be captured. The real
+ * but it is NOT strong DRM - pixels can always be captured. The real
  * boundary stays server-side: entitlement checks, use-budgeted
  * grants, short-lived signed URLs, and the identity watermark this
  * component composes under.
@@ -111,7 +111,7 @@ function loadDoc(url: string): Promise<PdfDoc> {
         // fonts are not embedded falls back to these; a CDN would violate
         // the CSP and leak reader traffic, so they ship with the app.
         // Requested lazily by the worker ONLY when a page actually
-        // references a non-embedded font — pages using embedded fonts
+        // references a non-embedded font - pages using embedded fonts
         // never fetch any of it.
         standardFontDataUrl: "/pdfjs/standard_fonts/",
         cMapUrl: "/pdfjs/cmaps/",
@@ -140,7 +140,7 @@ function loadDoc(url: string): Promise<PdfDoc> {
 
   docCache.set(url, task)
 
-  // A failed parse must not poison the cache — a retry gets a clean
+  // A failed parse must not poison the cache - a retry gets a clean
   // attempt instead of a cached rejection.
   task.catch(() => docCache.delete(url))
 
@@ -188,7 +188,7 @@ async function drainQueue(): Promise<void> {
         await item.run()
       } catch (err) {
         // A cancelled render rejects by design; anything else is logged
-        // in dev only — the component surfaces its own error state.
+        // in dev only - the component surfaces its own error state.
         if (
           !(err instanceof Error && err.name === "RenderingCancelledException") &&
           import.meta.env.DEV
@@ -281,7 +281,7 @@ function renderPageBitmap(
         const scale = (cssWidth / base.width) * zoom * dpr
         const viewport = pdfPage.getViewport({ scale })
 
-        // Dedicated canvas per render — the structural fix for the
+        // Dedicated canvas per render - the structural fix for the
         // interleaved-glyph corruption.
         const offscreen = document.createElement("canvas")
         offscreen.width = Math.max(1, Math.floor(viewport.width))
@@ -458,7 +458,7 @@ export default function PdfCanvas({
 
         // Cancel whatever the previous (page, zoom) left running: queued
         // items are flagged, an in-flight render is cancelled through
-        // pdf.js. This is the fix for slow rapid flipping — stale pages
+        // pdf.js. This is the fix for slow rapid flipping - stale pages
         // never finish rendering "to auction".
         if (activeItemRef.current) {
           cancelQueued(activeItemRef.current.key)
@@ -491,7 +491,7 @@ export default function PdfCanvas({
 
           devTiming(`page ${safePage} rendered`, paintStartedAt)
 
-          // A stale completion never paints — but the bitmap is already
+          // A stale completion never paints - but the bitmap is already
           // in the cache, so flipping back to it is instant.
           if (cancelled || epoch !== renderEpoch.current) return
 
@@ -632,7 +632,7 @@ export default function PdfCanvas({
 
 /** Warms the parser and worker without rendering: called from the
  *  library (hover/focus/touch and on mount) so the first open skips
- *  the lazy-chunk fetch. Fetches code only — never content. */
+ *  the lazy-chunk fetch. Fetches code only - never content. */
 export function prefetchPdfRuntime(): void {
   void PDFJS_IMPORT()
   void ensureWorker()

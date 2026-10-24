@@ -1,5 +1,5 @@
 -- ============================================================
--- 0015 — let an admin grant, revoke and extend book access
+-- 0015 - let an admin grant, revoke and extend book access
 --        [REQUIRES A SERVER-SIDE FUNCTION]
 --
 -- THE BUG
@@ -7,7 +7,7 @@
 -- "פתיחת גישה" in /admin/access reported "המשתמש לא נמצא." for every
 -- account that had registered through Supabase.
 --
--- ROOT CAUSE — the same read/write split migration 0011 fixed for
+-- ROOT CAUSE - the same read/write split migration 0011 fixed for
 -- `account_status`, repeated here for entitlements
 --
 -- 1. FRONTEND. `grantAccess` in src/lib/api-support.ts resolved the
@@ -23,7 +23,7 @@
 --    browser cannot write `public.user_products` on someone else's
 --    behalf. RLS is row-level, so a policy that let an admin write any
 --    entitlement would equally let a client that impersonates the
---    request forge one — the entitlement table is the source of truth
+--    request forge one - the entitlement table is the source of truth
 --    for "may this user open this product?" and must not be writable
 --    from an untrusted client. A SECURITY DEFINER function runs as the
 --    owner, needs no table grant, and checks `is_admin()` itself. This
@@ -33,7 +33,7 @@
 --
 -- `product_snapshot` is captured from the live catalogue row rather
 -- than accepted from the caller, so a client cannot claim a product
--- name or author it does not have — and so the library keeps rendering
+-- name or author it does not have - and so the library keeps rendering
 -- the title after the product is later renamed or archived.
 --
 -- APPLY, THEN VERIFY
@@ -48,7 +48,7 @@
 -- ============================================================
 
 -- ============================================================
--- GRANT ACCESS — creates the entitlement, or re-activates it
+-- GRANT ACCESS - creates the entitlement, or re-activates it
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_grant_access(
   p_user_id         uuid,
@@ -161,7 +161,7 @@ REVOKE ALL ON FUNCTION public.admin_grant_access(uuid, uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_grant_access(uuid, uuid, uuid) TO authenticated;
 
 -- ============================================================
--- SET STATUS — suspend, revoke, expire or re-activate
+-- SET STATUS - suspend, revoke, expire or re-activate
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_set_access_status(
   p_user_product_id uuid,
@@ -218,7 +218,7 @@ REVOKE ALL ON FUNCTION public.admin_set_access_status(uuid, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_set_access_status(uuid, text) TO authenticated;
 
 -- ============================================================
--- EXTEND — push the expiry of an entitlement out
+-- EXTEND - push the expiry of an entitlement out
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_extend_access(
   p_user_product_id uuid,
@@ -265,7 +265,7 @@ REVOKE ALL ON FUNCTION public.admin_extend_access(uuid, timestamptz) FROM PUBLIC
 GRANT EXECUTE ON FUNCTION public.admin_extend_access(uuid, timestamptz) TO authenticated;
 
 -- ============================================================
--- REMOVE — delete the entitlement outright
+-- REMOVE - delete the entitlement outright
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.admin_remove_access(
   p_user_product_id uuid
@@ -310,7 +310,7 @@ GRANT EXECUTE ON FUNCTION public.admin_remove_access(uuid) TO authenticated;
 --    Expect four rows, security_definer = true, and a proconfig
 --    containing search_path=public, pg_temp.
 --
--- 2. Only authenticated may execute them — `anon` must NOT appear:
+-- 2. Only authenticated may execute them - `anon` must NOT appear:
 --
 --    SELECT routine_name, grantee, privilege_type
 --      FROM information_schema.routine_privileges
@@ -318,7 +318,7 @@ GRANT EXECUTE ON FUNCTION public.admin_remove_access(uuid) TO authenticated;
 --     ORDER BY routine_name, grantee;
 --
 -- 3. A signed-in customer must be refused (run from the app's SQL
---    session as a non-admin) — expect ERROR: admin_required:
+--    session as a non-admin) - expect ERROR: admin_required:
 --
 --    SELECT public.admin_grant_access('<uuid>', '<uuid>');
 -- ============================================================

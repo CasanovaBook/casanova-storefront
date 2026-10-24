@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * ReaderScreen — the only place protected content is displayed.
+ * ReaderScreen - the only place protected content is displayed.
  *
  * WHAT IS DELIBERATELY ABSENT
  * There is no download button, no save button, no share button, no
@@ -13,7 +13,7 @@
  *  - the file is read from the private vault path only, and
  *    `assertInsideVault()` is called before the renderer is handed it,
  *    so a path from anywhere else throws instead of rendering;
- *  - the remote URL never reaches the renderer — the vault fetched it
+ *  - the remote URL never reaches the renderer - the vault fetched it
  *    once and this screen only ever sees a local path;
  *  - link taps inside the document are refused and logged, because a
  *    link is the one way a PDF renderer will happily hand a URL to the
@@ -186,7 +186,7 @@ export function ReaderScreen({ navigation, route }: Props) {
       setTotalPages(pages)
 
       /* Throttled by the server, which rewrites `last_read_at` at most
-       * once a minute — the same rule the web reader applies, so a fast
+       * once a minute - the same rule the web reader applies, so a fast
        * swipe through a chapter does not become a write per page. */
 
       void saveProgress({
@@ -224,7 +224,7 @@ export function ReaderScreen({ navigation, route }: Props) {
       report("DOWNLOAD_BLOCKED", `renderer error: ${detail.slice(0, 200)}`)
 
       setProgressError(
-        "הקובץ לא נפתח. ייתכן שהעותק המקומי נמחק — נסו לפתוח את הספר שוב.",
+        "הקובץ לא נפתח. ייתכן שהעותק המקומי נמחק - נסו לפתוח את הספר שוב.",
       )
     },
 

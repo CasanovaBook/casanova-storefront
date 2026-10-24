@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * Settings service — platform configuration read/write.
+ * Settings service - platform configuration read/write.
  *
  * Extracted verbatim from `src/lib/api.ts` (Phase 5B / Group B).
  * Behaviour is unchanged.
@@ -53,7 +53,7 @@ export function updateSettings(
 
     target_label: "הגדרות",
 
-    details: changed.join(", ") || "—",
+    details: changed.join(", ") || "-",
   })
 
   return ok(next)

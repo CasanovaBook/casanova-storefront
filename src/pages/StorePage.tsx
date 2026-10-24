@@ -144,12 +144,12 @@ function BookCard({ product }: { product: Product }) {
         : "רכישת גישה"
 
   const ctaAriaLabel = owned
-    ? `קריאה — ${product.name}`
+    ? `קריאה - ${product.name}`
     : soldOut
-      ? `אזל מהמלאי — ${product.name}`
+      ? `אזל מהמלאי - ${product.name}`
       : preorder
-        ? `הזמנה מראש — ${product.name}`
-        : `רכישת גישה — ${product.name}`
+        ? `הזמנה מראש - ${product.name}`
+        : `רכישת גישה - ${product.name}`
 
   return (
     <article className="app-surface flex h-full flex-col overflow-hidden">

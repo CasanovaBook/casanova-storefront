@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
- * GateScreen — the boot verdict.
+ * GateScreen - the boot verdict.
  *
  * Rendered while the kill switch and the forced-update floor are being
  * evaluated, and stays on screen when the answer is "this build may not

@@ -1,12 +1,12 @@
 -- ============================================================
--- 0019 — Support conversations: inquiry_notes RLS + customer replies
+-- 0019 - Support conversations: inquiry_notes RLS + customer replies
 --
 -- WHY
 --
 -- 0018 moved the ticket itself into `public.inquiries` and gave it RLS, so
 -- a customer's ticket now reaches /admin/support. The CONVERSATION did
--- not follow: `public.inquiry_notes` — the table the schema already
--- documents as "internal or customer-visible replies" — had no RLS, no
+-- not follow: `public.inquiry_notes` - the table the schema already
+-- documents as "internal or customer-visible replies" - had no RLS, no
 -- client write path and was never read, so an admin's "תגובה ללקוח" was
 -- written into that admin's browser document and the customer could never
 -- see it. The customer also had no way to open a ticket at all.
@@ -16,7 +16,7 @@
 --
 --   • Customers read ONLY customer-visible notes (`internal = FALSE`) on
 --     their OWN tickets. Internal staff annotations stay unreadable to
---     them, on every path — the policy, not the UI, is what enforces it.
+--     them, on every path - the policy, not the UI, is what enforces it.
 --   • Staff (`is_admin()`) read every note on every ticket and insert
 --     replies and annotations, always attributed to themselves
 --     (`author_id = auth.uid()`), so a forged author is refused.
@@ -108,7 +108,7 @@ REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
   ON public.inquiry_notes FROM authenticated;
 REVOKE ALL ON public.inquiry_notes FROM anon;
 
--- ── 2. reply_to_my_inquiry() — the customer write path ──────
+-- ── 2. reply_to_my_inquiry() - the customer write path ──────
 -- SECURITY DEFINER so the insert succeeds without an INSERT policy for
 -- customers. Ownership, the author and the public flag are all decided
 -- here: the caller supplies the ticket id and the text and nothing else.
@@ -203,7 +203,7 @@ ALTER TABLE public.inquiry_notes REPLICA IDENTITY DEFAULT;
 -- 2. Admin replies with "תגובה ללקוח": the customer's open conversation
 --    shows it within seconds, without a refresh, and after a reload.
 --
--- 3. An admin note marked "הערה פנימית" appears only on /admin/support —
+-- 3. An admin note marked "הערה פנימית" appears only on /admin/support -
 --    never in the customer's conversation, even after a full reload (the
 --    SELECT policy, not the UI, is what hides it).
 

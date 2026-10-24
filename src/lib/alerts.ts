@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────────────────────
  * Operational alert detection.
  *
- * Alerts are never stored — they are derived from the live database on
+ * Alerts are never stored - they are derived from the live database on
  * every read, so an alert can never survive the condition that caused
  * it and can never be fabricated. Only the admin's "handled" decisions
  * are persisted (`dismissed_alerts`).

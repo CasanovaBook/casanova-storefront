@@ -1,12 +1,12 @@
 /* ─────────────────────────────────────────────────────────────
- * Shared application contract — the Result / ErrorCode / Actor / guard
+ * Shared application contract - the Result / ErrorCode / Actor / guard
  * vocabulary used across the service and infrastructure layers.
  *
  * Extracted verbatim from `src/lib/api.ts` (Phase 5B / Group A) so that
  * infrastructure modules (`supabase-*`, `content-storage`) can depend on
  * this small contract instead of importing the large `api.ts` service
  * module. Behaviour is intentionally unchanged: same codes, same
- * messages, same guard logic — this is a structural move only.
+ * messages, same guard logic - this is a structural move only.
  * ───────────────────────────────────────────────────────────── */
 
 import type { AdminRole, Role } from "../types"

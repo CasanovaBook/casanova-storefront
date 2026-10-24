@@ -1,5 +1,5 @@
 -- ============================================================
--- 0011 — let an admin suspend / reinstate an account
+-- 0011 - let an admin suspend / reinstate an account
 --        [REQUIRES A SERVER-SIDE FUNCTION]
 --
 -- THE BUG
@@ -7,7 +7,7 @@
 -- "השהיית משתמש" in the user dialog reported "המשתמש לא נמצא." for
 -- every account that had registered through Supabase.
 --
--- ROOT CAUSE — two layers, and both had to be fixed
+-- ROOT CAUSE - two layers, and both had to be fixed
 --
 -- 1. FRONTEND. The admin ACTIONS still ran against the local store.
 --    `setUserStatus` in src/lib/api-support.ts resolved the customer
@@ -122,7 +122,7 @@ GRANT EXECUTE ON FUNCTION public.admin_set_account_status(uuid, text) TO authent
 --    Expect security_definer = true and a proconfig containing
 --    search_path=public, pg_temp.
 --
--- 2. Only authenticated may execute it — `anon` must NOT appear:
+-- 2. Only authenticated may execute it - `anon` must NOT appear:
 --
 --    SELECT grantee, privilege_type
 --      FROM information_schema.routine_privileges

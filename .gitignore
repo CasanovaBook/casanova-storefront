@@ -42,7 +42,7 @@ tmp/
 # hard to copy. Committing the asset itself would defeat that in one click:
 # a public repo hands out the file for free, and Git LFS is no better, since
 # LFS objects are fetchable by URL with no authentication at all. History is
-# also forever — removing it later means rewriting every commit.
+# also forever - removing it later means rewriting every commit.
 #
 # So the content stays off the repository and is deployed separately, the way
 # any real storefront keeps its stock out of its source tree.

@@ -10,7 +10,7 @@
  * checks appear below. Policy administration and reading the event log
  * are staff operations and go through `guard(actor, 'security')`.
  * Registering a device and reporting a blocked capture are customer
- * operations — they require an authenticated principal but no admin
+ * operations - they require an authenticated principal but no admin
  * role, and they are the only writes here a customer can reach.
  *
  * Honest limits, stated once so nobody over-trusts the result:
@@ -87,7 +87,7 @@ export function resolveDrmPolicy(
  * Resolution is most-specific-first: an active policy scoped exactly to
  * the client wins over one scoped to `ALL`. When every policy has been
  * deactivated the built-in defaults are returned rather than "no
- * protection" — switching protection off is done by editing the flags on
+ * protection" - switching protection off is done by editing the flags on
  * an active policy, which is a deliberate, audited act. The CMS says so
  * out loud so nobody discovers it by accident.
  */
@@ -333,7 +333,7 @@ export const SCOPE_LABEL: Record<DrmScope, string> = {
 
 /* ── Device registry ──────────────────────────────────── */
 
-/** Coarse, stable browser characteristics — the honest ceiling for a client-only fingerprint. */
+/** Coarse, stable browser characteristics - the honest ceiling for a client-only fingerprint. */
 
 function deviceTraits(): string {
   const nav = typeof navigator === "undefined" ? undefined : navigator
@@ -361,7 +361,7 @@ function deviceTraits(): string {
   ].join("|")
 }
 
-/** FNV-1a — enough to turn the trait string into a short stable key. */
+/** FNV-1a - enough to turn the trait string into a short stable key. */
 
 function digest(input: string): string {
   let hash = 0x811c9dc5
@@ -469,7 +469,7 @@ export function isSessionExpired(
  *
  * Returns the existing session when this browser already holds one, so
  * re-opening a book never consumes a second slot. Fails with CONFLICT
- * once the policy's device cap is reached, and records the attempt —
+ * once the policy's device cap is reached, and records the attempt -
  * a reader bumping into the cap repeatedly is exactly the pattern
  * support needs to see.
  */
@@ -756,8 +756,8 @@ export function revokeDeviceSession(
 
 /**
  * Lists device sessions. Staff with the `security` permission may ask
- * for another account's sessions; anyone else — including an
- * authenticated customer — only ever receives their own, so the
+ * for another account's sessions; anyone else - including an
+ * authenticated customer - only ever receives their own, so the
  * library's "מכשירים מחוברים" panel cannot be turned into a way to
  * enumerate who else is reading what.
  */
@@ -932,7 +932,7 @@ export const HIGH_SIGNAL_EVENTS: SecurityEventType[] = [
   "RECORDING_DETECTED",
 
   /* Nobody reaches for view-source inside a reader by accident, and what it
-   * exposes is the content file's own URL — so this is a probe, not a stray
+   * exposes is the content file's own URL - so this is a probe, not a stray
    * keystroke like a blocked Ctrl+C. */
 
   "SOURCE_VIEW_BLOCKED",
@@ -1102,7 +1102,7 @@ export async function issueContentGrant(
    *
    * When Supabase is configured the catalogue the storefront sells from
    * lives there, so the local document frequently does not hold the row at
-   * all — a purchased book would be declared "no file attached" before the
+   * all - a purchased book would be declared "no file attached" before the
    * server was even asked. The product id is all `get-content-url` needs
    * (it derives the object key server-side), so a hosted deployment asks
    * for a signed URL whenever there is no legacy address to fall back on. */
@@ -1266,7 +1266,7 @@ export async function issueContentGrant(
  * Spends one use of a grant and returns the file location.
  *
  * Re-checks the entitlement on every call rather than trusting the row
- * that was minted earlier — access may have been revoked in the CMS in
+ * that was minted earlier - access may have been revoked in the CMS in
  * between, and consume_content_grant() in schema.sql refuses for exactly
  * the same reasons. A rejection is recorded as a replay attempt: a
  * reader whose page simply stopped refreshing would never tell support

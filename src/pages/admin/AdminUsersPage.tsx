@@ -74,7 +74,7 @@ const INQUIRY_STATUS_LABEL: Record<string, string> = {
 /**
  * Avatar initial for a user row.
  *
- * A Supabase-backed account can legitimately have no first name — an
+ * A Supabase-backed account can legitimately have no first name - an
  * OAuth signup carries none, and a row written by an older app version
  * may have an empty one. Falling back to the email keeps the avatar
  * legible instead of rendering an empty circle, and the name line below
@@ -92,7 +92,7 @@ function nameOf(u: { first_name: string, last_name: string, email: string }): st
 
 const FALLBACK_COVER: [string, string] = ["#1A1A2E", "#2A2A3E"]
 
-/** Cover from the entitlement snapshot — survives product edits or removal. */
+/** Cover from the entitlement snapshot - survives product edits or removal. */
 function TinyCover({ snapshot }: { snapshot: ProductSnapshot }) {
   if (snapshot.image_url) {
     return (
@@ -143,7 +143,7 @@ function UserDetailModal({
     createPasswordResetLink,
   } = useAdmin()
   /* The whole hosted catalogue (or the local document when Supabase is
-   * unconfigured) — a grant must reference a product an entitlement can
+   * unconfigured) - a grant must reference a product an entitlement can
    * point at, including a private/draft title. */
   const { adminProducts: products } = useCms()
   const live = users.find((u) => u.user_id === user.user_id) ?? user
@@ -207,7 +207,7 @@ function UserDetailModal({
       .filter((e) => e.recipient.toLowerCase() === user.email.toLowerCase())
       .map((e) => ({
         at: e.sent_at,
-        text: `מייל "${e.subject}" — ${
+        text: `מייל "${e.subject}" - ${
           e.status === "SENT" || e.status === "DELIVERED"
             ? "נשלח"
             : "בתור / נכשל"
@@ -226,7 +226,7 @@ function UserDetailModal({
   )
 
   /* No email provider is wired up in this deployment, so a reset link is
-   * minted here and shown once — the token itself is never stored. */
+   * minted here and shown once - the token itself is never stored. */
   const handleResetLink = async () => {
     setActionError("")
     const result = await createPasswordResetLink(user.user_id)
@@ -432,7 +432,7 @@ function UserDetailModal({
                   <div className="text-sm space-y-1 mb-2">
                     {o.items.map((it) => (
                       <p key={it.order_item_id}>
-                        {it.product_name} × {it.quantity} — ₪
+                        {it.product_name} × {it.quantity} - ₪
                         {it.line_total.toLocaleString()}
                       </p>
                     ))}
@@ -887,7 +887,7 @@ function UserDetailModal({
                 className="font-semibold mb-1"
                 style={{ color: "var(--color-success)" }}
               >
-                נוצר קישור איפוס חד־פעמי — בתוקף עד{" "}
+                נוצר קישור איפוס חד־פעמי - בתוקף עד{" "}
                 {new Date(resetLink.expires_at).toLocaleString("he-IL", {
                   day: "numeric",
                   month: "short",
@@ -926,7 +926,7 @@ function UserDetailModal({
                    * answered here instead of after a round trip: clicking this
                    * button on a מנהל account always produces the popup, whether
                    * or not the RPC behind it has migration 0013 applied. The
-                   * button stays visible on purpose — a control that vanishes
+                   * button stays visible on purpose - a control that vanishes
                    * reads as a bug, while a refusal that explains itself does
                    * not. */
                   if (live.role === "ADMIN" && nextStatus !== "ACTIVE") {

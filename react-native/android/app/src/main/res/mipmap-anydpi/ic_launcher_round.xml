@@ -5,7 +5,7 @@
   Same mark as `mipmap-anydpi/ic_launcher.xml` on a circular ground. The
   circle is approximated with four cubic segments using the standard kappa of
   0.5523, which keeps the outline within a fraction of a pixel of a true
-  circle at every density — an arc command would do the same, but curves are
+  circle at every density - an arc command would do the same, but curves are
   what `VectorDrawable`'s path parser handles most consistently across the
   API levels this file has to support.
 -->

@@ -17,8 +17,8 @@ import RouteError, { NotFoundPage } from "./components/RouteError"
 /**
  * Route table.
  *
- * The storefront entry points — landing, login and the three layout
- * shells — stay in the initial bundle because they are what a first
+ * The storefront entry points - landing, login and the three layout
+ * shells - stay in the initial bundle because they are what a first
  * visit actually needs. Everything else is loaded on demand, so the
  * 13-screen admin panel, the protected reader and the checkout flow no
  * longer ship to a visitor who only came to look at the catalogue.
@@ -29,7 +29,7 @@ import RouteError, { NotFoundPage } from "./components/RouteError"
  *
  * Every top-level branch carries an `errorElement`, so a throw anywhere in
  * its subtree lands on a Hebrew recovery screen instead of React Router's
- * own developer page — which is untranslated and prints the component stack
+ * own developer page - which is untranslated and prints the component stack
  * into the DOM for whoever triggered it.
  */
 
@@ -316,7 +316,7 @@ export const router = createBrowserRouter([
 
       /* Support inside the account shell: the dashboard sidebar's
        * "תמיכה ופניות" item links here so navigating keeps the sidebar
-       * mounted — the public /support route swaps in PublicRoot and the
+       * mounted - the public /support route swaps in PublicRoot and the
        * customer lost their navigation entirely. Same component, now
        * rendered under DashboardLayout. */
       { path: "support", Component: SupportPage },
@@ -385,7 +385,7 @@ export const router = createBrowserRouter([
   {
     /* Route-level authorization for the Maestro CMS editor. Runs before the
      * editor chunk even loads, so direct URL entry, refresh, new-tab and
-     * hand-typed navigation are all refused here — the AdminAuthGate inside
+     * hand-typed navigation are all refused here - the AdminAuthGate inside
      * the app re-checks the same rules as a second layer, it is not the
      * only one. A visitor is admitted only when ALL hold:
      *   - a restored, authenticated Casanova session

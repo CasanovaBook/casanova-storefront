@@ -1,12 +1,12 @@
 /**
- * Maestro Admin — Pages & Categories management.
+ * Maestro Admin - Pages & Categories management.
  *
  * Staff can create new content pages, write Markdown content, assign
  * them to categories, set SEO fields and control visibility. Categories
  * are managed inline from a sidebar panel.
  *
  * Data flows through `maestro.cms_pages` and `maestro.cms_categories`
- * — the same collections the public site reads, so a published page
+ * - the same collections the public site reads, so a published page
  * appears at /pages/<slug> immediately.
  */
 
@@ -18,6 +18,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import Spinner from "@/components/ui/Spinner";
 import Alert from "@/components/ui/Alert";
+import { normalizeHyphens } from "@/lib/text";
 
 /* ── types ───────────────────────────────────────────────────────────── */
 
@@ -441,7 +442,7 @@ export function MaestroPagesPage() {
       {/* Sync indicator */}
       <div className="mt-6 flex items-center justify-center gap-2 text-xs app-muted text-center">
         <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: "var(--color-success)" }} />
-        עמודים מתפרסמים ב-/pages/&lt;slug&gt; — נתונים משותפים דרך מסד הנתונים
+        עמודים מתפרסמים ב-/pages/&lt;slug&gt; - נתונים משותפים דרך מסד הנתונים
       </div>
     </div>
   );
@@ -860,7 +861,7 @@ function CategoryManager({
 
 function MarkdownPreview({ content }: { content: string }) {
   const html = useMemo(() => {
-    return content
+    return normalizeHyphens(content)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/^### (.+)$/gm, "<h3>$1</h3>")
       .replace(/^## (.+)$/gm, "<h2>$1</h2>")

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-check-migrations.py — structural sanity check for the SQL in supabase/migrations/.
+check-migrations.py - structural sanity check for the SQL in supabase/migrations/.
 
 This exists because the SQL is applied by hand through a browser, so
 there is no compile step between writing it and running it against
@@ -11,7 +11,7 @@ grabbed one line too many left
       'a string that was never closed
 
 in the file. That parses as a statement which never terminates, so
-Postgres complained about whatever token came next — `CREATE` — more
+Postgres complained about whatever token came next - `CREATE` - more
 than four hundred lines away from the actual mistake.
 
 It is a linter, not a parser. It does not understand SQL grammar or
@@ -118,7 +118,7 @@ def check(path: Path, rep: Report) -> None:
         if "$$" in code:
             before, after = code.split("$$", 1)
             if before.strip() == "" and after.strip().startswith(";"):
-                continue  # a closer with nothing open — harmless
+                continue  # a closer with nothing open - harmless
             in_dollar, dollar_open = True, n
             continue
 
@@ -165,7 +165,7 @@ def check(path: Path, rep: Report) -> None:
         while j < len(raw) and not opener.search(raw[j]):
             j += 1
         if j >= len(raw):
-            rep.add(path, n, "function has no `AS $...$` — is it truncated?")
+            rep.add(path, n, "function has no `AS $...$` - is it truncated?")
             continue
         tag = opener.search(raw[j]).group(0).split()[-1]
         # plpgsql may be declared before or after the body, so read the

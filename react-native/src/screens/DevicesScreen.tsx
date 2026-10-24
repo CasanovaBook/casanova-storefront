@@ -1,10 +1,10 @@
 /* ─────────────────────────────────────────────────────────────
- * DevicesScreen — the customer's own device management.
+ * DevicesScreen - the customer's own device management.
  *
  * Same `device_sessions` rows the CMS security screen shows, with one
  * difference in what can be done to them: a customer may remove a device
  * but may not see another account's, and removal here cascades exactly as
- * it does in the CMS — `trg_device_session_revokes_grants` kills every
+ * it does in the CMS - `trg_device_session_revokes_grants` kills every
  * content grant issued to that session, so a phone removed from the list
  * stops being able to read immediately rather than at the next refresh.
  * ───────────────────────────────────────────────────────────── */
@@ -197,7 +197,7 @@ export function DevicesScreen() {
 
               {!device.secure_flag_active && !device.revoked ? (
                 <Text style={[styles.meta, { color: colors.danger }]}>
-                  שכבת ההגנה לא פעילה במכשיר זה — קריאה בתוכן מוגן תיחסם בו.
+                  שכבת ההגנה לא פעילה במכשיר זה - קריאה בתוכן מוגן תיחסם בו.
                 </Text>
               ) : null}
 
@@ -237,7 +237,7 @@ export function DevicesScreen() {
         <Card style={styles.note}>
           <Body muted>
             הסרת מכשיר מוחקת גם את כל העותקים השמורים בו. אם איבדתם טלפון, הסירו
-            אותו כאן מיד — זו הפעולה היחידה שעוצרת קריאה במכשיר שכבר לא בידיים
+            אותו כאן מיד - זו הפעולה היחידה שעוצרת קריאה במכשיר שכבר לא בידיים
             שלכם.
           </Body>
         </Card>

@@ -1,16 +1,16 @@
 -- ============================================================
--- 0020 — The resolution moment is stamped by the database
+-- 0020 - The resolution moment is stamped by the database
 --
 -- WHY
 --
 -- `inquiries.resolved_at` already exists (TIMESTAMPTZ, guarded by
--- chk_inquiry_resolution) and is the field both panels display — there is no
+-- chk_inquiry_resolution) and is the field both panels display - there is no
 -- second timestamp to add. What was wrong is who filled it: nothing in the
 -- database ever did. The admin's browser computed it (`nowIso()` in
 -- updateInquiry) and sent it as a column value, so the moment a ticket was
 -- recorded as resolved was that admin's workstation clock. A machine a few
 -- minutes off, or set to the wrong zone, wrote a wrong resolution time that
--- looked perfectly plausible — and the row's own `updated_at` came from the
+-- looked perfectly plausible - and the row's own `updated_at` came from the
 -- server (set_updated_at), so two timestamps on the same row could disagree
 -- about the same instant.
 --
@@ -20,19 +20,19 @@
 --   • A status TRANSITION into RESOLVED or CLOSED from outside that pair
 --     stamps `resolved_at = NOW()`, so the stored time is the server's.
 --   • RESOLVED ↔ CLOSED is the same resolution, so moving a resolved ticket
---     to closed (or back) KEEPS the moment it was first resolved — the rule
+--     to closed (or back) KEEPS the moment it was first resolved - the rule
 --     the client already applies with `existing.resolved_at ?? nowIso()`, now
 --     enforced server-side. Closing is not re-resolving.
 --   • Leaving the pair clears it, so a reopened ticket carries no misleading
---     resolution time — again the client's own rule, applied by the server.
+--     resolution time - again the client's own rule, applied by the server.
 --   • An UPDATE that does not move the status (a reply's freshness bump, an
 --     assignment, an order link, a note) leaves the stored moment alone, so a
 --     ticket cannot slide its resolution time forward on every unrelated
 --     write.
 --   • Existing resolved rows keep their stored value: the trigger only writes
 --     on a transition.
---   • INSERT is covered too — a new ticket lands NULL, a row inserted
---     already resolved is stamped unless it brought a historical value —
+--   • INSERT is covered too - a new ticket lands NULL, a row inserted
+--     already resolved is stamped unless it brought a historical value -
 --     which also means chk_inquiry_resolution cannot be violated by a write
 --     that forgot the column.
 --
@@ -79,7 +79,7 @@ BEGIN
     ELSIF NEW.resolved_at IS NULL
        OR OLD.status NOT IN ('RESOLVED', 'CLOSED') THEN
       /* Entering the resolved pair is the resolution event, so it is stamped
-       * from the server clock — once. RESOLVED → CLOSED keeps the original
+       * from the server clock - once. RESOLVED → CLOSED keeps the original
        * moment because OLD is already inside the pair and a value is stored.
        * OLD is only read here, never in the INSERT branch: it is unassigned
        * for an insert. */

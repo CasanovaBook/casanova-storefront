@@ -26,7 +26,7 @@ import AccessibilityLauncherLogo from "./AccessibilityLauncherLogo"
  *
  * The panel is a non-modal popup anchored beside that button:
  *  - it is a portal to `document.body`, so no transformed or clipped ancestor
- *    can cut it off or trap it — the same reason `Modal.tsx` portals;
+ *    can cut it off or trap it - the same reason `Modal.tsx` portals;
  *  - its position is measured from the button's own rect on open and on every
  *    resize, so it opens on whichever side has room and is clamped inside the
  *    viewport at any zoom level, rather than being pinned to fixed pixels;
@@ -190,7 +190,7 @@ export default function AccessibilityWidget() {
     positionPanel()
   }, [panelOpen, positionPanel, preferences.fontScale])
 
-  /* Focus moves into the dialog only once it has a position — an element still
+  /* Focus moves into the dialog only once it has a position - an element still
    * waiting on `visibility: hidden` cannot receive focus, so doing this in the
    * same commit as the open would silently do nothing and leave the dialog
    * open with focus behind it. Runs once per opening, not on every reposition,
@@ -277,7 +277,7 @@ export default function AccessibilityWidget() {
 
   /* Focus returns to whichever control opened the panel. When the panel is
    * closed by hiding the widget that button is gone, so focus falls back to
-   * the footer control that restores it, and only then to the main region — a
+   * the footer control that restores it, and only then to the main region - a
    * keyboard user never loses their place. */
   useEffect(() => {
     if (panelOpen) {
@@ -365,7 +365,7 @@ export default function AccessibilityWidget() {
           aria-expanded={panelOpen}
           aria-controls={ACCESSIBILITY_PANEL_ID}
           aria-label={
-            panelOpen ? "נגישות — סגירת התפריט" : "נגישות — פתיחת התפריט"
+            panelOpen ? "נגישות - סגירת התפריט" : "נגישות - פתיחת התפריט"
           }
           title="הגדרות נגישות"
           onClick={(event) => {

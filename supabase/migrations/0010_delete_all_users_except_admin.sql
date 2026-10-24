@@ -1,5 +1,5 @@
 -- ============================================================
--- 0010 — delete every account except the one admin
+-- 0010 - delete every account except the one admin
 --
 -- KEEPS:  maorgacp@gmail.com   (role = ADMIN)
 -- DELETES: every other auth user and its public.users profile,
@@ -11,7 +11,7 @@
 --   is no undo and no soft-delete: the rows are gone.
 --
 --   Run the PREVIEW block first and READ IT. If the "would delete"
---   count includes maorgacp@gmail.com, STOP — the guard has failed
+--   count includes maorgacp@gmail.com, STOP - the guard has failed
 --   and running the rest would lock you out of your own admin panel.
 --
 -- WHY auth.users HAS TO BE DELETED TOO
@@ -35,7 +35,7 @@
 -- attention.
 -- ============================================================
 
--- ── PREVIEW — run this FIRST. It changes nothing. ─────────────
+-- ── PREVIEW - run this FIRST. It changes nothing. ─────────────
 -- Expect: 1 row to keep, N to delete.
 -- Verify maorgacp@gmail.com appears in the KEEP row.
 SELECT
@@ -61,7 +61,7 @@ BEGIN;
 --    is owned and shaped by Supabase (it appears nowhere in this
 --    repo's schema), so its exact column set is not something this
 --    migration can rely on. public.users.user_id IS the same UUID as
---    auth.users.id — the app already keys every profile off it — and
+--    auth.users.id - the app already keys every profile off it - and
 --    public.users IS defined here, so this side is verifiable.
 --
 --    An auth account with no public.users row is not deleted by this
@@ -88,9 +88,9 @@ WHERE author_id IN (
   WHERE LOWER(email) <> 'maorgacp@gmail.com'
 );
 
--- 3. The profiles. Their entire dependent tree — orders, payments,
+-- 3. The profiles. Their entire dependent tree - orders, payments,
 --    invoices, entitlements, reading progress, subscriptions,
---    device sessions, content grants, support threads, CRM records —
+--    device sessions, content grants, support threads, CRM records -
 --    goes with them by CASCADE.
 DELETE FROM public.users
 WHERE LOWER(email) <> 'maorgacp@gmail.com';
@@ -105,7 +105,7 @@ SELECT user_id, email, role, admin_role FROM public.users;
 SELECT id, email FROM auth.users;
 
 -- ⚠ MUST RETURN NO ROWS. Any row here is an auth account with no
--- public.users profile — it survived the DELETE above because the
+-- public.users profile - it survived the DELETE above because the
 -- statement keys off public.users. Sign-in is still possible for it,
 -- so it must be removed. Delete by id, the value in auth_user_id:
 --

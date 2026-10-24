@@ -12,17 +12,17 @@ export interface UiGroup {
 }
 
 export const UI_GROUPS: UiGroup[] = [
-  { prefix: "common.", id: "ui-common", label: "טקסטי ממשק — כללי" },
-  { prefix: "err.", id: "ui-errors", label: "טקסטי ממשק — הודעות שגיאה" },
-  { prefix: "nav.", id: "ui-nav", label: "טקסטי ממשק — ניווט וכותרת" },
-  { prefix: "store.", id: "ui-store", label: "טקסטי ממשק — חנות" },
-  { prefix: "library.", id: "ui-library", label: "טקסטי ממשק — ספרייה" },
-  { prefix: "reader.", id: "ui-reader", label: "טקסטי ממשק — קורא" },
-  { prefix: "checkout.", id: "ui-checkout", label: "טקסטי ממשק — תשלום" },
-  { prefix: "auth.", id: "ui-auth", label: "טקסטי ממשק — התחברות" },
-  { prefix: "support.", id: "ui-support", label: "טקסטי ממשק — תמיכה" },
-  { prefix: "legal.", id: "ui-legal", label: "טקסטי ממשק — עמודים משפטיים" },
-  { prefix: "dashboard.", id: "ui-dashboard", label: "טקסטי ממשק — לוח בקרה" },
+  { prefix: "common.", id: "ui-common", label: "טקסטי ממשק - כללי" },
+  { prefix: "err.", id: "ui-errors", label: "טקסטי ממשק - הודעות שגיאה" },
+  { prefix: "nav.", id: "ui-nav", label: "טקסטי ממשק - ניווט וכותרת" },
+  { prefix: "store.", id: "ui-store", label: "טקסטי ממשק - חנות" },
+  { prefix: "library.", id: "ui-library", label: "טקסטי ממשק - ספרייה" },
+  { prefix: "reader.", id: "ui-reader", label: "טקסטי ממשק - קורא" },
+  { prefix: "checkout.", id: "ui-checkout", label: "טקסטי ממשק - תשלום" },
+  { prefix: "auth.", id: "ui-auth", label: "טקסטי ממשק - התחברות" },
+  { prefix: "support.", id: "ui-support", label: "טקסטי ממשק - תמיכה" },
+  { prefix: "legal.", id: "ui-legal", label: "טקסטי ממשק - עמודים משפטיים" },
+  { prefix: "dashboard.", id: "ui-dashboard", label: "טקסטי ממשק - לוח בקרה" },
 ];
 
 /** key (without "ui.") → [Hebrew label for the admin, default text] */
@@ -36,8 +36,8 @@ export const UI: Record<string, [string, string]> = {
   "common.loading": ["טוענים", "טוענים…"],
   "common.errorTitle": ["כותרת שגיאת טעינה", "משהו לא הסתדר."],
   "common.errorLoad": ["טקסט שגיאת טעינה", "לא הצלחנו לטעון את התוכן. אפשר לנסות שוב."],
-  "common.errorFixOne": ["סיכום שגיאות — שדה אחד", "יש שדה אחד שצריך תיקון:"],
-  "common.errorFixMany": ["סיכום שגיאות — כמה שדות ({n} = מספר)", "יש {n} שדות שצריכים תיקון:"],
+  "common.errorFixOne": ["סיכום שגיאות - שדה אחד", "יש שדה אחד שצריך תיקון:"],
+  "common.errorFixMany": ["סיכום שגיאות - כמה שדות ({n} = מספר)", "יש {n} שדות שצריכים תיקון:"],
   "common.skipMain": ["קישור \"דלג לתוכן\"", "דלג לתוכן הראשי"],
   "common.skipNav": ["קישור \"דלג לניווט\"", "דלג לניווט"],
   "common.fullName": ["שדה שם מלא", "שם מלא"],
@@ -141,13 +141,13 @@ export const UI: Record<string, [string, string]> = {
   "auth.haveAccountLink": ["קישור התחברות", "התחברות"],
   "auth.guestCheckout": ["טקסט רכישה כאורח", "ניתן גם לרכוש ישירות מ־"],
   "auth.guestCheckoutStore": ["קישור חנות", "החנות"],
-  "auth.guestCheckoutSuffix": ["המשך טקסט רכישה", "— החשבון ייווצר אוטומטית."],
+  "auth.guestCheckoutSuffix": ["המשך טקסט רכישה", "- החשבון ייווצר אוטומטית."],
   /* The notice under the register form, in the mode that has a real auth
    * backend. It is three pieces because the middle one is the link to the
    * catalogue; read together they are one sentence. */
-  "auth.browseNoticeLead": ["הודעת עיון — תחילית", "אפשר לעיין"],
-  "auth.browseNoticeStore": ["הודעת עיון — קישור לחנות", "בחנות"],
-  "auth.browseNoticeTail": ["הודעת עיון — המשך", "ולצפות בספרים ללא חשבון. כדי להשלים רכישה, יש ליצור חשבון ולאמת את כתובת האימייל."],
+  "auth.browseNoticeLead": ["הודעת עיון - תחילית", "אפשר לעיין"],
+  "auth.browseNoticeStore": ["הודעת עיון - קישור לחנות", "בחנות"],
+  "auth.browseNoticeTail": ["הודעת עיון - המשך", "ולצפות בספרים ללא חשבון. כדי להשלים רכישה, יש ליצור חשבון ולאמת את כתובת האימייל."],
   "auth.confirmPassword": ["שדה אימות סיסמה", "אימות סיסמה"],
   "auth.phoneLabel": ["שדה טלפון בהרשמה", "מספר טלפון (לא חובה)"],
   "auth.phoneHint": ["רמז לשדה טלפון בהרשמה", "אפשר להוסיף מספר טלפון בהמשך. בעת ביצוע הזמנה, נבקש מספר טלפון לצורכי תיאום ועדכוני משלוח."],
@@ -167,7 +167,7 @@ export const UI: Record<string, [string, string]> = {
   "support.noOrder": ["ללא שיוך", "ללא שיוך"],
   "support.subjectLabel": ["שדה כותרת", "כותרת"],
   "support.messageLabel": ["שדה פירוט", "פירוט הפנייה"],
-  "support.successTitle": ["הודעת הצלחה — כותרת", "הפנייה התקבלה"],
+  "support.successTitle": ["הודעת הצלחה - כותרת", "הפנייה התקבלה"],
   "support.newTicket": ["כפתור פנייה נוספת", "פנייה נוספת"],
   "support.backToDashboard": ["חזרה ללוח האישי", "חזרה ללוח האישי"],
   "support.loginToTrack": ["התחברות למעקב", "התחברות למעקב"],

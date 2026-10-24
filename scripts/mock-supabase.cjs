@@ -9,9 +9,9 @@
  * acceptable.  So the transport is removed from the picture entirely:
  * the app is pointed at THIS origin, which answers the handful of
  * endpoints it actually calls and has no mail capability whatsoever.
- * Every outcome a real GoTrue can return — confirmation pending, mail
+ * Every outcome a real GoTrue can return - confirmation pending, mail
  * delivery failing, an address already registered, the same answer
- * phrased so a client cannot tell — is replayed here on demand.
+ * phrased so a client cannot tell - is replayed here on demand.
  *
  * Nothing here touches the real project: the URL and the key are both
  * local test values, the "tokens" are fixed fake strings that no server
@@ -38,7 +38,7 @@ const USER_ID = "11111111-2222-3333-4444-555555555555"
 const PRODUCT_ID = "9f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f"
 const ORDER_ID = "77777777-8888-9999-aaaa-000000000001"
 
-/** Fixed, meaningless strings — they are never sent anywhere real. */
+/** Fixed, meaningless strings - they are never sent anywhere real. */
 const ACCESS_TOKEN = "mock-unsigned-access-token"
 const REFRESH_TOKEN = "mock-unsigned-refresh-token"
 
@@ -284,7 +284,7 @@ function loginResponse(send) {
         message: "Too many requests",
       })
     case "ok_unconfirmed_session":
-      /* Signed in with confirmation still outstanding — the state the
+      /* Signed in with confirmation still outstanding - the state the
        * checkout gate exists for. */
       return send(200, session(authUser({ last_sign_in_at: NOW })))
     default:
@@ -549,7 +549,7 @@ const server = http.createServer((req, res) => {
       }
       /* supabase-js re-reads the user after an implicit (URL) session, and whatever
        * this returns REPLACES the token's claims. So read them off the bearer
-       * token it arrived with — otherwise a link-click session would come back
+       * token it arrived with - otherwise a link-click session would come back
        * looking unconfirmed and with empty metadata, and the test would be
        * measuring the mock instead of the app. */
       const bearer = String(req.headers.authorization || "").replace(/^Bearer /i, "")
@@ -584,7 +584,7 @@ const server = http.createServer((req, res) => {
       })
     }
 
-    /* The object the signed URL points at. Bytes, not JSON — the reader's
+    /* The object the signed URL points at. Bytes, not JSON - the reader's
      * parser must be able to open it. */
     if (url.pathname === "/fake-book.pdf") {
       const pdf = tinyPdf()
@@ -613,7 +613,7 @@ const server = http.createServer((req, res) => {
       switch (state.content) {
         case "missing":
           /* What get-content-url answers when Storage reports the object
-           * absent — the only answer that entitles the UI to speak of a
+           * absent - the only answer that entitles the UI to speak of a
            * missing file. */
           return send(404, { error: "No content file is attached to this product" })
         case "forbidden":
@@ -625,7 +625,7 @@ const server = http.createServer((req, res) => {
            * point of the test is that the customer never sees it. */
           return send(500, { error: "Could not sign the content URL" })
         case "throw":
-          /* Not JSON at all — the transport path, where supabase-js has no
+          /* Not JSON at all - the transport path, where supabase-js has no
            * status to read. */
           res.writeHead(502, {
             "Content-Type": "text/plain",

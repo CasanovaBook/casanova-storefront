@@ -451,7 +451,7 @@ const ICONS: Record<IconName, ReactElement> = {
   ),
 
   /* Glyphs for the accessibility panel's toggle tiles. Each toggle pairs one
-   * with a visible text label — the icon is never the whole name. */
+   * with a visible text label - the icon is never the whole name. */
   type: (
     <>
       <path d="M4 7V4h16v3" />
@@ -491,7 +491,7 @@ const ICONS: Record<IconName, ReactElement> = {
 
   /* Universal access mark: head, outstretched arms, body and legs. Used only
    * by the accessibility controls, which always pair it with a text label or
-   * an aria-label — the glyph is never the whole accessible name. */
+   * an aria-label - the glyph is never the whole accessible name. */
   accessibility: (
     <>
       <circle cx="12" cy="4.7" r="1.9" />
