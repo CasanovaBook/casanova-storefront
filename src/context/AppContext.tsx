@@ -129,6 +129,7 @@ export interface AuthOutcome {
   needsEmailConfirmation?: boolean
   isUnconfirmed?: boolean
   code?: LoginErrorCode
+  status?: number
   retryAfterSeconds?: number
   captchaRequired?: boolean
 }
@@ -653,6 +654,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             error: res.error,
             isUnconfirmed: res.isUnconfirmed,
             code: res.code as LoginErrorCode | undefined,
+            status: res.status,
             retryAfterSeconds: res.retryAfterSeconds,
             captchaRequired: res.captchaRequired,
           }

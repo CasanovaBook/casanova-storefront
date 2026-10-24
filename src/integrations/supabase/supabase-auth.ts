@@ -32,6 +32,7 @@ export interface AuthFailure {
   ok: false
   error: string
   code?: string
+  status?: number
   isUnconfirmed?: boolean
   retryAfterSeconds?: number
   captchaRequired?: boolean
@@ -47,7 +48,10 @@ export function authFail(
   error: string,
   code?: string,
   isUnconfirmed = false,
-  extra: Pick<AuthFailure, "retryAfterSeconds" | "captchaRequired"> = {},
+  extra: Pick<
+    AuthFailure,
+    "status" | "retryAfterSeconds" | "captchaRequired"
+  > = {},
 ): AuthFailure {
   return { ok: false, error, code, isUnconfirmed, ...extra }
 }
@@ -470,40 +474,10 @@ async function completeSignIn(
   return authOk(buildAppUser(authUser, profile))
 }
 
-/** Direct Supabase sign-in used only when Vite dev has no Edge Function. */
-async function directSupabaseSignIn(
-  email: string,
-  password: string,
-): Promise<AuthResult<User>> {
-  console.warn(
-    "[supabase-auth] /auth/login is unavailable in development; direct Supabase auth bypasses rate limiting.",
-  )
-
-  const client = requireSupabase()
-  const { data, error } = await client.auth.signInWithPassword({
-    email,
-    password,
-  })
-
-  if (error) {
-    const { message, isUnconfirmed } = translateAuthError(error)
-    return authFail(message, error.code, isUnconfirmed)
-  }
-
-  if (!data.user) {
-    return authFail("לא התקבלו נתוני משתמש.")
-  }
-
-  return completeSignIn(data.user)
-}
-
 /**
- * Hosted sign-in through the rate-limited Edge endpoint.
- *
- * The endpoint returns Supabase session tokens only after it has passed the
- * IP limit and, where required, Turnstile. The browser then installs that
- * session through the normal Supabase client so persistence and the existing
- * auth listener stay unchanged.
+ * The only hosted password-grant path. The browser never calls Supabase Auth
+ * with credentials directly: `/api/auth/login` enforces the IP limit and
+ * Turnstile, then returns the session tokens for the client to install.
  */
 export async function signInWithEmail(
   email: string,
@@ -519,30 +493,30 @@ export async function signInWithEmail(
 
   let response: Response
   try {
-    response = await fetch("/auth/login", {
+    response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: normalizedEmail,
         password,
-        turnstileToken,
+        "cf-turnstile-response": turnstileToken,
       }),
       signal: AbortSignal.timeout(15_000),
     })
   } catch {
-    if (import.meta.env.DEV) {
-      return directSupabaseSignIn(normalizedEmail, password)
-    }
-    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE")
+    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE", false, {
+      status: 0,
+    })
   }
 
   const contentType = response.headers.get("content-type") ?? ""
   if (
-    import.meta.env.DEV &&
-    (response.status === 404 ||
-      !contentType.toLowerCase().includes("application/json"))
+    response.status === 404 ||
+    !contentType.toLowerCase().includes("application/json")
   ) {
-    return directSupabaseSignIn(normalizedEmail, password)
+    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE", false, {
+      status: response.status,
+    })
   }
 
   let body: unknown = null
@@ -554,12 +528,18 @@ export async function signInWithEmail(
 
   if (!response.ok) {
     const failure = (body ?? {}) as Partial<LoginFailure>
+    const fallbackCode: LoginErrorCode =
+      response.status === 429
+        ? "RATE_LIMITED"
+        : response.status === 403
+          ? "CAPTCHA_REQUIRED"
+          : "INVALID_CREDENTIALS"
     const code =
       typeof failure.code === "string"
         ? (failure.code as LoginErrorCode)
-        : undefined
+        : fallbackCode
     const message =
-      code && code in LOGIN_MESSAGES
+      code in LOGIN_MESSAGES
         ? LOGIN_MESSAGES[code as keyof typeof LOGIN_MESSAGES]
         : LOGIN_MESSAGES.INVALID_CREDENTIALS
 
@@ -568,8 +548,12 @@ export async function signInWithEmail(
       code,
       Boolean(failure.isUnconfirmed),
       {
+        status: response.status,
         retryAfterSeconds: failure.retryAfterSeconds,
-        captchaRequired: failure.captchaRequired,
+        captchaRequired:
+          failure.captchaRequired ||
+          code === "CAPTCHA_REQUIRED" ||
+          code === "CAPTCHA_FAILED",
       },
     )
   }
@@ -580,7 +564,9 @@ export async function signInWithEmail(
     typeof session.access_token !== "string" ||
     typeof session.refresh_token !== "string"
   ) {
-    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE")
+    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE", false, {
+      status: response.status,
+    })
   }
 
   const { data, error } = await client.auth.setSession({
@@ -589,7 +575,9 @@ export async function signInWithEmail(
   })
 
   if (error || !data.user) {
-    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE")
+    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE", false, {
+      status: response.status,
+    })
   }
 
   return completeSignIn(data.user)

@@ -81,7 +81,7 @@ export function createLoginHandler(
 
       if (!token) {
         log("captcha_required")
-        return errorResponse("CAPTCHA_REQUIRED", 428, {
+        return errorResponse("CAPTCHA_REQUIRED", 403, {
           captchaRequired: true,
         })
       }
@@ -103,7 +103,7 @@ export function createLoginHandler(
         }
 
         log("captcha_failed")
-        return errorResponse("CAPTCHA_FAILED", 400, {
+        return errorResponse("CAPTCHA_FAILED", 403, {
           captchaRequired: true,
         })
       }
@@ -153,7 +153,8 @@ export function createLoginHandler(
 
     if (auth.code === "ACCOUNT_BLOCKED") {
       log("account_blocked")
-      return errorResponse("ACCOUNT_BLOCKED", 403, {
+      /* 423 keeps 403 exclusively for the Turnstile challenge contract. */
+      return errorResponse("ACCOUNT_BLOCKED", 423, {
         captchaRequired,
       })
     }

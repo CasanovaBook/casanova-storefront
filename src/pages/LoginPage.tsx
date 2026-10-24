@@ -231,26 +231,30 @@ export default function LoginPage() {
       return
     }
 
-    if (mode === "login" && result.code === "RATE_LIMITED") {
+    if (
+      mode === "login" &&
+      (result.status === 429 || result.code === "RATE_LIMITED")
+    ) {
       setRateLimited(true)
       setError("")
       setUnconfirmedEmail(null)
       return
     }
 
-    if (mode === "login" && result.code === "CAPTCHA_REQUIRED") {
+    if (
+      mode === "login" &&
+      (result.status === 403 ||
+        result.code === "CAPTCHA_REQUIRED" ||
+        result.code === "CAPTCHA_FAILED")
+    ) {
       setCaptchaRequired(true)
       setTurnstileToken("")
       setCaptchaReset((value) => value + 1)
-      setError("")
-      return
-    }
-
-    if (mode === "login" && result.code === "CAPTCHA_FAILED") {
-      setCaptchaRequired(true)
-      setTurnstileToken("")
-      setCaptchaReset((value) => value + 1)
-      setError(LOGIN_MESSAGES.CAPTCHA_FAILED)
+      setError(
+        result.code === "CAPTCHA_FAILED"
+          ? LOGIN_MESSAGES.CAPTCHA_FAILED
+          : "",
+      )
       return
     }
 
@@ -270,8 +274,23 @@ export default function LoginPage() {
       setCaptchaReset((value) => value + 1)
     }
 
-    if (mode === "login" && result.isUnconfirmed) {
+    if (
+      mode === "login" &&
+      (result.isUnconfirmed || result.code === "EMAIL_UNCONFIRMED")
+    ) {
       setUnconfirmedEmail(email.trim())
+      setError(result.error ?? LOGIN_MESSAGES.EMAIL_UNCONFIRMED)
+      return
+    }
+
+    if (
+      mode === "login" &&
+      (result.status === 400 ||
+        result.status === 401 ||
+        result.code === "INVALID_CREDENTIALS")
+    ) {
+      setError(LOGIN_MESSAGES.INVALID_CREDENTIALS)
+      return
     }
 
     setError(result.error ?? "הפעולה נכשלה.")

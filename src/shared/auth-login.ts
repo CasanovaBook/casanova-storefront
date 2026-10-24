@@ -12,7 +12,8 @@ export type LoginErrorCode =
 export interface LoginRequest {
   email: string
   password: string
-  turnstileToken?: string
+  /** Standard Turnstile form-field key, sent as JSON when CAPTCHA is required. */
+  "cf-turnstile-response"?: string
 }
 
 export interface LoginSuccess {
@@ -31,9 +32,9 @@ export interface LoginFailure {
 }
 
 export const LOGIN_MESSAGES = {
-  INVALID_CREDENTIALS: "אימייל או סיסמה שגויים",
+  INVALID_CREDENTIALS: "שם משתמש או סיסמה שגויים",
   RATE_LIMITED:
-    "יותר מדי ניסיונות התחברות. אנא נסה שוב בעוד מספר דקות",
+    "יותר מדי ניסיונות התחברות. אנא נסה שוב מאוחר יותר",
   CAPTCHA_REQUIRED: "כדי להמשיך, יש להשלים את אימות האבטחה.",
   CAPTCHA_FAILED: "אימות האבטחה נכשל. אנא נסה שוב.",
   CAPTCHA_UNAVAILABLE:

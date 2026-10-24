@@ -100,7 +100,10 @@ export async function readLoginRequest(request: Request): Promise<ReadLoginResul
     }
   }
 
-  const { email, password, turnstileToken } = body as Record<string, unknown>
+  const input = body as Record<string, unknown>
+  const { email, password } = input
+  const turnstileToken =
+    input["cf-turnstile-response"] ?? input.turnstileToken
 
   if (
     typeof email !== "string" ||
@@ -138,7 +141,10 @@ export async function readLoginRequest(request: Request): Promise<ReadLoginResul
     data: {
       email: normalizedEmail,
       password,
-      turnstileToken: turnstileToken?.trim() || undefined,
+      turnstileToken:
+        typeof turnstileToken === "string"
+          ? turnstileToken.trim() || undefined
+          : undefined,
     },
   }
 }
