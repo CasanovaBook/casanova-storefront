@@ -19,6 +19,8 @@ import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import Icon from "../components/icons"
 import Alert from "../components/ui/Alert"
 import AuthShell from "../components/layout/AuthShell"
+import TurnstileWidget from "../components/TurnstileWidget"
+import { LOGIN_MESSAGES } from "../shared/auth-login"
 
 /** Marks a field the customer cannot submit without. The same red star the
  *  checkout screen already uses, so "required" is not a guess on either side. */
@@ -29,7 +31,8 @@ const requiredMark = (
 )
 
 export default function LoginPage() {
-  const { login, register, resendConfirmation, bootstrapRequired } = useApp()
+  const { login, register, resendConfirmation, bootstrapRequired, theme } =
+    useApp()
   const c = useContent()
   const navigate = useNavigate()
   const location = useLocation()
@@ -56,6 +59,10 @@ export default function LoginPage() {
   const [emailHebrewWarning, setEmailHebrewWarning] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [captchaRequired, setCaptchaRequired] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState("")
+  const [captchaReset, setCaptchaReset] = useState(0)
+  const [rateLimited, setRateLimited] = useState(false)
 
   // Email verification UX state
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
@@ -92,6 +99,10 @@ export default function LoginPage() {
     setError("")
     setUnconfirmedEmail(null)
     setResendMessage(null)
+    setCaptchaRequired(false)
+    setTurnstileToken("")
+    setCaptchaReset(0)
+    setRateLimited(false)
   }, [mode])
 
   // Check for Hebrew characters in email
@@ -143,6 +154,12 @@ export default function LoginPage() {
     setError("")
     setUnconfirmedEmail(null)
     setResendMessage(null)
+    setRateLimited(false)
+
+    if (mode === "login" && captchaRequired && !turnstileToken) {
+      setError("יש להשלים את אימות האבטחה לפני ההתחברות.")
+      return
+    }
 
     /* One validator for both screens and both modes. It is the rule the
      * service layer applies too, so nothing is accepted here only to be
@@ -181,7 +198,11 @@ export default function LoginPage() {
     setIsLoading(true)
     const result =
       mode === "login"
-        ? await login(email.trim(), password)
+        ? await login(
+            email.trim(),
+            password,
+            captchaRequired ? turnstileToken : undefined,
+          )
         : await register({
             first_name: firstName.trim(),
             last_name: lastName.trim(),
@@ -207,12 +228,53 @@ export default function LoginPage() {
           replace: true,
         },
       )
-    } else {
-      if (mode === "login" && result.isUnconfirmed) {
-        setUnconfirmedEmail(email.trim())
-      }
-      setError(result.error ?? "הפעולה נכשלה.")
+      return
     }
+
+    if (mode === "login" && result.code === "RATE_LIMITED") {
+      setRateLimited(true)
+      setError("")
+      setUnconfirmedEmail(null)
+      return
+    }
+
+    if (mode === "login" && result.code === "CAPTCHA_REQUIRED") {
+      setCaptchaRequired(true)
+      setTurnstileToken("")
+      setCaptchaReset((value) => value + 1)
+      setError("")
+      return
+    }
+
+    if (mode === "login" && result.code === "CAPTCHA_FAILED") {
+      setCaptchaRequired(true)
+      setTurnstileToken("")
+      setCaptchaReset((value) => value + 1)
+      setError(LOGIN_MESSAGES.CAPTCHA_FAILED)
+      return
+    }
+
+    if (mode === "login" && result.code === "CAPTCHA_UNAVAILABLE") {
+      setCaptchaRequired(true)
+      setTurnstileToken("")
+      setCaptchaReset((value) => value + 1)
+      setError(LOGIN_MESSAGES.CAPTCHA_UNAVAILABLE)
+      return
+    }
+
+    if (mode === "login" && result.captchaRequired) {
+      /* The third failure turns the widget on for the next attempt. The
+       * current error stays the generic credential message. */
+      setCaptchaRequired(true)
+      setTurnstileToken("")
+      setCaptchaReset((value) => value + 1)
+    }
+
+    if (mode === "login" && result.isUnconfirmed) {
+      setUnconfirmedEmail(email.trim())
+    }
+
+    setError(result.error ?? "הפעולה נכשלה.")
   }
 
   if (registeredEmail) {
@@ -619,9 +681,32 @@ export default function LoginPage() {
           </div>
         )}
 
-        {error && (
+        {mode === "login" && captchaRequired && (
+          <div className="app-field">
+            <p className="app-hint">
+              לאחר מספר ניסיונות כושלים, יש להשלים את אימות האבטחה כדי להמשיך.
+            </p>
+            <TurnstileWidget
+              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+              theme={theme}
+              onToken={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken("")}
+              onError={() => setError(LOGIN_MESSAGES.CAPTCHA_UNAVAILABLE)}
+              resetSignal={captchaReset}
+            />
+          </div>
+        )}
+
+        {(rateLimited ||
+          error ||
+          unconfirmedEmail ||
+          resendMessage) && (
           <div className="space-y-2">
-            <Alert tone="error">{error}</Alert>
+            {rateLimited ? (
+              <Alert tone="warning">{LOGIN_MESSAGES.RATE_LIMITED}</Alert>
+            ) : error ? (
+              <Alert tone="error">{error}</Alert>
+            ) : null}
             {unconfirmedEmail && (
               <button
                 type="button"
@@ -669,7 +754,10 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={
+            isLoading ||
+            (mode === "login" && captchaRequired && !turnstileToken)
+          }
           aria-busy={isLoading || undefined}
           className="app-btn w-full"
         >

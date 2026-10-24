@@ -15,6 +15,12 @@
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js"
 import { requireSupabase, isSupabaseConfigured } from "./supabase"
 import { passwordProblem, toPublicUser } from "../../lib/auth"
+import {
+  LOGIN_MESSAGES,
+  type LoginErrorCode,
+  type LoginFailure,
+  type LoginSuccess,
+} from "../../shared/auth-login"
 import type { StoredUser, User, Role, AdminRole, AccountStatus } from "../../types"
 
 export interface AuthSuccess<T = undefined> {
@@ -27,6 +33,8 @@ export interface AuthFailure {
   error: string
   code?: string
   isUnconfirmed?: boolean
+  retryAfterSeconds?: number
+  captchaRequired?: boolean
 }
 
 export type AuthResult<T = undefined> = AuthSuccess<T> | AuthFailure
@@ -35,8 +43,13 @@ export function authOk<T>(data: T): AuthSuccess<T> {
   return { ok: true, data }
 }
 
-export function authFail(error: string, code?: string, isUnconfirmed = false): AuthFailure {
-  return { ok: false, error, code, isUnconfirmed }
+export function authFail(
+  error: string,
+  code?: string,
+  isUnconfirmed = false,
+  extra: Pick<AuthFailure, "retryAfterSeconds" | "captchaRequired"> = {},
+): AuthFailure {
+  return { ok: false, error, code, isUnconfirmed, ...extra }
 }
 
 /**
@@ -72,7 +85,7 @@ export function translateAuthError(err: { message?: string; status?: number; cod
 
   if (lower.includes("invalid login credentials") || lower.includes("invalid_credentials")) {
     return {
-      message: "כתובת אימייל או סיסמה שגויים.",
+      message: LOGIN_MESSAGES.INVALID_CREDENTIALS,
       isUnconfirmed: false,
     }
   }
@@ -93,7 +106,7 @@ export function translateAuthError(err: { message?: string; status?: number; cod
 
   if (lower.includes("rate limit") || lower.includes("too many requests") || err.status === 429) {
     return {
-      message: "יותר מדי נסיונות. אנא המתן מספר דקות ונסה שוב.",
+      message: LOGIN_MESSAGES.RATE_LIMITED,
       isUnconfirmed: false,
     }
   }
@@ -428,31 +441,12 @@ export function buildAppUser(authUser: SupabaseAuthUser, profile: User | null): 
   }
 }
 
-/** Sign in with email and password. */
-export async function signInWithEmail(
-  email: string,
-  password: string,
+/** Completes a hosted sign-in after Supabase has issued a user. */
+async function completeSignIn(
+  authUser: SupabaseAuthUser,
 ): Promise<AuthResult<User>> {
-  if (!isSupabaseConfigured) {
-    return authFail("שרת Supabase אינו מוגדר.")
-  }
-
   const client = requireSupabase()
-  const { data, error } = await client.auth.signInWithPassword({
-    email: email.trim().toLowerCase(),
-    password,
-  })
-
-  if (error) {
-    const { message, isUnconfirmed } = translateAuthError(error)
-    return authFail(message, error.code, isUnconfirmed)
-  }
-
-  if (!data.user) {
-    return authFail("לא התקבלו נתוני משתמש.")
-  }
-
-  const profile = await fetchProfile(data.user.id)
+  const profile = await fetchProfile(authUser.id)
 
   /* A suspended account must not get in.
    *
@@ -473,7 +467,132 @@ export async function signInWithEmail(
     )
   }
 
-  return authOk(buildAppUser(data.user, profile))
+  return authOk(buildAppUser(authUser, profile))
+}
+
+/** Direct Supabase sign-in used only when Vite dev has no Edge Function. */
+async function directSupabaseSignIn(
+  email: string,
+  password: string,
+): Promise<AuthResult<User>> {
+  console.warn(
+    "[supabase-auth] /auth/login is unavailable in development; direct Supabase auth bypasses rate limiting.",
+  )
+
+  const client = requireSupabase()
+  const { data, error } = await client.auth.signInWithPassword({
+    email,
+    password,
+  })
+
+  if (error) {
+    const { message, isUnconfirmed } = translateAuthError(error)
+    return authFail(message, error.code, isUnconfirmed)
+  }
+
+  if (!data.user) {
+    return authFail("לא התקבלו נתוני משתמש.")
+  }
+
+  return completeSignIn(data.user)
+}
+
+/**
+ * Hosted sign-in through the rate-limited Edge endpoint.
+ *
+ * The endpoint returns Supabase session tokens only after it has passed the
+ * IP limit and, where required, Turnstile. The browser then installs that
+ * session through the normal Supabase client so persistence and the existing
+ * auth listener stay unchanged.
+ */
+export async function signInWithEmail(
+  email: string,
+  password: string,
+  turnstileToken?: string,
+): Promise<AuthResult<User>> {
+  if (!isSupabaseConfigured) {
+    return authFail("שרת Supabase אינו מוגדר.")
+  }
+
+  const client = requireSupabase()
+  const normalizedEmail = email.trim().toLowerCase()
+
+  let response: Response
+  try {
+    response = await fetch("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        password,
+        turnstileToken,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    })
+  } catch {
+    if (import.meta.env.DEV) {
+      return directSupabaseSignIn(normalizedEmail, password)
+    }
+    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE")
+  }
+
+  const contentType = response.headers.get("content-type") ?? ""
+  if (
+    import.meta.env.DEV &&
+    (response.status === 404 ||
+      !contentType.toLowerCase().includes("application/json"))
+  ) {
+    return directSupabaseSignIn(normalizedEmail, password)
+  }
+
+  let body: unknown = null
+  try {
+    body = await response.json()
+  } catch {
+    body = null
+  }
+
+  if (!response.ok) {
+    const failure = (body ?? {}) as Partial<LoginFailure>
+    const code =
+      typeof failure.code === "string"
+        ? (failure.code as LoginErrorCode)
+        : undefined
+    const message =
+      code && code in LOGIN_MESSAGES
+        ? LOGIN_MESSAGES[code as keyof typeof LOGIN_MESSAGES]
+        : LOGIN_MESSAGES.INVALID_CREDENTIALS
+
+    return authFail(
+      message,
+      code,
+      Boolean(failure.isUnconfirmed),
+      {
+        retryAfterSeconds: failure.retryAfterSeconds,
+        captchaRequired: failure.captchaRequired,
+      },
+    )
+  }
+
+  const session = (body ?? {}) as Partial<LoginSuccess>
+
+  if (
+    typeof session.access_token !== "string" ||
+    typeof session.refresh_token !== "string"
+  ) {
+    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE")
+  }
+
+  const { data, error } = await client.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  })
+
+  if (error || !data.user) {
+    return authFail(LOGIN_MESSAGES.AUTH_UNAVAILABLE, "AUTH_UNAVAILABLE")
+  }
+
+  return completeSignIn(data.user)
 }
 
 export interface SignUpData {

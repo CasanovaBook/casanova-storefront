@@ -46,6 +46,7 @@ import {
   THEME_STORAGE_KEY,
   type Theme,
 } from "../lib/theme"
+import type { LoginErrorCode } from "../shared/auth-login"
 import {
   actorFromUser,
   bootstrapAdmin,
@@ -127,6 +128,9 @@ export interface AuthOutcome {
   user?: User
   needsEmailConfirmation?: boolean
   isUnconfirmed?: boolean
+  code?: LoginErrorCode
+  retryAfterSeconds?: number
+  captchaRequired?: boolean
 }
 
 interface AppContextValue {
@@ -155,7 +159,11 @@ interface AppContextValue {
   toggleTheme: () => void
 
   /* ── Auth ── */
-  login: (email: string, password: string) => Promise<AuthOutcome>
+  login: (
+    email: string,
+    password: string,
+    turnstileToken?: string,
+  ) => Promise<AuthOutcome>
   register: (input: RegisterInput) => Promise<AuthOutcome>
   resendConfirmation: (email: string) => Promise<{ ok: boolean; error?: string }>
   setupAdmin: (input: BootstrapInput) => Promise<AuthOutcome>
@@ -632,14 +640,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(
-    async (email: string, password: string): Promise<AuthOutcome> => {
+    async (
+      email: string,
+      password: string,
+      turnstileToken?: string,
+    ): Promise<AuthOutcome> => {
       if (isSupabaseConfigured) {
-        const res = await signInWithEmail(email, password)
+        const res = await signInWithEmail(email, password, turnstileToken)
         if (!res.ok) {
           return {
             ok: false,
             error: res.error,
             isUnconfirmed: res.isUnconfirmed,
+            code: res.code as LoginErrorCode | undefined,
+            retryAfterSeconds: res.retryAfterSeconds,
+            captchaRequired: res.captchaRequired,
           }
         }
         setSupabaseUser(res.data)

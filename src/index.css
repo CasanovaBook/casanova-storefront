@@ -3986,6 +3986,20 @@ body {
   margin-top: 1.65rem;
 }
 
+.auth-captcha {
+  display: flex;
+  min-height: 65px;
+  align-items: center;
+  justify-content: center;
+  margin-block: 0.25rem;
+  overflow: hidden;
+}
+
+.auth-captcha .app-hint {
+  margin: 0;
+  text-align: center;
+}
+
 .auth-footer {
   margin-top: 1.35rem;
   color: var(--color-muted-foreground);

@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string
   /** Client-safe publishable/anon key. Safe to ship to the browser. */
   readonly VITE_SUPABASE_ANON_KEY?: string
+  /** Public Cloudflare Turnstile site key. */
+  readonly VITE_TURNSTILE_SITE_KEY?: string
 }
 
 interface ImportMeta {

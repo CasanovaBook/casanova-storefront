@@ -361,9 +361,10 @@ function figmaContentSecurityPolicy(isDevServer: boolean): Plugin {
     transformIndexHtml: {
       order: "post",
       handler: (html) => {
+        const turnstileOrigin = "https://challenges.cloudflare.com"
         const scriptSrc = isDevServer
-          ? "script-src 'self' 'unsafe-inline'"
-          : ["script-src 'self'", ...inlineScriptHashes(html)].join(" ")
+          ? `script-src 'self' 'unsafe-inline' ${turnstileOrigin}`
+          : ["script-src 'self'", ...inlineScriptHashes(html), turnstileOrigin].join(" ")
 
         const directives = [
           "default-src 'self'",
@@ -386,14 +387,14 @@ function figmaContentSecurityPolicy(isDevServer: boolean): Plugin {
            * URL, which is cross-origin, so frame-src has to name *.supabase.co
            * or the viewer is blocked before it renders. YouTube/Vimeo stay for
            * the CMS media embeds. */
-          "frame-src 'self' https://*.supabase.co https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
+          "frame-src 'self' https://*.supabase.co https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://challenges.cloudflare.com",
           /* Supabase is reached over HTTPS for PostgREST/Auth/Storage and over
            * WSS for Realtime, so connect-src has to name *.supabase.co or every
            * query the client issues is blocked before it leaves the browser.
            * The dev branch keeps ws:/wss: for Vite's own HMR socket. */
           isDevServer
-            ? "connect-src 'self' ws: wss: https://*.supabase.co wss://*.supabase.co"
-            : "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+            ? "connect-src 'self' ws: wss: https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com"
+            : "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com",
           "form-action 'self'",
           ...(isDevServer ? [] : ["upgrade-insecure-requests"]),
         ]
