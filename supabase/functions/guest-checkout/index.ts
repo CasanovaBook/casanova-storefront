@@ -309,7 +309,7 @@ async function sendWelcomeEmail(
   const { data, error } = await admin.auth.admin.generateLink({
     type: "recovery",
     email: input.email,
-    options: { redirectTo: `${siteUrl()}/setup-password` },
+    options: { redirectTo: `${siteUrl()}/setup-password?mode=welcome` },
   })
 
   const actionLink = data?.properties?.action_link
