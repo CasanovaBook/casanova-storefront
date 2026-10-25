@@ -921,40 +921,64 @@ export default function CheckoutPage() {
 
                 <div className="app-surface-body">
                   <div
-                    className="mb-4 rounded-[var(--radius-md)] border p-4"
+                    className="mb-3 rounded-[var(--radius-md)] border px-4 py-3"
                     style={{
                       background: "var(--color-secondary)",
                       borderColor: "var(--color-border)",
                     }}
                   >
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="app-label">פרטי הלקוח</h3>
+                    <div className="mb-2 flex flex-wrap items-center justify-start gap-x-3 gap-y-1">
                       <button
                         type="button"
                         onClick={() => setStep("details")}
-                        className="text-xs font-semibold underline underline-offset-4 transition-opacity hover:opacity-70"
+                        className="shrink-0 text-xs font-semibold underline underline-offset-4 transition-opacity hover:opacity-70"
                         style={{ color: "var(--color-primary)" }}
                       >
                         עריכת הפרטים
                       </button>
+                      <h3 className="app-label">פרטי הלקוח</h3>
                     </div>
-                    <dl className="grid gap-2 text-sm sm:grid-cols-2">
-                      <div>
-                        <dt className="sr-only">שם</dt>
-                        <dd>
+                    <dl className="divide-y divide-white/10 text-sm">
+                      <div className="py-2 first:pt-0 last:pb-0">
+                        <dt
+                          className="text-[11px] font-medium"
+                          style={{ color: "var(--color-muted-foreground)" }}
+                        >
+                          שם מלא
+                        </dt>
+                        <dd
+                          className="mt-0.5 break-words font-medium"
+                          style={{ color: "var(--color-foreground)" }}
+                        >
                           {form.first_name} {form.last_name}
                         </dd>
                       </div>
-                      <div>
-                        <dt className="sr-only">אימייל</dt>
-                        <dd dir="ltr" className="break-all text-start">
-                          {form.email}
+                      <div className="py-2 first:pt-0 last:pb-0">
+                        <dt
+                          className="text-[11px] font-medium"
+                          style={{ color: "var(--color-muted-foreground)" }}
+                        >
+                          בדיקת מייל
+                        </dt>
+                        <dd
+                          className="mt-0.5 break-all font-medium"
+                          style={{ color: "var(--color-foreground)" }}
+                        >
+                          <span dir="ltr">{form.email}</span>
                         </dd>
                       </div>
-                      <div className="sm:col-span-2">
-                        <dt className="sr-only">טלפון</dt>
-                        <dd dir="ltr" className="text-start">
-                          {phone}
+                      <div className="py-2 first:pt-0 last:pb-0">
+                        <dt
+                          className="text-[11px] font-medium"
+                          style={{ color: "var(--color-muted-foreground)" }}
+                        >
+                          בדיקת מספר טלפון נייד
+                        </dt>
+                        <dd
+                          className="mt-0.5 font-medium"
+                          style={{ color: "var(--color-foreground)" }}
+                        >
+                          <span dir="ltr">{phone}</span>
                         </dd>
                       </div>
                     </dl>
