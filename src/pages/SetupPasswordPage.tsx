@@ -30,11 +30,40 @@ type PasswordStrength = {
   width: string
 }
 
+const WELCOME_COPY = {
+  eyebrow: "ברוכים הבאים",
+  title: "ברוכים הבאים ל-Casanova! בואו נגדיר סיסמה",
+  description:
+    "שמחים שהצטרפת אלינו! בחר סיסמה חדשה וחזקה כדי להיכנס לספרייה האישית שלך.",
+  submit: "שמירת סיסמה וכניסה לספרייה",
+  busy: "שומר סיסמה…",
+  successTitle: "הסיסמה נשמרה בהצלחה!",
+  successDescription: "מעביר אותך לספרייה האישית...",
+  destination: "/dashboard/library",
+  doneLink: "מעבר לספרייה",
+} as const
+
+const RESET_COPY = {
+  eyebrow: "איפוס סיסמה",
+  title: "הגדרת סיסמה חדשה",
+  description: "הזן סיסמה חדשה וחזקה כדי להגן על החשבון שלך.",
+  submit: "עדכון סיסמה",
+  busy: "מעדכן סיסמה…",
+  successTitle: "הסיסמה עודכנה בהצלחה!",
+  successDescription: "מעביר אותך למסך ההתחברות...",
+  destination: "/login",
+  doneLink: "חזרה להתחברות",
+} as const
+
 export default function SetupPasswordPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const token = params.get("token") ?? ""
   const queryEmail = params.get("email") ?? ""
+  const isWelcome =
+    params.get("mode") === "welcome" ||
+    params.get("is_new_user") === "true"
+  const copy = isWelcome ? WELCOME_COPY : RESET_COPY
 
   // When Supabase handles the recovery session
   const [hasValidSession, setHasValidSession] = useState<boolean>(() => {
@@ -144,7 +173,7 @@ export default function SetupPasswordPage() {
         return
       }
       setDone(true)
-      setTimeout(() => navigate("/login"), 2000)
+      setTimeout(() => navigate(copy.destination), 2000)
       return
     }
 
@@ -155,7 +184,7 @@ export default function SetupPasswordPage() {
       return
     }
     setDone(true)
-    setTimeout(() => navigate("/login"), 2000)
+    setTimeout(() => navigate(copy.destination), 2000)
   }
 
   const pw = strength()
@@ -163,12 +192,12 @@ export default function SetupPasswordPage() {
   if (done) {
     return (
       <AuthShell
-        eyebrow="איפוס סיסמה"
-        title="הסיסמה עודכנה בהצלחה!"
-        description="מעביר אותך למסך ההתחברות..."
+        eyebrow={copy.eyebrow}
+        title={copy.successTitle}
+        description={copy.successDescription}
         footer={
           <p className="m-0 text-center">
-            <Link to="/login">חזרה להתחברות</Link>
+            <Link to={copy.destination}>{copy.doneLink}</Link>
           </p>
         }
       >
@@ -180,7 +209,7 @@ export default function SetupPasswordPage() {
   // Loading indicator while verifying Supabase recovery session
   if (checkingSession) {
     return (
-      <AuthShell eyebrow="איפוס סיסמה" title="מאמת קישור איפוס...">
+      <AuthShell eyebrow={copy.eyebrow} title="מאמת את הקישור...">
         <Spinner label="נא להמתין…" />
       </AuthShell>
     )
@@ -192,9 +221,9 @@ export default function SetupPasswordPage() {
   if (!isAuthorized) {
     return (
       <AuthShell
-        eyebrow="איפוס סיסמה"
+        eyebrow="קישור להגדרת סיסמה"
         title="הקישור אינו תקין או שפג תוקפו"
-        description="קישור איפוס הסיסמה אינו תקף או שכבר נעשה בו שימוש. קישורי איפוס תקפים לזמן מוגבל בלבד."
+        description="קישור הגדרת הסיסמה אינו תקף או שכבר נעשה בו שימוש. קישורים מסוג זה תקפים לזמן מוגבל בלבד."
       >
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <Link to="/forgot-password" className="app-btn flex-1">
@@ -210,28 +239,26 @@ export default function SetupPasswordPage() {
 
   return (
     <AuthShell
-      eyebrow="איפוס סיסמה"
-      title="הגדר סיסמה חדשה"
-      description={
-        <>
-          {userEmail ? (
-            <>
-              מאפס סיסמה עבור{" "}
-              <strong dir="ltr" className="break-all">
-                {userEmail}
-              </strong>
-              .{" "}
-            </>
-          ) : null}
-          בחר סיסמה חדשה וחזקה כדי להגן על החשבון שלך.
-        </>
-      }
+      eyebrow={copy.eyebrow}
+      title={copy.title}
+      description={copy.description}
       footer={
         <p className="m-0 text-center">
           <Link to="/login">חזרה להתחברות</Link>
         </p>
       }
     >
+      {userEmail && (
+        <p
+          className="m-0 mb-4 text-center text-xs"
+          style={{ color: "var(--color-muted-foreground)" }}
+        >
+          החשבון:{" "}
+          <span dir="ltr" className="break-all">
+            {userEmail}
+          </span>
+        </p>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="app-field">
           <label htmlFor="setup-password-new" className="app-label">
@@ -341,10 +368,10 @@ export default function SetupPasswordPage() {
                   borderTopColor: "var(--color-primary-foreground)",
                 }}
               />
-              מעדכן סיסמה…
+              {copy.busy}
             </>
           ) : (
-            "עדכון סיסמה"
+            copy.submit
           )}
         </button>
       </form>
