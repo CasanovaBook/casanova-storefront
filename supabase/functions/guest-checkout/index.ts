@@ -1,4 +1,4 @@
-/* guest-checkout - create the account, grant the book, send the setup mail.
+/* guest-checkout - create the account, grant the book, send the welcome mail.
  *
  * WHY THIS IS SERVER-SIDE
  *
@@ -9,16 +9,18 @@
  *   1. find or create the Supabase Auth user for the typed email;
  *   2. ensure the matching public.users profile;
  *   3. call create_guest_storefront_order (service_role only);
- *   4. send a Supabase recovery email so the buyer can set a password.
+ *   4. generate a recovery link and send a branded welcome email via Resend.
+ *
+ * Required Edge Function secrets: RESEND_API_KEY, SITE_URL, ALLOWED_ORIGIN.
+ * The standard SUPABASE_* secrets are injected by Supabase.
  *
  * The order RPC re-derives the price from public.products and keeps the
  * payment-gateway guard. This function refuses missing products, unavailable
  * products and a configured gateway BEFORE creating an account.
  *
- * The recovery mail is sent with the anon key so Supabase Auth owns delivery
- * and the existing Reset-password template. If it fails, the order is still
- * valid and the response says email_sent:false; the success page falls back
- * to "forgot password".
+ * A Resend or link-generation failure returns email_sent:false. The completed
+ * order and entitlement are never rolled back; the success page falls back to
+ * the normal "forgot password" flow.
  */
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2"
@@ -30,8 +32,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const RATE_LIMIT_WINDOW_MINUTES = 10
 const RATE_LIMIT_MAX_ORDERS = 5
 
+const RESEND_ENDPOINT = "https://api.resend.com/emails"
+const RESEND_FROM = "Casanova Books <no-reply@casanova-books.com>"
+const WELCOME_SUBJECT =
+  "תודה שרכשת ב-Casanova! הגדרת סיסמה לספרייה האישית שלך"
+const SUPPORT_URL = "https://casanova-books.com/support"
+
 let cachedAdmin: SupabaseClient | null = null
-let cachedAnon: SupabaseClient | null = null
 
 function adminClient(): SupabaseClient {
   if (cachedAdmin) return cachedAdmin
@@ -50,21 +57,6 @@ function adminClient(): SupabaseClient {
   })
 
   return cachedAdmin
-}
-
-function anonClient(): SupabaseClient | null {
-  if (cachedAnon) return cachedAnon
-
-  const url = Deno.env.get("SUPABASE_URL")
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")
-
-  if (!url || !anonKey) return null
-
-  cachedAnon = createClient(url, anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-
-  return cachedAnon
 }
 
 function corsHeaders(req: Request): HeadersInit {
@@ -156,6 +148,237 @@ function parseRequest(body: unknown): { data?: GuestRequest; error?: string } {
         ? idempotencyKey
         : crypto.randomUUID(),
     },
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+interface WelcomeEmailData {
+  firstName: string
+  productName: string
+  orderNumber?: string
+  actionLink: string
+}
+
+function welcomeEmailHtml(data: WelcomeEmailData): string {
+  const firstName = data.firstName.trim()
+  const greeting = firstName ? `היי ${escapeHtml(firstName)},` : "שלום,"
+  const productName = escapeHtml(data.productName)
+  const orderNumber = data.orderNumber
+    ? escapeHtml(data.orderNumber)
+    : ""
+  const actionLink = escapeHtml(data.actionLink)
+  const year = new Date().getFullYear()
+
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="supported-color-schemes" content="dark" />
+  <title>Casanova - הגדרת סיסמה</title>
+</head>
+<body style="margin:0; padding:0; background:#11100e; direction:rtl; -webkit-text-size-adjust:100%;">
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
+    החשבון שלך נוצר. נותר להגדיר סיסמה כדי לפתוח את הספרייה האישית.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#11100e; direction:rtl;">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; background:#191612; border:1px solid #3a332b; border-radius:16px; overflow:hidden;">
+
+          <tr>
+            <td align="center" style="padding:30px 24px 22px; background:#11100e; border-bottom:1px solid #3a332b;">
+              <div style="font-family:'Frank Ruhl Libre',Georgia,serif; font-size:24px; font-weight:700; letter-spacing:5px; color:#de9a60;">CASANOVA</div>
+              <div style="margin-top:6px; font-family:'Heebo',Arial,sans-serif; font-size:12px; letter-spacing:2px; color:#b7ac9e;">ספרייה דיגיטלית פרטית</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td dir="rtl" style="padding:36px 32px 10px; font-family:'Heebo',Arial,Helvetica,sans-serif; color:#f4eee4; text-align:right;">
+              <p style="margin:0 0 18px; font-size:15px; line-height:1.8; color:#b7ac9e;">${greeting}</p>
+
+              <h1 style="margin:0 0 18px; font-family:'Frank Ruhl Libre',Georgia,serif; font-size:26px; line-height:1.35; font-weight:700; color:#f4eee4;">
+                תודה שרכשת את ${productName}
+              </h1>
+
+              <p style="margin:0 0 16px; font-size:15px; line-height:1.8; color:#e8ded0;">
+                אנחנו שמחים שהצטרפת ל-Casanova. הספר הדיגיטלי שרכשת מחכה לך בספרייה האישית שלך.
+              </p>
+
+              <p style="margin:0 0 24px; font-size:15px; line-height:1.8; color:#e8ded0;">
+                החשבון האישי שלך נוצר בהצלחה. כדי לצפות בספר הדיגיטלי שרכשת בספרייה האישית שלך, נותר רק להגדיר סיסמה.
+              </p>
+
+              ${orderNumber
+                ? `<p style="margin:0 0 24px; padding:12px 14px; background:#201b16; border:1px solid #3a332b; border-radius:10px; font-size:13px; line-height:1.7; color:#b7ac9e;">
+                     מספר הזמנה: <span dir="ltr" style="font-family:Consolas,Monaco,monospace; color:#f4eee4;">${orderNumber}</span>
+                   </p>`
+                : ""}
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 26px;">
+                <tr>
+                  <td align="center" style="background:#de9a60; border-radius:10px;">
+                    <a href="${actionLink}" target="_blank" rel="noopener" style="display:inline-block; padding:15px 38px; font-family:'Heebo',Arial,sans-serif; font-size:16px; font-weight:700; color:#14110e; text-decoration:none;">
+                      הגדרת סיסמה לכניסה
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 8px; font-size:13px; line-height:1.7; color:#b7ac9e;">
+                אם הכפתור אינו נפתח, אפשר להעתיק את הקישור:
+              </p>
+
+              <p dir="ltr" style="margin:0 0 24px; padding:12px; background:#11100e; border:1px solid #3a332b; border-radius:8px; font-family:Consolas,Monaco,monospace; font-size:12px; line-height:1.6; color:#b7ac9e; word-break:break-all; text-align:left;">
+                ${actionLink}
+              </p>
+
+              <p style="margin:0; font-size:13px; line-height:1.7; color:#b7ac9e;">
+                הקישור מוגבל בזמן. אם הוא פג, אפשר לבקש קישור חדש בעמוד "שכחת סיסמה?" ולהגדיר סיסמה מחדש.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:26px 32px 30px; border-top:1px solid #3a332b; font-family:'Heebo',Arial,sans-serif; font-size:12px; line-height:1.8; color:#b7ac9e;">
+              <p style="margin:0 0 6px;">&copy; ${year} CASANOVA. כל הזכויות שמורות.</p>
+              <p style="margin:0;">
+                לפניות ותמיכה:
+                <a href="${SUPPORT_URL}" style="color:#de9a60; text-decoration:underline;">עמוד התמיכה</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+        <p style="margin:18px 0 0; font-family:'Heebo',Arial,sans-serif; font-size:11px; line-height:1.7; color:#7f7568;">
+          נשלח לך מייל זה בעקבות רכישה ב-<a href="https://casanova-books.com" style="color:#7f7568; text-decoration:underline;">casanova-books.com</a>.
+        </p>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+}
+
+function welcomeEmailText(data: WelcomeEmailData): string {
+  const firstName = data.firstName.trim()
+  const lines = [
+    firstName ? `היי ${firstName},` : "שלום,",
+    "",
+    `תודה שרכשת את ${data.productName}.`,
+    "אנחנו שמחים שהצטרפת ל-Casanova.",
+    "החשבון האישי שלך נוצר בהצלחה. כדי לצפות בספר הדיגיטלי שרכשת בספרייה האישית שלך, נותר רק להגדיר סיסמה.",
+    data.orderNumber ? `מספר הזמנה: ${data.orderNumber}` : null,
+    "",
+    `להגדרת סיסמה: ${data.actionLink}`,
+    "",
+    'הקישור מוגבל בזמן. אם הוא פג, אפשר לבקש קישור חדש בעמוד "שכחת סיסמה?".',
+    "",
+    `לפניות ותמיכה: ${SUPPORT_URL}`,
+    `© ${new Date().getFullYear()} CASANOVA. כל הזכויות שמורות.`,
+  ]
+
+  return lines.filter((line): line is string => line !== null).join("\n")
+}
+
+async function sendWelcomeEmail(
+  admin: SupabaseClient,
+  input: GuestRequest,
+  orderResult: Record<string, unknown>,
+): Promise<boolean> {
+  const apiKey = Deno.env.get("RESEND_API_KEY")
+
+  if (!apiKey) {
+    console.error("[guest-checkout] RESEND_API_KEY is missing; welcome email skipped")
+    return false
+  }
+
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: input.email,
+    options: { redirectTo: `${siteUrl()}/setup-password` },
+  })
+
+  const actionLink = data?.properties?.action_link
+
+  if (error || !actionLink) {
+    console.error(
+      "[guest-checkout] recovery link generation failed",
+      error?.message ?? "no action link returned",
+    )
+    return false
+  }
+
+  const order = orderResult.order as Record<string, unknown> | undefined
+  const item = orderResult.item as Record<string, unknown> | undefined
+
+  const productName =
+    typeof item?.product_name === "string" && item.product_name.trim()
+      ? item.product_name
+      : "הספר הדיגיטלי"
+
+  const orderNumber =
+    typeof order?.order_number === "string" ? order.order_number : undefined
+
+  const orderId = typeof order?.order_id === "string" ? order.order_id : undefined
+
+  const emailData: WelcomeEmailData = {
+    firstName: input.first_name,
+    productName,
+    orderNumber,
+    actionLink,
+  }
+
+  try {
+    const response = await fetch(RESEND_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        ...(orderId
+          ? { "Idempotency-Key": `guest-welcome-${orderId}` }
+          : {}),
+      },
+      body: JSON.stringify({
+        from: RESEND_FROM,
+        to: [input.email],
+        subject: WELCOME_SUBJECT,
+        html: welcomeEmailHtml(emailData),
+        text: welcomeEmailText(emailData),
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "")
+      console.error(
+        "[guest-checkout] Resend refused the welcome email",
+        response.status,
+        detail.slice(0, 500),
+      )
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.error(
+      "[guest-checkout] Resend request failed",
+      err instanceof Error ? err.message : err,
+    )
+    return false
   }
 }
 
@@ -432,21 +655,17 @@ Deno.serve(async (req: Request) => {
 
   let emailSent = false
 
-  const anon = anonClient()
-
-  if (anon) {
-    const { error: mailError } = await anon.auth.resetPasswordForEmail(
-      input.email,
-      { redirectTo: `${siteUrl()}/setup-password` },
+  try {
+    emailSent = await sendWelcomeEmail(
+      admin,
+      input,
+      orderResult as Record<string, unknown>,
     )
-
-    emailSent = !mailError
-
-    if (mailError) {
-      console.error("[guest-checkout] setup email failed", mailError.message)
-    }
-  } else {
-    console.error("[guest-checkout] SUPABASE_ANON_KEY is missing; setup email skipped")
+  } catch (err) {
+    console.error(
+      "[guest-checkout] welcome email failed",
+      err instanceof Error ? err.message : err,
+    )
   }
 
   return jsonResponse(
