@@ -236,14 +236,6 @@ function welcomeEmailHtml(data: WelcomeEmailData): string {
                 </tr>
               </table>
 
-              <p style="margin:0 0 8px; font-size:13px; line-height:1.7; color:#b7ac9e;">
-                אם הכפתור אינו נפתח, אפשר להעתיק את הקישור:
-              </p>
-
-              <p dir="ltr" style="margin:0 0 24px; padding:12px; background:#11100e; border:1px solid #3a332b; border-radius:8px; font-family:Consolas,Monaco,monospace; font-size:12px; line-height:1.6; color:#b7ac9e; word-break:break-all; text-align:left;">
-                ${actionLink}
-              </p>
-
               <p style="margin:0; font-size:13px; line-height:1.7; color:#b7ac9e;">
                 הקישור מוגבל בזמן. אם הוא פג, אפשר לבקש קישור חדש בעמוד "שכחת סיסמה?" ולהגדיר סיסמה מחדש.
               </p>
