@@ -702,7 +702,10 @@ export async function resendVerification(email: string): Promise<AuthResult<void
 }
 
 /** Request password reset email. */
-export async function requestPasswordReset(email: string): Promise<AuthResult<void>> {
+export async function requestPasswordReset(
+  email: string,
+  options?: { captchaToken?: string },
+): Promise<AuthResult<void>> {
   if (!isSupabaseConfigured) {
     return authFail("שרת Supabase אינו מוגדר.")
   }
@@ -712,7 +715,10 @@ export async function requestPasswordReset(email: string): Promise<AuthResult<vo
 
   const { error } = await client.auth.resetPasswordForEmail(
     email.trim().toLowerCase(),
-    { redirectTo: redirectUrl },
+    {
+      redirectTo: redirectUrl,
+      captchaToken: options?.captchaToken,
+    },
   )
 
   if (error) {
