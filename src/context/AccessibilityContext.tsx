@@ -51,74 +51,26 @@ export const FONT_SCALE_STEP = 10
 export interface AccessibilityPreferences {
   /** Root font size, as a percentage of the browser's own default. */
   fontScale: number
-  /** Larger line height across body copy. */
-  lineHeight: boolean
-  /** Wider letter spacing, which helps some readers with dyslexia. */
-  letterSpacing: boolean
-  /** Extra space between paragraphs and list items. */
-  contentSpacing: boolean
   /** Black/white/yellow theme with strong borders. */
   highContrast: boolean
   /** Raises the contrast of muted text without repainting the theme. */
   textContrast: boolean
-  /** Desaturates theme colours and images. */
-  grayscale: boolean
-  /** Underlines every link. */
-  highlightLinks: boolean
-  /** Stronger, two-tone focus ring. */
-  highlightFocus: boolean
-  /** Swaps the display serif for the body sans. */
-  readableFont: boolean
-  /** Stops animation and transitions, including the OS-level request. */
-  reduceMotion: boolean
-  /** Grows compact controls to at least 52px. */
-  largeTargets: boolean
 }
 
 export type AccessibilityToggle = Exclude<keyof AccessibilityPreferences, "fontScale">
 
 const DEFAULT_PREFERENCES: AccessibilityPreferences = {
   fontScale: FONT_SCALE_DEFAULT,
-  lineHeight: false,
-  letterSpacing: false,
-  contentSpacing: false,
   highContrast: false,
   textContrast: false,
-  grayscale: false,
-  highlightLinks: false,
-  highlightFocus: false,
-  readableFont: false,
-  reduceMotion: false,
-  largeTargets: false,
 }
 
-const TOGGLE_KEYS: AccessibilityToggle[] = [
-  "lineHeight",
-  "letterSpacing",
-  "contentSpacing",
-  "highContrast",
-  "textContrast",
-  "grayscale",
-  "highlightLinks",
-  "highlightFocus",
-  "readableFont",
-  "reduceMotion",
-  "largeTargets",
-]
+const TOGGLE_KEYS: AccessibilityToggle[] = ["highContrast", "textContrast"]
 
 /** The data attribute that drives each toggle in `src/index.css`. */
 const TOGGLE_ATTRIBUTES: Record<AccessibilityToggle, string> = {
-  lineHeight: "a11yLineHeight",
-  letterSpacing: "a11yLetterSpacing",
-  contentSpacing: "a11yContentSpacing",
   highContrast: "a11yContrast",
   textContrast: "a11yTextContrast",
-  grayscale: "a11yGrayscale",
-  highlightLinks: "a11yLinks",
-  highlightFocus: "a11yFocus",
-  readableFont: "a11yReadableFont",
-  reduceMotion: "a11yReduceMotion",
-  largeTargets: "a11yLargeTargets",
 }
 
 interface StoredState {

@@ -11,9 +11,8 @@ import {
   FONT_SCALE_MAX,
   FONT_SCALE_MIN,
   useAccessibility,
-  type AccessibilityToggle,
 } from "../../context/AccessibilityContext"
-import Icon, { type IconName } from "../icons"
+import Icon from "../icons"
 import AccessibilityLauncherLogo from "./AccessibilityLauncherLogo"
 
 /**
@@ -36,6 +35,12 @@ import AccessibilityLauncherLogo from "./AccessibilityLauncherLogo"
  *
  * It is deliberately *not* `aria-modal`: the page behind stays usable, which is
  * what makes the panel something a visitor can keep open while reading.
+ *
+ * The panel is intentionally small - text size, contrast, reset and hide. The
+ * longer list of individual spacing, motion and font overrides was removed:
+ * each one was a separate piece of global CSS to maintain, and the same
+ * outcomes are better delivered by browser zoom and the OS text/motion
+ * settings. A shorter panel also fits on one screen without scrolling.
  */
 
 export const ACCESSIBILITY_PANEL_ID = "accessibility-panel"
@@ -45,30 +50,12 @@ const PANEL_TITLE_ID = "accessibility-panel-title"
 const VIEWPORT_MARGIN = 12
 const ANCHOR_GAP = 12
 
-type ToggleRow = {
-  key: AccessibilityToggle
-  label: string
-  icon: IconName
-}
+type ContrastMode = "normal" | "text" | "high"
 
-const DISPLAY_TOGGLES: ToggleRow[] = [
-  { key: "highContrast", label: "ניגודיות גבוהה", icon: "sun" },
-  { key: "textContrast", label: "שיפור ניגודיות הטקסט", icon: "type" },
-  { key: "grayscale", label: "גווני אפור", icon: "layers" },
-  { key: "readableFont", label: "פונט קריא", icon: "bookOpen" },
-]
-
-const READING_TOGGLES: ToggleRow[] = [
-  { key: "lineHeight", label: "הגדלת ריווח השורות", icon: "lineSpacing" },
-  { key: "letterSpacing", label: "הגדלת ריווח האותיות", icon: "letterSpacing" },
-  { key: "contentSpacing", label: "הגדלת ריווח בין פסקאות", icon: "list" },
-  { key: "highlightLinks", label: "הדגשת קישורים", icon: "link" },
-]
-
-const FOCUS_TOGGLES: ToggleRow[] = [
-  { key: "highlightFocus", label: "הדגשת מסגרת המיקוד", icon: "target" },
-  { key: "reduceMotion", label: "עצירת אנימציות", icon: "zap" },
-  { key: "largeTargets", label: "הגדלת אזורי לחיצה", icon: "maximize" },
+const CONTRAST_OPTIONS: { value: ContrastMode; label: string }[] = [
+  { value: "normal", label: "רגילה" },
+  { value: "text", label: "מוגברת" },
+  { value: "high", label: "גבוהה" },
 ]
 
 const FOCUSABLE_SELECTOR = [
@@ -334,23 +321,16 @@ export default function AccessibilityWidget() {
     )
   }
 
-  /* Each toggle renders as a pressed-state tile: a real button carrying
-   * `aria-pressed`, so a screen reader announces "pressed" / "not pressed"
-   * instead of leaving a bare checkbox state to be inferred. */
-  const toggleTile = ({ key, label, icon }: ToggleRow) => (
-    <button
-      type="button"
-      className="a11y-tile"
-      key={key}
-      aria-pressed={preferences[key]}
-      onClick={() => setToggle(key, !preferences[key])}
-    >
-      <span className="a11y-tile-icon">
-        <Icon name={icon} size={18} />
-      </span>
-      <span>{label}</span>
-    </button>
-  )
+  const contrastMode: ContrastMode = preferences.highContrast
+    ? "high"
+    : preferences.textContrast
+      ? "text"
+      : "normal"
+
+  const setContrast = (mode: ContrastMode) => {
+    setToggle("highContrast", mode === "high")
+    setToggle("textContrast", mode === "text")
+  }
 
   return (
     <>
@@ -420,12 +400,29 @@ export default function AccessibilityWidget() {
             </div>
 
             <div className="a11y-panel-body">
-              <fieldset className="a11y-group">
-                <legend>גודל טקסט</legend>
+              <div
+                className="a11y-control"
+                role="group"
+                aria-labelledby="a11y-size-label"
+              >
+                <div className="a11y-control-head">
+                  <span id="a11y-size-label" className="a11y-control-label">
+                    גודל טקסט
+                  </span>
+                  <button
+                    type="button"
+                    className="a11y-link-button"
+                    onClick={() => onFontScaleChange(100)}
+                    disabled={preferences.fontScale === 100}
+                  >
+                    רגיל
+                  </button>
+                </div>
+
                 <div className="a11y-font-controls">
                   <button
                     type="button"
-                    className="a11y-button"
+                    className="a11y-step"
                     onClick={() => stepFontScale(1)}
                     disabled={preferences.fontScale >= FONT_SCALE_MAX}
                     /* The visible glyphs appear in the name as their own word
@@ -440,7 +437,7 @@ export default function AccessibilityWidget() {
                   </span>
                   <button
                     type="button"
-                    className="a11y-button"
+                    className="a11y-step"
                     onClick={() => stepFontScale(-1)}
                     disabled={preferences.fontScale <= FONT_SCALE_MIN}
                     aria-label="הקטן את גודל הטקסט A−"
@@ -448,59 +445,56 @@ export default function AccessibilityWidget() {
                     A−
                   </button>
                 </div>
-                <button
-                  type="button"
-                  className="a11y-button a11y-button-wide"
-                  onClick={() => onFontScaleChange(100)}
-                  disabled={preferences.fontScale === 100}
-                >
-                  גודל טקסט רגיל
-                </button>
-              </fieldset>
-
-              <fieldset className="a11y-group">
-                <legend>תצוגה</legend>
-                <div className="a11y-tile-grid">
-                  {DISPLAY_TOGGLES.map(toggleTile)}
-                </div>
-              </fieldset>
-
-              <fieldset className="a11y-group">
-                <legend>קריאה</legend>
-                <div className="a11y-tile-grid">
-                  {READING_TOGGLES.map(toggleTile)}
-                </div>
-              </fieldset>
-
-              <fieldset className="a11y-group">
-                <legend>מיקוד ותנועה</legend>
-                <div className="a11y-tile-grid">
-                  {FOCUS_TOGGLES.map(toggleTile)}
-                </div>
-              </fieldset>
-
-              <div className="a11y-panel-actions">
-                <button
-                  type="button"
-                  className="a11y-button a11y-button-danger a11y-button-wide"
-                  onClick={onReset}
-                >
-                  <Icon name="refresh" size={16} />
-                  איפוס הגדרות נגישות
-                </button>
-                <button
-                  type="button"
-                  className="a11y-button a11y-button-wide"
-                  onClick={onHide}
-                >
-                  <Icon name="eyeOff" size={16} />
-                  הסתר את כפתור הנגישות
-                </button>
-                <p className="a11y-panel-note">
-                  לפתיחת התפריט בכל עמוד: Alt + A. לפניות בנושא נגישות אפשר
-                  לפנות <a href="/support">בעמוד התמיכה</a>.
-                </p>
               </div>
+
+              <div
+                className="a11y-control"
+                role="group"
+                aria-labelledby="a11y-contrast-label"
+              >
+                <span
+                  id="a11y-contrast-label"
+                  className="a11y-control-label"
+                >
+                  ניגודיות
+                </span>
+
+                <div className="a11y-segmented">
+                  {CONTRAST_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className="a11y-segment"
+                      aria-pressed={contrastMode === option.value}
+                      onClick={() => setContrast(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="a11y-panel-actions">
+              <button
+                type="button"
+                className="a11y-toolbar-button"
+                onClick={onReset}
+                aria-label="איפוס הגדרות נגישות"
+              >
+                <Icon name="refresh" size={15} />
+                איפוס
+              </button>
+              <button
+                type="button"
+                className="a11y-toolbar-button"
+                onClick={onHide}
+                aria-label="הסתר את כפתור הנגישות"
+                title="לפתיחה מחדש: Alt+A"
+              >
+                <Icon name="eyeOff" size={15} />
+                הסתר כפתור
+              </button>
             </div>
           </div>,
           document.body,

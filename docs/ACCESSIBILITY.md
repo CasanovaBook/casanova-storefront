@@ -80,30 +80,25 @@ works on the reader and the admin shell, which have no public footer.
 
 ---
 
-## 4. Privacy, motion and content preferences
+## 4. Privacy and display preferences
 
-The panel offers (each toggle is a pressed-state button - icon plus text label
-with `aria-pressed`, announced as pressed/not pressed):
+The panel is deliberately small. It offers four controls:
 
-| Group | Setting | Effect |
-| --- | --- | --- |
-| גודל טקסט | גודל טקסט | Root font size, 90%-160% in 10% steps, plus a "רגיל" reset. Scales every rem-based size in the product. |
-| תצוגה | ניגודיות גבוהה | Black surfaces, white text, yellow interactive elements, white borders, white focus ring. Applied through the theme tokens, so pages that colour themselves with `var(--color-*)` follow automatically. |
-| תצוגה | שיפור ניגודיות הטקסט | Raises the contrast of muted/secondary text without repainting the theme. |
-| תצוגה | גווני אפור | Desaturates the theme tokens and real images. |
-| תצוגה | פונט קריא | Swaps the display serif for the body sans. Fonts change, sizes do not, so nothing moves. |
-| קריאה | ריווח שורות / ריווח אותיות | Larger line height / letter spacing on text elements. |
-| קריאה | ריווח בין פסקאות | Extra margin between adjacent text blocks, not inside grids. |
-| קריאה | הדגשת קישורים | Underlines every link. |
-| מיקוד ותנועה | הדגשת מסגרת המיקוד | A two-tone focus ring, visible against the page and against the element it lands on. |
-| מיקוד ותנועה | עצירת אנימציות | Stops animation and transitions, including `scroll-behavior`. |
-| מיקוד ותנועה | הגדלת אזורי לחישה | Grows opted-in controls (`.tap-target`) and the panel's own buttons and tiles to 52px minimum. |
+| Control | Effect |
+| --- | --- |
+| גודל טקסט | Root font size, 90%-160% in 10% steps, plus a "רגיל" reset. Scales every rem-based size in the product. |
+| ניגודיות: רגילה / מוגברת / גבוהה | One three-level control. מוגברת raises the contrast of muted/secondary text without repainting the theme; גבוהה switches to black surfaces, white text, yellow interactive elements, white borders and a white focus ring through the theme tokens, so pages that colour themselves with `var(--color-*)` follow automatically. Exactly one level is active at a time. |
+| איפוס | Returns every preference to its default, restores the floating button if it was hidden, and removes the stored entry. |
+| הסתר כפתור | Hides the floating launcher without disabling any enabled setting. |
 
-The OS-level `prefers-reduced-motion` request is honoured **independently** of
-the settings panel, in the same CSS file.
+Spacing, motion, grayscale and font-swap toggles were removed deliberately:
+each was a separate global CSS override to maintain, and browser zoom plus the
+OS-level text and `prefers-reduced-motion` settings deliver the same outcomes.
+The OS reduced-motion request is still honoured independently in the same CSS
+file.
 
-Two settings interact by design: the high-contrast theme also strengthens the
-focus ring, and light/dark theme plus high contrast combine through
+The two contrast levels never stack: choosing one clears the other, and both
+combine with the light theme through
 `:root[data-theme="light"][data-a11y-contrast="true"]` rather than fighting for
 the same specificity.
 
@@ -277,12 +272,12 @@ were resolved by hand rather than by the tool.
    a non-issue.
 4. **Templates render colours outside the theme.** A handful of components set
    literal hex values (`#F59E0B`, `#F87171`…) for status badges. High contrast
-   and grayscale reach the token-driven surfaces, not those few literals.
+   reaches the token-driven surfaces, not those few literals.
 5. **Reader text size and the accessibility font scale are separate controls.**
    The reader's own +/- buttons change the PDF zoom; the global font scale
    changes chrome and page text. Both work, neither is wired to the other.
 6. **No accessibility statement page and no accessibility coordinator details.**
-   The panel links to the support form as a contact channel, but ת"י 5568 expects
+   The accessibility statement is linked from every footer, but ת"י 5568 expects
    a published statement with a named coordinator and contact details. That is
    content and legal work.
 7. **Focus containment on the panel is intentional but non-standard for some

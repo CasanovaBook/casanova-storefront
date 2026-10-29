@@ -4740,7 +4740,7 @@ html[data-app-shell='true'] .a11y-launcher {
   z-index: 81;
   display: flex;
   flex-direction: column;
-  width: min(21rem, calc(100vw - 1.5rem));
+  width: min(20rem, calc(100vw - 1.5rem));
   max-height: calc(100dvh - 1.5rem);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -4781,111 +4781,96 @@ html[data-app-shell='true'] .a11y-launcher {
 .a11y-panel-body {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 0.5rem 1rem 1rem;
+  gap: 0.9rem;
+  padding: 0.8rem 1rem;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
-.a11y-group {
+/* One labelled control: heading row, then the control itself. The two
+ * controls in the panel are separated by a hairline, not a whole section. */
+.a11y-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
   min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
-.a11y-group legend {
-  padding: 0;
-  /* The caption gap is the panel's base rhythm; group spacing below keeps
-   * the divider border centred inside it. */
-  margin-bottom: 0.5rem;
-  font-size: 0.75rem;
+.a11y-control + .a11y-control {
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--color-border);
+}
+.a11y-control-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.a11y-control-label {
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--color-foreground);
 }
-.a11y-group + .a11y-group {
-  border-top: 1px solid var(--color-border);
-}
-/* Fieldset default padding is zeroed above, so the gap between groups is
- * carried by the following group's legend margin; that keeps the divider
- * visually centred between the two captions. */
-.a11y-group + .a11y-group legend {
-  margin-top: 0.75rem;
-}
 
-/* Toggle tiles: one icon + label per setting, pressed state carried by
- * `aria-pressed` and echoed visually by the filled tile. */
-.a11y-tile-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: 1fr;
-  gap: 0.5rem;
-}
-.a11y-tile {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-height: 44px;
-  padding: 0.4rem 0.55rem;
-  /* Uniform, compact line box so both tiles of a row wrap to the same
-   * height and the grid's 1fr rows equalise them exactly. */
-  line-height: 1.3;
-  font-family: var(--font-body);
-  font-size: 0.8125rem;
+/* The small "רגיל" action in the text-size heading. */
+.a11y-link-button {
+  min-height: 1.75rem;
+  padding: 0 0.15rem;
+  font: inherit;
+  font-size: 0.7rem;
   font-weight: 600;
-  text-align: start;
-  color: var(--color-card-foreground);
-  background: var(--color-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  color: var(--color-muted-foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+  border: 0;
   cursor: pointer;
 }
-.a11y-tile:hover {
-  filter: brightness(1.1);
+.a11y-link-button:hover:not(:disabled) {
+  color: var(--color-foreground);
 }
-.a11y-tile-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 2rem;
-  height: 2rem;
-  color: var(--color-muted-foreground);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-}
-.a11y-tile[aria-pressed='true'] {
-  /* Pressed tiles grow a 1px → 2px border; the padding gives the pixel back
-   * on each side so the label and icon never shift when a tile toggles. */
-  padding: calc(0.4rem - 1px) calc(0.55rem - 1px);
-  border-width: 2px;
-  color: var(--color-primary-foreground);
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
-.a11y-tile[aria-pressed='true'] .a11y-tile-icon {
-  color: var(--color-primary-foreground);
-  border-color: currentColor;
+.a11y-link-button:disabled {
+  opacity: 0.4;
+  text-decoration: none;
+  cursor: default;
 }
 
 .a11y-font-controls {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.3rem;
+  padding: 0.25rem;
   background: var(--color-muted);
   border: 1px solid var(--color-border);
   border-radius: 999px;
 }
-.a11y-font-controls .a11y-button {
-  min-width: 3.25rem;
-  font-size: 1rem;
+.a11y-step {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: max(2.5rem, 44px);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
   letter-spacing: 0.02em;
+  color: var(--color-secondary-foreground);
+  background: var(--color-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
+  cursor: pointer;
+  transition: filter 0.15s ease, border-color 0.15s ease;
+}
+.a11y-step:hover:not(:disabled) {
+  filter: brightness(1.1);
+  border-color: var(--color-ring);
+}
+.a11y-step:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 .a11y-readout {
-  min-width: 3rem;
+  min-width: 3.25rem;
   text-align: center;
   font-size: 0.8125rem;
   font-weight: 700;
@@ -4893,52 +4878,36 @@ html[data-app-shell='true'] .a11y-launcher {
   color: var(--color-foreground);
 }
 
-.a11y-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  min-height: 44px;
-  padding: 0.5rem 0.75rem;
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-secondary-foreground);
-  background: var(--color-secondary);
+/* Contrast levels share one track: exactly one segment is pressed. */
+.a11y-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--color-muted);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: 999px;
+}
+.a11y-segment {
+  min-height: max(2.35rem, 44px);
+  padding: 0.25rem 0.35rem;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.a11y-button:hover {
-  filter: brightness(1.1);
+.a11y-segment:hover {
+  color: var(--color-foreground);
 }
-.a11y-button-wide {
-  width: 100%;
-}
-.a11y-button-primary {
+.a11y-segment[aria-pressed='true'] {
   color: var(--color-primary-foreground);
   background: var(--color-primary);
   border-color: var(--color-primary);
-}
-/* The reset control: red outline on purpose, so the destructive action reads
- * as one before it is pressed. */
-.a11y-button-danger {
-  color: var(--color-danger);
-  border: 2px solid var(--color-danger);
-  background: transparent;
-}
-.a11y-button-danger:hover {
-  color: var(--color-danger);
-  background: transparent;
-  filter: none;
-  opacity: 0.85;
-}
-.a11y-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.a11y-button:disabled:hover {
-  filter: none;
 }
 
 .a11y-icon-button {
@@ -4962,23 +4931,36 @@ html[data-app-shell='true'] .a11y-launcher {
   background: rgba(34, 36, 47, 0.06);
 }
 
+/* Bottom toolbar: reset and hide, out of the scrolling body so they are
+ * always in reach. */
 .a11y-panel-actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
-  padding-top: 0.75rem;
+  padding: 0.6rem 1rem 0.75rem;
   border-top: 1px solid var(--color-border);
 }
-.a11y-panel-note {
-  margin: 0.25rem 0 0;
-  font-size: 0.75rem;
-  line-height: 1.6;
+.a11y-toolbar-button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: max(2.35rem, 44px);
+  padding: 0.3rem 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
   color: var(--color-muted-foreground);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
-.a11y-panel-note a {
-  color: var(--color-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.a11y-toolbar-button:hover {
+  color: var(--color-foreground);
+  border-color: var(--color-ring);
 }
 
 /* Footer entry point. Looks like the links beside it, behaves like a button. */
@@ -5017,63 +4999,16 @@ html[data-app-shell='true'] .a11y-launcher {
  * dashboard, admin and reader. Nothing here is loaded per page and nothing
  * re-renders React - the browser just restyles.
  *
+ * Only the two contrast levels are user-toggleable; the widget's removed
+ * spacing, motion, grayscale and font controls had their rules deleted with
+ * them, so no dead selectors survive. Text size needs no rule here because
+ * it is the root font size itself.
+ *
  * These rules come after the light-mode block on purpose: for the same
  * specificity the later rule wins, and the two states combine (light theme +
  * high contrast) through the extra `[data-theme='light']` qualifier instead of
  * fighting each other.
  * ───────────────────────────────────────────────────────────── */
-
-/* Line height. Set on the elements that carry body copy rather than on `body`
- * alone, because Tailwind's `leading-*` utility on an element beats inherited
- * values - this rule out-specifies those utilities instead of fighting them
- * with !important. */
-:root[data-a11y-line-height='true']
-  :where(h1, h2, h3, h4, h5, h6, p, li, dd, dt, blockquote, figcaption, td, th, label, legend, span, div, a, button, input, textarea, select) {
-  line-height: 1.9;
-}
-
-/* Letter spacing. 0.05em is enough to separate letters without breaking the
- * ligatures Hebrew and Latin text rely on. */
-:root[data-a11y-letter-spacing='true']
-  :where(h1, h2, h3, h4, h5, h6, p, li, dd, dt, blockquote, figcaption, td, th, label, legend, span, div, a, button, input, textarea, select) {
-  letter-spacing: 0.05em;
-}
-
-/* Content spacing. Adjacent-block margins only: this adds air between blocks
- * without disturbing the grid gaps the layouts are built on. */
-:root[data-a11y-content-spacing='true']
-  :where(p + p, p + ul, p + ol, ul + p, ol + p, p + blockquote, li + li, h2 + p, h3 + p, h4 + p) {
-  margin-top: 1.5em;
-}
-
-/* Grayscale, without a CSS filter.
- *
- * A `filter` on <html>, <body> or #root would make that element the containing
- * block for every `position: fixed` descendant, which silently breaks the
- * fixed header, the drawers, the reader chrome and this very widget. This
- * theme is entirely token-driven, so desaturating the tokens (plus real images)
- * gives the same result with no containing-block side effects. */
-:root[data-a11y-grayscale='true'] {
-  --color-primary: #d7d7d7;
-  --color-primary-foreground: #0b0d16;
-  --color-accent: #d7d7d7;
-  --color-success: #c9c9c9;
-  --color-danger: #bdbdbd;
-}
-:root[data-theme='light'][data-a11y-grayscale='true'] {
-  --color-primary: #4a4a4a;
-  --color-primary-foreground: #ffffff;
-  --color-accent: #4a4a4a;
-  --color-success: #3f3f3f;
-  --color-danger: #3f3f3f;
-}
-:root[data-a11y-grayscale='true'] img {
-  filter: grayscale(1);
-}
-:root[data-a11y-grayscale='true'] .btn-gradient {
-  background: linear-gradient(135deg, #e6e6e6 0%, #cccccc 55%, #b3b3b3 100%);
-  box-shadow: none;
-}
 
 /* Higher-contrast body text without changing the theme's character. */
 :root[data-a11y-text-contrast='true'] {
@@ -5133,55 +5068,6 @@ html[data-app-shell='true'] .a11y-launcher {
   outline: 4px solid #ffffff;
   outline-offset: 3px;
   box-shadow: 0 0 0 7px #000000;
-}
-
-/* Link highlighting: an underline that does not change the weight of the text,
- * so links are unmistakable without reflowing the line they sit on. */
-:root[data-a11y-links='true'] a {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-}
-:root[data-a11y-links='true'] a:hover {
-  text-decoration-thickness: 3px;
-}
-
-/* Stronger focus indicator: a two-tone ring, so it stays visible against both
- * the page background and the element it lands on. */
-:root[data-a11y-focus='true'] :focus-visible {
-  outline: 4px solid var(--color-ring);
-  outline-offset: 3px;
-  box-shadow: 0 0 0 7px var(--color-background);
-}
-
-/* Larger click targets for visitors who need them. Scoped to the controls that
- * opt in via `.tap-target` plus the panel's own rows, rather than growing every
- * button in the product. */
-:root[data-a11y-large-targets='true'] .tap-target,
-:root[data-a11y-large-targets='true'] .a11y-button,
-:root[data-a11y-large-targets='true'] .a11y-tile,
-:root[data-a11y-large-targets='true'] .a11y-icon-button {
-  min-height: 52px;
-  min-width: 52px;
-}
-
-/* Readable font: the display serif gives way to the body sans. Fonts are
- * swapped, not sizes, so nothing moves on the page. */
-:root[data-a11y-readable-font='true'] .font-display,
-:root[data-a11y-readable-font='true']
-  :where(h1, h2, h3, h4, h5, h6, p, li, span, div, a, button, input, textarea, select, label, legend, td, th) {
-  font-family: var(--font-body);
-}
-
-/* Reduced motion. Animation is removed, never function: transitions become
- * instant and looping decoration stops, but nothing is hidden or disabled. */
-:root[data-a11y-reduce-motion='true'] *,
-:root[data-a11y-reduce-motion='true'] *::before,
-:root[data-a11y-reduce-motion='true'] *::after {
-  animation-duration: 0.001ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.001ms !important;
-  scroll-behavior: auto !important;
 }
 
 /* Gentle floating motion for hero visuals */
