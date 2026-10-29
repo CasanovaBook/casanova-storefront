@@ -189,7 +189,6 @@ const IP_WINDOW_SECONDS = 5 * 60
 const ACCOUNT_TTL_MS = 5 * 60 * 1000
 const ACCOUNT_TTL_SECONDS = 5 * 60
 const MAX_IP_FAILURES = 5
-const CAPTCHA_MAX_ATTEMPTS = 10
 
 interface RateLimitDecision {
   blocked: boolean
@@ -209,8 +208,6 @@ interface RateLimiter {
     accountHash: string,
   ): Promise<AccountFailureResult>
   clearAccount(ipHash: string | null, accountHash: string): Promise<void>
-  checkCaptchaAttempts(ipHash: string | null): Promise<RateLimitDecision>
-  recordCaptchaFailure(ipHash: string | null): Promise<void>
 }
 
 interface RateLimitRedis {
@@ -269,10 +266,6 @@ function ipKey(ipHash: string): string {
   return `auth:ip:${ipHash}`
 }
 
-function captchaKey(ipHash: string): string {
-  return `auth:captcha:${ipHash}`
-}
-
 /**
  * SHA-256 + optional pepper. Only the digest is stored in Redis, never the
  * raw email address or IP.
@@ -297,7 +290,6 @@ function createRateLimiter(
 
   const localIpFailures = new Map<string, number[]>()
   const localAccountFailures = new Map<string, AccountEntry>()
-  const localCaptchaAttempts = new Map<string, number[]>()
 
   const localIpDecision = (ipHash: string, nowMs: number): RateLimitDecision => {
     const entries = prune(
@@ -445,118 +437,6 @@ function createRateLimiter(
         console.warn("[auth-rate-limit] Redis account clear failed")
       }
     },
-
-    async checkCaptchaAttempts(ipHash) {
-      if (!ipHash) return { blocked: false }
-
-      const nowMs = now()
-      const entries = prune(
-        localCaptchaAttempts.get(ipHash) ?? [],
-        nowMs,
-        IP_WINDOW_MS,
-      )
-
-      if (entries.length === 0) localCaptchaAttempts.delete(ipHash)
-      else localCaptchaAttempts.set(ipHash, entries)
-
-      if (entries.length >= CAPTCHA_MAX_ATTEMPTS) {
-        return {
-          blocked: true,
-          retryAfterSeconds: retryAfterSeconds(entries, nowMs),
-        }
-      }
-
-      if (!redis) return { blocked: false }
-
-      try {
-        const key = captchaKey(ipHash)
-        await redis.zremrangebyscore(key, 0, nowMs - IP_WINDOW_MS)
-        const count = await redis.zcard(key)
-        if (count > 0) await redis.expire(key, IP_WINDOW_SECONDS)
-
-        if (count >= CAPTCHA_MAX_ATTEMPTS) {
-          return {
-            blocked: true,
-            retryAfterSeconds: IP_WINDOW_SECONDS,
-          }
-        }
-      } catch {
-        console.warn("[auth-rate-limit] Redis CAPTCHA check failed; using memory")
-      }
-
-      return { blocked: false }
-    },
-
-    async recordCaptchaFailure(ipHash) {
-      if (!ipHash) return
-
-      const nowMs = now()
-      const entries = prune(
-        localCaptchaAttempts.get(ipHash) ?? [],
-        nowMs,
-        IP_WINDOW_MS,
-      )
-      entries.push(nowMs)
-      localCaptchaAttempts.set(ipHash, entries)
-
-      if (!redis) return
-
-      try {
-        const key = captchaKey(ipHash)
-        await redis.zadd(key, {
-          score: nowMs,
-          member: `${nowMs}:${crypto.randomUUID()}`,
-        })
-        await redis.expire(key, IP_WINDOW_SECONDS)
-      } catch {
-        console.warn("[auth-rate-limit] Redis CAPTCHA write failed; using memory")
-      }
-    },
-  }
-}
-
-/* ── Turnstile ────────────────────────────────────────────────────────── */
-
-interface TurnstileVerification {
-  ok: boolean
-  available: boolean
-}
-
-interface TurnstileResponse {
-  success?: boolean
-}
-
-/**
- * Server-side verification. The secret never reaches the browser.
- * A network/configuration failure is reported separately so the endpoint can
- * fail closed with a 503 instead of silently bypassing the challenge.
- */
-async function verifyTurnstile(
-  token: string,
-  ip: string | null,
-): Promise<TurnstileVerification> {
-  const secret = process.env.TURNSTILE_SECRET_KEY
-  if (!secret) return { ok: false, available: false }
-
-  const body = new URLSearchParams({ secret, response: token })
-  if (ip) body.set("remoteip", ip)
-
-  try {
-    const response = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      {
-        method: "POST",
-        body,
-        signal: AbortSignal.timeout(5_000),
-      },
-    )
-
-    if (!response.ok) return { ok: false, available: false }
-
-    const data = (await response.json()) as TurnstileResponse
-    return { ok: data.success === true, available: true }
-  } catch {
-    return { ok: false, available: false }
   }
 }
 
@@ -596,6 +476,7 @@ function parseRetryAfter(response: Response): number {
 async function authenticateWithSupabase(
   email: string,
   password: string,
+  captchaToken?: string,
 ): Promise<AuthenticateResult> {
   /* The browser client is created from VITE_SUPABASE_URL. The server must use
    * the same project, or a password updated by the browser is checked against
@@ -654,7 +535,15 @@ async function authenticateWithSupabase(
           Authorization: `Bearer ${anonKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          /* GoTrue's password-grant CAPTCHA contract. The token must arrive
+           * here unconsumed; this endpoint no longer calls Turnstile itself. */
+          ...(captchaToken
+            ? { gotrue_meta_security: { captcha_token: captchaToken } }
+            : {}),
+        }),
         signal: AbortSignal.timeout(10_000),
       },
     )
@@ -830,42 +719,20 @@ async function loginHandler(request: Request): Promise<Response> {
     accountHash,
   )
 
-  if (accountFailures >= 3) {
-    const token = parsed.data.turnstileToken?.trim()
-
-    if (!token) {
-      logEvent("captcha_required")
-      return errorResponse("CAPTCHA_REQUIRED", 403, {
-        captchaRequired: true,
-      })
-    }
-
-    const captcha = await verifyTurnstile(token, ip)
-
-    if (!captcha.available) {
-      logEvent("captcha_unavailable")
-      return errorResponse("CAPTCHA_UNAVAILABLE", 503)
-    }
-
-    if (!captcha.ok) {
-      await rateLimiter.recordCaptchaFailure(ipHash)
-      const attempts = await rateLimiter.checkCaptchaAttempts(ipHash)
-
-      if (attempts.blocked) {
-        logEvent("captcha_attempts_limited")
-        return rateLimitedResponse(attempts.retryAfterSeconds ?? 300)
-      }
-
-      logEvent("captcha_failed")
-      return errorResponse("CAPTCHA_FAILED", 403, {
-        captchaRequired: true,
-      })
-    }
+  /* GoTrue is the single CAPTCHA authority. The token is forwarded to it in
+   * authenticateWithSupabase. Verifying the same single-use Turnstile token
+   * here first would consume it and make GoTrue reject the password grant. */
+  if (accountFailures >= 3 && !parsed.data.turnstileToken?.trim()) {
+    logEvent("captcha_required")
+    return errorResponse("CAPTCHA_REQUIRED", 403, {
+      captchaRequired: true,
+    })
   }
 
   const auth = await authenticateWithSupabase(
     parsed.data.email,
     parsed.data.password,
+    parsed.data.turnstileToken,
   )
 
   if (auth.ok) {
