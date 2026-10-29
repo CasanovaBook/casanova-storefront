@@ -307,8 +307,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!isMounted) return
+
+        /* A recovery link can land on /login when the Supabase redirect
+         * allow-list rejects /setup-password. AppProvider is outside the
+         * router, so this uses a full replace; the session is already
+         * persisted, and /setup-password restores it on mount. */
+        if (
+          event === "PASSWORD_RECOVERY" &&
+          window.location.pathname !== "/setup-password"
+        ) {
+          window.location.replace("/setup-password")
+          return
+        }
+
         bridge(session)
         if (session?.user) {
           const restored = await resolveRestoredUser(session)

@@ -50,9 +50,9 @@ const RESET_COPY = {
   submit: "עדכון סיסמה",
   busy: "מעדכן סיסמה…",
   successTitle: "הסיסמה עודכנה בהצלחה!",
-  successDescription: "מעביר אותך למסך ההתחברות...",
-  destination: "/login",
-  doneLink: "חזרה להתחברות",
+  successDescription: "מעביר אותך לספרייה האישית...",
+  destination: "/dashboard/library",
+  doneLink: "מעבר לספרייה",
 } as const
 
 export default function SetupPasswordPage() {
