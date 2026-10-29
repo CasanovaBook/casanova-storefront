@@ -597,12 +597,48 @@ async function authenticateWithSupabase(
   email: string,
   password: string,
 ): Promise<AuthenticateResult> {
-  const url =
-    process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? ""
+  /* The browser client is created from VITE_SUPABASE_URL. The server must use
+   * the same project, or a password updated by the browser is checked against
+   * a different GoTrue instance here. Prefer the browser pair and keep the
+   * server pair only as a fallback for deployments that set one name. */
+  const browserUrl = process.env.VITE_SUPABASE_URL
+  const serverUrl = process.env.SUPABASE_URL
+  const url = browserUrl ?? serverUrl ?? ""
   const anonKey =
-    process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? ""
+    process.env.VITE_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? ""
 
   if (!url || !anonKey) {
+    console.error("[auth-login] supabase auth environment is incomplete", {
+      hasUrl: Boolean(url),
+      hasAnonKey: Boolean(anonKey),
+    })
+    return { ok: false, code: "AUTH_UNAVAILABLE" }
+  }
+
+  if (browserUrl && serverUrl) {
+    try {
+      const browserHost = new URL(browserUrl).host
+      const serverHost = new URL(serverUrl).host
+
+      if (browserHost !== serverHost) {
+        console.error("[auth-login] supabase project env mismatch", {
+          browserHost,
+          serverHost,
+          using: "VITE_SUPABASE_URL",
+        })
+      }
+    } catch {
+      console.error("[auth-login] invalid supabase url configuration")
+      return { ok: false, code: "AUTH_UNAVAILABLE" }
+    }
+  }
+
+  let projectHost = ""
+
+  try {
+    projectHost = new URL(url).host
+  } catch {
+    console.error("[auth-login] invalid supabase url configuration")
     return { ok: false, code: "AUTH_UNAVAILABLE" }
   }
 
@@ -615,6 +651,7 @@ async function authenticateWithSupabase(
         method: "POST",
         headers: {
           apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
@@ -660,12 +697,29 @@ async function authenticateWithSupabase(
   }
 
   if (response.status >= 500) {
+    console.error("[auth-login] gotrue unavailable", {
+      status: response.status,
+      project: projectHost,
+    })
     return { ok: false, code: "AUTH_UNAVAILABLE" }
   }
 
   const body = (await response.json().catch(() => null)) as
     | SupabaseErrorBody
     | null
+
+  /* Log the upstream error before mapping it. Without this, every 400/401 was
+   * reported as a wrong password, including CAPTCHA failures, invalid API keys
+   * and project mismatches. No password or token is logged here. */
+  console.error("[auth-login] gotrue rejected", {
+    status: response.status,
+    project: projectHost,
+    error: body?.error,
+    errorDescription: body?.error_description,
+    errorCode: body?.error_code,
+    code: body?.code,
+    message: body?.msg,
+  })
 
   if (!body) return { ok: false, code: "AUTH_UNAVAILABLE" }
 
@@ -693,11 +747,32 @@ async function authenticateWithSupabase(
   }
 
   if (
+    message.includes("captcha protection") ||
+    message.includes("captcha_failed") ||
+    message.includes("captcha")
+  ) {
+    return {
+      ok: false,
+      code: message.includes("captcha_failed")
+        ? "CAPTCHA_FAILED"
+        : "CAPTCHA_REQUIRED",
+    }
+  }
+
+  if (
+    message.includes("invalid api key") ||
+    message.includes("invalid jwt") ||
+    message.includes("no api key") ||
+    message.includes("missing api key") ||
+    message.includes("apikey")
+  ) {
+    return { ok: false, code: "AUTH_UNAVAILABLE" }
+  }
+
+  if (
     message.includes("invalid login credentials") ||
     message.includes("invalid_credentials") ||
-    message.includes("invalid_grant") ||
-    response.status === 400 ||
-    response.status === 401
+    message.includes("invalid_grant")
   ) {
     return { ok: false, code: "INVALID_CREDENTIALS" }
   }
@@ -806,6 +881,11 @@ async function loginHandler(request: Request): Promise<Response> {
   if (auth.code === "RATE_LIMITED") {
     logEvent("upstream_rate_limited")
     return rateLimitedResponse(auth.retryAfterSeconds ?? 300)
+  }
+
+  if (auth.code === "CAPTCHA_REQUIRED" || auth.code === "CAPTCHA_FAILED") {
+    logEvent(auth.code === "CAPTCHA_REQUIRED" ? "captcha_required" : "captcha_failed")
+    return errorResponse(auth.code, 403, { captchaRequired: true })
   }
 
   /* A malformed upstream response is not a credential failure: do not punish
