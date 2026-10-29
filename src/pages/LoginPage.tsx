@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useContent } from "../content/useContent"
@@ -69,11 +69,18 @@ export default function LoginPage() {
   const [emailHebrewWarning, setEmailHebrewWarning] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [captchaRequired, setCaptchaRequired] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState("")
   const [captchaReset, setCaptchaReset] = useState(0)
   const [rateLimitRemaining, setRateLimitRemaining] = useState(0)
   const rateLimited = rateLimitRemaining > 0
+
+  const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
+  const captchaEnabled = isSupabaseConfigured && Boolean(captchaSiteKey)
+
+  const resetCaptcha = useCallback(() => {
+    setTurnstileToken("")
+    setCaptchaReset((value) => value + 1)
+  }, [])
 
   // Email verification UX state
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
@@ -103,17 +110,30 @@ export default function LoginPage() {
 
   const handleResend = async (targetEmail: string) => {
     if (cooldown > 0 || resending) return
+    if (captchaEnabled && !turnstileToken) {
+      setResendMessage("יש להשלים את אימות האבטחה לפני שליחת אימייל אימות.")
+      return
+    }
     setResending(true)
     setResendMessage(null)
-    const res = await resendConfirmation(targetEmail)
-    setResending(false)
-    if (res.ok) {
-      setResendMessage("קישור אימות חדש נשלח בהצלחה לתיבת הדואר שלך!")
-      setCooldown(60)
-    } else {
-      setResendMessage(
-        res.error || "שליחת האימייל נכשלה. אנא נסה שוב מאוחר יותר.",
+    try {
+      const res = await resendConfirmation(
+        targetEmail,
+        captchaEnabled ? turnstileToken : undefined,
       )
+      if (res.ok) {
+        setResendMessage("קישור אימות חדש נשלח בהצלחה לתיבת הדואר שלך!")
+        setCooldown(60)
+      } else {
+        setResendMessage(
+          res.error || "שליחת האימייל נכשלה. אנא נסה שוב מאוחר יותר.",
+        )
+      }
+    } catch {
+      setResendMessage("שליחת האימייל נכשלה. אנא נסה שוב מאוחר יותר.")
+    } finally {
+      setResending(false)
+      resetCaptcha()
     }
   }
 
@@ -121,10 +141,8 @@ export default function LoginPage() {
     setError("")
     setUnconfirmedEmail(null)
     setResendMessage(null)
-    setCaptchaRequired(false)
-    setTurnstileToken("")
-    setCaptchaReset(0)
-  }, [mode])
+    resetCaptcha()
+  }, [mode, resetCaptcha])
 
   // Check for Hebrew characters in email
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,8 +195,12 @@ export default function LoginPage() {
     setUnconfirmedEmail(null)
     setResendMessage(null)
 
-    if (mode === "login" && captchaRequired && !turnstileToken) {
-      setError("יש להשלים את אימות האבטחה לפני ההתחברות.")
+    if (captchaEnabled && !turnstileToken) {
+      setError(
+        mode === "login"
+          ? "יש להשלים את אימות האבטחה לפני ההתחברות."
+          : "יש להשלים את אימות האבטחה לפני יצירת החשבון.",
+      )
       return
     }
 
@@ -217,21 +239,32 @@ export default function LoginPage() {
     }
 
     setIsLoading(true)
-    const result =
-      mode === "login"
-        ? await login(
-            email.trim(),
-            password,
-            captchaRequired ? turnstileToken : undefined,
-          )
-        : await register({
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            email: email.trim(),
-            password,
-            phone: joinPhone(phoneParts) || undefined,
-          })
-    setIsLoading(false)
+    let result: Awaited<ReturnType<typeof login>>
+    try {
+      result =
+        mode === "login"
+          ? await login(
+              email.trim(),
+              password,
+              captchaEnabled ? turnstileToken : undefined,
+            )
+          : await register(
+              {
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
+                email: email.trim(),
+                password,
+                phone: joinPhone(phoneParts) || undefined,
+              },
+              { captchaToken: captchaEnabled ? turnstileToken : undefined },
+            )
+    } catch {
+      setError("הפעולה נכשלה. נסו שוב.")
+      return
+    } finally {
+      setIsLoading(false)
+      resetCaptcha()
+    }
     if (result.ok) {
       if (mode === "register" && result.needsEmailConfirmation) {
         /* The verification link is a trip out of this document. Whatever the
@@ -278,31 +311,17 @@ export default function LoginPage() {
         result.code === "CAPTCHA_REQUIRED" ||
         result.code === "CAPTCHA_FAILED")
     ) {
-      setCaptchaRequired(true)
-      setTurnstileToken("")
-      setCaptchaReset((value) => value + 1)
       setError(
         result.code === "CAPTCHA_FAILED"
           ? LOGIN_MESSAGES.CAPTCHA_FAILED
-          : "",
+          : result.error || "יש להשלים את אימות האבטחה כדי להמשיך.",
       )
       return
     }
 
     if (mode === "login" && result.code === "CAPTCHA_UNAVAILABLE") {
-      setCaptchaRequired(true)
-      setTurnstileToken("")
-      setCaptchaReset((value) => value + 1)
       setError(LOGIN_MESSAGES.CAPTCHA_UNAVAILABLE)
       return
-    }
-
-    if (mode === "login" && result.captchaRequired) {
-      /* The third failure turns the widget on for the next attempt. The
-       * current error stays the generic credential message. */
-      setCaptchaRequired(true)
-      setTurnstileToken("")
-      setCaptchaReset((value) => value + 1)
     }
 
     if (
@@ -357,10 +376,32 @@ export default function LoginPage() {
 
           {resendMessage && <Alert tone="info">{resendMessage}</Alert>}
 
+          {captchaEnabled && (
+            <div className="app-field">
+              <p className="app-hint">
+                אימות אבטחה נדרש לפני שליחת אימייל אימות נוסף.
+              </p>
+              <TurnstileWidget
+                siteKey={captchaSiteKey}
+                theme={theme}
+                onToken={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken("")}
+                onError={() =>
+                  setResendMessage(LOGIN_MESSAGES.CAPTCHA_UNAVAILABLE)
+                }
+                resetSignal={captchaReset}
+              />
+            </div>
+          )}
+
           <div className="space-y-2.5">
             <button
               type="button"
-              disabled={cooldown > 0 || resending}
+              disabled={
+                cooldown > 0 ||
+                resending ||
+                (captchaEnabled && !turnstileToken)
+              }
               onClick={() => handleResend(registeredEmail)}
               className="app-btn-secondary w-full"
             >
@@ -731,13 +772,13 @@ export default function LoginPage() {
           </div>
         )}
 
-        {mode === "login" && captchaRequired && (
+        {captchaEnabled && (
           <div className="app-field">
             <p className="app-hint">
-              לאחר מספר ניסיונות כושלים, יש להשלים את אימות האבטחה כדי להמשיך.
+              אימות אבטחה נדרש לפני ההמשך.
             </p>
             <TurnstileWidget
-              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+              siteKey={captchaSiteKey}
               theme={theme}
               onToken={(token) => setTurnstileToken(token)}
               onExpire={() => setTurnstileToken("")}
@@ -774,7 +815,11 @@ export default function LoginPage() {
             {unconfirmedEmail && (
               <button
                 type="button"
-                disabled={cooldown > 0 || resending}
+                disabled={
+                  cooldown > 0 ||
+                  resending ||
+                  (captchaEnabled && !turnstileToken)
+                }
                 onClick={() => handleResend(unconfirmedEmail)}
                 className="app-btn-secondary w-full text-xs"
               >
@@ -821,7 +866,7 @@ export default function LoginPage() {
           disabled={
             isLoading ||
             (mode === "login" && rateLimited) ||
-            (mode === "login" && captchaRequired && !turnstileToken)
+            (captchaEnabled && !turnstileToken)
           }
           aria-busy={isLoading || undefined}
           className="app-btn w-full"

@@ -86,6 +86,9 @@ export default function TurnstileWidget({
   const widgetIdRef = useRef<string | null>(null)
   const callbacksRef = useRef({ onToken, onExpire, onError })
   const [unavailable, setUnavailable] = useState(!siteKey)
+  /* Bumped by the retry control; remounts the challenge after a script or
+   * widget error, which otherwise leaves the form permanently unusable. */
+  const [renderAttempt, setRenderAttempt] = useState(0)
 
   callbacksRef.current = { onToken, onExpire, onError }
 
@@ -133,7 +136,7 @@ export default function TurnstileWidget({
       }
       widgetIdRef.current = null
     }
-  }, [siteKey, theme])
+  }, [siteKey, theme, renderAttempt])
 
   useEffect(() => {
     if (resetSignal <= 0) return
@@ -147,12 +150,32 @@ export default function TurnstileWidget({
     }
   }, [resetSignal])
 
-  if (!siteKey || unavailable) {
+  if (!siteKey) {
     return (
       <div className="auth-captcha" role="status">
         <p className="app-hint">
           אימות האבטחה אינו זמין כרגע. אנא נסה שוב בעוד רגע.
         </p>
+      </div>
+    )
+  }
+
+  if (unavailable) {
+    return (
+      <div className="auth-captcha" role="status">
+        <p className="app-hint">
+          אימות האבטחה אינו זמין כרגע. אנא נסה שוב בעוד רגע.
+        </p>
+        <button
+          type="button"
+          className="app-btn-ghost text-xs"
+          onClick={() => {
+            setUnavailable(false)
+            setRenderAttempt((value) => value + 1)
+          }}
+        >
+          טעינת אימות האבטחה מחדש
+        </button>
       </div>
     )
   }

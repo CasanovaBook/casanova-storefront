@@ -116,6 +116,13 @@ export function translateAuthError(err: { message?: string; status?: number; cod
     }
   }
 
+  if (lower.includes("captcha")) {
+    return {
+      message: "אימות האבטחה נכשל או שפג תוקפו. יש לנסות שוב.",
+      isUnconfirmed: false,
+    }
+  }
+
   /* GoTrue refuses updateUser with a bare "Auth session missing!" when the
    * recovery session has expired or was never established. The same family
    * of errors can arrive as JWT or refresh-token failures. None of them
@@ -630,6 +637,7 @@ export interface SignUpData {
   email: string
   password: string
   phone?: string
+  captchaToken?: string
 }
 
 export interface SignUpOutcome {
@@ -668,6 +676,7 @@ export async function signUpWithEmail(input: SignUpData): Promise<AuthResult<Sig
         phone: input.phone?.trim() || undefined,
       },
       emailRedirectTo: redirectUrl,
+      captchaToken: input.captchaToken,
     },
   })
 
@@ -692,7 +701,10 @@ export async function signUpWithEmail(input: SignUpData): Promise<AuthResult<Sig
 }
 
 /** Resend signup verification email. */
-export async function resendVerification(email: string): Promise<AuthResult<void>> {
+export async function resendVerification(
+  email: string,
+  options?: { captchaToken?: string },
+): Promise<AuthResult<void>> {
   if (!isSupabaseConfigured) {
     return authFail("שרת Supabase אינו מוגדר.")
   }
@@ -707,6 +719,7 @@ export async function resendVerification(email: string): Promise<AuthResult<void
     email: email.trim().toLowerCase(),
     options: {
       emailRedirectTo: redirectUrl,
+      captchaToken: options?.captchaToken,
     },
   })
 

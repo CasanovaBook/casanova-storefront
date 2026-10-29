@@ -167,8 +167,14 @@ interface AppContextValue {
     password: string,
     turnstileToken?: string,
   ) => Promise<AuthOutcome>
-  register: (input: RegisterInput) => Promise<AuthOutcome>
-  resendConfirmation: (email: string) => Promise<{ ok: boolean; error?: string }>
+  register: (
+    input: RegisterInput,
+    options?: { captchaToken?: string },
+  ) => Promise<AuthOutcome>
+  resendConfirmation: (
+    email: string,
+    captchaToken?: string,
+  ) => Promise<{ ok: boolean; error?: string }>
   setupAdmin: (input: BootstrapInput) => Promise<AuthOutcome>
   logout: () => void
 
@@ -685,7 +691,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   const register = useCallback(
-    async (input: RegisterInput): Promise<AuthOutcome> => {
+    async (
+      input: RegisterInput,
+      options?: { captchaToken?: string },
+    ): Promise<AuthOutcome> => {
       if (isSupabaseConfigured) {
         if (!input.password) {
           return { ok: false, error: "נדרשת סיסמה לצורך הרשמה." }
@@ -696,6 +705,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           email: input.email,
           password: input.password,
           phone: input.phone,
+          captchaToken: options?.captchaToken,
         })
         if (!res.ok) {
           return { ok: false, error: res.error }
@@ -718,10 +728,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [beginSession, sessionId],
   )
 
-  const resendConfirmation = useCallback(async (email: string) => {
-    const res = await resendVerification(email)
-    return { ok: res.ok, error: !res.ok ? res.error : undefined }
-  }, [])
+  const resendConfirmation = useCallback(
+    async (email: string, captchaToken?: string) => {
+      const res = await resendVerification(email, { captchaToken })
+      return { ok: res.ok, error: !res.ok ? res.error : undefined }
+    },
+    [],
+  )
 
   const setupAdmin = useCallback(
     async (input: BootstrapInput): Promise<AuthOutcome> => {

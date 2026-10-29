@@ -24,6 +24,7 @@ import PageHeader from "../components/ui/PageHeader"
 import EmptyState from "../components/ui/EmptyState"
 import Alert from "../components/ui/Alert"
 import Spinner from "../components/ui/Spinner"
+import TurnstileWidget from "../components/TurnstileWidget"
 
 /* The red star already used for the confirmation field: every field the
  * customer cannot submit without carries it, on both screens that collect
@@ -87,7 +88,7 @@ function CheckoutHeader() {
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
-  const { selectedProduct, setSelectedProduct, placeOrder, user, resendConfirmation, authReady } =
+  const { selectedProduct, setSelectedProduct, placeOrder, user, resendConfirmation, authReady, theme } =
     useApp()
   const cms = useCms()
 
@@ -100,6 +101,16 @@ export default function CheckoutPage() {
   const [resending, setResending] = useState(false)
   const [resendMessage, setResendMessage] = useState<string | null>(null)
   const [cooldown, setCooldown] = useState(0)
+  const [captchaToken, setCaptchaToken] = useState("")
+  const [captchaReset, setCaptchaReset] = useState(0)
+
+  const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
+  const captchaEnabled = isSupabaseConfigured && Boolean(captchaSiteKey)
+
+  const resetCaptcha = () => {
+    setCaptchaToken("")
+    setCaptchaReset((value) => value + 1)
+  }
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -109,15 +120,28 @@ export default function CheckoutPage() {
 
   const handleResend = async (emailToResend: string) => {
     if (cooldown > 0 || resending) return
+    if (captchaEnabled && !captchaToken) {
+      setResendMessage("יש להשלים את אימות האבטחה לפני שליחת אימייל אימות.")
+      return
+    }
     setResending(true)
     setResendMessage(null)
-    const res = await resendConfirmation(emailToResend)
-    setResending(false)
-    if (res.ok) {
-      setResendMessage("קישור אימות חדש נשלח בהצלחה לתיבת הדואר שלך!")
-      setCooldown(60)
-    } else {
-      setResendMessage(res.error || "שליחת האימייל נכשלה.")
+    try {
+      const res = await resendConfirmation(
+        emailToResend,
+        captchaEnabled ? captchaToken : undefined,
+      )
+      if (res.ok) {
+        setResendMessage("קישור אימות חדש נשלח בהצלחה לתיבת הדואר שלך!")
+        setCooldown(60)
+      } else {
+        setResendMessage(res.error || "שליחת האימייל נכשלה.")
+      }
+    } catch {
+      setResendMessage("שליחת האימייל נכשלה. אנא נסה שוב מאוחר יותר.")
+    } finally {
+      setResending(false)
+      resetCaptcha()
     }
   }
 
@@ -508,10 +532,33 @@ export default function CheckoutPage() {
                           החשבון שלך ({user.email}) טרם אומת. יש ללחוץ על קישור
                           האימות שנשלח לתיבת המייל שלך לפני שתוכל לבצע רכישה.
                         </p>
+                        {captchaEnabled && (
+                          <div className="mt-3">
+                            <p className="app-hint">
+                              אימות אבטחה נדרש לפני שליחת אימייל אימות נוסף.
+                            </p>
+                            <TurnstileWidget
+                              siteKey={captchaSiteKey}
+                              theme={theme}
+                              onToken={(token) => setCaptchaToken(token)}
+                              onExpire={() => setCaptchaToken("")}
+                              onError={() =>
+                                setResendMessage(
+                                  "אימות האבטחה אינו זמין כרגע. אנא נסה שוב בעוד רגע.",
+                                )
+                              }
+                              resetSignal={captchaReset}
+                            />
+                          </div>
+                        )}
                         <div className="mt-3 flex flex-wrap items-center gap-3">
                           <button
                             type="button"
-                            disabled={cooldown > 0 || resending}
+                            disabled={
+                              cooldown > 0 ||
+                              resending ||
+                              (captchaEnabled && !captchaToken)
+                            }
                             onClick={() => handleResend(user.email)}
                             className="app-btn-secondary"
                           >
