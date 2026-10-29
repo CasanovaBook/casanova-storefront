@@ -1416,7 +1416,7 @@ export default function SalesLandingPage() {
       <footer className="cv-footer">
         <div className="cv-shell">
           <div className="cv-footer-top">
-            <div>
+            <div className="cv-footer-brand">
               <span className="cv-brand-word" dir="ltr" lang="en">
                 CASANOVA
               </span>
@@ -1425,48 +1425,49 @@ export default function SalesLandingPage() {
               </p>
             </div>
 
-            <div>
-              <nav className="cv-footer-nav" aria-label="ניווט בפוטר">
-                {NAV_LINKS.map((link) => (
-                  <a key={link.href} href={link.href}>
-                    {link.label}
-                  </a>
-                ))}
-                <Link to={account.href}>{account.label}</Link>
-              </nav>
+            <nav className="cv-footer-nav" aria-label="ניווט בפוטר">
+              <h2 className="cv-footer-heading">ניווט</h2>
+              {NAV_LINKS.map((link) => (
+                <a key={link.href} href={link.href}>
+                  {link.label}
+                </a>
+              ))}
+              <Link to={account.href}>{account.label}</Link>
+            </nav>
 
-              <div className="cv-footer-legal">
-                <Link to="/terms-and-conditions">תנאי שימוש</Link>
-                <Link to="/privacy-policy">מדיניות פרטיות</Link>
-                <Link to="/cancellation-and-refund-policy">
-                  ביטול והחזרים
-                </Link>
-                <Link to="/accessibility-statement">הצהרת נגישות</Link>
-                <Link to="/support">תמיכה</Link>
-              </div>
-            </div>
+            <nav className="cv-footer-legal" aria-label="מידע ותקנון">
+              <h2 className="cv-footer-heading">מידע ותקנון</h2>
+              <Link to="/terms-and-conditions">תנאי שימוש</Link>
+              <Link to="/privacy-policy">מדיניות פרטיות</Link>
+              <Link to="/cancellation-and-refund-policy">ביטול והחזרים</Link>
+              <Link to="/accessibility-statement">הצהרת נגישות</Link>
+              <Link to="/support">תמיכה</Link>
+            </nav>
           </div>
 
           <div className="cv-footer-bottom">
-            <div className="cv-footer-utility">
-              <AccessibilityFooterLink />
+            <div className="cv-footer-bottom-group">
+              {footerCopyright && (
+                <p>{fmt(footerCopyright, { year: new Date().getFullYear() })}</p>
+              )}
+              <div className="cv-footer-utility">
+                <AccessibilityFooterLink />
+              </div>
             </div>
 
-            {footerCopyright && (
-              <p>{fmt(footerCopyright, { year: new Date().getFullYear() })}</p>
-            )}
-
-            {footerAge && <span className="cv-footer-age">{footerAge}</span>}
-
-            {footerPowered && (
-              <a
-                href="https://www.phantomthirdlabs.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {footerPowered}
-              </a>
-            )}
+            <div className="cv-footer-bottom-group">
+              {footerAge && <span className="cv-footer-age">{footerAge}</span>}
+              {footerPowered && (
+                <a
+                  className="cv-footer-credit"
+                  href="https://www.phantomthirdlabs.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {footerPowered}
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </footer>

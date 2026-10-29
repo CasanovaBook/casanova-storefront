@@ -302,40 +302,45 @@ export default function PublicRoot() {
       <footer className="site-footer">
         <div className="site-container">
           <div className="site-footer-top">
-            <div>
+            <div className="site-footer-brand">
               <span className="site-brand-word" dir="ltr" lang="en">
                 {brand}
               </span>
               <p className="site-footer-tagline">{footerTagline}</p>
             </div>
 
-            <div>
-              <nav className="site-footer-nav" aria-label="ניווט בפוטר">
-                {navItems.map((item) => (
-                  <SmartLink key={`${item.label}-${item.to}`} to={item.to}>
-                    {item.label}
-                  </SmartLink>
-                ))}
-                <Link to="/login">{loginLabel}</Link>
-              </nav>
+            <nav className="site-footer-nav" aria-label="ניווט בפוטר">
+              <h2 className="site-footer-heading">ניווט</h2>
+              {navItems.map((item) => (
+                <SmartLink key={`${item.label}-${item.to}`} to={item.to}>
+                  {item.label}
+                </SmartLink>
+              ))}
+              <Link to="/login">{loginLabel}</Link>
+            </nav>
 
-              <div className="site-footer-legal">
-                <Link to="/terms-and-conditions">תנאי שימוש</Link>
-                <Link to="/privacy-policy">מדיניות פרטיות</Link>
-                <Link to="/cancellation-and-refund-policy">
-                  ביטול והחזרים
-                </Link>
-                <Link to="/accessibility-statement">הצהרת נגישות</Link>
-              </div>
-            </div>
+            <nav className="site-footer-legal" aria-label="מידע ותקנון">
+              <h2 className="site-footer-heading">מידע ותקנון</h2>
+              <Link to="/terms-and-conditions">תנאי שימוש</Link>
+              <Link to="/privacy-policy">מדיניות פרטיות</Link>
+              <Link to="/cancellation-and-refund-policy">
+                ביטול והחזרים
+              </Link>
+              <Link to="/accessibility-statement">הצהרת נגישות</Link>
+            </nav>
           </div>
 
           <div className="site-footer-bottom">
-            <div className="site-footer-utility">
-              <AccessibilityFooterLink />
+            <div className="site-footer-bottom-group">
+              <p>{footerCopyright}</p>
+              <div className="site-footer-utility">
+                <AccessibilityFooterLink />
+              </div>
             </div>
-            <p>{footerCopyright}</p>
-            <span style={{ color: "#de9a60" }}>תוכן למבוגרים · 18+</span>
+
+            <div className="site-footer-bottom-group">
+              <span className="site-footer-age">תוכן למבוגרים · 18+</span>
+            </div>
           </div>
         </div>
       </footer>
