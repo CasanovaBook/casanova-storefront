@@ -116,6 +116,23 @@ export function translateAuthError(err: { message?: string; status?: number; cod
     }
   }
 
+  /* GoTrue refuses updateUser with a bare "Auth session missing!" when the
+   * recovery session has expired or was never established. The same family
+   * of errors can arrive as JWT or refresh-token failures. None of them
+   * should reach the customer in English. */
+  if (
+    lower.includes("auth session missing") ||
+    lower.includes("session missing") ||
+    lower.includes("invalid jwt") ||
+    lower.includes("jwt expired") ||
+    lower.includes("refresh token")
+  ) {
+    return {
+      message: "פג תוקף החיבור או הקישור. יש לבקש קישור חדש ולהתחיל שוב.",
+      isUnconfirmed: false,
+    }
+  }
+
   /* GoTrue's own password refusals (`checkPasswordStrength` in the auth
    * server). They arrive as English sentences and every one of them is a
    * rule the customer can act on, so each gets Hebrew wording. The minimum
@@ -792,6 +809,18 @@ export async function updatePassword(newPassword: string): Promise<AuthResult<vo
   if (policy) return authFail(policy, "WEAK_PASSWORD")
 
   const client = requireSupabase()
+  const { data: { session }, error: sessionError } = await client.auth.getSession()
+
+  /* The recovery session is the authorization for this call. Checking it here
+   * gives the customer a clear message instead of relying on updateUser to
+   * fail with GoTrue's English "Auth session missing!" after a network trip. */
+  if (sessionError || !session) {
+    return authFail(
+      "פג תוקף החיבור או הקישור. יש לבקש קישור חדש ולהתחיל שוב.",
+      "UNAUTHENTICATED",
+    )
+  }
+
   const { error } = await client.auth.updateUser({
     password: newPassword,
   })

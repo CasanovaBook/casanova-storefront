@@ -111,7 +111,14 @@ export default function SetupPasswordPage() {
           if (session.user.email) {
             setUserEmail(session.user.email)
           }
+        } else {
+          setHasValidSession(false)
         }
+        setCheckingSession(false)
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setHasValidSession(false)
         setCheckingSession(false)
       })
 
@@ -119,6 +126,12 @@ export default function SetupPasswordPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return
+
+      if (event === "SIGNED_OUT") {
+        setHasValidSession(false)
+        return
+      }
+
       if (
         event === "PASSWORD_RECOVERY" ||
         (session?.user && event === "SIGNED_IN")
@@ -165,26 +178,30 @@ export default function SetupPasswordPage() {
     }
     setBusy(true)
 
-    if (isSupabaseConfigured) {
-      const result = await updateSupabasePassword(password)
-      setBusy(false)
+    try {
+      if (isSupabaseConfigured) {
+        const result = await updateSupabasePassword(password)
+        if (!result.ok) {
+          setError(result.error)
+          return
+        }
+        setDone(true)
+        setTimeout(() => navigate(copy.destination), 2000)
+        return
+      }
+
+      const result = await resetPasswordWithToken(token, password)
       if (!result.ok) {
         setError(result.error)
         return
       }
       setDone(true)
       setTimeout(() => navigate(copy.destination), 2000)
-      return
+    } catch {
+      setError("לא ניתן לעדכן את הסיסמה כרגע. נסו שוב.")
+    } finally {
+      setBusy(false)
     }
-
-    const result = await resetPasswordWithToken(token, password)
-    setBusy(false)
-    if (!result.ok) {
-      setError(result.error)
-      return
-    }
-    setDone(true)
-    setTimeout(() => navigate(copy.destination), 2000)
   }
 
   const pw = strength()
