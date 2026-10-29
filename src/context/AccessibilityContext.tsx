@@ -170,11 +170,16 @@ function loadState(): StoredState {
   }
 }
 
+/** True when a preference object holds nothing but the factory defaults. */
+function isDefaultPreferences(preferences: AccessibilityPreferences): boolean {
+  return (
+    preferences.fontScale === FONT_SCALE_DEFAULT &&
+    TOGGLE_KEYS.every((key) => preferences[key] === false)
+  )
+}
+
 /** Writes every setting onto `<html>`. One DOM write per flag, nothing else. */
-function applyPreferences(
-  preferences: AccessibilityPreferences,
-  hidden: boolean,
-) {
+function applyPreferences(preferences: AccessibilityPreferences) {
   const root = document.documentElement
 
   if (preferences.fontScale === FONT_SCALE_DEFAULT) {
@@ -186,10 +191,6 @@ function applyPreferences(
   for (const key of TOGGLE_KEYS) {
     root.dataset[TOGGLE_ATTRIBUTES[key]] = preferences[key] ? "true" : "false"
   }
-
-  /* The launcher reads this through CSS only to keep its edge flush; the
-   * panel is separate. Nothing else depends on a mounted widget. */
-  root.dataset.a11yHidden = hidden ? "true" : "false"
 }
 
 interface AccessibilityContextValue {
@@ -227,11 +228,19 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
    * place before the first paint, so a returning visitor does not see the
    * page render twice. */
   useLayoutEffect(() => {
-    applyPreferences(preferences, hidden)
-  }, [preferences, hidden])
+    applyPreferences(preferences)
+  }, [preferences])
 
   useEffect(() => {
     try {
+      /* All-defaults state is not a preference: remove the key instead of
+       * rewriting the defaults, so the reset button leaves no stored state
+       * behind (and a manually cleared storage stays cleared). */
+      if (!hidden && isDefaultPreferences(preferences)) {
+        window.localStorage.removeItem(ACCESSIBILITY_STORAGE_KEY)
+        return
+      }
+
       window.localStorage.setItem(
         ACCESSIBILITY_STORAGE_KEY,
         JSON.stringify({ preferences, hidden }),
@@ -261,8 +270,13 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
+  /* Reset is the one action that returns the whole widget to its factory
+   * state: every display preference back to default and the launcher visible
+   * again. With nothing left to persist, the storage key is removed by the
+   * effect above, so a reload starts clean too. */
   const resetPreferences = useCallback(() => {
     setPreferences({ ...DEFAULT_PREFERENCES })
+    setHidden(false)
   }, [])
 
   const openPanel = useCallback((source?: HTMLElement | null) => {

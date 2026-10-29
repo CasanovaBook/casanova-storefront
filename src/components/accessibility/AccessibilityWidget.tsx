@@ -318,8 +318,13 @@ export default function AccessibilityWidget() {
   }
 
   const onReset = () => {
+    const wasHidden = hidden
     resetPreferences()
-    setMessage("הגדרות הנגישות אופסו לברירת המחדל")
+    setMessage(
+      wasHidden
+        ? "הגדרות הנגישות אופסו לברירת המחדל וכפתור הנגישות הוחזר"
+        : "הגדרות הנגישות אופסו לברירת המחדל",
+    )
   }
 
   const onHide = () => {
