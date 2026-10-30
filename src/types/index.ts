@@ -395,10 +395,7 @@ export interface Inquiry {
 export interface InquiryNote {
   note_id: string
   inquiry_id: string
-  /** NULL for an email reply from a guest whose ticket is not linked yet. */
-  author_id: string | null
-  /** Sender address recorded for email-origin notes. */
-  author_email?: string
+  author_id: string
   author_name: string
   content: string
   internal: boolean

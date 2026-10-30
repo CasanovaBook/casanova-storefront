@@ -1,13 +1,11 @@
 /* ─────────────────────────────────────────────────────────────
- * Public support / contact page.
+ * Customer support page - members only.
  *
- * A visitor does not need an account. Against Supabase the ticket goes to
- * the shared queue through `create_my_inquiry` (signed in) or the
- * `support-inquiry` Edge Function (guest, with Turnstile and rate limits),
- * and the numbered confirmation is emailed. Email replies map back into the
- * same thread through `support-inbound`, and an account registered later
- * with the same address claims the history. The local document remains the
- * offline driver's fallback.
+ * A signed-in customer opens a ticket through `create_my_inquiry`, which
+ * stamps the identity from the JWT; the conversation lives in the shared
+ * queue and in "הפניות שלי". Visitors without an account see a members-only
+ * notice and a login button instead of the form - support no longer accepts
+ * guest submissions, and no customer email is sent from this flow.
  * ───────────────────────────────────────────────────────────── */
 
 import { useState } from "react"
@@ -26,10 +24,6 @@ import {
   INQUIRY_STATUS_LABEL,
   INQUIRY_TOPIC_LABEL,
 } from "../lib/api-support"
-
-import { isSupabaseConfigured } from "../integrations/supabase/supabase"
-
-import TurnstileWidget from "../components/TurnstileWidget"
 
 import { useContent } from "../content/useContent"
 import { Rich } from "../content/render"
@@ -277,12 +271,7 @@ function ConversationModal({
           timestamp={inquiry.created_at}
         />
         {thread.map((note) => {
-          const mine = isCustomerInquiryNote(
-            note,
-            inquiry,
-            user?.user_id,
-            user?.email,
-          )
+          const mine = isCustomerInquiryNote(note, inquiry, user?.user_id)
 
           return (
             <MessageBubble
@@ -364,7 +353,7 @@ function ConversationModal({
 }
 
 export default function SupportPage() {
-  const { user, actor, orders, theme } = useApp()
+  const { user, actor, orders } = useApp()
   const location = useLocation()
   const inDashboard = location.pathname.startsWith("/dashboard")
 
@@ -391,20 +380,6 @@ export default function SupportPage() {
   const [submitted, setSubmitted] = useState<Inquiry | null>(null)
   const [sending, setSending] = useState(false)
 
-  /* Guests are a first-class submission path now, so the public endpoint is
-   * protected like the login form: Turnstile when the site key is present,
-   * with the same widget lifecycle (token required, reset after every try). */
-  const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
-  const guestCaptchaEnabled =
-    isSupabaseConfigured && user === null && Boolean(captchaSiteKey)
-  const [captchaToken, setCaptchaToken] = useState("")
-  const [captchaReset, setCaptchaReset] = useState(0)
-
-  const resetCaptcha = () => {
-    setCaptchaToken("")
-    setCaptchaReset((value) => value + 1)
-  }
-
   const myInquiries = listMyInquiries(actor)
 
   /* The ticket the conversation dialog shows. Looked up from the freshly
@@ -429,11 +404,6 @@ export default function SupportPage() {
 
     setError("")
 
-    if (guestCaptchaEnabled && !captchaToken) {
-      setError("יש להשלים את אימות האבטחה לפני שליחת הפנייה.")
-      return
-    }
-
     setSending(true)
 
     const result = await createInquiry(actor, {
@@ -444,12 +414,9 @@ export default function SupportPage() {
       message: form.message,
       topic: form.topic,
       related_order_id: form.related_order_id || undefined,
-      captchaToken: guestCaptchaEnabled ? captchaToken : undefined,
     })
 
     setSending(false)
-
-    if (guestCaptchaEnabled) resetCaptcha()
 
     if (!result.ok) {
       setError(result.error)
@@ -493,6 +460,43 @@ export default function SupportPage() {
           }
         />
 
+        {!user ? (
+          <section className="app-surface mx-auto max-w-xl px-6 py-10 text-center sm:px-10">
+            <span
+              className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--color-primary) 14%, transparent)",
+                color: "var(--color-primary)",
+              }}
+              aria-hidden="true"
+            >
+              <Icon name="lock" size={24} />
+            </span>
+            <h2 className="font-display text-2xl font-semibold">
+              התמיכה זמינה לחברי האתר
+            </h2>
+            <p
+              className="app-hint mx-auto mt-3 max-w-md"
+              style={{ fontSize: "0.9rem", lineHeight: 1.7 }}
+            >
+              כדי לפתוח פנייה יש להתחבר לחשבון. הפנייה והשיחה נשמרות בחשבון
+              שלכם, כך שתוכלו לחזור אליהן מכל מכשיר ולעקוב אחרי התשובות
+              ב"הפניות שלי".
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link
+                to={`/login?redirect=${encodeURIComponent(location.pathname)}`}
+                className="app-btn"
+              >
+                התחברות
+              </Link>
+              <Link to="/store" className="app-btn-secondary">
+                חזרה לחנות
+              </Link>
+            </div>
+          </section>
+        ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start lg:gap-8 xl:gap-10">
           <section className="app-surface" aria-labelledby="support-form-title">
             <div className="app-surface-head">
@@ -501,10 +505,7 @@ export default function SupportPage() {
                   פנייה לשירות הלקוחות
                 </h2>
                 <p className="app-hint mt-1.5">
-                  אפשר לשלוח פנייה גם בלי חשבון.{" "}
-                  {isSupabaseConfigured
-                    ? "עדכונים ותשובות יישלחו לכתובת האימייל שמסרתם, ואפשר להשיב להן ישירות מהמייל."
-                    : "מספר המעקב יוצג מיד לאחר השליחה."}
+                  הפנייה נשלחת מהחשבון המחובר, וכל השיחה נשמרת ב"הפניות שלי".
                 </p>
               </div>
               {submitted && (
@@ -541,28 +542,10 @@ export default function SupportPage() {
                   >
                     {submitted.ticket_number}
                   </p>
-                  <div className="mb-5 space-y-2">
-                    {isSupabaseConfigured ? (
-                      <p className="app-hint">
-                        שלחנו אישור לכתובת{" "}
-                        <strong dir="ltr">{submitted.customer_email}</strong>.
-                        כל תגובה של הצוות תישלח לאותה כתובת - אפשר להשיב
-                        להודעה ישירות כדי להמשיך את השיחה.
-                      </p>
-                    ) : (
-                      <p className="app-hint">
-                        הפנייה נשמרה במערכת המקומית עם מספר המעקב שלמעלה.
-                        במערכת הפרודקשן יישלח אישור לכתובת{" "}
-                        <strong dir="ltr">{submitted.customer_email}</strong>.
-                      </p>
-                    )}
-                    {!user && (
-                      <p className="app-hint">
-                        אם תתחברו עם אותה כתובת מייל, הפנייה וכל השיחה
-                        יופיעו גם ב"הפניות שלי".
-                      </p>
-                    )}
-                  </div>
+                  <p className="app-hint mb-5">
+                    הפנייה נשמרה בחשבון שלך. צוות התמיכה ישיב כאן, והתשובות
+                    יופיעו ב"הפניות שלי".
+                  </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <button
                       type="button"
@@ -571,11 +554,8 @@ export default function SupportPage() {
                     >
                       פנייה נוספת
                     </button>
-                    <Link
-                      to={user ? "/dashboard" : "/login"}
-                      className="app-btn-secondary"
-                    >
-                      {user ? "חזרה ללוח האישי" : "התחברות למעקב"}
+                    <Link to="/dashboard" className="app-btn-secondary">
+                      חזרה ללוח האישי
                     </Link>
                   </div>
                 </div>
@@ -584,17 +564,6 @@ export default function SupportPage() {
                   {error && (
                     <Alert tone="error" title="לא הצלחנו לשלוח את הפנייה">
                       {error}
-                    </Alert>
-                  )}
-
-                  {!user && (
-                    <Alert tone="info" title="פנייה כאורח - בלי חשבון">
-                      אין צורך להירשם או להתחבר כדי לפנות.{" "}
-                      {isSupabaseConfigured
-                        ? "אישור עם מספר מעקב יישלח לכתובת האימייל שתמסרו, וכל תגובה של הצוות תגיע לאותה כתובת."
-                        : "מספר המעקב יוצג מיד עם השליחה."}{" "}
-                      אם תתחברו בהמשך עם אותה כתובת, הפנייה תופיע גם
-                      ב"הפניות שלי".
                     </Alert>
                   )}
 
@@ -650,13 +619,6 @@ export default function SupportPage() {
                           setForm({ ...form, customer_email: e.target.value })
                         }}
                       />
-                      {!user && (
-                        <p className="app-hint">
-                          {isSupabaseConfigured
-                            ? "לכתובת זו יישלח אישור עם מספר המעקב. ודאו שהיא מדויקת - דרכה תקבלו גם את תגובות הצוות."
-                            : "ודאו שכתובת המייל מדויקת - היא תשמש לזיהוי הפנייה."}
-                        </p>
-                      )}
                     </div>
                   </div>
 
@@ -777,57 +739,9 @@ export default function SupportPage() {
                       {requiredMark} שדות חובה
                     </p>
 
-                    {guestCaptchaEnabled && (
-                      <div
-                        className="flex flex-col items-center gap-3 rounded-[var(--radius-lg)] border px-5 py-5 text-center sm:px-6"
-                        style={{
-                          borderColor:
-                            "color-mix(in srgb, var(--color-primary) 24%, var(--color-border))",
-                          background:
-                            "color-mix(in srgb, var(--color-card) 90%, var(--color-background))",
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Icon
-                            name="shield"
-                            size={15}
-                            aria-hidden="true"
-                            style={{ color: "var(--color-primary)" }}
-                          />
-                          <span
-                            className="text-xs font-semibold tracking-wide"
-                            style={{ color: "var(--color-foreground)" }}
-                          >
-                            אימות אבטחה
-                          </span>
-                        </div>
-                        <p className="app-hint max-w-sm">
-                          אימות קצר כדי שנוכל לשלוח את הפנייה. אין צורך
-                          בחשבון.
-                        </p>
-                        <div className="flex w-full justify-center pt-0.5">
-                          <TurnstileWidget
-                            siteKey={captchaSiteKey}
-                            theme={theme}
-                            onToken={(token) => setCaptchaToken(token)}
-                            onExpire={() => setCaptchaToken("")}
-                            onError={() => {
-                              setCaptchaToken("")
-                              setError(
-                                "אימות האבטחה אינו זמין כרגע. אנא נסו שוב בעוד רגע.",
-                              )
-                            }}
-                            resetSignal={captchaReset}
-                          />
-                        </div>
-                      </div>
-                    )}
-
                     <button
                       type="submit"
-                      disabled={
-                        sending || (guestCaptchaEnabled && !captchaToken)
-                      }
+                      disabled={sending}
                       className="app-btn w-full py-3.5 text-sm font-semibold"
                     >
                       {sending ? "שולח…" : "שליחת הפנייה"}
@@ -844,30 +758,14 @@ export default function SupportPage() {
                 <h2 id="support-history-title" className="app-section-title">
                   הפניות שלי
                 </h2>
-                {user && myInquiries.length > 0 && (
+                {myInquiries.length > 0 && (
                   <span className="app-badge app-badge--neutral">
                     {myInquiries.length}
                   </span>
                 )}
               </div>
               <div className="app-surface-body">
-                {!user ? (
-                  <div
-                    className="rounded-[var(--radius-md)] border border-dashed p-4"
-                    style={{ borderColor: "var(--color-border)" }}
-                  >
-                    <p className="text-sm font-medium">
-                      ההיסטוריה זמינה אחרי התחברות
-                    </p>
-                    <p className="app-hint mt-1">
-                      התחברו כדי לראות את הפניות הקודמות שלכם ואת מספרי
-                      המעקב.
-                    </p>
-                    <Link to="/login" className="app-btn-secondary mt-3">
-                      התחברות
-                    </Link>
-                  </div>
-                ) : myInquiries.length === 0 ? (
+                {myInquiries.length === 0 ? (
                   <EmptyState
                     icon="inbox"
                     title="אין עדיין פניות"
@@ -886,12 +784,7 @@ export default function SupportPage() {
 
                       const staffReply = messages.some(
                         (n) =>
-                          !isCustomerInquiryNote(
-                            n,
-                            inquiry,
-                            user?.user_id,
-                            user?.email,
-                          ),
+                          !isCustomerInquiryNote(n, inquiry, user?.user_id),
                       )
 
                       /* Date + time of the resolution, from the stored
@@ -1039,6 +932,7 @@ export default function SupportPage() {
             </section>
           </aside>
         </div>
+        )}
 
         {opened && (
           <ConversationModal

@@ -530,7 +530,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         ...n,
         author_name: author
           ? `${author.first_name} ${author.last_name}`.trim() || author.email
-          : (n.author_email ?? "צוות התמיכה"),
+          : "צוות התמיכה",
       }
     })
   }, [db.inquiry_notes, users])

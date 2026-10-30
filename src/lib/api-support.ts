@@ -38,18 +38,15 @@ import {
 } from "../integrations/supabase/supabase-entitlements"
 
 import {
-  createGuestInquiry,
   createInquiryNoteRemote,
   createMyInquiry,
   deleteInquiryRemote,
   fetchMyInquiries,
   replyToMyInquiry,
-  sendSupportMail,
   updateInquiryRemote,
 } from "../integrations/supabase/supabase-inquiries"
 
 import {
-  dispatchEmail,
   fail,
   guard,
   ok,
@@ -78,9 +75,6 @@ export interface InquiryInput {
   /** `WEBSITE` for the public form, `CMS` when an admin logs a phone call. */
 
   source?: Inquiry["source"]
-
-  /** Turnstile token; required for a guest submission when CAPTCHA is on. */
-  captchaToken?: string
 }
 
 export const INQUIRY_STATUS_LABEL: Record<InquiryStatus, string> = {
@@ -121,6 +115,14 @@ export async function createInquiry(
   actor: Actor | null,
   input: InquiryInput,
 ): Promise<Result<Inquiry>> {
+  /* Support is members-only. The RPC and the table RLS both require a
+   * session; refusing here keeps the local driver on the same rule and
+   * gives the caller a clear message instead of a browser-local ticket
+   * nobody else can see. */
+  if (!actor) {
+    return fail("UNAUTHENTICATED", "יש להתחבר לחשבון כדי לפתוח פנייה.")
+  }
+
   /* The authenticated account is the authoritative sender: for a signed-in
    * customer the stored profile supplies the name and address, and the
    * submitted values are ignored - a crafted request cannot open a ticket
@@ -172,60 +174,30 @@ export async function createInquiry(
   /* Authenticated website submissions persist to `public.inquiries` - the
    * shared queue the admin dashboard reads - through the create_my_inquiry
    * RPC, which stamps the identity from the JWT and profile server-side.
-   *
-   * A guest has no identity to stamp, so the same queue is reached through
-   * the `support-inquiry` Edge Function: it validates the payload, verifies
-   * Turnstile, rate limits, inserts with the service role and sends the
-   * numbered confirmation email. Guests are no longer parked in this
-   * browser's document where no other device could ever see them.
-   *
-   * The local document stays the fallback for an unconfigured install and for
-   * admin-logged phone tickets. */
-  if (isSupabaseConfigured && input.source !== "CMS") {
-    if (isCustomerSubmission) {
-      const remote = await createMyInquiry({
-        subject,
-
-        message,
-
-        topic: input.topic ?? (relatedOrderId ? "ORDER" : "GENERAL"),
-
-        customer_phone: input.customer_phone?.trim() || undefined,
-
-        /* The hosted orders table does not hold this browser's `ord_…` rows,
-         * so only a real uuid may be forwarded (same guard as
-         * adminGrantAccess). */
-        related_order_id:
-          relatedOrderId && isUuid(relatedOrderId) ? relatedOrderId : undefined,
-      })
-
-      if (!remote.ok) return remote
-
-      upsertRemoteInquiries([remote.data])
-
-      /* The row is stored; the numbered email is best-effort and logged
-       * server-side, so a mail failure never turns a created ticket into an
-       * error for the customer. */
-      await sendSupportMail("confirmation", remote.data.inquiry_id)
-
-      return remote
-    }
-
-    const guest = await createGuestInquiry({
-      name,
-      email,
-      phone: input.customer_phone?.trim() || undefined,
+   * The local document stays the fallback for an unconfigured install and
+   * for admin-logged phone tickets. */
+  if (isSupabaseConfigured && isCustomerSubmission) {
+    const remote = await createMyInquiry({
       subject,
+
       message,
+
       topic: input.topic ?? (relatedOrderId ? "ORDER" : "GENERAL"),
-      captchaToken: input.captchaToken,
+
+      customer_phone: input.customer_phone?.trim() || undefined,
+
+      /* The hosted orders table does not hold this browser's `ord_…` rows,
+       * so only a real uuid may be forwarded (same guard as
+       * adminGrantAccess). */
+      related_order_id:
+        relatedOrderId && isUuid(relatedOrderId) ? relatedOrderId : undefined,
     })
 
-    if (!guest.ok) return guest
+    if (!remote.ok) return remote
 
-    upsertRemoteInquiries([guest.data])
+    upsertRemoteInquiries([remote.data])
 
-    return guest
+    return remote
   }
 
   const inquiry = mutate((d) => {
@@ -266,20 +238,6 @@ export async function createInquiry(
     d.inquiries = [created, ...d.inquiries]
 
     return created
-  })
-
-  dispatchEmail({
-    recipient: inquiry.customer_email,
-
-    recipient_name: inquiry.customer_name,
-
-    template: "INQUIRY_RECEIVED",
-
-    subject: `קיבלנו את פנייתך - ${inquiry.ticket_number}`,
-
-    related_type: "INQUIRY",
-
-    related_id: inquiry.inquiry_id,
   })
 
   return ok(inquiry)
@@ -606,13 +564,6 @@ export async function addInquiryNote(
 
     upsertRemoteInquiryNotes([remote.data])
 
-    /* A customer-visible reply is also delivered by email, with the ticket
-     * number in the subject and a Reply-To alias that maps an answer back
-     * into this thread. The note is already stored; delivery is best-effort. */
-    if (!internal) {
-      await sendSupportMail("reply", inquiryId, remote.data.note_id)
-    }
-
     return remote
   }
 
@@ -650,19 +601,7 @@ export async function addInquiryNote(
 
   /* Local-only ticket: the conversation stays in this browser's document,
    * as it always has for the offline driver and for tickets logged from a
-   * phone call. A customer-visible reply still queues the notification in the
-   * local mail log, which is the offline driver's delivery channel. */
-  if (!internal && inquiry) {
-    dispatchEmail({
-      recipient: inquiry.customer_email,
-      recipient_name: inquiry.customer_name,
-      template: "INQUIRY_REPLIED",
-      subject: `[${inquiry.ticket_number}] תגובה לפנייתך - Casanova`,
-      related_type: "INQUIRY",
-      related_id: inquiry.inquiry_id,
-    })
-  }
-
+   * phone call. */
   return ok(note)
 }
 
@@ -670,30 +609,17 @@ export async function addInquiryNote(
  * Whether a stored note was written by the ticket's customer rather than by
  * staff.
  *
- * Accounts are identified by `author_id`; a guest reply that arrived by email
- * has no users row, so it carries the sender's address in `author_email`
- * instead. Checking both is what keeps a guest's own email reply on the
- * customer side of the thread - in the customer panel and in the admin panel -
- * instead of labelling it "צוות התמיכה".
+ * Both sides are backend data: `author_id` is stamped from the JWT, and a
+ * ticket opened as a guest may carry a different (or no) owner, so the
+ * signed-in account id is accepted as the second match.
  */
 export function isCustomerInquiryNote(
   note: InquiryNote,
   inquiry: Inquiry,
   accountId?: string | null,
-  accountEmail?: string | null,
 ): boolean {
-  if (note.author_id) {
-    if (note.author_id === inquiry.user_id) return true
-    if (accountId && note.author_id === accountId) return true
-  }
-
-  const email = note.author_email?.trim().toLowerCase()
-  if (!email) return false
-
-  if (email === inquiry.customer_email.trim().toLowerCase()) return true
-  if (accountEmail && email === accountEmail.trim().toLowerCase()) return true
-
-  return false
+  if (note.author_id === inquiry.user_id) return true
+  return Boolean(accountId && note.author_id === accountId)
 }
 
 /**

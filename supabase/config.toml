@@ -82,25 +82,3 @@ verify_jwt = false
 # create_guest_storefront_order RPC it calls is executable only by service_role.
 [functions.guest-checkout]
 verify_jwt = false
-
-# Public support submission for visitors without an account. The function
-# validates the payload, applies a per-instance rate limit, verifies Turnstile
-# when TURNSTILE_SECRET_KEY is set, and performs the insert with the service
-# role through create_guest_inquiry (service_role only). No session exists to
-# verify, which is the point of the endpoint.
-[functions.support-inquiry]
-verify_jwt = false
-
-# Sends the numbered confirmation/reply email. The JWT is verified inside the
-# function so the caller can be checked: the ticket owner for a confirmation,
-# an ADMIN for a customer-visible reply. Called from the storefront and the
-# admin panel after the row already exists, so delivery is best-effort.
-[functions.support-mail]
-verify_jwt = false
-
-# Inbound email webhook. Authorized by the SUPPORT_INBOUND_SECRET header, not
-# by a JWT: the caller is a mail provider. The function maps the ticket number
-# and sender to support_inbound_reply, which re-checks that the sender matches
-# the address that opened the ticket.
-[functions.support-inbound]
-verify_jwt = false

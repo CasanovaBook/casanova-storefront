@@ -88,7 +88,7 @@ import {
   buildAppUser,
 } from "../integrations/supabase/supabase-auth"
 import { fetchMyEntitlements } from "../integrations/supabase/supabase-entitlements"
-import { claimMyInquiries, fetchMyInquiries, fetchMyInquiryNotes } from "../integrations/supabase/supabase-inquiries"
+import { fetchMyInquiries, fetchMyInquiryNotes } from "../integrations/supabase/supabase-inquiries"
 
 /**
  * Resolves a stored session to an app user, refusing a blocked account.
@@ -535,12 +535,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshMyInquiries = useCallback(
     async (uid: string) => {
       if (!isSupabaseConfigured) return
-
-      /* Tickets opened as a guest with this account's address become this
-       * account's tickets here, before the read below - so registering or
-       * logging in is what makes "ההיסטוריה זמינה אחרי התחברות" true.
-       * Idempotent, and a refusal leaves the mirror untouched. */
-      await claimMyInquiries()
 
       const rows = await fetchMyInquiries(uid)
 

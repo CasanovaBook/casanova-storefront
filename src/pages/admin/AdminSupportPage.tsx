@@ -503,11 +503,8 @@ function InquiryModal({
           ) : (
             <div className="space-y-2 mb-4">
               {notes.map((n) => {
-                /* Who wrote a message is backend data: `author_id` for accounts, and the
-                 * recorded `author_email` for a guest reply that arrived by email
-                 * from an address with no users row. The helper compares both with
-                 * the ticket's owner, so a guest's own email reply is never
-                 * labelled as staff. */
+                /* Who wrote a message is backend data: `author_id`, stamped
+                 * from the JWT, compared with the ticket's owner. */
                 const fromCustomer = isCustomerInquiryNote(n, inquiry)
 
                 return (
