@@ -53,6 +53,24 @@ const STATUS_ORDER: InquiryStatus[] = [
   "CLOSED",
 ]
 
+/* The list has two faces: the queue that still needs work, and the archive
+ * of finished tickets. A ticket is archived exactly when it is resolved or
+ * closed - the same pair chk_inquiry_resolution treats as the end state. */
+const ACTIVE_STATUSES: InquiryStatus[] = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "WAITING_FOR_CUSTOMER",
+]
+
+const ARCHIVED_STATUSES: InquiryStatus[] = ["RESOLVED", "CLOSED"]
+
+type TicketView = "active" | "archived"
+
+function isArchivedStatus(status: InquiryStatus): boolean {
+  return ARCHIVED_STATUSES.includes(status)
+}
+
 const STATUS_STYLE: Record<InquiryStatus, { bg: string, color: string }> = {
   NEW: { bg: "rgba(59,130,246,0.12)", color: "#3B82F6" },
 
@@ -714,6 +732,10 @@ export default function AdminSupportPage() {
 
   const [search, setSearch] = useState("")
 
+  /* Active queue by default - resolved and closed tickets move to the
+   * archive tab instead of cluttering the working list. */
+  const [view, setView] = useState<TicketView>("active")
+
   const [statusFilter, setStatusFilter] = useState<"ALL" | InquiryStatus>("ALL")
 
   const [topicFilter, setTopicFilter] = useState<"ALL" | InquiryTopic>("ALL")
@@ -723,6 +745,12 @@ export default function AdminSupportPage() {
   const query = search.trim().toLowerCase()
 
   const filtered = inquiries
+
+    .filter((i) =>
+      view === "archived"
+        ? isArchivedStatus(i.status)
+        : !isArchivedStatus(i.status),
+    )
 
     .filter((i) => {
       if (statusFilter !== "ALL" && i.status !== statusFilter) return false
@@ -740,17 +768,28 @@ export default function AdminSupportPage() {
 
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
 
-  const openCount = inquiries.filter(
-    (i) =>
-      i.status === "NEW" ||
-      i.status === "OPEN" ||
-      i.status === "IN_PROGRESS" ||
-      i.status === "WAITING_FOR_CUSTOMER",
+  const openCount = inquiries.filter((i) =>
+    ACTIVE_STATUSES.includes(i.status),
   ).length
 
-  const resolvedCount = inquiries.filter(
-    (i) => i.status === "RESOLVED" || i.status === "CLOSED",
+  const resolvedCount = inquiries.filter((i) =>
+    ARCHIVED_STATUSES.includes(i.status),
   ).length
+
+  const hasLocalFilters =
+    Boolean(query) || statusFilter !== "ALL" || topicFilter !== "ALL"
+
+  const emptyMessage = hasLocalFilters
+    ? "לא נמצאו פניות תואמות."
+    : view === "archived"
+      ? "אין פניות בארכיון."
+      : "אין פניות פעילות כרגע."
+
+  const emptyHint = hasLocalFilters
+    ? "אפשר לנקות את החיפוש או את הסינון ולנסות שוב."
+    : view === "archived"
+      ? "פניות שנפתרו או נסגרו יופיעו כאן, ואפשר לפתוח אותן מחדש."
+      : "פניות חדשות וממתינות לטיפול יופיעו כאן."
 
   const selected = inquiries.find((i) => i.inquiry_id === selectedId) ?? null
 
@@ -815,6 +854,69 @@ export default function AdminSupportPage() {
         ))}
       </div>
 
+      <div
+        className="mb-4 flex flex-wrap items-center gap-2"
+        role="group"
+        aria-label="תצוגת פניות"
+      >
+        {[
+          {
+            key: "active" as const,
+            label: "פניות פעילות",
+            count: openCount,
+            icon: "inbox" as IconName,
+          },
+          {
+            key: "archived" as const,
+            label: "ארכיון / נפתרו",
+            count: resolvedCount,
+            icon: "checkCircle" as IconName,
+          },
+        ].map(({ key, label, count, icon }) => {
+          const selected = view === key
+
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => {
+                setView(key)
+                setStatusFilter("ALL")
+              }}
+              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors"
+              style={{
+                borderColor: selected
+                  ? "var(--color-primary)"
+                  : "var(--color-border)",
+                background: selected
+                  ? "color-mix(in srgb, var(--color-primary) 12%, var(--color-card))"
+                  : "transparent",
+                color: selected
+                  ? "var(--color-primary)"
+                  : "var(--color-muted-foreground)",
+              }}
+            >
+              <Icon name={icon} size={14} aria-hidden="true" />
+              {label}
+              <span
+                className="min-w-6 rounded-full px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums"
+                style={{
+                  background: selected
+                    ? "color-mix(in srgb, var(--color-primary) 20%, transparent)"
+                    : "var(--color-secondary)",
+                  color: selected
+                    ? "var(--color-primary)"
+                    : "var(--color-muted-foreground)",
+                }}
+              >
+                {count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 mb-4">
         <input
           className={`${inputClass} max-w-sm`}
@@ -832,11 +934,13 @@ export default function AdminSupportPage() {
           }
         >
           <option value="ALL">כל הסטטוסים</option>
-          {STATUS_ORDER.map((s) => (
-            <option key={s} value={s}>
-              {INQUIRY_STATUS_LABEL[s]}
-            </option>
-          ))}
+          {(view === "archived" ? ARCHIVED_STATUSES : ACTIVE_STATUSES).map(
+            (s) => (
+              <option key={s} value={s}>
+                {INQUIRY_STATUS_LABEL[s]}
+              </option>
+            ),
+          )}
         </select>
         <select
           className="px-4 py-2.5 rounded-lg border text-sm outline-none"
@@ -879,10 +983,16 @@ export default function AdminSupportPage() {
           style={{ borderColor: "var(--color-border)" }}
         >
           <p
-            className="text-sm"
+            className="text-sm font-medium"
+            style={{ color: "var(--color-foreground)" }}
+          >
+            {emptyMessage}
+          </p>
+          <p
+            className="mt-1 text-xs"
             style={{ color: "var(--color-muted-foreground)" }}
           >
-            לא נמצאו פניות תואמות.
+            {emptyHint}
           </p>
         </div>
       ) : (
