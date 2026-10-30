@@ -473,6 +473,35 @@ export default function AccessibilityWidget() {
                   ))}
                 </div>
               </div>
+
+              <div
+                className="a11y-pills"
+                role="group"
+                aria-label="אפשרויות קריאה"
+              >
+                <button
+                  type="button"
+                  className="a11y-pill"
+                  aria-pressed={preferences.highlightLinks}
+                  onClick={() =>
+                    setToggle("highlightLinks", !preferences.highlightLinks)
+                  }
+                >
+                  <Icon name="link" size={15} />
+                  הדגשת קישורים
+                </button>
+                <button
+                  type="button"
+                  className="a11y-pill"
+                  aria-pressed={preferences.readableFont}
+                  onClick={() =>
+                    setToggle("readableFont", !preferences.readableFont)
+                  }
+                >
+                  <Icon name="bookOpen" size={15} />
+                  פונט קריא
+                </button>
+              </div>
             </div>
 
             <div className="a11y-panel-actions">

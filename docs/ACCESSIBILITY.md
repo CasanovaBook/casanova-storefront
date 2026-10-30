@@ -82,20 +82,21 @@ works on the reader and the admin shell, which have no public footer.
 
 ## 4. Privacy and display preferences
 
-The panel is deliberately small. It offers four controls:
+The panel is deliberately small. It offers six controls:
 
 | Control | Effect |
 | --- | --- |
 | גודל טקסט | Root font size, 90%-160% in 10% steps, plus a "רגיל" reset. Scales every rem-based size in the product. |
 | ניגודיות: רגילה / מוגברת / גבוהה | One three-level control. מוגברת raises the contrast of muted/secondary text without repainting the theme; גבוהה switches to black surfaces, white text, yellow interactive elements, white borders and a white focus ring through the theme tokens, so pages that colour themselves with `var(--color-*)` follow automatically. Exactly one level is active at a time. |
+| הדגשת קישורים | Underlines every link with a 2px rule (3px on hover) without changing text weight or reflowing the line. |
+| פונט קריא | Swaps the decorative display serif for the body sans (Heebo/system); sizes do not change, so nothing moves. |
 | איפוס | Returns every preference to its default, restores the floating button if it was hidden, and removes the stored entry. |
 | הסתר כפתור | Hides the floating launcher without disabling any enabled setting. |
 
-Spacing, motion, grayscale and font-swap toggles were removed deliberately:
-each was a separate global CSS override to maintain, and browser zoom plus the
-OS-level text and `prefers-reduced-motion` settings deliver the same outcomes.
-The OS reduced-motion request is still honoured independently in the same CSS
-file.
+Spacing, motion and grayscale toggles were removed deliberately: each was a
+separate global CSS override to maintain, and browser zoom plus the OS-level
+text and `prefers-reduced-motion` settings deliver the same outcomes. The OS
+reduced-motion request is still honoured independently in the same CSS file.
 
 The two contrast levels never stack: choosing one clears the other, and both
 combine with the light theme through

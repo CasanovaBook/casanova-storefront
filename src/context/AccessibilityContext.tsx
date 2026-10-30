@@ -55,6 +55,10 @@ export interface AccessibilityPreferences {
   highContrast: boolean
   /** Raises the contrast of muted text without repainting the theme. */
   textContrast: boolean
+  /** Underlines every link. */
+  highlightLinks: boolean
+  /** Swaps the display serif for the body sans. */
+  readableFont: boolean
 }
 
 export type AccessibilityToggle = Exclude<keyof AccessibilityPreferences, "fontScale">
@@ -63,14 +67,23 @@ const DEFAULT_PREFERENCES: AccessibilityPreferences = {
   fontScale: FONT_SCALE_DEFAULT,
   highContrast: false,
   textContrast: false,
+  highlightLinks: false,
+  readableFont: false,
 }
 
-const TOGGLE_KEYS: AccessibilityToggle[] = ["highContrast", "textContrast"]
+const TOGGLE_KEYS: AccessibilityToggle[] = [
+  "highContrast",
+  "textContrast",
+  "highlightLinks",
+  "readableFont",
+]
 
 /** The data attribute that drives each toggle in `src/index.css`. */
 const TOGGLE_ATTRIBUTES: Record<AccessibilityToggle, string> = {
   highContrast: "a11yContrast",
   textContrast: "a11yTextContrast",
+  highlightLinks: "a11yLinks",
+  readableFont: "a11yReadableFont",
 }
 
 interface StoredState {

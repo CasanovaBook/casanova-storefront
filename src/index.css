@@ -4910,6 +4910,40 @@ html[data-app-shell='true'] .a11y-launcher {
   border-color: var(--color-primary);
 }
 
+/* Secondary reading options: a tight two-up row under the contrast control. */
+.a11y-pills {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.a11y-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: max(2.35rem, 44px);
+  padding: 0.3rem 0.4rem;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease,
+    background 0.15s ease;
+}
+.a11y-pill:hover {
+  color: var(--color-foreground);
+  border-color: var(--color-ring);
+}
+.a11y-pill[aria-pressed='true'] {
+  color: var(--color-primary-foreground);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
 .a11y-icon-button {
   display: inline-flex;
   align-items: center;
@@ -4999,10 +5033,9 @@ html[data-app-shell='true'] .a11y-launcher {
  * dashboard, admin and reader. Nothing here is loaded per page and nothing
  * re-renders React - the browser just restyles.
  *
- * Only the two contrast levels are user-toggleable; the widget's removed
- * spacing, motion, grayscale and font controls had their rules deleted with
- * them, so no dead selectors survive. Text size needs no rule here because
- * it is the root font size itself.
+ * The panel exposes the two contrast levels plus the two reading options
+ * (link highlighting and the readable font); each has one rule block below.
+ * Text size needs no rule here because it is the root font size itself.
  *
  * These rules come after the light-mode block on purpose: for the same
  * specificity the later rule wins, and the two states combine (light theme +
@@ -5068,6 +5101,25 @@ html[data-app-shell='true'] .a11y-launcher {
   outline: 4px solid #ffffff;
   outline-offset: 3px;
   box-shadow: 0 0 0 7px #000000;
+}
+
+/* Link highlighting: an underline that does not change the weight of the text,
+ * so links are unmistakable without reflowing the line they sit on. */
+:root[data-a11y-links='true'] a {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+:root[data-a11y-links='true'] a:hover {
+  text-decoration-thickness: 3px;
+}
+
+/* Readable font: the display serif gives way to the body sans. Fonts are
+ * swapped, not sizes, so nothing moves on the page. */
+:root[data-a11y-readable-font='true'] .font-display,
+:root[data-a11y-readable-font='true']
+  :where(h1, h2, h3, h4, h5, h6, p, li, span, div, a, button, input, textarea, select, label, legend, td, th) {
+  font-family: var(--font-body);
 }
 
 /* Gentle floating motion for hero visuals */
