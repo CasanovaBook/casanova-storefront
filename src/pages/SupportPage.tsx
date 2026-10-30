@@ -493,14 +493,14 @@ export default function SupportPage() {
           }
         />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:items-start">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start lg:gap-8 xl:gap-10">
           <section className="app-surface" aria-labelledby="support-form-title">
             <div className="app-surface-head">
               <div>
                 <h2 id="support-form-title" className="app-section-title">
                   פנייה לשירות הלקוחות
                 </h2>
-                <p className="app-hint mt-1">
+                <p className="app-hint mt-1.5">
                   אפשר לשלוח פנייה גם בלי חשבון.{" "}
                   {isSupabaseConfigured
                     ? "עדכונים ותשובות יישלחו לכתובת האימייל שמסרתם, ואפשר להשיב להן ישירות מהמייל."
@@ -514,7 +514,10 @@ export default function SupportPage() {
               )}
             </div>
 
-            <div className="app-surface-body">
+            <div
+              className="app-surface-body"
+              style={{ padding: "clamp(1.4rem, 2.4vw, 1.9rem)" }}
+            >
               {submitted ? (
                 <div className="mx-auto max-w-md py-2 text-center">
                   <span
@@ -577,7 +580,7 @@ export default function SupportPage() {
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-7">
                   {error && (
                     <Alert tone="error" title="לא הצלחנו לשלוח את הפנייה">
                       {error}
@@ -595,8 +598,8 @@ export default function SupportPage() {
                     </Alert>
                   )}
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="app-field">
+                  <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                    <div className="app-field content-start">
                       <label htmlFor="support-name" className="app-label">
                         שם מלא{requiredMark}
                       </label>
@@ -624,7 +627,7 @@ export default function SupportPage() {
                       )}
                     </div>
 
-                    <div className="app-field">
+                    <div className="app-field content-start">
                       <label htmlFor="support-email" className="app-label">
                         כתובת אימייל{requiredMark}
                       </label>
@@ -657,8 +660,8 @@ export default function SupportPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="app-field">
+                  <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                    <div className="app-field content-start">
                       <label htmlFor="support-phone" className="app-label">
                         טלפון (אופציונלי)
                       </label>
@@ -675,7 +678,7 @@ export default function SupportPage() {
                       />
                     </div>
 
-                    <div className="app-field">
+                    <div className="app-field content-start">
                       <label htmlFor="support-topic" className="app-label">
                         נושא הפנייה
                       </label>
@@ -703,7 +706,7 @@ export default function SupportPage() {
                   </div>
 
                   {orders.length > 0 && (
-                    <div className="app-field">
+                    <div className="app-field content-start">
                       <label htmlFor="support-order" className="app-label">
                         שיוך להזמנה (אופציונלי)
                       </label>
@@ -729,7 +732,7 @@ export default function SupportPage() {
                     </div>
                   )}
 
-                  <div className="app-field">
+                  <div className="app-field content-start">
                     <label htmlFor="support-subject" className="app-label">
                       כותרת הפנייה{requiredMark}
                     </label>
@@ -746,14 +749,14 @@ export default function SupportPage() {
                     />
                   </div>
 
-                  <div className="app-field">
+                  <div className="app-field content-start">
                     <label htmlFor="support-message" className="app-label">
                       פירוט הפנייה{requiredMark}
                     </label>
                     <textarea
                       id="support-message"
-                      className={`${fieldClass} min-h-36 resize-y`}
-                      style={fieldStyle}
+                      className={`${fieldClass} resize-y`}
+                      style={{ ...fieldStyle, minHeight: "9.5rem" }}
                       value={form.message}
                       aria-required="true"
                       aria-describedby="support-message-hint"
@@ -766,40 +769,70 @@ export default function SupportPage() {
                     </p>
                   </div>
 
-                  <p className="app-hint">
-                    {requiredMark} שדות חובה
-                  </p>
-
-                  {guestCaptchaEnabled && (
-                    <div className="app-field">
-                      <p className="app-hint">
-                        אימות אבטחה נדרש לפני שליחת הפנייה.
-                      </p>
-                      <TurnstileWidget
-                        siteKey={captchaSiteKey}
-                        theme={theme}
-                        onToken={(token) => setCaptchaToken(token)}
-                        onExpire={() => setCaptchaToken("")}
-                        onError={() => {
-                          setCaptchaToken("")
-                          setError(
-                            "אימות האבטחה אינו זמין כרגע. אנא נסו שוב בעוד רגע.",
-                          )
-                        }}
-                        resetSignal={captchaReset}
-                      />
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={
-                      sending || (guestCaptchaEnabled && !captchaToken)
-                    }
-                    className="app-btn w-full py-3"
+                  <div
+                    className="space-y-4 border-t pt-5"
+                    style={{ borderColor: "var(--color-border)" }}
                   >
-                    {sending ? "שולח…" : "שליחת הפנייה"}
-                  </button>
+                    <p className="app-hint">
+                      {requiredMark} שדות חובה
+                    </p>
+
+                    {guestCaptchaEnabled && (
+                      <div
+                        className="flex flex-col items-center gap-3 rounded-[var(--radius-lg)] border px-5 py-5 text-center sm:px-6"
+                        style={{
+                          borderColor:
+                            "color-mix(in srgb, var(--color-primary) 24%, var(--color-border))",
+                          background:
+                            "color-mix(in srgb, var(--color-card) 90%, var(--color-background))",
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon
+                            name="shield"
+                            size={15}
+                            aria-hidden="true"
+                            style={{ color: "var(--color-primary)" }}
+                          />
+                          <span
+                            className="text-xs font-semibold tracking-wide"
+                            style={{ color: "var(--color-foreground)" }}
+                          >
+                            אימות אבטחה
+                          </span>
+                        </div>
+                        <p className="app-hint max-w-sm">
+                          אימות קצר כדי שנוכל לשלוח את הפנייה. אין צורך
+                          בחשבון.
+                        </p>
+                        <div className="flex w-full justify-center pt-0.5">
+                          <TurnstileWidget
+                            siteKey={captchaSiteKey}
+                            theme={theme}
+                            onToken={(token) => setCaptchaToken(token)}
+                            onExpire={() => setCaptchaToken("")}
+                            onError={() => {
+                              setCaptchaToken("")
+                              setError(
+                                "אימות האבטחה אינו זמין כרגע. אנא נסו שוב בעוד רגע.",
+                              )
+                            }}
+                            resetSignal={captchaReset}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={
+                        sending || (guestCaptchaEnabled && !captchaToken)
+                      }
+                      className="app-btn w-full py-3.5 text-sm font-semibold"
+                    >
+                      {sending ? "שולח…" : "שליחת הפנייה"}
+                    </button>
+                  </div>
                 </form>
               )}
             </div>
