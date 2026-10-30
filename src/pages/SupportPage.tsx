@@ -38,7 +38,6 @@ import Icon from "../components/icons"
 
 import Modal from "../components/Modal"
 import PageHeader from "../components/ui/PageHeader"
-import EmptyState from "../components/ui/EmptyState"
 import Alert from "../components/ui/Alert"
 
 const fieldClass = "w-full px-3.5 py-2.5 text-sm outline-none"
@@ -47,12 +46,6 @@ const fieldStyle = {
   background: "var(--color-card)",
   borderColor: "var(--color-border)",
   color: "var(--color-foreground)",
-} as const
-
-const readOnlyFieldStyle = {
-  ...fieldStyle,
-  background: "var(--color-muted)",
-  color: "var(--color-muted-foreground)",
 } as const
 
 const requiredMark = (
@@ -353,7 +346,7 @@ function ConversationModal({
 }
 
 export default function SupportPage() {
-  const { user, actor, orders } = useApp()
+  const { user, actor } = useApp()
   const location = useLocation()
   const inDashboard = location.pathname.startsWith("/dashboard")
 
@@ -366,12 +359,11 @@ export default function SupportPage() {
 
   const c = useContent()
 
+  /* Only the three decision fields are edited here. Identity comes from the
+   * session, and the optional phone/order associations were removed to keep
+   * the form to one compact screen. */
   const [form, setForm] = useState({
-    customer_name: user ? `${user.first_name} ${user.last_name}` : "",
-    customer_email: user?.email ?? "",
-    customer_phone: user?.phone ?? "",
     topic: "GENERAL" as InquiryTopic,
-    related_order_id: "",
     subject: "",
     message: "",
   })
@@ -388,16 +380,14 @@ export default function SupportPage() {
    * dialog instead of a stale copy. */
   const opened = myInquiries.find((i) => i.inquiry_id === openId) ?? null
 
-  /* Identity fields are display-only for a signed-in customer: the values
-   * come straight from the authenticated profile, and the service layer
-   * re-derives them server-side regardless of what is submitted. */
-  const identityLocked = user !== null
+  /* Identity is display-only: the profile supplies it and the service layer
+   * re-derives it server-side regardless of what is submitted. */
+  const identityName =
+    `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() ||
+    user?.email ||
+    ""
 
-  const identityName = user
-    ? `${user.first_name} ${user.last_name}`.trim() || user.email
-    : form.customer_name
-
-  const identityEmail = user ? user.email : form.customer_email
+  const identityEmail = user?.email ?? ""
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -409,11 +399,9 @@ export default function SupportPage() {
     const result = await createInquiry(actor, {
       customer_name: identityName,
       customer_email: identityEmail,
-      customer_phone: form.customer_phone || undefined,
       subject: form.subject,
       message: form.message,
       topic: form.topic,
-      related_order_id: form.related_order_id || undefined,
     })
 
     setSending(false)
@@ -424,7 +412,7 @@ export default function SupportPage() {
     }
 
     setSubmitted(result.data)
-    setForm({ ...form, subject: "", message: "", related_order_id: "" })
+    setForm({ ...form, subject: "", message: "" })
   }
 
   const heroTitle = c("support.hero.title") || "פנייה לשירות הלקוחות"
@@ -435,7 +423,7 @@ export default function SupportPage() {
       className={
         inDashboard
           ? "page-enter"
-          : "page-enter px-5 py-10 sm:px-8 md:py-14 lg:px-12"
+          : "page-enter px-5 py-8 sm:px-8 md:py-10 lg:px-12"
       }
     >
       <div className="app-page app-page--content">
@@ -497,17 +485,31 @@ export default function SupportPage() {
             </div>
           </section>
         ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start lg:gap-8 xl:gap-10">
-          <section className="app-surface" aria-labelledby="support-form-title">
-            <div className="app-surface-head">
-              <div>
-                <h2 id="support-form-title" className="app-section-title">
-                  פנייה לשירות הלקוחות
-                </h2>
-                <p className="app-hint mt-1.5">
-                  הפנייה נשלחת מהחשבון המחובר, וכל השיחה נשמרת ב"הפניות שלי".
-                </p>
-              </div>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,0.85fr)] lg:items-start lg:gap-6">
+          <section
+            className="rounded-[var(--radius-lg)] border bg-[var(--color-card)]"
+            style={{
+              borderColor: "var(--color-border)",
+              boxShadow: "var(--app-shadow)",
+            }}
+            aria-labelledby="support-form-title"
+          >
+            <div
+              className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-3.5"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              <h2
+                id="support-form-title"
+                className="font-display text-lg font-semibold"
+              >
+                פנייה חדשה
+              </h2>
+              <span
+                className="text-[11px]"
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                נשלח מהחשבון שלך
+              </span>
               {submitted && (
                 <span className="app-badge app-badge--success">
                   <Icon name="check" size={11} /> נשלחה
@@ -515,23 +517,20 @@ export default function SupportPage() {
               )}
             </div>
 
-            <div
-              className="app-surface-body"
-              style={{ padding: "clamp(1.4rem, 2.4vw, 1.9rem)" }}
-            >
+            <div className="p-4 sm:p-5">
               {submitted ? (
-                <div className="mx-auto max-w-md py-2 text-center">
+                <div className="mx-auto max-w-md py-1 text-center">
                   <span
-                    className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
+                    className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
                     style={{
                       background: "rgba(79,122,79,0.12)",
                       color: "var(--color-success)",
                     }}
                     aria-hidden="true"
                   >
-                    <Icon name="checkCircle" size={26} />
+                    <Icon name="checkCircle" size={22} />
                   </span>
-                  <h3 className="mb-2 font-display text-2xl font-semibold">
+                  <h3 className="mb-2 font-display text-xl font-semibold">
                     הפנייה התקבלה
                   </h3>
                   <p className="text-sm app-muted">מספר המעקב שלך:</p>
@@ -560,86 +559,54 @@ export default function SupportPage() {
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-7">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   {error && (
                     <Alert tone="error" title="לא הצלחנו לשלוח את הפנייה">
                       {error}
                     </Alert>
                   )}
 
-                  <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                    <div className="app-field content-start">
-                      <label htmlFor="support-name" className="app-label">
-                        שם מלא{requiredMark}
-                      </label>
-                      <input
-                        id="support-name"
-                        className={fieldClass}
-                        style={
-                          identityLocked ? readOnlyFieldStyle : fieldStyle
-                        }
-                        value={identityName}
-                        readOnly={identityLocked}
-                        aria-required="true"
-                        aria-describedby={
-                          identityLocked ? "support-identity-note" : undefined
-                        }
-                        onChange={(e) => {
-                          if (identityLocked) return
-                          setForm({ ...form, customer_name: e.target.value })
+                  <div
+                    className="flex flex-col gap-3 rounded-[var(--radius-md)] border px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    style={{
+                      borderColor: "var(--color-border)",
+                      background: "var(--color-background)",
+                    }}
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        className="flex h-8 w-8 flex-none items-center justify-center rounded-full"
+                        style={{
+                          background:
+                            "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+                          color: "var(--color-primary)",
                         }}
-                      />
-                      {identityLocked && (
-                        <p id="support-identity-note" className="app-hint">
-                          נקבע לפי החשבון המחובר ואינו ניתן לעריכה.
+                        aria-hidden="true"
+                      >
+                        <Icon name="user" size={14} />
+                      </span>
+                      <div className="min-w-0">
+                        <p
+                          className="text-[10px] font-medium tracking-wide"
+                          style={{ color: "var(--color-muted-foreground)" }}
+                        >
+                          הפנייה נשלחת בשם
                         </p>
-                      )}
+                        <p className="truncate text-sm font-semibold">
+                          {identityName}
+                        </p>
+                      </div>
                     </div>
-
-                    <div className="app-field content-start">
-                      <label htmlFor="support-email" className="app-label">
-                        כתובת אימייל{requiredMark}
-                      </label>
-                      <input
-                        id="support-email"
-                        dir="ltr"
-                        type="email"
-                        className={`${fieldClass} text-start`}
-                        style={
-                          identityLocked ? readOnlyFieldStyle : fieldStyle
-                        }
-                        value={identityEmail}
-                        readOnly={identityLocked}
-                        aria-required="true"
-                        aria-describedby={
-                          identityLocked ? "support-identity-note" : undefined
-                        }
-                        onChange={(e) => {
-                          if (identityLocked) return
-                          setForm({ ...form, customer_email: e.target.value })
-                        }}
-                      />
-                    </div>
+                    <p
+                      className="truncate text-xs"
+                      dir="ltr"
+                      style={{ color: "var(--color-muted-foreground)" }}
+                    >
+                      {identityEmail}
+                    </p>
                   </div>
 
-                  <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                    <div className="app-field content-start">
-                      <label htmlFor="support-phone" className="app-label">
-                        טלפון (אופציונלי)
-                      </label>
-                      <input
-                        id="support-phone"
-                        dir="ltr"
-                        type="tel"
-                        className={`${fieldClass} text-start`}
-                        style={fieldStyle}
-                        value={form.customer_phone}
-                        onChange={(e) =>
-                          setForm({ ...form, customer_phone: e.target.value })
-                        }
-                      />
-                    </div>
-
+                  <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
                     <div className="app-field content-start">
                       <label htmlFor="support-topic" className="app-label">
                         נושא הפנייה
@@ -665,50 +632,23 @@ export default function SupportPage() {
                         )}
                       </select>
                     </div>
-                  </div>
 
-                  {orders.length > 0 && (
                     <div className="app-field content-start">
-                      <label htmlFor="support-order" className="app-label">
-                        שיוך להזמנה (אופציונלי)
+                      <label htmlFor="support-subject" className="app-label">
+                        כותרת קצרה{requiredMark}
                       </label>
-                      <select
-                        id="support-order"
+                      <input
+                        id="support-subject"
                         className={fieldClass}
                         style={fieldStyle}
-                        value={form.related_order_id}
+                        value={form.subject}
+                        aria-required="true"
+                        placeholder="נושא קצר לפנייה"
                         onChange={(e) =>
-                          setForm({ ...form, related_order_id: e.target.value })
+                          setForm({ ...form, subject: e.target.value })
                         }
-                      >
-                        <option value="">ללא שיוך</option>
-                        {orders.map((order) => (
-                          <option key={order.order_id} value={order.order_id}>
-                            {order.order_number} ·{" "}
-                            {new Date(order.created_at).toLocaleDateString(
-                              "he-IL",
-                            )}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
-                  )}
-
-                  <div className="app-field content-start">
-                    <label htmlFor="support-subject" className="app-label">
-                      כותרת הפנייה{requiredMark}
-                    </label>
-                    <input
-                      id="support-subject"
-                      className={fieldClass}
-                      style={fieldStyle}
-                      value={form.subject}
-                      aria-required="true"
-                      placeholder="נושא קצר לפנייה"
-                      onChange={(e) =>
-                        setForm({ ...form, subject: e.target.value })
-                      }
-                    />
                   </div>
 
                   <div className="app-field content-start">
@@ -718,7 +658,7 @@ export default function SupportPage() {
                     <textarea
                       id="support-message"
                       className={`${fieldClass} resize-y`}
-                      style={{ ...fieldStyle, minHeight: "9.5rem" }}
+                      style={{ ...fieldStyle, minHeight: "7.5rem" }}
                       value={form.message}
                       aria-required="true"
                       aria-describedby="support-message-hint"
@@ -727,35 +667,39 @@ export default function SupportPage() {
                       }
                     />
                     <p id="support-message-hint" className="app-hint">
-                      לפחות 10 תווים - ככל שתפרטו יותר, נוכל לעזור מהר יותר.
+                      לפחות 10 תווים.
                     </p>
                   </div>
 
-                  <div
-                    className="space-y-4 border-t pt-5"
-                    style={{ borderColor: "var(--color-border)" }}
+                  <button
+                    type="submit"
+                    disabled={sending}
+                    className="app-btn w-full py-3 text-sm font-semibold"
                   >
-                    <p className="app-hint">
-                      {requiredMark} שדות חובה
-                    </p>
-
-                    <button
-                      type="submit"
-                      disabled={sending}
-                      className="app-btn w-full py-3.5 text-sm font-semibold"
-                    >
-                      {sending ? "שולח…" : "שליחת הפנייה"}
-                    </button>
-                  </div>
+                    {sending ? "שולח…" : "שליחת הפנייה"}
+                  </button>
                 </form>
               )}
             </div>
           </section>
 
-          <aside className="space-y-6">
-            <section className="app-surface" aria-labelledby="support-history-title">
-              <div className="app-surface-head">
-                <h2 id="support-history-title" className="app-section-title">
+          <aside>
+            <section
+              className="rounded-[var(--radius-lg)] border bg-[var(--color-card)]"
+              style={{
+                borderColor: "var(--color-border)",
+                boxShadow: "var(--app-shadow)",
+              }}
+              aria-labelledby="support-history-title"
+            >
+              <div
+                className="flex items-center justify-between gap-2 border-b px-4 py-3"
+                style={{ borderColor: "var(--color-border)" }}
+              >
+                <h2
+                  id="support-history-title"
+                  className="font-display text-base font-semibold"
+                >
                   הפניות שלי
                 </h2>
                 {myInquiries.length > 0 && (
@@ -764,15 +708,19 @@ export default function SupportPage() {
                   </span>
                 )}
               </div>
-              <div className="app-surface-body">
+              <div className="p-3.5">
                 {myInquiries.length === 0 ? (
-                  <EmptyState
-                    icon="inbox"
-                    title="אין עדיין פניות"
-                    description="פנייה חדשה שתשלחו תופיע כאן עם מספר מעקב וסטטוס."
-                  />
+                  <div
+                    className="rounded-[var(--radius-md)] border border-dashed px-4 py-6 text-center"
+                    style={{ borderColor: "var(--color-border)" }}
+                  >
+                    <p className="text-sm font-medium">אין עדיין פניות</p>
+                    <p className="app-hint mt-1">
+                      פנייה חדשה תופיע כאן עם מספר מעקב וסטטוס.
+                    </p>
+                  </div>
                 ) : (
-                  <ul className="space-y-3">
+                  <ul className="space-y-2.5">
                     {myInquiries.map((inquiry) => {
                       /* Counted from the store so the list re-renders when a
                        * reply is mirrored in, and so the customer can see that
@@ -801,7 +749,7 @@ export default function SupportPage() {
                             onClick={() => setOpenId(inquiry.inquiry_id)}
                             aria-haspopup="dialog"
                             aria-label={`פתיחת שיחה לפנייה ${inquiry.ticket_number}: ${inquiry.subject}`}
-                            className="w-full rounded-[var(--radius-md)] border p-3.5 text-start transition-colors hover:border-[var(--color-primary)]"
+                            className="w-full rounded-[var(--radius-md)] border p-3 text-start transition-colors hover:border-[var(--color-primary)]"
                             style={{
                               borderColor: "var(--color-border)",
                               background: "var(--color-background)",
@@ -847,7 +795,7 @@ export default function SupportPage() {
                                 נפתרה ב־{resolvedLabel}
                               </p>
                             )}
-                            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                               <span
                                 className="inline-flex items-center gap-1.5 text-xs"
                                 style={{
@@ -886,50 +834,6 @@ export default function SupportPage() {
               </div>
             </section>
 
-            <section className="app-surface" aria-labelledby="support-tips-title">
-              <div className="app-surface-head">
-                <h2 id="support-tips-title" className="app-section-title">
-                  לפני שפונים
-                </h2>
-              </div>
-              <div className="app-surface-body">
-                <ul className="space-y-3 text-sm app-muted">
-                  <li className="flex gap-2.5">
-                    <Icon
-                      name="bookOpen"
-                      size={15}
-                      className="mt-0.5 flex-shrink-0"
-                      style={{ color: "var(--color-primary)" }}
-                      aria-hidden="true"
-                    />
-                    קובץ הקריאה לא נפתח? ודאו שאתם מחוברים ושמופיעה לכם גישה
-                    בספרייה.
-                  </li>
-                  <li className="flex gap-2.5">
-                    <Icon
-                      name="receipt"
-                      size={15}
-                      className="mt-0.5 flex-shrink-0"
-                      style={{ color: "var(--color-primary)" }}
-                      aria-hidden="true"
-                    />
-                    שאלות על חיוב או חשבונית - צרפו את מספר ההזמנה כדי שנוכל
-                    לשייך את הפנייה.
-                  </li>
-                  <li className="flex gap-2.5">
-                    <Icon
-                      name="card"
-                      size={15}
-                      className="mt-0.5 flex-shrink-0"
-                      style={{ color: "var(--color-primary)" }}
-                      aria-hidden="true"
-                    />
-                    בקשות להחזר כספי מטופלות מול ההזמנה המקורית ולא דורשות פרטי
-                    כרטיס.
-                  </li>
-                </ul>
-              </div>
-            </section>
           </aside>
         </div>
         )}
