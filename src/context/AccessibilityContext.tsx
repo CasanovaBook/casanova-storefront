@@ -48,43 +48,40 @@ export const FONT_SCALE_MIN = 90
 export const FONT_SCALE_MAX = 160
 export const FONT_SCALE_STEP = 10
 
+export type AccessibilityContrast = "normal" | "enhanced" | "high"
+
 export interface AccessibilityPreferences {
   /** Root font size, as a percentage of the browser's own default. */
   fontScale: number
-  /** Black/white/yellow theme with strong borders. */
-  highContrast: boolean
-  /** Raises the contrast of muted text without repainting the theme. */
-  textContrast: boolean
+  /** Display contrast level, applied as `data-a11y-contrast`. */
+  contrast: AccessibilityContrast
   /** Underlines every link. */
   highlightLinks: boolean
   /** Swaps the display serif for the body sans. */
   readableFont: boolean
 }
 
-export type AccessibilityToggle = Exclude<keyof AccessibilityPreferences, "fontScale">
+export type AccessibilityToggle = Exclude<
+  keyof AccessibilityPreferences,
+  "fontScale" | "contrast"
+>
 
 const DEFAULT_PREFERENCES: AccessibilityPreferences = {
   fontScale: FONT_SCALE_DEFAULT,
-  highContrast: false,
-  textContrast: false,
+  contrast: "normal",
   highlightLinks: false,
   readableFont: false,
 }
 
-const TOGGLE_KEYS: AccessibilityToggle[] = [
-  "highContrast",
-  "textContrast",
-  "highlightLinks",
-  "readableFont",
-]
+const TOGGLE_KEYS: AccessibilityToggle[] = ["highlightLinks", "readableFont"]
 
 /** The data attribute that drives each toggle in `src/index.css`. */
 const TOGGLE_ATTRIBUTES: Record<AccessibilityToggle, string> = {
-  highContrast: "a11yContrast",
-  textContrast: "a11yTextContrast",
   highlightLinks: "a11yLinks",
   readableFont: "a11yReadableFont",
 }
+
+const CONTRAST_MODES: AccessibilityContrast[] = ["normal", "enhanced", "high"]
 
 interface StoredState {
   preferences: AccessibilityPreferences
@@ -104,6 +101,20 @@ function sanitizePreferences(raw: unknown): AccessibilityPreferences {
 
   const scale = Number(source.fontScale)
   if (Number.isFinite(scale)) preferences.fontScale = clampFontScale(scale)
+
+  /* v2 payloads written before the three-level control stored two booleans.
+   * Map them once so an existing choice survives the upgrade; the new payload
+   * only stores `contrast`. */
+  if (
+    typeof source.contrast === "string" &&
+    CONTRAST_MODES.includes(source.contrast as AccessibilityContrast)
+  ) {
+    preferences.contrast = source.contrast as AccessibilityContrast
+  } else if (source.highContrast === true) {
+    preferences.contrast = "high"
+  } else if (source.textContrast === true) {
+    preferences.contrast = "enhanced"
+  }
 
   for (const key of TOGGLE_KEYS) {
     if (typeof source[key] === "boolean")
@@ -139,6 +150,7 @@ function loadState(): StoredState {
 function isDefaultPreferences(preferences: AccessibilityPreferences): boolean {
   return (
     preferences.fontScale === FONT_SCALE_DEFAULT &&
+    preferences.contrast === "normal" &&
     TOGGLE_KEYS.every((key) => preferences[key] === false)
   )
 }
@@ -152,6 +164,12 @@ function applyPreferences(preferences: AccessibilityPreferences) {
   } else {
     root.style.fontSize = `${preferences.fontScale}%`
   }
+
+  /* The three contrast levels share one attribute so CSS switches palettes
+   * atomically. The old boolean attribute is deleted in case a previous
+   * session left it on <html>. */
+  root.dataset.a11yContrast = preferences.contrast
+  if ("a11yTextContrast" in root.dataset) delete root.dataset.a11yTextContrast
 
   for (const key of TOGGLE_KEYS) {
     root.dataset[TOGGLE_ATTRIBUTES[key]] = preferences[key] ? "true" : "false"
@@ -167,6 +185,7 @@ interface AccessibilityContextValue {
   /** The control that opened the panel, so focus can go back to it. */
   opener: HTMLElement | null
   setToggle: (key: AccessibilityToggle, value: boolean) => void
+  setContrast: (contrast: AccessibilityContrast) => void
   setFontScale: (value: number) => void
   stepFontScale: (direction: 1 | -1) => void
   resetPreferences: () => void
@@ -217,6 +236,10 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
 
   const setToggle = useCallback((key: AccessibilityToggle, value: boolean) => {
     setPreferences((current) => ({ ...current, [key]: value }))
+  }, [])
+
+  const setContrast = useCallback((contrast: AccessibilityContrast) => {
+    setPreferences((current) => ({ ...current, contrast }))
   }, [])
 
   const setFontScale = useCallback((value: number) => {
@@ -291,6 +314,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
       panelOpen,
       opener,
       setToggle,
+      setContrast,
       setFontScale,
       stepFontScale,
       resetPreferences,
@@ -305,6 +329,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
       panelOpen,
       opener,
       setToggle,
+      setContrast,
       setFontScale,
       stepFontScale,
       resetPreferences,

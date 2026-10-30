@@ -11,6 +11,7 @@ import {
   FONT_SCALE_MAX,
   FONT_SCALE_MIN,
   useAccessibility,
+  type AccessibilityContrast,
 } from "../../context/AccessibilityContext"
 import Icon from "../icons"
 import AccessibilityLauncherLogo from "./AccessibilityLauncherLogo"
@@ -50,11 +51,9 @@ const PANEL_TITLE_ID = "accessibility-panel-title"
 const VIEWPORT_MARGIN = 12
 const ANCHOR_GAP = 12
 
-type ContrastMode = "normal" | "text" | "high"
-
-const CONTRAST_OPTIONS: { value: ContrastMode; label: string }[] = [
+const CONTRAST_OPTIONS: { value: AccessibilityContrast; label: string }[] = [
   { value: "normal", label: "רגילה" },
-  { value: "text", label: "מוגברת" },
+  { value: "enhanced", label: "מוגברת" },
   { value: "high", label: "גבוהה" },
 ]
 
@@ -84,6 +83,7 @@ export default function AccessibilityWidget() {
     panelOpen,
     opener,
     setToggle,
+    setContrast,
     setFontScale,
     stepFontScale,
     resetPreferences,
@@ -321,16 +321,7 @@ export default function AccessibilityWidget() {
     )
   }
 
-  const contrastMode: ContrastMode = preferences.highContrast
-    ? "high"
-    : preferences.textContrast
-      ? "text"
-      : "normal"
-
-  const setContrast = (mode: ContrastMode) => {
-    setToggle("highContrast", mode === "high")
-    setToggle("textContrast", mode === "text")
-  }
+  const contrastMode = preferences.contrast
 
   return (
     <>

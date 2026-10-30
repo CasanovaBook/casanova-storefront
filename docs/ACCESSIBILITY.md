@@ -100,7 +100,7 @@ reduced-motion request is still honoured independently in the same CSS file.
 
 The two contrast levels never stack: choosing one clears the other, and both
 combine with the light theme through
-`:root[data-theme="light"][data-a11y-contrast="true"]` rather than fighting for
+`:root[data-theme="light"][data-a11y-contrast="high"]` rather than fighting for
 the same specificity.
 
 ### Hiding the button

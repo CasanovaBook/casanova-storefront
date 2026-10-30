@@ -5043,21 +5043,58 @@ html[data-app-shell='true'] .a11y-launcher {
  * fighting each other.
  * ───────────────────────────────────────────────────────────── */
 
-/* Higher-contrast body text without changing the theme's character. */
-:root[data-a11y-text-contrast='true'] {
-  --color-muted-foreground: #cbd2e6;
-  --color-secondary-foreground: #e8ebf6;
+/* ── Enhanced: brighter muted text and sharper borders ─────────────────
+ * A restrained step above the default palette. It changes text and border
+ * tokens only; surfaces keep the luxury composition. */
+:root[data-a11y-contrast='enhanced'] {
+  --color-muted-foreground: #d9d0c4;
+  --color-secondary-foreground: #f2ece2;
+  --color-border: #6a6052;
+  --color-ring: #f0b07a;
 }
-:root[data-theme='light'][data-a11y-text-contrast='true'] {
+:root[data-theme='light'][data-a11y-contrast='enhanced'] {
   --color-muted-foreground: #454b60;
   --color-secondary-foreground: #2a2f42;
+  --color-border: #8a7a66;
+  --color-ring: #7a3f1c;
 }
 
-/* High contrast: black surfaces, white text, yellow interactive, and borders
- * that are actually visible. Applied to the tokens so every page picks it up,
- * including the ones that render their colours through inline `var(...)`
- * references. */
-:root[data-a11y-contrast='true'] {
+/* The landing page owns a separate palette (--cv-*), so enhanced has to tune
+ * that palette as well or the storefront would ignore the setting. */
+:root[data-a11y-contrast='enhanced'] .cv-page {
+  --cv-on-dark-soft: #d9cec0;
+  --cv-line-dark: rgba(244, 238, 228, 0.3);
+  --cv-ink-soft: #4c443b;
+  --cv-line-cream: #b9a893;
+  --cv-camel-light: #e8a76b;
+  --cv-cream: #fffaf2;
+}
+
+/* Fixed chrome uses literal colours rather than tokens. */
+:root[data-a11y-contrast='enhanced'] .site-header {
+  background: rgba(12, 11, 9, 0.98);
+  border-bottom-color: rgba(244, 238, 228, 0.28);
+}
+:root[data-a11y-contrast='enhanced'] .site-footer {
+  color: #d9d0c4;
+  border-top-color: rgba(244, 238, 228, 0.28);
+}
+:root[data-a11y-contrast='enhanced'] .site-footer-tagline,
+:root[data-a11y-contrast='enhanced'] .site-footer-nav a,
+:root[data-a11y-contrast='enhanced'] .site-footer-legal a,
+:root[data-a11y-contrast='enhanced'] .site-footer-utility .a11y-footer-link,
+:root[data-a11y-contrast='enhanced'] .site-footer-bottom {
+  color: #d9d0c4;
+}
+:root[data-a11y-contrast='enhanced'] .site-footer-heading {
+  color: #f0b07a;
+}
+
+/* ── High: black surfaces, white text, yellow interactive ──────────────
+ * Applied to the shared tokens so every token-driven page picks it up,
+ * including the ones that render colours through inline `var(...)`. */
+:root[data-a11y-contrast='high'] {
+  color-scheme: dark;
   --color-background: #000000;
   --color-foreground: #ffffff;
   --color-card: #000000;
@@ -5075,32 +5112,154 @@ html[data-app-shell='true'] .a11y-launcher {
   --color-success: #4dff4d;
   --color-danger: #ff8080;
   --scroll-thumb: #ffffff;
+
+  /* The dark navigation rail is a fixed surface in every theme. */
+  --app-nav-bg: #000000;
+  --app-nav-surface: #000000;
+  --app-nav-ink: #ffffff;
+  --app-nav-muted: #ffffff;
+  --app-nav-border: #ffffff;
+  --app-nav-accent: #ffe066;
+  --app-nav-active: rgba(255, 224, 102, 0.18);
+  --app-overlay: rgba(0, 0, 0, 0.8);
 }
 /* Surfaces that paint their own gradient or translucent background must not
  * wash the text out. */
-:root[data-a11y-contrast='true'] .glass,
-:root[data-a11y-contrast='true'] .card-glow {
+:root[data-a11y-contrast='high'] .glass,
+:root[data-a11y-contrast='high'] .card-glow {
   background: #000000;
   border-color: #ffffff;
   box-shadow: none;
 }
-:root[data-a11y-contrast='true'] .btn-gradient {
+:root[data-a11y-contrast='high'] .btn-gradient,
+:root[data-a11y-contrast='high'] .app-btn,
+:root[data-a11y-contrast='high'] .app-btn:hover {
   background: #ffe066;
   color: #000000;
   box-shadow: none;
 }
-:root[data-a11y-contrast='true'] .theme-toggle,
-:root[data-a11y-contrast='true'] .theme-toggle:hover {
+:root[data-a11y-contrast='high'] .theme-toggle,
+:root[data-a11y-contrast='high'] .theme-toggle:hover {
   background: #000000;
   border-color: #ffffff;
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-:root[data-a11y-contrast='true'] :focus-visible {
+:root[data-a11y-contrast='high'] :focus-visible {
   outline: 4px solid #ffffff;
   outline-offset: 3px;
   box-shadow: 0 0 0 7px #000000;
+}
+
+/* Landing palette. `--cv-cream` doubles as text-on-dark, so it becomes white
+ * while the light surfaces that use it are repainted black below. */
+:root[data-a11y-contrast='high'] .cv-page {
+  --cv-black: #000000;
+  --cv-black-soft: #000000;
+  --cv-cream: #ffffff;
+  --cv-cream-light: #000000;
+  --cv-cream-dark: #000000;
+  --cv-camel: #ffe066;
+  --cv-camel-light: #ffe066;
+  --cv-camel-dark: #ffe066;
+  --cv-ink: #ffffff;
+  --cv-ink-soft: #ffffff;
+  --cv-on-dark: #ffffff;
+  --cv-on-dark-soft: #ffffff;
+  --cv-line-dark: #ffffff;
+  --cv-line-cream: #ffffff;
+  --cv-focus: #ffe066;
+  background: #000000;
+  color: #ffffff;
+}
+/* Light landing surfaces (and their hover fills) become black-on-white. */
+:root[data-a11y-contrast='high'] .cv-cream,
+:root[data-a11y-contrast='high'] .cv-paper,
+:root[data-a11y-contrast='high'] .cv-strip,
+:root[data-a11y-contrast='high'] .cv-about-photo,
+:root[data-a11y-contrast='high'] .cv-toc,
+:root[data-a11y-contrast='high'] .cv-modal,
+:root[data-a11y-contrast='high'] .cv-footer {
+  background: #000000;
+  color: #ffffff;
+  border-color: #ffffff;
+  box-shadow: none;
+}
+:root[data-a11y-contrast='high'] .cv-btn--outline-ink:hover {
+  background: #000000;
+}
+:root[data-a11y-contrast='high'] .cv-page .skip-link {
+  background: #ffe066;
+  color: #000000;
+  border-color: #ffe066;
+}
+/* Gradient bands would otherwise survive the token swap. */
+:root[data-a11y-contrast='high'] .cv-hero,
+:root[data-a11y-contrast='high'] .cv-quote-band,
+:root[data-a11y-contrast='high'] .cv-purchase,
+:root[data-a11y-contrast='high'] .cv-mobile-overlay {
+  background: #000000;
+}
+:root[data-a11y-contrast='high'] .cv-header,
+:root[data-a11y-contrast='high'] .cv-header[data-scrolled='true'] {
+  background: #000000;
+  border-bottom-color: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:root[data-a11y-contrast='high'] .cv-sticky {
+  background: #000000;
+  border-top-color: #ffe066;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:root[data-a11y-contrast='high'] .cv-btn--outline-ink,
+:root[data-a11y-contrast='high'] .cv-btn--ghost-dark {
+  border-color: #ffffff;
+}
+:root[data-a11y-contrast='high'] .cv-modal-backdrop {
+  background: #000000;
+}
+
+/* Public chrome is literal-coloured too. */
+:root[data-a11y-contrast='high'] .site-header {
+  --color-primary: #ffe066;
+  --color-primary-foreground: #000000;
+  --color-ring: #ffffff;
+  background: #000000;
+  color: #ffffff;
+  border-bottom-color: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:root[data-a11y-contrast='high'] .site-brand,
+:root[data-a11y-contrast='high'] .site-account-link {
+  color: #ffffff;
+}
+:root[data-a11y-contrast='high'] .site-footer {
+  --color-ring: #ffffff;
+  background: #000000;
+  color: #ffffff;
+  border-top-color: #ffffff;
+}
+:root[data-a11y-contrast='high'] .site-footer-top {
+  border-bottom-color: #ffffff;
+}
+:root[data-a11y-contrast='high'] .site-footer .site-brand-word,
+:root[data-a11y-contrast='high'] .site-footer-tagline,
+:root[data-a11y-contrast='high'] .site-footer-nav a,
+:root[data-a11y-contrast='high'] .site-footer-legal a,
+:root[data-a11y-contrast='high'] .site-footer-utility .a11y-footer-link,
+:root[data-a11y-contrast='high'] .site-footer-bottom {
+  color: #ffffff;
+}
+:root[data-a11y-contrast='high'] .site-footer-heading,
+:root[data-a11y-contrast='high'] .site-footer-age {
+  color: #ffe066;
+}
+:root[data-a11y-contrast='high'] .site-footer-age {
+  border-color: #ffe066;
 }
 
 /* Link highlighting: an underline that does not change the weight of the text,
