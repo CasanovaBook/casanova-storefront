@@ -837,7 +837,8 @@ CREATE INDEX idx_inquiries_created  ON inquiries (created_at DESC);
 CREATE TABLE inquiry_notes (
   note_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   inquiry_id  UUID        NOT NULL REFERENCES inquiries (inquiry_id) ON DELETE CASCADE,
-  author_id   UUID        NOT NULL REFERENCES users (user_id) ON DELETE RESTRICT,
+  author_id   UUID        REFERENCES users (user_id) ON DELETE RESTRICT, -- NULL for a guest email reply
+  author_email VARCHAR(255),                -- sender address when author_id is NULL
   content     TEXT        NOT NULL CHECK (length(btrim(content)) > 0),
   internal    BOOLEAN     NOT NULL DEFAULT TRUE,   -- TRUE = staff only, never shown to the customer
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()

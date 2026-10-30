@@ -47,13 +47,14 @@ interface InquiryRow {
 
 /** Columns this app reads back from `public.inquiry_notes`. */
 const INQUIRY_NOTE_COLUMNS =
-  "note_id, inquiry_id, author_id, content, internal, created_at"
+  "note_id, inquiry_id, author_id, author_email, content, internal, created_at"
 
 /** The `public.inquiry_notes` row as it arrives over the wire. */
 interface InquiryNoteRow {
   note_id: string
   inquiry_id: string
-  author_id: string
+  author_id: string | null
+  author_email?: string | null
   content: string
   internal?: boolean | null
   created_at: string
@@ -72,6 +73,7 @@ export function toInquiryNote(row: InquiryNoteRow): InquiryNote {
     note_id: row.note_id,
     inquiry_id: row.inquiry_id,
     author_id: row.author_id,
+    author_email: row.author_email ?? undefined,
     author_name: "",
     content: row.content,
     internal: row.internal ?? false,
@@ -306,6 +308,159 @@ export async function createMyInquiry(
       "STORAGE",
       err instanceof Error ? err.message : "שגיאת רשת בלתי צפויה.",
     )
+  }
+}
+
+export interface GuestInquiryInput {
+  name: string
+  email: string
+  phone?: string
+  subject: string
+  message: string
+  topic?: InquiryTopic
+  captchaToken?: string
+}
+
+/**
+ * Opens a ticket for a visitor without an account.
+ *
+ * The browser cannot write `public.inquiries` anonymously (0018), so the
+ * `support-inquiry` Edge Function is the public write path: it validates the
+ * payload, applies the per-instance rate limit, verifies Turnstile when
+ * configured, inserts through `create_guest_inquiry` with the service role and
+ * sends the numbered confirmation email. The row that comes back is the stored
+ * one - ticket number included - and `user_id` is already linked when the
+ * address belongs to an existing account.
+ */
+export async function createGuestInquiry(
+  input: GuestInquiryInput,
+): Promise<Result<Inquiry>> {
+  if (!isSupabaseConfigured) {
+    return fail("PROVIDER_NOT_CONFIGURED", "שרת Supabase אינו מוגדר.")
+  }
+
+  try {
+    const { data, error } = await requireSupabase().functions.invoke<{
+      inquiry?: InquiryRow
+      email_sent?: boolean
+    }>("support-inquiry", {
+      body: {
+        name: input.name,
+        email: input.email,
+        phone: input.phone ?? null,
+        subject: input.subject,
+        message: input.message,
+        topic: input.topic ?? "GENERAL",
+        captchaToken: input.captchaToken ?? "",
+      },
+    })
+
+    if (error) {
+      const context = (error as { context?: Response }).context
+      let message = error.message
+      let code: ErrorCode = "STORAGE"
+      let status: number | undefined
+
+      if (context) {
+        status = context.status
+        try {
+          const parsed = (await context.json()) as { error?: unknown }
+          if (typeof parsed?.error === "string") message = parsed.error
+        } catch {
+          /* keep the transport message */
+        }
+      }
+
+      if (status === 403) code = "FORBIDDEN"
+      else if (status === 400) code = "VALIDATION"
+      else if (status === 429) code = "CONFLICT"
+
+      return fail(code, message)
+    }
+
+    const row = data?.inquiry
+    if (!row?.inquiry_id)
+      return fail("STORAGE", "שמירת הפנייה לא הושלמה בשרת.")
+
+    return ok(toInquiry(row))
+  } catch (err) {
+    return fail(
+      "STORAGE",
+      err instanceof Error ? err.message : "שגיאת רשת בלתי צפויה.",
+    )
+  }
+}
+
+/**
+ * Attaches every unowned ticket whose address matches the signed-in profile
+ * to this account, and re-attributes its email-origin notes.
+ *
+ * Called before each customer-side ticket read, so a visitor who opened a
+ * ticket as a guest and later registered with the same address sees it under
+ * "הפניות שלי". Idempotent and best-effort: a refusal leaves the mirror
+ * untouched rather than blocking the read.
+ */
+export async function claimMyInquiries(): Promise<number | null> {
+  if (!isSupabaseConfigured) return null
+
+  try {
+    const { data, error } = await requireSupabase().rpc("claim_my_inquiries")
+
+    if (error) {
+      console.warn("[supabase-inquiries] claim refused:", error.message)
+      return null
+    }
+
+    return typeof data === "number" ? data : 0
+  } catch (err) {
+    console.warn(
+      "[supabase-inquiries] claim failed:",
+      err instanceof Error ? err.message : err,
+    )
+    return null
+  }
+}
+
+export type SupportMailAction = "confirmation" | "reply"
+
+/**
+ * Asks `support-mail` to deliver the numbered confirmation or a staff reply.
+ *
+ * Delivery is best-effort by design: the ticket or note is already stored, so
+ * a missing RESEND_API_KEY or a provider hiccup must not turn a successful
+ * action into an error. Callers ignore the boolean and the function logs its
+ * own refusals; the server records every attempt in `email_logs`.
+ */
+export async function sendSupportMail(
+  action: SupportMailAction,
+  inquiryId: string,
+  noteId?: string,
+): Promise<boolean> {
+  if (!isSupabaseConfigured) return false
+
+  try {
+    const { data, error } = await requireSupabase().functions.invoke<{
+      sent?: boolean
+    }>("support-mail", {
+      body: {
+        action,
+        inquiry_id: inquiryId,
+        ...(noteId ? { note_id: noteId } : {}),
+      },
+    })
+
+    if (error) {
+      console.warn("[supabase-inquiries] support mail refused:", error.message)
+      return false
+    }
+
+    return data?.sent === true
+  } catch (err) {
+    console.warn(
+      "[supabase-inquiries] support mail failed:",
+      err instanceof Error ? err.message : err,
+    )
+    return false
   }
 }
 

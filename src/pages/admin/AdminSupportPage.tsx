@@ -20,6 +20,7 @@ import { formatIsraelDateTime } from "../../lib/datetime"
 
 import {
   createInquiry,
+  isCustomerInquiryNote,
   INQUIRY_STATUS_LABEL,
   INQUIRY_TOPIC_LABEL,
 } from "../../lib/api-support"
@@ -451,15 +452,12 @@ function InquiryModal({
           ) : (
             <div className="space-y-2 mb-4">
               {notes.map((n) => {
-                /* Who wrote a message is backend data - `author_id`, which the
-                 * database stamps from the JWT - compared with the ticket's
-                 * own `user_id`. Nothing here is inferred from content, and a
-                 * ticket with no owner (the public form while signed out, or a
-                 * ticket logged from a phone call) can only ever be written to
-                 * by staff, so every note there is the team's. */
-                const fromCustomer =
-                  inquiry.user_id !== undefined &&
-                  n.author_id === inquiry.user_id
+                /* Who wrote a message is backend data: `author_id` for accounts, and the
+                 * recorded `author_email` for a guest reply that arrived by email
+                 * from an address with no users row. The helper compares both with
+                 * the ticket's owner, so a guest's own email reply is never
+                 * labelled as staff. */
+                const fromCustomer = isCustomerInquiryNote(n, inquiry)
 
                 return (
                   <div
