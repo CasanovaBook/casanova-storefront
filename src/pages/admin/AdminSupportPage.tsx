@@ -135,6 +135,7 @@ function InquiryModal({
     updateInquiry,
     linkInquiryToOrder,
     addInquiryNote,
+    deleteInquiry,
   } = useAdmin()
 
   const [noteDraft, setNoteDraft] = useState("")
@@ -142,6 +143,14 @@ function InquiryModal({
   const [internal, setInternal] = useState(true)
 
   const [error, setError] = useState("")
+
+  /* Deletion is two-step: the danger row arms the confirmation dialog, and
+   * only the dialog's destructive button calls the backend. */
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const [deleting, setDeleting] = useState(false)
+
+  const [deleteError, setDeleteError] = useState("")
 
   const canManage = can(adminRole, "manage_support")
 
@@ -191,6 +200,30 @@ function InquiryModal({
     setError("")
 
     setNoteDraft("")
+  }
+
+  const confirmDeletion = async () => {
+    if (deleting) return
+
+    setDeleting(true)
+
+    setDeleteError("")
+
+    const result = await deleteInquiry(inquiry.inquiry_id)
+
+    if (!result.ok) {
+      setDeleting(false)
+
+      setDeleteError(result.error)
+
+      return
+    }
+
+    /* The store has already dropped the ticket and its notes, so the parent
+     * list updates on this same commit; closing clears the selected id. */
+    setConfirmDelete(false)
+
+    onClose()
   }
 
   const details: { label: string, value: string, ltr?: boolean }[] = [
@@ -589,6 +622,96 @@ function InquiryModal({
             </button>
           </div>
         </div>
+
+        {canManage && (
+          <div
+            className="mt-6 flex flex-col gap-3 rounded-[var(--radius-md)] border p-4 sm:flex-row sm:items-center sm:justify-between"
+            style={{
+              borderColor:
+                "color-mix(in srgb, var(--color-danger) 32%, var(--color-border))",
+              background:
+                "color-mix(in srgb, var(--color-danger) 6%, var(--color-card))",
+            }}
+          >
+            <div>
+              <p
+                className="text-sm font-semibold"
+                style={{ color: "var(--color-danger)" }}
+              >
+                מחיקת פנייה
+              </p>
+              <p
+                className="mt-1 text-xs"
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                המחיקה לצמיתות תסיר את הפנייה ואת כל ההודעות בשיחה. לא ניתן
+                לשחזר אותה.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="app-btn-danger flex-shrink-0"
+              onClick={() => {
+                setDeleteError("")
+                setConfirmDelete(true)
+              }}
+            >
+              <Icon name="trash" size={15} aria-hidden="true" />
+              מחיקת הפנייה
+            </button>
+          </div>
+        )}
+
+        {confirmDelete && (
+          <Modal
+            size="sm"
+            align="center"
+            zIndex={110}
+            title="מחיקת פנייה לצמיתות"
+            onClose={() => {
+              if (!deleting) setConfirmDelete(false)
+            }}
+          >
+            <p className="text-sm leading-relaxed">
+              האם למחוק את הפנייה{" "}
+              <strong dir="ltr" className="font-mono">
+                {inquiry.ticket_number}
+              </strong>{" "}
+              ואת כל ההודעות שלה? הפעולה אינה ניתנת לביטול.
+            </p>
+
+            {deleteError && (
+              <p
+                className="mt-3 rounded-lg px-3 py-2 text-xs"
+                style={{
+                  background: "rgba(167,70,54,0.1)",
+                  color: "var(--color-danger)",
+                }}
+              >
+                {deleteError}
+              </p>
+            )}
+
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="app-btn-secondary"
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+              >
+                ביטול
+              </button>
+              <button
+                type="button"
+                className="app-btn-danger"
+                onClick={confirmDeletion}
+                disabled={deleting}
+              >
+                {deleting ? "מוחק…" : "מחיקה לצמיתות"}
+              </button>
+            </div>
+          </Modal>
+        )}
       </Modal>
   )
 }

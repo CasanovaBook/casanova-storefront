@@ -78,6 +78,7 @@ import {
 
 import {
   addInquiryNote,
+  deleteInquiry,
   grantAccess,
   getCustomerProfile,
   linkInquiryToOrder,
@@ -278,6 +279,8 @@ interface AdminContextValue {
     content: string,
     internal?: boolean,
   ) => Promise<Result<InquiryNote>>
+
+  deleteInquiry: (inquiryId: string) => Promise<Result<void>>
 
   /* Platform settings */
 
@@ -735,6 +738,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       addInquiryNote: (inquiryId, content, internal) =>
         addInquiryNote(actor, inquiryId, content, internal),
+
+      deleteInquiry: (inquiryId) => deleteInquiry(actor, inquiryId),
 
       updateSettings: (patch) => updateSettings(actor, patch),
     }

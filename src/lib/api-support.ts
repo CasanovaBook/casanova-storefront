@@ -41,6 +41,7 @@ import {
   createGuestInquiry,
   createInquiryNoteRemote,
   createMyInquiry,
+  deleteInquiryRemote,
   fetchMyInquiries,
   replyToMyInquiry,
   sendSupportMail,
@@ -490,6 +491,58 @@ export async function linkInquiryToOrder(
   return updateInquiry(actor, inquiryId, {
     related_order_id: orderId ?? undefined,
   })
+}
+
+/**
+ * Permanently removes one ticket and its conversation.
+ *
+ * A server-owned ticket goes through `delete_inquiry` (0030), which re-checks
+ * `is_admin()` and deletes the row; `inquiry_notes` disappears with it
+ * through ON DELETE CASCADE. The local mirror is pruned in the same call so
+ * the admin list updates immediately and realtime DELETEs stay consistent.
+ * Local-only tickets (offline driver) are removed from the document directly.
+ */
+export async function deleteInquiry(
+  actor: Actor | null,
+  inquiryId: string,
+): Promise<Result<void>> {
+  const denied = guard(actor, "manage_support")
+
+  if (denied) return denied
+
+  const inquiry = getDb().inquiries.find((i) => i.inquiry_id === inquiryId)
+
+  if (!inquiry) return fail("NOT_FOUND", "הפנייה לא נמצאה.")
+
+  if (isSupabaseConfigured && isUuid(inquiryId)) {
+    const remote = await deleteInquiryRemote(inquiryId)
+
+    if (!remote.ok) return remote
+  }
+
+  mutate((db) => {
+    db.inquiries = db.inquiries.filter((i) => i.inquiry_id !== inquiryId)
+
+    db.inquiry_notes = db.inquiry_notes.filter(
+      (n) => n.inquiry_id !== inquiryId,
+    )
+  })
+
+  writeAudit(actor, {
+    category: "INQUIRY",
+
+    action: "מחיקת פנייה",
+
+    target_type: "INQUIRY",
+
+    target_id: inquiryId,
+
+    target_label: `${inquiry.ticket_number} · ${inquiry.customer_name}`,
+
+    details: "הפנייה וכל הודעותיה נמחקו לצמיתות",
+  })
+
+  return ok(undefined)
 }
 
 export async function addInquiryNote(

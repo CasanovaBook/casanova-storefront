@@ -541,8 +541,54 @@ export async function updateInquiryRemote(
   }
 }
 
-/* ── Conversation (inquiry_notes) ─────────────────────── */
+/**
+ * Staff-only: deletes one ticket and, by the ON DELETE CASCADE on
+ * `inquiry_notes`, its whole conversation.
+ *
+ * There is deliberately no DELETE policy on `inquiries` (0018), so this RPC
+ * is the only write path: 0030 re-checks auth.uid() and is_admin() inside
+ * the database. Email history in `email_logs` has no foreign key here and
+ * survives.
+ */
+export async function deleteInquiryRemote(
+  inquiryId: string,
+): Promise<Result<void>> {
+  if (!isSupabaseConfigured) {
+    return fail("PROVIDER_NOT_CONFIGURED", "שרת Supabase אינו מוגדר.")
+  }
 
+  try {
+    const { error } = await requireSupabase().rpc("delete_inquiry", {
+      p_inquiry_id: inquiryId,
+    })
+
+    if (error) {
+      const refused = describeInquiryRefusal(
+        error.code ?? "",
+        error.message ?? "",
+      )
+
+      if (refused) return fail(refused.code, refused.error)
+
+      if (error.message?.includes("forbidden"))
+        return fail("FORBIDDEN", "אין הרשאה למחוק פנייה.")
+
+      if (error.message?.includes("inquiry_missing"))
+        return fail("NOT_FOUND", "הפנייה לא נמצאה.")
+
+      return fail("STORAGE", error.message)
+    }
+
+    return ok(undefined)
+  } catch (err) {
+    return fail(
+      "STORAGE",
+      err instanceof Error ? err.message : "שגיאת רשת בלתי צפויה.",
+    )
+  }
+}
+
+/* ── Conversation (inquiry_notes) ─────────────────────── */
 /**
  * Shared reader behind the two scoped reads below.
  *
