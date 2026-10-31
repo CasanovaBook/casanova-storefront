@@ -5428,6 +5428,93 @@ html[data-app-shell='true'] .a11y-launcher {
   font-variant-ligatures: none;
 }
 
+/* ── PDF text layer, highlights and note markers ───────────
+ * Adapted from pdf.js viewer's textLayer contract. The layer sits above the
+ * canvas and below the highlight/note layers; its spans are transparent but
+ * selectable so the reader can create anchored highlights without exposing
+ * the rendered PDF as selectable text.
+ */
+.pdfTextLayer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 1;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: initial;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 1;
+  direction: ltr;
+  user-select: text;
+  -webkit-user-select: text;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.pdfTextLayer span,
+.pdfTextLayer br {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.pdfTextLayer > :not(.markedContent),
+.pdfTextLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x))
+    scale(var(--min-font-size-inv));
+}
+
+.pdfTextLayer .markedContent {
+  display: contents;
+}
+
+.pdfTextLayer ::selection {
+  background: rgba(250, 204, 21, 0.42);
+}
+
+.pdfHighlight {
+  position: absolute;
+  border-radius: 2px;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.pdfNoteBadge {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #facc15;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1f2937;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.pdfNoteBadge:hover {
+  transform: scale(1.08);
+}
+
 /* Off-canvas navigation scrim used by the dashboard and admin shells. */
 .drawer-scrim {
   background: rgba(4, 5, 12, 0.62);

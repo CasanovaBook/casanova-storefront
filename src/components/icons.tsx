@@ -1,6 +1,6 @@
 import type { ReactElement, SVGProps } from "react"
 
-export type IconName = "home" | "grid" | "box" | "users" | "user" | "receipt" | "target" | "library" | "book" | "bookOpen" | "bag" | "cart" | "card" | "check" | "checkCircle" | "x" | "mail" | "phone" | "message" | "tag" | "star" | "sparkles" | "shield" | "lock" | "key" | "zap" | "chart" | "clock" | "calendar" | "trendUp" | "trophy" | "crown" | "money" | "inbox" | "flame" | "gift" | "infinity" | "pen" | "list" | "search" | "eye" | "eyeOff" | "alert-triangle" | "alertTriangle" | "logout" | "arrowLeft" | "arrowRight" | "chevronDown" | "chevronLeft" | "chevronRight" | "menu" | "smartphone" | "sun" | "moon" | "layers" | "video" | "download" | "upload" | "link" | "external" | "refresh" | "zoomIn" | "zoomOut" | "fitWidth" | "settings" | "accessibility" | "type" | "lineSpacing" | "letterSpacing" | "maximize" | "trash"
+export type IconName = "home" | "grid" | "box" | "users" | "user" | "receipt" | "target" | "library" | "book" | "bookOpen" | "bag" | "cart" | "card" | "check" | "checkCircle" | "x" | "mail" | "phone" | "message" | "tag" | "star" | "sparkles" | "shield" | "lock" | "key" | "zap" | "chart" | "clock" | "calendar" | "trendUp" | "trophy" | "crown" | "money" | "inbox" | "flame" | "gift" | "infinity" | "pen" | "list" | "search" | "eye" | "eyeOff" | "alert-triangle" | "alertTriangle" | "logout" | "arrowLeft" | "arrowRight" | "chevronDown" | "chevronLeft" | "chevronRight" | "menu" | "smartphone" | "sun" | "moon" | "layers" | "video" | "download" | "upload" | "link" | "external" | "refresh" | "zoomIn" | "zoomOut" | "fitWidth" | "settings" | "accessibility" | "type" | "lineSpacing" | "letterSpacing" | "maximize" | "trash" | "bookmark" | "notebook" | "columns"
 
 const ICONS: Record<IconName, ReactElement> = {
   home: (
@@ -281,6 +281,27 @@ const ICONS: Record<IconName, ReactElement> = {
     <>
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
       <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+
+  bookmark: (
+    <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z" />
+  ),
+
+  notebook: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 3v18" />
+      <path d="M12 8h5" />
+      <path d="M12 12h5" />
+      <path d="M12 16h3" />
+    </>
+  ),
+
+  columns: (
+    <>
+      <rect x="3" y="4" width="8" height="16" rx="1.5" />
+      <rect x="13" y="4" width="8" height="16" rx="1.5" />
     </>
   ),
 

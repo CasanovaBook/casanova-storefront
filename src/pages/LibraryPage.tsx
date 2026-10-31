@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import { Link, useNavigate } from "react-router"
-import { prefetchPdfRuntime } from "../components/PdfCanvas"
+import { prefetchPdfRuntime } from "../components/pdf/pdf-engine"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import { useContent } from "../content/useContent"

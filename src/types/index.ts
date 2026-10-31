@@ -343,6 +343,50 @@ export interface ReadingProgress {
   last_read_at: string
 }
 
+/* ── Reader bookmarks & annotations ───────────────────── */
+
+export interface ReaderBookmark {
+  bookmark_id: string
+  user_id: string
+  product_id: string
+  page: number
+  created_at: string
+}
+
+/**
+ * One selected text rectangle, normalized to the rendered page area.
+ * Normalized coordinates are what let a highlight survive zoom, fullscreen
+ * and the two-page spread layout without storing device pixels.
+ */
+export interface HighlightRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface ReaderHighlight {
+  highlight_id: string
+  user_id: string
+  product_id: string
+  page: number
+  color: string
+  rects: HighlightRect[]
+  quote: string
+  note?: string
+  created_at: string
+  updated_at: string
+}
+
+/** A live text selection plus the viewport anchor used by the selection
+ *  toolbar. `rects` are persisted; `anchor` is UI-only. */
+export interface ReaderTextSelection {
+  page: number
+  quote: string
+  rects: HighlightRect[]
+  anchor: { x: number; y: number; width: number; height: number }
+}
+
 /** One-time password reset grant. Only the digest of the token is stored. */
 export interface PasswordReset {
   token_id: string

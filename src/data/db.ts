@@ -33,6 +33,8 @@ import type {
   Payment,
   PlatformSettings,
   Product,
+  ReaderBookmark,
+  ReaderHighlight,
   ReadingProgress,
   Refund,
   SecurityEvent,
@@ -86,6 +88,10 @@ export interface Database {
   user_products: UserProduct[]
 
   reading_progress: ReadingProgress[]
+
+  reader_bookmarks: ReaderBookmark[]
+
+  reader_highlights: ReaderHighlight[]
 
   password_resets: PasswordReset[]
 
@@ -246,6 +252,10 @@ export function emptyDatabase(): Database {
     user_products: [],
 
     reading_progress: [],
+
+    reader_bookmarks: [],
+
+    reader_highlights: [],
 
     password_resets: [],
 

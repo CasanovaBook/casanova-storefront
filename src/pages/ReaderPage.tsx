@@ -4,10 +4,14 @@ import { useParams, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import { useStore } from "../data/store"
-import PdfCanvas, {
-  prefetchPdfRuntime,
-} from "../components/PdfCanvas"
+import PdfSurface from "../components/pdf/PdfSurface"
+import { prefetchPdfRuntime } from "../components/pdf/pdf-engine"
 import WatermarkPattern from "../components/WatermarkPattern"
+import BookmarkToggle from "../components/reader/BookmarkToggle"
+import AnnotationsPanel from "../components/reader/AnnotationsPanel"
+import NoteEditorModal from "../components/reader/NoteEditorModal"
+import PageNavigator from "../components/reader/PageNavigator"
+import SelectionToolbar from "../components/reader/SelectionToolbar"
 import {
   contentFailure,
   isProtectedContentUrl,
@@ -25,7 +29,22 @@ import {
 } from "../lib/api-security"
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import { fetchProfile } from "../integrations/supabase/supabase-auth"
-import type { SecurityEventType, User } from "../types"
+import { DEFAULT_HIGHLIGHT_COLOR } from "../lib/annotation-utils"
+import {
+  nextReaderPage,
+  pageRangeLabel,
+  previousReaderPage,
+  readerVisiblePages,
+} from "../lib/reader-pages"
+import { useMediaQuery } from "../lib/useMediaQuery"
+import { useReaderAnnotations } from "../lib/useReaderAnnotations"
+import { fail } from "../shared/result"
+import type {
+  ReaderHighlight,
+  ReaderTextSelection,
+  SecurityEventType,
+  User,
+} from "../types"
 import Icon from "../components/icons"
 
 /** Minimum horizontal travel, in CSS pixels, that counts as a page swipe. */
@@ -54,12 +73,18 @@ const ACCESS_REVALIDATE_MS = 30_000
  * Text-size rungs, as a percentage of the PDF's natural scale.
  *
  * Discrete rather than continuous because every change repaints the page
- * through PdfCanvas at a new scale - a slider would fire a repaint for
+ * through PdfSurface at a new scale - a slider would fire a repaint for
  * every pixel of travel. Repaints are cheap (one canvas draw from the
  * already-parsed document), but rungs still read better than a twitchy
  * continuous control.
  */
 const ZOOM_STEPS = [75, 100, 125, 150, 200, 250, 300, 400]
+
+const WATERMARK_OVERLAY_STYLE = { zIndex: 120 } as const
+
+type NoteEditorState =
+  | { mode: "create"; selection: ReaderTextSelection; color: string }
+  | { mode: "edit"; highlight: ReaderHighlight }
 /** Sentinel meaning "fit the page to the width", i.e. emit no zoom at all. */
 const ZOOM_FIT = 0
 
@@ -151,7 +176,7 @@ function hasOpenDialog(): boolean {
  * still scrolls the embedded document normally.
  *
  * Text size is a separate control from navigation, and it works by
- * repainting the current page at a new scale through PdfCanvas - there
+ * repainting the current page at a new scale through PdfSurface - there
  * is no browser PDF plugin involved anymore, so there is also no plugin
  * toolbar and no download/print path to disable.
  */
@@ -183,7 +208,7 @@ export default function ReaderPage() {
   usePageTitle(title ? `קריאה - ${title}` : "קריאה")
   /* The CMS count is a hint only; the document itself is authoritative.
    * A mistyped count used to break the progress bar (a 148-page PDF
-   * against "3" rendered 300%) and clamp navigation early. PdfCanvas
+   * against "3" rendered 300%) and clamp navigation early. PdfSurface
    * reports the real total once the file is parsed. */
   const [docTotalPages, setDocTotalPages] = useState<number | null>(null)
   const totalPages = docTotalPages ??
@@ -266,7 +291,7 @@ export default function ReaderPage() {
       (protectedContent || /\.pdf(\?|#|$)/i.test(contentUrl)),
   )
 
-  /* A PDF renders through PdfCanvas, which parses the document once and
+  /* A PDF renders through PdfSurface, which parses the document once and
    * paints pages onto a canvas the page owns - no browser PDF plugin, so
    * no plugin toolbar with its one-click download / print buttons, and
    * page turns cost a repaint instead of a full document reload. */
@@ -475,7 +500,7 @@ export default function ReaderPage() {
    * חסימה (or שלילה) changed `user_products.access_status` on the server,
    * but this tab went on rendering from memory. The mirror in AppContext
    * only refreshed on focus, throttled to a minute, and even a refreshed
-   * mirror would not tear down an already-rendered PdfCanvas.
+   * mirror would not tear down an already-rendered PdfSurface.
    *
    * Two layers fix that without touching authorization itself:
    *
@@ -616,6 +641,55 @@ export default function ReaderPage() {
    * right. Page position is the opposite: that one is worth keeping. */
   const [zoom, setZoom] = useState<number>(ZOOM_FIT)
 
+  const isWideReader = useMediaQuery("(min-width: 1024px)")
+  const [spreadMode, setSpreadMode] = useState(false)
+  const effectiveSpread = spreadMode && isWideReader
+
+  const [pendingSelection, setPendingSelection] =
+    useState<ReaderTextSelection | null>(null)
+  const [noteEditor, setNoteEditor] = useState<NoteEditorState | null>(null)
+  const [annotationsOpen, setAnnotationsOpen] = useState(false)
+
+  const annotations = useReaderAnnotations(actor, productId)
+  const {
+    bookmarks,
+    highlights,
+    loading: annotationsLoading,
+    error: annotationsError,
+    addBookmark,
+    removeBookmark,
+    addHighlight,
+    editHighlight,
+    removeHighlight,
+    refresh: refreshAnnotations,
+    clearError: clearAnnotationError,
+  } = annotations
+
+  const visiblePages = useMemo(
+    () =>
+      readerVisiblePages(currentPage, totalPages, effectiveSpread),
+    [currentPage, effectiveSpread, totalPages],
+  )
+  const pageLabel = pageRangeLabel(visiblePages)
+
+  useEffect(() => {
+    setPendingSelection(null)
+  }, [currentPage, effectiveSpread])
+
+  useEffect(() => {
+    setNoteEditor(null)
+  }, [currentPage, effectiveSpread])
+
+  useEffect(() => {
+    if (annotationsOpen) setPendingSelection(null)
+  }, [annotationsOpen])
+
+  /* A stored position can outlive a re-uploaded, shorter document. */
+  useEffect(() => {
+    if (totalPages <= 0) return
+    setCurrentPage((page) => Math.min(Math.max(page, 1), totalPages))
+  }, [totalPages])
+
   // Access guard - entitlements, not the catalogue, decide who may read.
   /* `authReady` must gate this: arriving from a verification link, the
    * session is still being restored, and without the gate the reader was
@@ -683,6 +757,115 @@ export default function ReaderPage() {
     [totalPages, markActivity],
   )
 
+  const stepPage = useCallback(
+    (direction: 1 | -1) => {
+      const target =
+        direction > 0
+          ? nextReaderPage(currentPage, totalPages, effectiveSpread)
+          : previousReaderPage(currentPage, totalPages, effectiveSpread)
+
+      if (target !== null) goTo(target)
+    },
+    [currentPage, effectiveSpread, goTo, totalPages],
+  )
+
+  const canGoPrev =
+    previousReaderPage(currentPage, totalPages, effectiveSpread) !== null
+  const canGoNext =
+    nextReaderPage(currentPage, totalPages, effectiveSpread) !== null
+
+  const currentBookmark = useMemo(
+    () => bookmarks.find((bookmark) => bookmark.page === currentPage),
+    [bookmarks, currentPage],
+  )
+
+  const toggleBookmark = useCallback(async () => {
+    if (currentBookmark) {
+      await removeBookmark(currentBookmark.bookmark_id)
+    } else {
+      await addBookmark(currentPage)
+    }
+  }, [addBookmark, currentBookmark, currentPage, removeBookmark])
+
+  const pickHighlightColor = useCallback(
+    (color: string) => {
+      if (!pendingSelection) return
+
+      const selection = pendingSelection
+      setPendingSelection(null)
+      window.getSelection()?.removeAllRanges()
+
+      void addHighlight({
+        page: selection.page,
+        rects: selection.rects,
+        quote: selection.quote,
+        color,
+      })
+    },
+    [addHighlight, pendingSelection],
+  )
+
+  const openNoteForSelection = useCallback(() => {
+    if (!pendingSelection) return
+
+    setNoteEditor({
+      mode: "create",
+      selection: pendingSelection,
+      color: DEFAULT_HIGHLIGHT_COLOR,
+    })
+    setPendingSelection(null)
+    window.getSelection()?.removeAllRanges()
+  }, [pendingSelection])
+
+  const openNoteForHighlight = useCallback((highlight: ReaderHighlight) => {
+    setNoteEditor({ mode: "edit", highlight })
+  }, [])
+
+  const saveNote = useCallback(
+    async (input: { color: string; note: string }) => {
+      if (!noteEditor) {
+        return fail("VALIDATION", "לא נבחר קטע לשמירה.")
+      }
+
+      if (noteEditor.mode === "create") {
+        return addHighlight({
+          page: noteEditor.selection.page,
+          rects: noteEditor.selection.rects,
+          quote: noteEditor.selection.quote,
+          color: input.color,
+          note: input.note,
+        })
+      }
+
+      return editHighlight(noteEditor.highlight.highlight_id, {
+        color: input.color,
+        note: input.note.trim() || null,
+      })
+    },
+    [addHighlight, editHighlight, noteEditor],
+  )
+
+  const deleteNote = useCallback(() => {
+    if (!noteEditor || noteEditor.mode !== "edit") return
+
+    const highlightId = noteEditor.highlight.highlight_id
+    setNoteEditor(null)
+    void removeHighlight(highlightId)
+  }, [noteEditor, removeHighlight])
+
+  const jumpToAnnotation = useCallback(
+    (page: number) => {
+      setAnnotationsOpen(false)
+      goTo(page)
+    },
+    [goTo],
+  )
+
+  const editFromPanel = useCallback((highlight: ReaderHighlight) => {
+    setAnnotationsOpen(false)
+    setNoteEditor({ mode: "edit", highlight })
+  }, [])
+
   /* Leaving "fit" lands on the nearest rung rather than on the first one.
    * Fit-width renders somewhere around 100-115% depending on the viewport, so
    * pressing "smaller" from fit and dropping straight to 75% would read as a
@@ -722,12 +905,11 @@ export default function ReaderPage() {
        * keyboard while it is open; arrows inside it must keep working. */
       if (hasOpenDialog()) return
 
-      if (e.key === "ArrowLeft" || e.key === "ArrowDown") goTo(currentPage + 1)
-      else if (e.key === "ArrowRight" || e.key === "ArrowUp")
-        goTo(currentPage - 1)
+      if (e.key === "ArrowLeft" || e.key === "ArrowDown") stepPage(1)
+      else if (e.key === "ArrowRight" || e.key === "ArrowUp") stepPage(-1)
       else if (e.key === "Escape") setImmersiveMode(false)
     },
-    [currentPage, goTo],
+    [stepPage],
   )
 
   useEffect(() => {
@@ -757,7 +939,7 @@ export default function ReaderPage() {
       // Clearly horizontal travel wins: a vertical drag on the strip is a
       // scroll, and turning a page on the way past would feel broken.
       if (Math.abs(dx) >= SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
-        goTo(dx < 0 ? currentPage + 1 : currentPage - 1)
+        stepPage(dx < 0 ? 1 : -1)
         return
       }
       // Otherwise a short, quick press is an edge tap.
@@ -765,15 +947,13 @@ export default function ReaderPage() {
         Math.hypot(dx, dy) < TAP_TRAVEL &&
         Date.now() - start.t < TAP_DURATION
       ) {
-        goTo(edge === "next" ? currentPage + 1 : currentPage - 1)
+        stepPage(edge === "next" ? 1 : -1)
       }
     },
-    [currentPage, goTo],
+    [stepPage],
   )
 
   if (!authReady || !isAuthenticated || !productId || !hasAccess(productId)) return null
-
-  const progressPercent = totalPages > 0 ? (currentPage / totalPages) * 100 : 0
 
   /* Page stepping does not depend on knowing the total, and that is a fix
    * rather than a preference.
@@ -785,12 +965,9 @@ export default function ReaderPage() {
    * count is a number an administrator types into the CMS; turning a page
    * must not hinge on whether somebody remembered to type it.
    *
-   * The count is still used for what it is genuinely for - the progress bar,
-   * the "N / M" denominator and the clamp at the last page. When it is
-   * unknown the reader shows the current page alone and lets forward
-   * navigation run unbounded, because the viewer clamps at the document's
-   * real last page and stays put: pressing "next" there is a no-op, not an
-   * error. `goTo` already had that branch; only the gate was wrong. */
+   * The count drives the page slider, the direct page field, spread grouping
+   * and the last-page clamp. Until the document reports its own total, the
+   * controls stay on the current page rather than guessing a denominator. */
   const canStep = Boolean(contentUrl)
   const knownTotal = totalPages > 0
 
@@ -904,6 +1081,74 @@ export default function ReaderPage() {
               </span>
             )}
 
+          {isPdf && (
+            <BookmarkToggle
+              page={currentPage}
+              bookmarked={Boolean(currentBookmark)}
+              disabled={annotationsLoading}
+              onToggle={() => void toggleBookmark()}
+              colors={{
+                text: textColor,
+                muted: mutedColor,
+                border: borderColor,
+                accent: accentColor,
+              }}
+            />
+          )}
+
+          {isPdf && (
+            <button
+              type="button"
+              onClick={() => setAnnotationsOpen(true)}
+              className="tap-target relative flex items-center justify-center rounded border transition-opacity hover:opacity-70"
+              style={{
+                width: 32,
+                height: 32,
+                borderColor,
+                color: mutedColor,
+              }}
+              aria-label={`סימניות והערות (${bookmarks.length + highlights.length})`}
+              title="סימניות, הדגשות והערות"
+            >
+              <Icon name="notebook" size={15} />
+              {bookmarks.length + highlights.length > 0 && (
+                <span
+                  className="absolute -end-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums"
+                  style={{
+                    background: accentColor,
+                    color: "var(--color-primary-foreground)",
+                  }}
+                  aria-hidden="true"
+                >
+                  {bookmarks.length + highlights.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {isPdf && (
+            <button
+              type="button"
+              onClick={() => setSpreadMode((current) => !current)}
+              className="tap-target hidden items-center justify-center rounded border transition-opacity hover:opacity-70 lg:flex"
+              style={{
+                width: 32,
+                height: 32,
+                borderColor: spreadMode ? accentColor : borderColor,
+                color: spreadMode ? accentColor : mutedColor,
+              }}
+              aria-pressed={spreadMode}
+              aria-label="תצוגת שני עמודים"
+              title={
+                spreadMode
+                  ? "מעבר לתצוגת עמוד אחד"
+                  : "מעבר לתצוגת שני עמודים"
+              }
+            >
+              <Icon name="columns" size={15} />
+            </button>
+          )}
+
           {/* Display size. Offered only for a PDF: these controls repaint the
            * canvas at a new scale, and a non-PDF content URL goes to the
            * iframe untouched, so there would be nothing for them to act on.
@@ -1010,7 +1255,7 @@ export default function ReaderPage() {
               aria-atomic="true"
             >
               {knownTotal
-                ? `עמוד ${currentPage} מתוך ${totalPages}`
+                ? `עמודים ${pageLabel} מתוך ${totalPages}`
                 : `עמוד ${currentPage}`}
             </p>
             <div
@@ -1030,12 +1275,22 @@ export default function ReaderPage() {
                 style={{ borderColor, background: "#fff" }}
               >
                 {isPdf ? (
-                  <PdfCanvas
+                  <PdfSurface
                     contentUrl={contentUrl}
                     requiresAuth={protectedContent}
-                    page={currentPage}
+                    pages={visiblePages}
                     zoom={zoom === ZOOM_FIT ? 1 : zoom / 100}
+                    textLayer
+                    highlights={highlights}
+                    readingDirection={
+                      typeof document !== "undefined" &&
+                      document.documentElement.dir === "ltr"
+                        ? "ltr"
+                        : "rtl"
+                    }
                     onTotalPages={setDocTotalPages}
+                    onTextSelection={setPendingSelection}
+                    onHighlightActivate={openNoteForHighlight}
                   />
                 ) : (
                   <iframe
@@ -1201,74 +1456,22 @@ export default function ReaderPage() {
           className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t"
           style={{ background: panelBg, borderColor }}
         >
-          {/* Progress bar. Only when the total is known: a bar that cannot
-           * know its own denominator is not a progress bar, it is a decoration
-           * stuck at zero. It also carries the ARIA value, so the current
-           * page is available without relying on the visual width. */}
-          {knownTotal && (
-            <div
-              className="h-0.5"
-              style={{ background: borderColor }}
-              role="progressbar"
-              aria-label="התקדמות בקריאה"
-              aria-valuemin={1}
-              aria-valuemax={totalPages}
-              aria-valuenow={Math.min(Math.max(currentPage, 1), totalPages)}
-              aria-valuetext={`עמוד ${currentPage} מתוך ${totalPages}`}
-              aria-orientation="horizontal"
-            >
-              <div
-                className="h-full transition-all"
-                style={{
-                  width: `${progressPercent}%`,
-                  background: accentColor,
-                }}
-              />
-            </div>
-          )}
-
-          <div className="flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5">
-            <button
-              type="button"
-              onClick={() => goTo(currentPage - 1)}
-              disabled={currentPage <= 1}
-              className="tap-target flex items-center gap-1.5 text-sm font-medium px-4 py-2.5 rounded-lg border disabled:opacity-30 transition-opacity hover:opacity-70"
-              style={{ borderColor, color: textColor }}
-            >
-              <Icon name="chevronRight" size={15} />
-              <span>הקודם</span>
-            </button>
-
-            <div
-              className="flex items-center gap-3 text-sm"
-              style={{ color: mutedColor }}
-            >
-              <span className="tabular-nums">
-                {knownTotal
-                  ? `${currentPage} / ${totalPages}`
-                  : `עמוד ${currentPage}`}
-              </span>
-              {knownTotal && (
-                <>
-                  <span className="hidden sm:block">·</span>
-                  <span className="hidden sm:block">
-                    {progressPercent.toFixed(0)}% הושלמו
-                  </span>
-                </>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => goTo(currentPage + 1)}
-              disabled={knownTotal && currentPage >= totalPages}
-              className="tap-target flex items-center gap-1.5 text-sm font-medium px-4 py-2.5 rounded-lg border disabled:opacity-30 transition-opacity hover:opacity-70"
-              style={{ borderColor, color: textColor }}
-            >
-              <span>הבא</span>
-              <Icon name="chevronLeft" size={15} />
-            </button>
-          </div>
+          <PageNavigator
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageLabel={pageLabel}
+            canPrev={canGoPrev}
+            canNext={canGoNext}
+            onPrev={() => stepPage(-1)}
+            onNext={() => stepPage(1)}
+            onJump={goTo}
+            colors={{
+              text: textColor,
+              muted: mutedColor,
+              border: borderColor,
+              accent: accentColor,
+            }}
+          />
 
           <p
             className="text-center text-[11px] pb-2 sm:hidden"
@@ -1287,7 +1490,7 @@ export default function ReaderPage() {
           opacity={watermarkOpacity}
           color="#000000"
           className="fixed inset-0"
-          style={{ zIndex: 120 }}
+          style={WATERMARK_OVERLAY_STYLE}
         />
       )}
 
@@ -1337,6 +1540,98 @@ export default function ReaderPage() {
             >
               <Icon name="message" size={15} /> פנייה לתמיכה
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Selection actions and annotation dialogs. All of these portal
+       * above the watermark and the reader chrome. */}
+      {pendingSelection && !locked && (
+        <SelectionToolbar
+          selection={pendingSelection}
+          onPickColor={pickHighlightColor}
+          onAddNote={openNoteForSelection}
+          onClose={() => {
+            setPendingSelection(null)
+            window.getSelection()?.removeAllRanges()
+          }}
+        />
+      )}
+
+      {annotationsOpen && (
+        <AnnotationsPanel
+          bookmarks={bookmarks}
+          highlights={highlights}
+          loading={annotationsLoading}
+          error={annotationsError}
+          currentPage={currentPage}
+          onClose={() => setAnnotationsOpen(false)}
+          onJump={jumpToAnnotation}
+          onRemoveBookmark={removeBookmark}
+          onRemoveHighlight={removeHighlight}
+          onEditHighlight={editFromPanel}
+          onAddBookmark={addBookmark}
+          onRetry={() => void refreshAnnotations()}
+        />
+      )}
+
+      {noteEditor && (
+        <NoteEditorModal
+          mode={noteEditor.mode}
+          page={
+            noteEditor.mode === "create"
+              ? noteEditor.selection.page
+              : noteEditor.highlight.page
+          }
+          quote={
+            noteEditor.mode === "create"
+              ? noteEditor.selection.quote
+              : noteEditor.highlight.quote
+          }
+          initialColor={
+            noteEditor.mode === "create"
+              ? noteEditor.color
+              : noteEditor.highlight.color
+          }
+          initialNote={
+            noteEditor.mode === "edit"
+              ? noteEditor.highlight.note
+              : undefined
+          }
+          onSave={saveNote}
+          onDelete={noteEditor.mode === "edit" ? deleteNote : undefined}
+          onClose={() => setNoteEditor(null)}
+        />
+      )}
+
+      {annotationsError && !annotationsOpen && (
+        <div
+          className="fixed inset-x-3 bottom-28 z-[300] mx-auto max-w-md"
+          role="status"
+        >
+          <div
+            className="flex items-start gap-2 rounded-xl border p-3 text-xs shadow-xl"
+            style={{
+              borderColor: "rgba(167,70,54,0.35)",
+              background: "var(--color-card)",
+              color: "var(--color-danger)",
+            }}
+          >
+            <Icon
+              name="alertTriangle"
+              size={15}
+              style={{ flexShrink: 0, marginTop: 2 }}
+              aria-hidden="true"
+            />
+            <p className="min-w-0 flex-1 leading-relaxed">{annotationsError}</p>
+            <button
+              type="button"
+              onClick={clearAnnotationError}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+              aria-label="סגירת הודעת השגיאה"
+            >
+              <Icon name="x" size={12} />
+            </button>
           </div>
         </div>
       )}

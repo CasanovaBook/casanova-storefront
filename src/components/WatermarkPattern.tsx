@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react"
+import { memo, type CSSProperties } from "react"
 
 /**
  * A dense, diagonal forensic watermark.
@@ -24,7 +24,7 @@ export interface WatermarkPatternProps {
   columns?: number
 }
 
-export default function WatermarkPattern({
+function WatermarkPattern({
   text,
   opacity,
   color = "#000000",
@@ -82,3 +82,7 @@ export default function WatermarkPattern({
     </div>
   )
 }
+
+/* Static across page turns: memo prevents the 280-node forensic grid from
+ * re-rendering when only the reader's page state changes. */
+export default memo(WatermarkPattern)
