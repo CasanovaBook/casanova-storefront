@@ -7,6 +7,7 @@
  *   • signOutUser
  *   • resendVerification
  *   • syncAccountPhone
+ *   • syncAccountNames
  *   • requestPasswordReset
  *   • updatePassword
  *   • fetchProfile
@@ -801,6 +802,60 @@ export async function syncAccountPhone(phone: string): Promise<AuthResult<void>>
      * happened in the console so a silently missing contact number can still
      * be traced, and hand back the refusal. */
     console.warn("[supabase-auth] account phone not recorded:", message)
+
+    return authFail(message, error.code)
+  }
+
+  return authOk(undefined)
+}
+
+/**
+ * Records a name the customer completed at checkout on the account.
+ *
+ * `public.users` is not client-writable (migration 0004 grants `authenticated`
+ * UPDATE on `greeted_at` only), so the auth user's metadata is the one place
+ * the browser may store profile fields, exactly as `syncAccountPhone` does
+ * for the number. `buildAppUser` already reads metadata when the profile row
+ * has no name, which is what lets the next checkout and the support form
+ * prefill it.
+ *
+ * Checkout calls this only for fields the account was missing, so a name
+ * already on the profile is never replaced by what was typed at the till.
+ * The whole metadata object is sent so the write is safe whether GoTrue
+ * merges or replaces it.
+ */
+export async function syncAccountNames(
+  first_name: string,
+  last_name: string,
+): Promise<AuthResult<void>> {
+  if (!isSupabaseConfigured) return authFail("שרת Supabase אינו מוגדר.")
+
+  const client = requireSupabase()
+  const first = first_name.trim()
+  const last = last_name.trim()
+
+  if (!first || !last) return authFail("יש למלא שם מלא.", "VALIDATION")
+
+  const { data } = await client.auth.getSession()
+  const metadata = (data.session?.user?.user_metadata ?? {}) as Record<
+    string,
+    unknown
+  >
+
+  if (metadata.first_name === first && metadata.last_name === last) {
+    return authOk(undefined)
+  }
+
+  const { error } = await client.auth.updateUser({
+    data: { ...metadata, first_name: first, last_name: last },
+  })
+
+  if (error) {
+    const { message } = translateAuthError(error)
+
+    /* Never fatal for the caller: the order is already written. Keep the
+     * refusal traceable without turning a completed purchase into an error. */
+    console.warn("[supabase-auth] account name not recorded:", message)
 
     return authFail(message, error.code)
   }

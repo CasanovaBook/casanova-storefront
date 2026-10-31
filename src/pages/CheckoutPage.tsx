@@ -51,6 +51,14 @@ const invalidFieldStyle = {
   borderColor: "var(--color-danger)",
 } as const
 
+/* Identity fields inherited from the signed-in account stay visible and
+ * selectable but cannot be edited, so they read as facts rather than inputs. */
+const readOnlyFieldStyle = {
+  ...fieldStyle,
+  background: "var(--color-secondary)",
+  color: "var(--color-muted-foreground)",
+} as const
+
 function BookCoverMini({ product }: { product: Product }) {
   const [from, to] = product.cover_colors ?? FALLBACK_COVER
   if (product.image_url) {
@@ -93,6 +101,13 @@ export default function CheckoutPage() {
   const cms = useCms()
 
   const product = selectedProduct
+
+  /* The account owns its address and, once recorded, its name. A field with a
+   * profile value is shown from the account and never from a checkout copy, so
+   * a stale or edited form value can never reach the order. */
+  const emailLocked = Boolean(user)
+  const firstNameLocked = Boolean(user?.first_name.trim())
+  const lastNameLocked = Boolean(user?.last_name.trim())
 
   /* One key per checkout attempt: a retry after a lost response returns the
    * order that was already recorded instead of charging twice. */
@@ -151,17 +166,27 @@ export default function CheckoutPage() {
     email: user?.email ?? "",
   })
 
-  // Synchronize form with logged-in user
+  // Synchronize form with logged-in user: an account value always wins.
   useEffect(() => {
-    if (user) {
-      setForm((prev) => ({
-        ...prev,
-        first_name: prev.first_name || user.first_name || "",
-        last_name: prev.last_name || user.last_name || "",
-        email: prev.email || user.email || "",
-      }))
-    }
+    if (!user) return
+    setForm((prev) => ({
+      ...prev,
+      first_name: user.first_name.trim() ? user.first_name : prev.first_name,
+      last_name: user.last_name.trim() ? user.last_name : prev.last_name,
+      email: user.email || prev.email,
+    }))
   }, [user])
+
+  /* These are the values the order is built from. A locked field reads
+   * straight from the session - not from form state - so the payload cannot
+   * diverge from the authenticated identity even before an effect runs. */
+  const checkoutEmail = user?.email ?? form.email
+  const checkoutFirstName = firstNameLocked
+    ? (user?.first_name ?? "")
+    : form.first_name
+  const checkoutLastName = lastNameLocked
+    ? (user?.last_name ?? "")
+    : form.last_name
 
   /* The number is two controls, not one free-text box, because the store
    * sells Israeli mobile numbers and a flat field cannot tell a missing
@@ -187,6 +212,15 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<"details" | "review">("details")
   const [confirmEmail, setConfirmEmail] = useState("")
   const [confirmEmailError, setConfirmEmailError] = useState("")
+
+  /* The confirmation field exists only for guests; signing in mid-checkout
+   * drops any value typed before that. */
+  useEffect(() => {
+    if (!user) return
+    setConfirmEmail("")
+    setConfirmEmailError("")
+  }, [user])
+
   // 18+ gate: the content is adult, so the buyer must explicitly confirm
   // legal age before the order can proceed past the details step.
   const [ageConfirmed, setAgeConfirmed] = useState(false)
@@ -236,15 +270,29 @@ export default function CheckoutPage() {
     setSelectedProduct,
   ])
 
-  // Only ASCII / English characters are allowed in the email address
+  // Only ASCII / English characters are allowed in the email address.
+  // The address belongs to the account once signed in; the input is read-only.
   const handleEmailChange = (value: string) => {
+    if (user) return
+
     const englishOnly = value.replace(/[^\x20-\x7E]/g, "")
-    setForm({ ...form, email: englishOnly })
+
+    setForm((prev) => ({ ...prev, email: englishOnly }))
+
+    if (confirmEmail.trim()) {
+      setConfirmEmailError(
+        confirmEmail.trim().toLowerCase() === englishOnly.trim().toLowerCase()
+          ? ""
+          : "הכתובות אינן תואמות",
+      )
+    }
   }
 
   const handleConfirmEmailChange = (value: string) => {
     const englishOnly = value.replace(/[^\x20-\x7E]/g, "")
+
     setConfirmEmail(englishOnly)
+
     // Live feedback once both fields have content
     if (form.email.trim() && englishOnly.trim()) {
       setConfirmEmailError(
@@ -261,32 +309,21 @@ export default function CheckoutPage() {
   const subtotal = unitPrice
   const finalPrice = subtotal
 
-  /* The address printed on the account is the one Supabase verified, so a
-   * purchase under it has already proven the thing a typed twice would only
-   * re-prove. The confirmation field therefore appears when the buyer edits
-   * the address away from the verified one - the single case where a typo
-   * would send a receipt somewhere the store cannot verify. Requiring the
-   * double entry when nothing was changed asked every customer to retype an
-   * address they had just confirmed by email. */
-  const typedEmail = form.email.trim().toLowerCase()
+  /* A guest types the address the account and receipt will be created for,
+   * so it is entered twice to catch a typo before the purchase. A signed-in
+   * buyer's address comes from a verified session and the field is read-only,
+   * so there is nothing to re-verify and the second field is not rendered. */
+  const typedEmail = checkoutEmail.trim().toLowerCase()
 
-  const accountEmail = (user?.email ?? "").trim().toLowerCase()
-
-  /* A signed-out visitor has no account email to compare against. Guest
-   * checkout creates the account from the address they type, so the second
-   * field stays hidden for them. */
-  const needsEmailConfirmation =
-    accountEmail.length > 0 &&
-    typedEmail.length > 0 &&
-    typedEmail !== accountEmail
+  const needsEmailConfirmation = !user
 
   const validate = (): boolean => {
     const newErrors: Partial<CheckoutFormData> = {}
 
-    if (!form.first_name.trim()) newErrors.first_name = "שדה חובה"
-    if (!form.last_name.trim()) newErrors.last_name = "שדה חובה"
+    if (!checkoutFirstName.trim()) newErrors.first_name = "שדה חובה"
+    if (!checkoutLastName.trim()) newErrors.last_name = "שדה חובה"
 
-    const emailIssue = emailProblem(form.email)
+    const emailIssue = emailProblem(checkoutEmail)
 
     if (emailIssue) newErrors.email = emailIssue
 
@@ -346,10 +383,10 @@ export default function CheckoutPage() {
     setSubmitError("")
     const result = await placeOrder({
       product_id: product.product_id,
-      first_name: form.first_name.trim(),
-      last_name: form.last_name.trim(),
-      email: form.email.trim(),
-      phone: phone || undefined,
+      first_name: checkoutFirstName.trim(),
+      last_name: checkoutLastName.trim(),
+      email: checkoutEmail.trim(),
+      phone,
       idempotency_key: idempotencyKey.current,
     })
     setIsProcessing(false)
@@ -508,7 +545,7 @@ export default function CheckoutPage() {
                     </h2>
                     <p className="app-hint mt-1">
                       {user
-                        ? "הפרטים מאשרים את ההזמנה ואת שליחת הקבלה."
+                        ? "השם וכתובת המייל נלקחים מהחשבון המחובר; מספר הטלפון נדרש ליצירת קשר."
                         : isSupabaseConfigured
                           ? "הרכישה תקושר לחשבון של כתובת המייל, והקבלה תישלח אליה."
                           : "משמשים ליצירת החשבון ולשליחת הקבלה."}
@@ -597,20 +634,32 @@ export default function CheckoutPage() {
                           style={
                             errors.first_name
                               ? invalidFieldStyle
-                              : fieldStyle
+                              : firstNameLocked
+                                ? readOnlyFieldStyle
+                                : fieldStyle
                           }
-                          value={form.first_name}
+                          value={checkoutFirstName}
                           autoComplete="given-name"
                           aria-required="true"
                           aria-invalid={errors.first_name ? true : undefined}
+                          aria-readonly={
+                            firstNameLocked ? true : undefined
+                          }
                           aria-describedby={
                             errors.first_name
                               ? "checkout-first-name-error"
-                              : undefined
+                              : firstNameLocked
+                                ? "checkout-name-hint"
+                                : undefined
                           }
-                          onChange={(e) =>
-                            setForm({ ...form, first_name: e.target.value })
-                          }
+                          readOnly={firstNameLocked}
+                          onChange={(e) => {
+                            if (firstNameLocked) return
+                            setForm((prev) => ({
+                              ...prev,
+                              first_name: e.target.value,
+                            }))
+                          }}
                         />
                         {errors.first_name && (
                           <p
@@ -634,20 +683,32 @@ export default function CheckoutPage() {
                           id="checkout-last-name"
                           className={`${fieldClass} w-full`}
                           style={
-                            errors.last_name ? invalidFieldStyle : fieldStyle
+                            errors.last_name
+                              ? invalidFieldStyle
+                              : lastNameLocked
+                                ? readOnlyFieldStyle
+                                : fieldStyle
                           }
-                          value={form.last_name}
+                          value={checkoutLastName}
                           autoComplete="family-name"
                           aria-required="true"
                           aria-invalid={errors.last_name ? true : undefined}
+                          aria-readonly={lastNameLocked ? true : undefined}
                           aria-describedby={
                             errors.last_name
                               ? "checkout-last-name-error"
-                              : undefined
+                              : lastNameLocked
+                                ? "checkout-name-hint"
+                                : undefined
                           }
-                          onChange={(e) =>
-                            setForm({ ...form, last_name: e.target.value })
-                          }
+                          readOnly={lastNameLocked}
+                          onChange={(e) => {
+                            if (lastNameLocked) return
+                            setForm((prev) => ({
+                              ...prev,
+                              last_name: e.target.value,
+                            }))
+                          }}
                         />
                         {errors.last_name && (
                           <p
@@ -661,6 +722,14 @@ export default function CheckoutPage() {
                       </div>
                     </div>
 
+                    {firstNameLocked || lastNameLocked ? (
+                      <p id="checkout-name-hint" className="app-hint">
+                        {firstNameLocked && lastNameLocked
+                          ? "השם מוצג מהחשבון המחובר ואינו ניתן לשינוי בעמוד זה."
+                          : "שם שמופיע בחשבון מוצג לקריאה בלבד; שם חסר ניתן להשלים כאן ויישמר בחשבון לאחר הרכישה."}
+                      </p>
+                    ) : null}
+
                     <div className="app-field">
                       <label htmlFor="checkout-email" className="app-label">
                         כתובת מייל{required}
@@ -671,17 +740,23 @@ export default function CheckoutPage() {
                         dir="ltr"
                         className={`${fieldClass} w-full text-start`}
                         style={
-                          errors.email ? invalidFieldStyle : fieldStyle
+                          errors.email
+                            ? invalidFieldStyle
+                            : emailLocked
+                              ? readOnlyFieldStyle
+                              : fieldStyle
                         }
-                        value={form.email}
+                        value={checkoutEmail}
                         autoComplete="email"
                         aria-required="true"
                         aria-invalid={errors.email ? true : undefined}
+                        aria-readonly={emailLocked ? true : undefined}
                         aria-describedby={
                           errors.email
                             ? "checkout-email-error checkout-email-hint"
                             : "checkout-email-hint"
                         }
+                        readOnly={emailLocked}
                         onChange={(e) => handleEmailChange(e.target.value)}
                         placeholder="you@example.com"
                       />
@@ -695,16 +770,16 @@ export default function CheckoutPage() {
                         </p>
                       )}
                       <p id="checkout-email-hint" className="app-hint">
-                        {isSupabaseConfigured
-                          ? user
-                            ? "כתובת החשבון. אליה יישלח אישור ההזמנה."
-                            : "הרכישה תקושר לכתובת הזו, ואליה יישלח קישור להגדרת סיסמה."
-                          : "החשבון ייווצר עם הכתובת הזו אם עדיין אין לך אחד."}
+                        {user
+                          ? "כתובת החשבון המחובר. לא ניתן לשנותה בעמוד זה; אליה יישלח אישור ההזמנה."
+                          : isSupabaseConfigured
+                            ? "הרכישה תקושר לכתובת הזו, ואליה יישלח קישור להגדרת סיסמה."
+                            : "החשבון ייווצר עם הכתובת הזו אם עדיין אין לך אחד."}
                       </p>
                     </div>
 
-                    {/* Only shown when the address above was edited away from
-                     * the verified one - see needsEmailConfirmation. */}
+                    {/* Guest only - see needsEmailConfirmation. A signed-in
+                     * buyer's address comes from the session and is locked. */}
                     {needsEmailConfirmation && (
                       <div className="app-field">
                         <label
@@ -738,8 +813,7 @@ export default function CheckoutPage() {
                             handleConfirmEmailChange(e.target.value)
                           }
                           /* Typing, not pasting, is the point of a field that
-                           * exists to catch a mistyped address. It only appears
-                           * in the one case where that risk is real. */
+                           * exists to catch a mistyped address. */
                           onPaste={(e) => e.preventDefault()}
                           placeholder="הקלד שוב את כתובת המייל"
                         />
@@ -770,8 +844,8 @@ export default function CheckoutPage() {
                             id="checkout-confirm-email-status"
                             className="app-hint"
                           >
-                            כתובת זו שונה מהכתובת המאומתת של החשבון. אימות
-                            בהקלדה שוב שומר שהקבלה לא תישלח לכתובת שגויה.
+                            הקלדה חוזרת של הכתובת מונעת שגיאת הקלדה - הקבלה
+                            והגישה יישלחו לכתובת שתוזן בשדה שלמעלה.
                           </p>
                         )}
                       </div>
@@ -997,7 +1071,7 @@ export default function CheckoutPage() {
                           className="mt-0.5 break-words font-medium"
                           style={{ color: "var(--color-foreground)" }}
                         >
-                          {form.first_name} {form.last_name}
+                          {checkoutFirstName} {checkoutLastName}
                         </dd>
                       </div>
                       <div className="py-2 first:pt-0 last:pb-0">
@@ -1011,7 +1085,7 @@ export default function CheckoutPage() {
                           className="mt-0.5 break-all font-medium"
                           style={{ color: "var(--color-foreground)" }}
                         >
-                          <span dir="ltr">{form.email}</span>
+                          <span dir="ltr">{checkoutEmail}</span>
                         </dd>
                       </div>
                       <div className="py-2 first:pt-0 last:pb-0">

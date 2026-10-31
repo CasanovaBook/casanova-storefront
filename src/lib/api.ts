@@ -476,24 +476,41 @@ export async function findOrCreateCustomer(
   const existing = getDb().users.find((u) => u.email === email)
 
   if (existing) {
-    /* A returning customer can hand over a phone number for the first time at
-     * the till: the checkout form has always collected it while the account was
-     * created without one. The order keeps it either way; carrying it onto the
-     * profile is what stops the support form and the next checkout from asking
-     * again for something the customer already gave - and it is the local
-     * mirror of what `syncAccountPhone` does on the hosted backend.
+    /* A returning customer can complete a blank profile field at the till:
+     * the checkout form collects a phone number and, for an account created
+     * without one, a name. The order keeps them either way; carrying them
+     * onto the profile is what stops the support form and the next checkout
+     * from asking again for something the customer already gave - and it is
+     * the local mirror of what `syncAccountPhone` / `syncAccountNames` do on
+     * the hosted backend.
      *
-     * Only ever fills a blank. A profile that already holds a number was set
+     * Only ever fills a blank. A value already on the profile was set
      * deliberately somewhere else, and a purchase form is not the place to
      * overwrite it. */
-    const phone = input.phone?.trim()
+    const first_name = existing.first_name.trim()
+      ? existing.first_name
+      : input.first_name.trim()
 
-    if (!phone || existing.phone) return ok(existing)
+    const last_name = existing.last_name.trim()
+      ? existing.last_name
+      : input.last_name.trim()
+
+    const phone = existing.phone?.trim()
+      ? existing.phone
+      : input.phone?.trim() || undefined
+
+    if (
+      first_name === existing.first_name &&
+      last_name === existing.last_name &&
+      phone === existing.phone
+    ) {
+      return ok(existing)
+    }
 
     const updated = mutate((d) => {
       d.users = d.users.map((u) =>
         u.user_id === existing.user_id
-          ? { ...u, phone, updated_at: nowIso() }
+          ? { ...u, first_name, last_name, phone, updated_at: nowIso() }
           : u,
       )
 

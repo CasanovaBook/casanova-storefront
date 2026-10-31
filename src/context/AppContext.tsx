@@ -83,6 +83,7 @@ import {
   signUpWithEmail,
   signOutUser,
   resendVerification,
+  syncAccountNames,
   syncAccountPhone,
   fetchProfile,
   buildAppUser,
@@ -812,10 +813,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return fail("UNAUTHENTICATED", "מאמת את החיבור. נסו שוב בעוד רגע.")
       }
 
+      /* The order always belongs to the signed-in account. The checkout page
+       * locks these fields, and this mapping makes the same guarantee at the
+       * service boundary: a stale form value can never put someone else's
+       * email or a different name on the buyer's order. A guest keeps exactly
+       * what they typed. */
+      const purchase: CheckoutInput = user
+        ? {
+            ...input,
+            email: user.email,
+            first_name: user.first_name.trim()
+              ? user.first_name
+              : input.first_name,
+            last_name: user.last_name.trim()
+              ? user.last_name
+              : input.last_name,
+          }
+        : input
+
       const result =
         isSupabaseConfigured && !user
-          ? await checkoutGuest(input)
-          : await checkout(input)
+          ? await checkoutGuest(purchase)
+          : await checkout(purchase)
 
       if (result.ok) {
         setLastOrderId(result.data.order.order_id)
@@ -852,8 +871,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
            * Deliberately not awaited: the order is already written and paid.
            * A metadata hiccup must never turn a completed purchase into an
            * error screen. */
-          if (input.phone?.trim()) {
-            void syncAccountPhone(input.phone.trim())
+          if (purchase.phone?.trim()) {
+            void syncAccountPhone(purchase.phone.trim())
+          }
+
+          /* A name the account was missing may be supplied at the till. Like
+           * the phone, it is carried onto the account so the next purchase
+           * and the support form do not ask for it again; a name that was
+           * already on the profile was read-only and is left untouched. */
+          if (user) {
+            const first = purchase.first_name.trim()
+            const last = purchase.last_name.trim()
+            const missingName =
+              !user.first_name.trim() || !user.last_name.trim()
+
+            if (missingName && first && last) {
+              void syncAccountNames(first, last).then((res) => {
+                if (!res.ok) return
+
+                setSupabaseUser((prev) =>
+                  prev && prev.user_id === user.user_id
+                    ? {
+                        ...prev,
+                        first_name: prev.first_name.trim()
+                          ? prev.first_name
+                          : first,
+                        last_name: prev.last_name.trim()
+                          ? prev.last_name
+                          : last,
+                      }
+                    : prev,
+                )
+              })
+            }
           }
         }
       }
