@@ -63,7 +63,11 @@ export const BUNDLED_PRODUCT: Product = {
 
   cover_colors: ["#2C1810", "#1A0E0A"],
 
-  content_url: "/books/hi-kodem.pdf",
+  /* No file address here on purpose. Protected books live in the private
+   * Supabase bucket and are only reachable through reader-content; a public
+   * /books/*.pdf path would be downloadable by anyone who knows it. The
+   * local-mode demo therefore shows the offer but has no readable copy
+   * until a real catalogue row with an uploaded file exists. */
 
   created_at: at,
 

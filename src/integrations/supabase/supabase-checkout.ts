@@ -9,7 +9,7 @@
  * transaction re-derives the price from `public.products`, records
  * the order, its line item and a captured manual payment, and writes
  * the buyer's `user_products` row - which is exactly what the
- * `get-content-url` edge function checks before it will sign the
+ * `reader-content` edge function checks before it will stream the
  * book file. Without it a completed purchase produced a local order
  * that the reader could not open.
  *

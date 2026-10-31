@@ -640,7 +640,12 @@ function ProductModal({
       image_url: imageUrl.trim() || undefined,
       images: images.length > 0 ? images : undefined,
       product_id: contentProductId,
-      content_url: contentUrl.trim() || undefined,
+      /* Hosted products are delivered only through reader-content; a stored
+       * direct address is exactly the permanent public URL this CMS must not
+       * create. The local editor keeps the legacy field for offline demos. */
+      content_url: isSupabaseConfigured
+        ? undefined
+        : contentUrl.trim() || undefined,
       content_file: contentFile,
       storage_bucket: storagePath ? storageBucket : undefined,
       storage_path: storagePath || undefined,
@@ -1262,27 +1267,35 @@ function ProductModal({
                   e.target.value = ""
                 }}
               />
-              <Field
-                label="או כתובת הקובץ"
-                hint={`קבצים מקומיים מוגבלים ל-${maxKb}KB. קובץ גדול יותר יש לאחסן בשרת הקבצים ולהדביק כאן את הכתובת (למשל /books/my-book.pdf).`}
-              >
-                <input
-                  dir="ltr"
-                  className={inputClass}
-                  style={inputStyle}
-                  placeholder="/books/my-book.pdf"
-                  value={contentUrl.startsWith("data:") ? "" : contentUrl}
-                  onChange={(e) => setContentUrl(e.target.value)}
-                />
-              </Field>
-              {contentUrl.startsWith("data:") && (
-                <p
-                  className="text-[11px] mt-1"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
-                  קובץ התוכן שמור כעת מקומית בדפדפן (
-                  {Math.round(contentUrl.length / 1024).toLocaleString()}KB).
-                </p>
+              {/* A pasted address is a permanent public URL, so hosted
+               * deployments do not accept one for a book: the only delivery
+               * path is the private bucket read through reader-content. The
+               * legacy field remains for the offline/local editor. */}
+              {!isSupabaseConfigured && (
+                <>
+                  <Field
+                    label="או כתובת הקובץ"
+                    hint={`קבצים מקומיים מוגבלים ל-${maxKb}KB. במצב מקומי בלבד אפשר להדביק נתיב (למשל /books/my-book.pdf).`}
+                  >
+                    <input
+                      dir="ltr"
+                      className={inputClass}
+                      style={inputStyle}
+                      placeholder="/books/my-book.pdf"
+                      value={contentUrl.startsWith("data:") ? "" : contentUrl}
+                      onChange={(e) => setContentUrl(e.target.value)}
+                    />
+                  </Field>
+                  {contentUrl.startsWith("data:") && (
+                    <p
+                      className="text-[11px] mt-1"
+                      style={{ color: "var(--color-muted-foreground)" }}
+                    >
+                      קובץ התוכן שמור כעת מקומית בדפדפן (
+                      {Math.round(contentUrl.length / 1024).toLocaleString()}KB).
+                    </p>
+                  )}
+                </>
               )}
               {storagePath && (
                 <p

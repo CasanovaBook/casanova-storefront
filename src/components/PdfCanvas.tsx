@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 
+import { contentRequestHeaders } from "../lib/content-storage"
+
 /* ─────────────────────────────────────────────────────────────
  * PdfCanvas - protected-content PDF renderer (v2).
  *
@@ -35,16 +37,16 @@ import { useEffect, useRef, useState } from "react"
  *     current page paints, so normal next/previous navigation hits
  *     the cache and feels immediate.
  *
- * The parsed document itself is cached per signed URL at module
- * level: the 148-page file is parsed once per grant, never re-parsed
- * per page.
+ * The parsed document itself is cached per authorized content URL at
+ * module level: the 148-page file is parsed once per grant, never
+ * re-parsed per page.
  *
  * Security honesty: canvas rendering removes the accidental download
  * path and composes with the copy/print deterrents in the host page,
  * but it is NOT strong DRM - pixels can always be captured. The real
  * boundary stays server-side: entitlement checks, use-budgeted
- * grants, short-lived signed URLs, and the identity watermark this
- * component composes under.
+ * grants, the authenticated streaming endpoint, and the identity
+ * watermark this component composes under.
  * ───────────────────────────────────────────────────────────── */
 
 // Grouped so Vite code-splits the parser away from the entry chunk and
@@ -90,7 +92,10 @@ const docCache = new Map<string, Promise<PdfDoc>>()
  */
 const DOC_LOAD_TIMEOUT_MS = 30_000
 
-function loadDoc(url: string): Promise<PdfDoc> {
+function loadDoc(
+  url: string,
+  httpHeaders?: Record<string, string>,
+): Promise<PdfDoc> {
   const existing = docCache.get(url)
   if (existing) return existing
 
@@ -98,8 +103,9 @@ function loadDoc(url: string): Promise<PdfDoc> {
     PDFJS_IMPORT().then(({ getDocument }) => {
       const loading = getDocument({
         url,
-        // The signed URL already carries the authorization; nothing
-        // else is sent and credentials are never attached.
+        // The protected endpoint authorizes every request from these
+        // headers; cookies are never sent. Public/legacy URLs pass none.
+        httpHeaders,
         withCredentials: false,
         // Keep font metadata alive across repeated renders of the same
         // page object (cache hits, neighbour prefetches): without this
@@ -331,7 +337,12 @@ function devTiming(label: string, startedAt: number): void {
 }
 
 export interface PdfCanvasProps {
-  signedUrl: string
+  contentUrl: string
+
+  /** True when the address is the authenticated reader endpoint. pdf.js then
+   *  sends the reader's Supabase session on every document/range request;
+   *  the function authorizes each one. */
+  requiresAuth?: boolean
 
   page: number
 
@@ -349,7 +360,8 @@ export interface PdfCanvasProps {
 }
 
 export default function PdfCanvas({
-  signedUrl,
+  contentUrl,
+  requiresAuth = false,
   page,
   zoom = 1,
   watermark,
@@ -379,7 +391,7 @@ export default function PdfCanvas({
   const totalReported = useRef(false)
   useEffect(() => {
     totalReported.current = false
-  }, [signedUrl])
+  }, [contentUrl])
 
   // Zoom changes invalidate every cached bitmap (they are the wrong
   // scale), so drop the lot rather than letting them age out.
@@ -437,7 +449,11 @@ export default function PdfCanvas({
 
     void (async () => {
       try {
-        const doc = await loadDoc(signedUrl)
+        const httpHeaders = requiresAuth
+          ? await contentRequestHeaders()
+          : undefined
+
+        const doc = await loadDoc(contentUrl, httpHeaders)
 
         if (cancelled || epoch !== renderEpoch.current) return
 
@@ -450,7 +466,7 @@ export default function PdfCanvas({
 
         const safePage = Math.min(Math.max(page, 1), doc.numPages)
         const key = bitmapKey(
-          signedUrl,
+          contentUrl,
           safePage,
           zoomPermille,
           dpr,
@@ -482,7 +498,7 @@ export default function PdfCanvas({
           const paintStartedAt = performance.now()
           const bitmap = await renderPageBitmap(
             doc,
-            signedUrl,
+            contentUrl,
             safePage,
             effectiveZoom,
             containerWidth,
@@ -511,7 +527,7 @@ export default function PdfCanvas({
           if (cancelled) return
           void renderPageBitmap(
             doc,
-            signedUrl,
+            contentUrl,
             neighbour,
             effectiveZoom,
             containerWidth,
@@ -524,9 +540,11 @@ export default function PdfCanvas({
         setError(
           err instanceof Error && /password/i.test(err.message)
             ? "הקובץ מוגן בסיסמה ואינו ניתן לפתיחה."
-            : err instanceof Error && err.message === "pdf-load-timeout"
-              ? "הקובץ לא נטען בזמן. בדקו את החיבור ונסו שוב."
-              : "טעינת הקובץ נכשלה. נסו שוב.",
+            : err instanceof Error && err.message === "content-auth-required"
+              ? "תוקף ההתחברות פג. יש להתחבר מחדש כדי לפתוח את הספר."
+              : err instanceof Error && err.message === "pdf-load-timeout"
+                ? "הקובץ לא נטען בזמן. בדקו את החיבור ונסו שוב."
+                : "טעינת הקובץ נכשלה. נסו שוב.",
         )
       }
     })()
@@ -541,7 +559,14 @@ export default function PdfCanvas({
     }
     // zoomPermille is derived from zoom; containerWidth drives re-render
     // on resize/fullscreen. eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedUrl, page, zoomPermille, containerWidth, reloadNonce])
+  }, [
+    contentUrl,
+    requiresAuth,
+    page,
+    zoomPermille,
+    containerWidth,
+    reloadNonce,
+  ])
 
   /* The wrapper is what ResizeObserver measures; the canvas is centred
    * inside it. */
@@ -577,7 +602,7 @@ export default function PdfCanvas({
             onClick={() => {
               /* Drops the rejected/cached loader so the retry starts a
                * fresh transfer instead of hanging on the same promise. */
-              docCache.delete(signedUrl)
+              docCache.delete(contentUrl)
               setError(null)
               setRendering(true)
               setReloadNonce((nonce) => nonce + 1)

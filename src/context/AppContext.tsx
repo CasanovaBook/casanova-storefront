@@ -451,8 +451,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * the mirror.
    *
    * This is a UX-latency mechanism, never an authorization one. Even
-   * if the socket is down or an event is dropped, get-content-url
-   * re-checks access_status = 'ACTIVE' server-side on every signing,
+   * if the socket is down or an event is dropped, reader-content
+   * re-checks the entitlement server-side on every document request,
    * and the Reader's 30 s beat remains the polling fallback.
    */
   useEffect(() => {
@@ -502,7 +502,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * Library; each beat is one cheap RLS-scoped SELECT of the account's
    * own rows, and the mirror skips the write entirely when nothing
    * changed. Still a UX-latency mechanism only: authorization stays
-   * server-side in get-content-url.
+   * server-side in reader-content.
    */
   useEffect(() => {
     if (!isSupabaseConfigured || !user) return

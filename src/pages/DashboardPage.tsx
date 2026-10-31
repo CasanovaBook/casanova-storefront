@@ -284,7 +284,7 @@ export default function DashboardPage() {
    * customer would conclude the book - and their purchase - had
    * vanished. Visibility and authorization are separate concerns; the
    * open affordance is what carries the authorization boundary, and
-   * get-content-url re-checks the status server-side regardless. */
+   * reader-content re-checks the status server-side regardless. */
   const currentlyReading = userProducts
     .map((up) => ({
       up,

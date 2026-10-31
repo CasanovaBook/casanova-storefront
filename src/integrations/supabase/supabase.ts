@@ -33,6 +33,17 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const isSupabaseConfigured = Boolean(url && anonKey)
 
 /**
+ * The project URL and client-safe key, exported for callers that must
+ * address an Edge Function directly (the reader's content proxy does, because
+ * pdf.js owns its own fetch and cannot go through `functions.invoke`).
+ * These are the same two values already inlined into the public bundle; the
+ * service_role key is never exported here.
+ */
+export const supabaseUrl = url as string
+
+export const supabaseAnonKey = anonKey as string
+
+/**
  * The shared Supabase client, or `null` when unconfigured.
  *
  * A single instance is reused across the app so auth state, the

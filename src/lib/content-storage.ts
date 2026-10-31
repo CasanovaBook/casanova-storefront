@@ -2,12 +2,17 @@
  * Content-storage client - the browser side of the Supabase
  * Storage delivery path.
  *
- * Two Edge Functions do the privileged work with the service_role
- * key (which never reaches this bundle):
+ * Edge Functions do the privileged work with the service_role key
+ * (which never reaches this bundle):
  *
  *   • create-upload-url - CMS: get a signed UPLOAD url for a book.
- *   • get-content-url   - reader: resolve a product to a short-lived
- *     signed DOWNLOAD url.
+ *   • reader-content    - reader: stream a private book. Every request
+ *     carries the reader's session and is authorized server-side.
+ *   • get-content-url   - legacy signer, no longer called by this client.
+ *
+ * The browser never receives a Storage download URL for a book. The
+ * reader endpoint returns a URL on the Edge Function itself; the storage
+ * object is signed only inside the function runtime and is never exposed.
  *
  * Everything here returns the app's `Result`/`Failure` shape so the
  * CMS and the grant layer can treat a Supabase failure exactly like
@@ -16,13 +21,12 @@
 
 import { fail, ok, type ErrorCode, type Result } from "../shared/result"
 
-import { isSupabaseConfigured, requireSupabase } from "../integrations/supabase/supabase"
-
-export interface SignedContent {
-  signedUrl: string
-
-  expiresAt: string
-}
+import {
+  isSupabaseConfigured,
+  requireSupabase,
+  supabaseAnonKey,
+  supabaseUrl,
+} from "../integrations/supabase/supabase"
 
 export interface UploadTarget {
   bucket: string
@@ -179,14 +183,81 @@ export function contentFailure(
 }
 
 /**
- * Reader path: exchange a product id for a short-lived signed URL.
- * The path is derived server-side from the validated product_id, so the
- * client never dictates which object is signed.
+ * The reader's authenticated content endpoint.
+ *
+ * The URL is on the Edge Function, not Storage: the object path and its
+ * signed URL exist only inside the function runtime. `v` is a per-mint cache
+ * key so pdf.js's document cache cannot hand one reader's parsed document to
+ * the next session on a shared browser.
  */
+function readerContentUrl(productId: string): string {
+  const base = supabaseUrl.replace(/\/+$/, "")
 
-export async function fetchSignedContentUrl(
+  const url = new URL(`${base}/functions/v1/reader-content`)
+
+  url.searchParams.set("product_id", productId)
+
+  url.searchParams.set("v", crypto.randomUUID())
+
+  return url.toString()
+}
+
+/** True when a content address points at the streaming endpoint and must be
+ *  fetched with the reader's session headers. */
+export function isProtectedContentUrl(value: string): boolean {
+  if (!isSupabaseConfigured) return false
+
+  try {
+    const expected = new URL(
+      `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/reader-content`,
+    )
+
+    const actual = new URL(value)
+
+    return (
+      actual.origin === expected.origin &&
+      actual.pathname === expected.pathname
+    )
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Headers pdf.js must attach to every request for the streaming endpoint:
+ * the reader's Supabase session and the project's public API key. Neither
+ * is a Storage credential. The access token is read at load time (and
+ * auto-refreshed by supabase-js when near expiry), never persisted in the
+ * local content-grant record.
+ */
+export async function contentRequestHeaders(): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured) throw new Error("content-auth-required")
+
+  const { data, error } = await requireSupabase().auth.getSession()
+
+  const token = data.session?.access_token
+
+  if (error || !token) throw new Error("content-auth-required")
+
+  return {
+    Authorization: `Bearer ${token}`,
+    apikey: supabaseAnonKey,
+  }
+}
+
+/**
+ * Reader path: verify access and return the streaming endpoint for a product.
+ *
+ * The HEAD preflight is deliberate. It makes the Edge Function verify the
+ * JWT, the account status, the entitlement and the object's existence before
+ * the reader shows a canvas - and it transfers no readable content (the
+ * server checks existence with a discarded one-byte range). The function's
+ * `x-content-delivery` marker distinguishes a missing object (404 from the
+ * function) from a function that was never deployed (gateway 404).
+ */
+export async function fetchProtectedContentUrl(
   productId: string,
-): Promise<Result<SignedContent>> {
+): Promise<Result<{ contentUrl: string }>> {
   if (!isSupabaseConfigured) {
     return fail(
       NOT_CONFIGURED,
@@ -194,42 +265,69 @@ export async function fetchSignedContentUrl(
     )
   }
 
+  const contentUrl = readerContentUrl(productId)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FUNCTION_TIMEOUT_MS)
+
   try {
-    const res = await invoke<SignedContent>("get-content-url", {
-      product_id: productId,
+    const headers = await contentRequestHeaders()
+
+    const res = await fetch(contentUrl, {
+      method: "HEAD",
+      headers,
+      signal: controller.signal,
+      cache: "no-store",
     })
 
-    if (!res.data?.signedUrl) {
-      const failure = contentFailure(res.status)
+    const delivered =
+      res.headers.get("x-content-delivery") === "reader-content"
 
-      /* The provider's own words stay in the console for whoever is looking
-       * into a report; the customer gets the sentence above. */
+    if (!res.ok) {
+      const failure =
+        res.status === 404 && !delivered
+          ? {
+              code: "STORAGE" as ErrorCode,
+              message: "שירות הקריאה אינו זמין כרגע. נסו שוב בעוד רגע.",
+            }
+          : contentFailure(res.status)
+
+      /* The status and deployment marker stay in the console for whoever is
+       * looking into a report; the customer gets the sentence above. */
       console.warn(
-        "[content] signing refused:",
-        res.status ?? "no status",
-        res.message ?? "",
+        "[content] delivery refused:",
+        res.status,
+        delivered ? "reader-content" : "gateway",
       )
 
       return fail(failure.code, failure.message)
     }
 
-    return ok({ signedUrl: res.data.signedUrl, expiresAt: res.data.expiresAt })
+    return ok({ contentUrl })
   } catch (err) {
+    if (err instanceof Error && err.message === "content-auth-required") {
+      return fail(
+        "UNAUTHENTICATED",
+        "תוקף ההתחברות פג. יש להתחבר מחדש כדי לפתוח את הספר.",
+      )
+    }
+
     const failure = contentFailure(undefined)
 
     console.warn(
-      "[content] signing threw:",
+      "[content] delivery threw:",
       err instanceof Error ? err.message : err,
     )
 
     return fail(failure.code, failure.message)
+  } finally {
+    clearTimeout(timer)
   }
 }
 
 /**
  * CMS path, step 1: ask for a signed upload URL. The reader derives the
  * same deterministic path from the product id, so a successful upload is
- * immediately resolvable by get-content-url.
+ * immediately resolvable by reader-content.
  */
 
 export async function createContentUploadUrl(
@@ -306,7 +404,7 @@ export async function uploadBookFile(
 /**
  * Admin path: ask whether a product's file actually exists in the private
  * bucket. This is the honest source of truth behind the "digital content"
- * column - the same object the Reader serves through `get-content-url`.
+ * column - the same object the Reader serves through `reader-content`.
  *
  * Degrades to `unverified` rather than a false negative when the function is
  * not deployed or the call fails, so the CMS never claims a real book was

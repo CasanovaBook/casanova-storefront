@@ -1,16 +1,19 @@
-/* get-content-url - resolve a product to a short-lived signed Storage URL.
+/* get-content-url - LEGACY signer retained for deployed clients.
  *
- * Called by the reader (through src/lib/content-storage.ts) when it mints a
- * content grant.
+ * The current web reader does not call this function: it streams through
+ * `reader-content`, which never exposes a Storage URL. This endpoint is kept
+ * only until old bundles age out. It still verifies the JWT and entitlement,
+ * but because its response is a direct Storage URL, the lifetime is now the
+ * shortest useful one (30 seconds) rather than a whole reading session.
  *
  * AUTHORIZATION ENFORCEMENT:
  * 1. Verifies the caller's Supabase Auth JWT.
- * 2. If the user is an ADMIN, access is granted.
- * 3. Otherwise, verifies that the user holds an active entitlement in
+ * 2. Refuses a SUSPENDED or DEACTIVATED account.
+ * 3. If the user is an ADMIN, access is granted.
+ * 4. Otherwise, verifies that the user holds an active entitlement in
  *    public.user_products.
- * 4. Derives the Storage key server-side from the validated product_id
- *    (`product-<id>/book.pdf`).
- * 5. Returns a 30-minute signed URL from the private "books" bucket.
+ * 5. Derives the Storage key server-side from the validated product_id
+ *    (`product-<id>/book.pdf`) and signs it for 30 seconds.
  */
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2"
@@ -18,8 +21,9 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2"
 /** Private Storage bucket that holds the uploaded book PDFs. */
 const BUCKET = "books"
 
-/** Signed-URL lifetime in seconds. (30 minutes) */
-const SIGNED_URL_TTL_SECONDS = 1800
+/** Signed-URL lifetime in seconds. The URL is used immediately to start the
+ *  document transfer; a copied URL is useless seconds later. */
+const SIGNED_URL_TTL_SECONDS = 30
 
 /* ── inlined shared helpers ─────────────────────────────────────────────── */
 
@@ -117,12 +121,20 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // 2. Check if caller has ADMIN role
+    // 2. A valid token is not enough: a suspended account can still hold one.
     const { data: profile } = await admin
       .from("users")
-      .select("role")
+      .select("role, account_status")
       .eq("user_id", user.id)
       .maybeSingle()
+
+    if (profile?.account_status && profile.account_status !== "ACTIVE") {
+      return jsonResponse(
+        { error: "החשבון אינו פעיל ואינו יכול לגשת לתוכן." },
+        403,
+        cors,
+      )
+    }
 
     const isAdmin = profile?.role === "ADMIN"
 

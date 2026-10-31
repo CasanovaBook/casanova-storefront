@@ -52,8 +52,8 @@ export interface DbRelationRow {
  * column level, so a request that asks for them is refused by Postgres rather
  * than answered and then hidden here. A `select=*` would ask for both and
  * fail the whole read. The reader never needed either: it resolves the file
- * through the `get-content-url` edge function, which checks the entitlement
- * first. An administrator reads `content_url` through `admin_list_products()`.
+ * through the `reader-content` edge function, which checks the session and
+ * entitlement first. An administrator reads `content_url` through `admin_list_products()`.
  */
 const PRODUCT_SELECT = `
       product_id, name, subtitle, slug, sku, description, short_description,

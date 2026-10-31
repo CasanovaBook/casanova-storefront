@@ -54,7 +54,7 @@ import {
   type Result,
 } from "./api"
 
-import { fetchSignedContentUrl } from "./content-storage"
+import { fetchProtectedContentUrl } from "./content-storage"
 
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
@@ -1103,9 +1103,10 @@ export async function issueContentGrant(
    * When Supabase is configured the catalogue the storefront sells from
    * lives there, so the local document frequently does not hold the row at
    * all - a purchased book would be declared "no file attached" before the
-   * server was even asked. The product id is all `get-content-url` needs
+   * server was even asked. The product id is all `reader-content` needs
    * (it derives the object key server-side), so a hosted deployment asks
-   * for a signed URL whenever there is no legacy address to fall back on. */
+   * for the streaming endpoint whenever there is no legacy address to
+   * fall back on. */
 
   const storagePath = product?.storage_path?.trim()
 
@@ -1184,19 +1185,21 @@ export async function issueContentGrant(
       : Math.min(STREAM_GRANT_MINUTES, policy.session_timeout_minutes)
 
   /* Resolve the address the reader will load. For a Storage-hosted file this
-   * is the one network call per grant: it asks the get-content-url function
-   * for a short-lived signed URL (TTL 30 min, ≥ this grant's own TTL, so the
-   * URL stays valid for as long as the grant that carries it is reused).
-   * Legacy/local files keep their stored address and make no call at all. */
+   * is the one network call per grant: the reader-content function verifies
+   * the session and entitlement and returns its own streaming endpoint. The
+   * Storage URL never reaches the browser, and each document/range request
+   * is re-authorized by that function. Legacy/local files keep their stored
+   * address and make no call at all. */
 
   let contentUrl = legacyUrl ?? ""
 
   if (hosted) {
-    const signed = await fetchSignedContentUrl(input.productId)
+    const protectedContent = await fetchProtectedContentUrl(input.productId)
 
-    if (!signed.ok) return fail(signed.code, signed.error)
+    if (!protectedContent.ok)
+      return fail(protectedContent.code, protectedContent.error)
 
-    contentUrl = signed.data.signedUrl
+    contentUrl = protectedContent.data.contentUrl
   }
 
   const created = mutate((draft) => {

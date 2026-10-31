@@ -1,10 +1,10 @@
 # Supabase project configuration for the content-delivery Edge Functions.
 #
-# These functions are called by a storefront that has no Supabase Auth
-# session (login is handled client-side), so there is no JWT to verify.
-# verify_jwt = false lets them be invoked with just the public anon key;
-# they authorize by deriving the Storage path server-side from the validated
-# product_id and by keeping the service_role key inside the function runtime.
+# Each function verifies the caller's Supabase Auth JWT inside its own
+# runtime, so `verify_jwt = false` is required: a gateway check would reject
+# the function's own recovery/guest flows and its explicit JWT checks would
+# still be the authorization boundary. The service_role key stays inside the
+# function runtime and is never part of a response.
 project_id = "zlweiqsqfsspecrubfuf"
 
 # ── password policy: what the auth server can and cannot enforce ─────────────
@@ -46,6 +46,19 @@ project_id = "zlweiqsqfsspecrubfuf"
 # decision, and the exact key names were not verified against this CLI version.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# The web reader's only download path. pdf.js fetches this function with the
+# reader's Supabase session on every document and range request, so the
+# gateway cannot demand its own JWT check: the function verifies the token,
+# the account status and the active entitlement itself before signing the
+# private object inside the runtime. The signed Storage URL never leaves the
+# function.
+[functions.reader-content]
+verify_jwt = false
+
+# Legacy signer, kept for clients that still call it. The current web reader
+# uses reader-content and never sees a Storage URL. This endpoint still
+# validates the JWT and entitlement, but its signed URL is deliberately short
+# and should be retired once no deployed client references it.
 [functions.get-content-url]
 verify_jwt = false
 

@@ -7,7 +7,10 @@ import { useStore } from "../data/store"
 import PdfCanvas, {
   prefetchPdfRuntime,
 } from "../components/PdfCanvas"
-import { contentFailure } from "../lib/content-storage"
+import {
+  contentFailure,
+  isProtectedContentUrl,
+} from "../lib/content-storage"
 import { useScreenProtection } from "../lib/useScreenProtection"
 import {
   consumeContentGrant,
@@ -34,13 +37,13 @@ const ACTIVITY_WINDOW_MS = 60_000
  * How often the reader re-verifies the entitlement server-side while the
  * book is open.
  *
- * A grant minted once at open time is not authorization - it is a
- * snapshot of authorization. `get-content-url` checks
- * `access_status = 'ACTIVE'` only when it signs, and the signed URL it
- * hands back cannot be un-signed, so the only way an already-open reader
- * learns that an administrator pressed חסימה is to ask the server again.
- * Thirty seconds bounds how long a suspended account can keep turning
- * pages; each beat is one cheap entitlement read through RLS.
+ * The streaming endpoint re-checks authorization for every request, but a
+ * document already parsed and painted in this tab needs no new request - so
+ * a revocation would leave what is already on screen untouched. The only way
+ * an already-open reader learns that an administrator pressed חסימה is to
+ * ask the server again. Thirty seconds bounds how long a suspended account
+ * can keep turning pages; each beat is one cheap entitlement read through
+ * RLS.
  */
 const ACCESS_REVALIDATE_MS = 30_000
 
@@ -187,9 +190,10 @@ export default function ReaderPage() {
 
   /* The address of the file is never read off the catalogue row. The reader
    * asks the service layer for a grant, which re-checks the entitlement and
-   * the device session and hands back a short-lived, use-budgeted URL - the
-   * same contract the native reader follows, and the reason the storefront
-   * catalogue carries no content_url at all. */
+   * the device session and hands back an authenticated streaming endpoint -
+   * a use-budgeted local grant over a server-side check, never a Storage
+   * address, and the reason the storefront catalogue carries no content_url
+   * at all. */
   const [contentUrl, setContentUrl] = useState<string | undefined>(undefined)
   const [grantWatermark, setGrantWatermark] = useState<string | undefined>(
     undefined,
@@ -210,7 +214,18 @@ export default function ReaderPage() {
    * so without a nonce the effect would never run again and the retry
    * button would clear the message and hang on "checking" forever. */
   const [grantAttempt, setGrantAttempt] = useState(0)
-  const isPdf = Boolean(contentUrl && /\.pdf(\?|#|$)/i.test(contentUrl))
+  /* Hosted books are served by the authenticated reader-content function -
+   * a URL that never names the Storage object and re-checks the session and
+   * entitlement on every request. Its path has no .pdf suffix, so it is
+   * recognized explicitly; only legacy/external addresses fall back to the
+   * extension test. */
+  const protectedContent = Boolean(
+    contentUrl && isProtectedContentUrl(contentUrl),
+  )
+  const isPdf = Boolean(
+    contentUrl &&
+      (protectedContent || /\.pdf(\?|#|$)/i.test(contentUrl)),
+  )
 
   /* A PDF renders through PdfCanvas, which parses the document once and
    * paints pages onto a canvas the page owns - no browser PDF plugin, so
@@ -335,10 +350,10 @@ export default function ReaderPage() {
     grantRun.current = { key, status: "inflight" }
     setGrantPending(true)
 
-    /* issueContentGrant is async now: a Storage-hosted file resolves to a
-     * short-lived signed URL over the network. Guard against the effect
-     * being torn down mid-flight (navigation, session change) so a late
-     * result cannot write state for a reader that has already moved on. */
+    /* issueContentGrant is async now: a Storage-hosted file resolves to the
+     * authenticated streaming endpoint over the network. Guard against the
+     * effect being torn down mid-flight (navigation, session change) so a
+     * late result cannot write state for a reader that has already moved on. */
     let cancelled = false
     void (async () => {
       try {
@@ -415,7 +430,7 @@ export default function ReaderPage() {
   /* Live access revalidation.
    *
    * The grant mint above runs once per sitting: after it succeeds the
-   * reader holds a parsed PDF and a signed URL, and nothing would ever
+   * reader holds a parsed PDF and a content endpoint, and nothing would ever
    * tell it that access died in the meantime - an administrator pressing
    * חסימה (or שלילה) changed `user_products.access_status` on the server,
    * but this tab went on rendering from memory. The mirror in AppContext
@@ -429,11 +444,10 @@ export default function ReaderPage() {
    *     `hasAccess` against the fresh mirror.
    *  2. The guard - which already ran on open - now also runs on every
    *     mirror change and tears the content down when access is gone:
-   *     the signed URL is dropped, the parsed document unmounts, and the
+   *     the content endpoint is dropped, the parsed document unmounts, and the
    *     block screen replaces the page. From there the existing paths take
    *     over: the Library hides the book, a reopen fails in
-   *     issueContentGrant, and get-content-url refuses to sign anything
-   *     new. This is an enforcement boundary, not cosmetics - without it
+   *     issueContentGrant, and reader-content refuses any new request. This is an enforcement boundary, not cosmetics - without it
    *     the only server-side checks in the system never fire again after
    *     the first mint.
    */
@@ -954,7 +968,8 @@ export default function ReaderPage() {
               >
                 {isPdf ? (
                   <PdfCanvas
-                    signedUrl={contentUrl}
+                    contentUrl={contentUrl}
+                    requiresAuth={protectedContent}
                     page={currentPage}
                     zoom={zoom === ZOOM_FIT ? 1 : zoom / 100}
                     watermark={policy.watermark_enabled ? watermark : undefined}
