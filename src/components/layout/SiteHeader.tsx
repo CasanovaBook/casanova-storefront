@@ -233,7 +233,7 @@ export default function SiteHeader({
             <span className="site-header-theme">
               <ThemeToggle />
             </span>
-            <div className="hidden md:flex items-center gap-2">{account}</div>
+            <div className="hidden md:flex items-center gap-5">{account}</div>
             <button
               ref={menuButtonRef}
               type="button"

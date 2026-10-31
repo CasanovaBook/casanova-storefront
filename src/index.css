@@ -3906,7 +3906,17 @@ body {
 .site-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+}
+
+/* Desktop gets a deliberately airier action rail: the CTA, the account
+ * control and the theme toggle each read as their own item instead of one
+ * cramped cluster. The mobile header keeps the compact spacing. */
+@media (min-width: 901px) {
+  .site-header-actions {
+    gap: 1rem;
+  }
 }
 
 .site-header-theme {
@@ -3917,7 +3927,7 @@ body {
 .site-member-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.55rem;
   color: #f4eee4;
   font-size: 0.8rem;
   text-decoration: none;
@@ -3956,8 +3966,11 @@ body {
 }
 
 .site-account-link {
+  display: inline-flex;
+  align-items: center;
   color: #b7ac9e;
   font-size: 0.8rem;
+  line-height: 1;
   text-decoration: none;
   white-space: nowrap;
 }
