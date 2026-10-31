@@ -136,6 +136,12 @@ export interface Database {
  * carries no catalogue, customer or revenue data of any kind.
  */
 
+/** The built-in forensic stamp. Empty placeholders are removed by
+ *  `renderWatermark`, so a missing phone collapses cleanly instead of
+ *  leaving a dangling separator. `{stamp}` is the access date + time. */
+export const DEFAULT_WATERMARK_TEMPLATE =
+  "{name} • {email} • {phone} • {stamp}"
+
 export function defaultDrmPolicy(): DrmPolicy {
   const at = new Date(0).toISOString()
 
@@ -166,9 +172,9 @@ export function defaultDrmPolicy(): DrmPolicy {
 
     watermark_enabled: true,
 
-    watermark_template: "{name} · {email}",
+    watermark_template: DEFAULT_WATERMARK_TEMPLATE,
 
-    watermark_opacity: 0.07,
+    watermark_opacity: 0.1,
 
     max_devices_per_user: 3,
 
@@ -292,6 +298,14 @@ function withProtectionDefaults(policies: unknown[]): DrmPolicy[] {
   return policies.map((raw) => {
     const p = raw as Partial<DrmPolicy>
 
+    /* Upgrade the old shipped template to the forensic default. A custom
+     * template is preserved, but an existing 0.07 (or any value outside the
+     * readable/forensic band) is clamped so old local rows do not keep a
+     * watermark that is too faint to attribute. */
+    const storedTemplate = p.watermark_template?.trim()
+
+    const storedOpacity = Number(p.watermark_opacity)
+
     return {
       ...baseline,
 
@@ -304,6 +318,15 @@ function withProtectionDefaults(policies: unknown[]): DrmPolicy[] {
       offline_ttl_hours: p.allow_offline ? (p.offline_ttl_hours ?? null) : null,
 
       block_rooted_devices: p.block_rooted_devices ?? true,
+
+      watermark_template:
+        !storedTemplate || storedTemplate === "{name} · {email}"
+          ? baseline.watermark_template
+          : storedTemplate,
+
+      watermark_opacity: Number.isFinite(storedOpacity)
+        ? Math.min(0.12, Math.max(0.08, storedOpacity))
+        : baseline.watermark_opacity,
     } as DrmPolicy
   })
 }

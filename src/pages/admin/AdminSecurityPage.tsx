@@ -324,9 +324,9 @@ function PolicyEditor({
 
           watermark_enabled: true,
 
-          watermark_template: "{name} · {email}",
+          watermark_template: "{name} • {email} • {phone} • {stamp}",
 
-          watermark_opacity: 0.07,
+          watermark_opacity: 0.1,
 
           max_devices_per_user: 3,
 
@@ -437,7 +437,7 @@ function PolicyEditor({
           >
             <Toggle
               label="סימון מזהה (Watermark)"
-              hint="שם הקורא וכתובתו מוטבעים על גבי התוכן. זהו אמצעי ההרתעה החזק ביותר: כל עותק שודלף מצביע על החשבון שממנו נלקח."
+              hint="שם הקורא, כתובתו, הטלפון וזמן הגישה מוטבעים על גבי התוכן. זהו אמצעי ההרתעה החזק ביותר: כל עותק שודלף מצביע על החשבון שממנו נלקח."
               checked={form.watermark_enabled}
               onChange={(next) => setForm({ ...form, watermark_enabled: next })}
             />
@@ -445,7 +445,7 @@ function PolicyEditor({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
                 <Field
                   label="תבנית הסימון"
-                  hint="משתנים זמינים: {name} שם הקורא, {email} כתובתו, {date} תאריך הקריאה."
+                  hint="משתנים זמינים: {name}, {email}, {phone}, {user_id}, {date}, {time}, {stamp} (תאריך ושעה). כל משתנה חסר מוסר אוטומטית."
                 >
                   <input
                     dir="ltr"
@@ -459,12 +459,12 @@ function PolicyEditor({
                 </Field>
                 <Field
                   label={`עוצמת הסימון - ${Math.round(form.watermark_opacity * 100)}%`}
-                  hint="עד 40%. עוצמה גבוהה מקשה על קריאה."
+                  hint="טווח מומלץ: 8%–12%. חזק מספיק לצילום, עדין מספיק לקריאה."
                 >
                   <input
                     type="range"
-                    min="0.01"
-                    max="0.4"
+                    min="0.08"
+                    max="0.12"
                     step="0.01"
                     className="w-full"
                     value={form.watermark_opacity}

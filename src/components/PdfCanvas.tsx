@@ -45,8 +45,8 @@ import { contentRequestHeaders } from "../lib/content-storage"
  * path and composes with the copy/print deterrents in the host page,
  * but it is NOT strong DRM - pixels can always be captured. The real
  * boundary stays server-side: entitlement checks, use-budgeted
- * grants, the authenticated streaming endpoint, and the identity
- * watermark this component composes under.
+ * grants, the authenticated streaming endpoint, and the Reader's
+ * identity watermark overlay above this canvas.
  * ───────────────────────────────────────────────────────────── */
 
 // Grouped so Vite code-splits the parser away from the entry chunk and
@@ -349,9 +349,6 @@ export interface PdfCanvasProps {
   /** Scale multiplier chosen by the reader's text-size control. 1 = natural. */
   zoom?: number
 
-  /** Rendered underneath the canvas: identity watermark text per page. */
-  watermark?: string
-
   /** Countered once the page's real total is known from the document. */
   onTotalPages?: (total: number) => void
 
@@ -364,7 +361,6 @@ export default function PdfCanvas({
   requiresAuth = false,
   page,
   zoom = 1,
-  watermark,
   onTotalPages,
   onRendered,
 }: PdfCanvasProps) {
@@ -615,40 +611,6 @@ export default function PdfCanvas({
           >
             ניסיון נוסף
           </button>
-        </div>
-      )}
-      {/* Attribution layer: the page's own watermark sits under the same
-       * overlay stack the iframe-based reader used. */}
-      {watermark && (
-        <div
-          className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg"
-          aria-hidden="true"
-        >
-          <div
-            className="absolute flex flex-col justify-around"
-            style={{
-              top: "-50%",
-              left: "-50%",
-              width: "200%",
-              height: "200%",
-              transform: "rotate(-24deg)",
-              opacity: 0.07,
-              color: "#000000",
-            }}
-          >
-            {Array.from({ length: 9 }).map((_, row) => (
-              <div key={row} className="flex justify-around">
-                {Array.from({ length: 4 }).map((_, col) => (
-                  <span
-                    key={col}
-                    className="whitespace-nowrap text-[13px] tracking-wider"
-                  >
-                    {watermark}
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>

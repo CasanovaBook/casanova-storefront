@@ -36,6 +36,7 @@ import type {
 
 import {
   CONTENT_GRANT_LIMIT,
+  DEFAULT_WATERMARK_TEMPLATE,
   SECURITY_EVENT_LIMIT,
   defaultDrmPolicy,
   getDb,
@@ -116,11 +117,14 @@ function normalizePolicy(data: DrmPolicyInput): DrmPolicyInput {
 
     policy_name: data.policy_name.trim(),
 
-    watermark_template: data.watermark_template.trim() || "{name} · {email}",
+    watermark_template:
+      data.watermark_template.trim() || DEFAULT_WATERMARK_TEMPLATE,
 
+    /* 8–12% is the readable/forensic band: dense enough to survive a photo
+     * or a cropped screenshot, light enough not to compete with the text. */
     watermark_opacity: Math.min(
-      0.4,
-      Math.max(0.01, Number(data.watermark_opacity) || 0.07),
+      0.12,
+      Math.max(0.08, Number(data.watermark_opacity) || 0.1),
     ),
 
     max_devices_per_user: Math.min(
@@ -962,19 +966,62 @@ export const HIGH_SIGNAL_EVENTS: SecurityEventType[] = [
  * redistributed screenshot traceable.
  */
 
+export interface WatermarkIdentity {
+  name: string
+  email: string
+  phone?: string
+  user_id?: string
+  /** When the reader opened this access; frozen by the caller. */
+  accessedAt?: Date | string
+}
+
+/**
+ * Builds the identity stamp shown over protected content.
+ *
+ * The caller passes the live profile and the access time; `{stamp}` is the
+ * full date + time, while `{date}` remains date-only for older templates.
+ * Empty placeholders (notably a missing phone) and the separators around
+ * them are removed, so a template never reads "name • email •  • date".
+ */
 export function renderWatermark(
   template: string,
-  user: { name: string, email: string },
+  user: WatermarkIdentity,
 ): string {
-  return template
+  const rawAt = user.accessedAt ? new Date(user.accessedAt) : new Date()
+
+  const at = Number.isNaN(rawAt.getTime()) ? new Date() : rawAt
+
+  const date = at.toLocaleDateString("he-IL")
+
+  const time = at.toLocaleTimeString("he-IL", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+
+  const text = template
 
     .replace(/\{name\}/g, user.name)
 
     .replace(/\{email\}/g, user.email)
 
-    .replace(/\{date\}/g, new Date().toLocaleDateString("he-IL"))
+    .replace(/\{phone\}/g, user.phone ?? "")
 
-    .trim()
+    .replace(/\{user_id\}/g, user.user_id ?? "")
+
+    .replace(/\{date\}/g, date)
+
+    .replace(/\{time\}/g, time)
+
+    .replace(/\{stamp\}/g, `${date} ${time}`)
+
+  /* Split on the separators, drop empty segments, and rejoin with one
+   * canonical bullet. This both removes a missing phone and gives the
+   * renderer stable multi-line boundaries. */
+  return text
+    .split(/\s*(?:[•·|]|\n)\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" • ")
 }
 
 /* ── Content grants ───────────────────────────────── */
@@ -1231,9 +1278,19 @@ export async function issueContentGrant(
 
       watermark_text: policy.watermark_enabled
         ? renderWatermark(policy.watermark_template, {
-            name: user.name,
+            name:
+              [stored?.first_name, stored?.last_name]
+                .filter(Boolean)
+                .join(" ")
+                .trim() || user.name,
 
             email: stored?.email ?? "",
+
+            phone: stored?.phone,
+
+            user_id: user.user_id,
+
+            accessedAt: new Date(at),
           })
         : undefined,
 

@@ -7,6 +7,7 @@ import { useStore } from "../data/store"
 import PdfCanvas, {
   prefetchPdfRuntime,
 } from "../components/PdfCanvas"
+import WatermarkPattern from "../components/WatermarkPattern"
 import {
   contentFailure,
   isProtectedContentUrl,
@@ -22,7 +23,9 @@ import {
   renderWatermark,
   resolveDrmPolicy,
 } from "../lib/api-security"
-import type { SecurityEventType } from "../types"
+import { isSupabaseConfigured } from "../integrations/supabase/supabase"
+import { fetchProfile } from "../integrations/supabase/supabase-auth"
+import type { SecurityEventType, User } from "../types"
 import Icon from "../components/icons"
 
 /** Minimum horizontal travel, in CSS pixels, that counts as a page swipe. */
@@ -198,6 +201,14 @@ export default function ReaderPage() {
   const [grantWatermark, setGrantWatermark] = useState<string | undefined>(
     undefined,
   )
+  /* The profile row is the live source for name/phone. The AppContext user
+   * is already merged from Auth + profile at restore time, but a purchase,
+   * support edit or checkout name sync may have happened since; re-reading
+   * the row here keeps the forensic stamp tied to the current account. */
+  const [liveProfile, setLiveProfile] = useState<User | null>(null)
+  /* Frozen when this reading session receives its content URL; every tile
+   * of the watermark carries this exact timestamp, not the render time. */
+  const [accessStartedAt, setAccessStartedAt] = useState(() => new Date())
   const [grantError, setGrantError] = useState<string | null>(null)
   /* The status class the refusal carried. Without it a missing file and a
    * storage outage look identical to this screen, which is how the heading
@@ -214,6 +225,34 @@ export default function ReaderPage() {
    * so without a nonce the effect would never run again and the retry
    * button would clear the message and hang on "checking" forever. */
   const [grantAttempt, setGrantAttempt] = useState(0)
+
+  useEffect(() => {
+    setLiveProfile(null)
+
+    if (!isSupabaseConfigured || !user?.user_id) return
+
+    let cancelled = false
+
+    void fetchProfile(user.user_id)
+      .then((profile) => {
+        if (!cancelled && profile) setLiveProfile(profile)
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    user?.user_id,
+    user?.first_name,
+    user?.last_name,
+    user?.phone,
+  ])
+
+  useEffect(() => {
+    setAccessStartedAt(new Date())
+  }, [productId])
+
   /* Hosted books are served by the authenticated reader-content function -
    * a URL that never names the Storage object and re-checks the session and
    * entitlement on every request. Its path has no .pdf suffix, so it is
@@ -392,6 +431,7 @@ export default function ReaderPage() {
         setGrantCode(null)
         setGrantPending(false)
         setGrantWatermark(redeemed.data.watermark_text)
+        setAccessStartedAt(new Date())
         setContentUrl(redeemed.data.content_url)
       } catch {
         /* Both service calls resolve by contract, but the store write
@@ -518,17 +558,40 @@ export default function ReaderPage() {
   })
 
   const watermark = useMemo(() => {
-    /* The grant's stamp wins: it was frozen when the grant was minted, so a
-     * leaked capture keeps naming the account it was issued to even after
-     * that account is renamed. */
-    if (grantWatermark) return grantWatermark
-    return user
-      ? renderWatermark(policy.watermark_template, {
-          name: `${user.first_name} ${user.last_name}`.trim(),
-          email: user.email,
-        })
-      : ""
-  }, [user, policy.watermark_template, grantWatermark])
+    if (!user) return grantWatermark ?? ""
+
+    /* The live profile row wins over the last AppContext snapshot, but a
+     * field it does not hold falls back to the session-derived user. Email
+     * comes from the session because that is the address Auth verified. */
+    const first = liveProfile?.first_name?.trim() || user.first_name.trim()
+    const last = liveProfile?.last_name?.trim() || user.last_name.trim()
+
+    const rendered = renderWatermark(policy.watermark_template, {
+      name: `${first} ${last}`.trim(),
+      email: user.email || liveProfile?.email || "",
+      phone: liveProfile?.phone?.trim() || user.phone?.trim() || "",
+      user_id: user.user_id,
+      accessedAt: accessStartedAt,
+    })
+
+    /* The grant stamp is the fallback for a profile that has no usable
+     * fields; the live stamp is what makes the mark reflect this account. */
+    return rendered || grantWatermark || ""
+  }, [
+    user,
+    liveProfile,
+    policy.watermark_template,
+    accessStartedAt,
+    grantWatermark,
+  ])
+
+  /* The PDF page is always white in this canvas reader, so a dark mark is
+   * the one that survives on the content in both themes. 8–12% keeps the
+   * repeated multi-line grid legible in a photo without fighting the text. */
+  const watermarkOpacity = Math.min(
+    0.12,
+    Math.max(0.08, policy.watermark_opacity || 0.1),
+  )
 
   /* ── Reading state ─────────────────────────────────────── */
   const savedProgress = productId ? getProgress(productId) : undefined
@@ -972,7 +1035,6 @@ export default function ReaderPage() {
                     requiresAuth={protectedContent}
                     page={currentPage}
                     zoom={zoom === ZOOM_FIT ? 1 : zoom / 100}
-                    watermark={policy.watermark_enabled ? watermark : undefined}
                     onTotalPages={setDocTotalPages}
                   />
                 ) : (
@@ -1217,36 +1279,16 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Identity watermark - the attribution layer over protected content */}
-      {policy.watermark_enabled && watermark && !locked && (
-        <div
-          className="drm-watermark fixed inset-0 overflow-hidden"
+      {/* Identity watermark - a dense multi-line pattern over the whole
+       * reading surface, including the scroll viewport and the canvas. */}
+      {policy.watermark_enabled && watermark && contentUrl && !locked && (
+        <WatermarkPattern
+          text={watermark}
+          opacity={watermarkOpacity}
+          color="#000000"
+          className="fixed inset-0"
           style={{ zIndex: 120 }}
-          aria-hidden="true"
-        >
-          <div
-            className="absolute flex flex-col justify-around"
-            style={{
-              top: "-50%",
-              left: "-50%",
-              width: "200%",
-              height: "200%",
-              transform: "rotate(-24deg)",
-              opacity: policy.watermark_opacity,
-              color: darkMode ? "#FFFFFF" : "#000000",
-            }}
-          >
-            {Array.from({ length: 9 }).map((_, row) => (
-              <div key={row} className="flex justify-around">
-                {Array.from({ length: 4 }).map((_, col) => (
-                  <span key={col} className="text-[13px] tracking-wider">
-                    {watermark}
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
+        />
       )}
 
       {/* Device / session lock - replaces the content, never sits behind it */}

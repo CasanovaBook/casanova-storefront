@@ -691,12 +691,14 @@ export interface DrmPolicy {
   block_rooted_devices: boolean
   watermark_enabled: boolean
   /**
-   * Stamped over the content, e.g. `{name} · {email}`. Placeholders are
-   * substituted from the signed-in account at render time so a capture
-   * is traceable to the buyer who made it.
+   * Stamped over the content, e.g.
+   * `{name} • {email} • {phone} • {stamp}`. Supported placeholders are
+   * `{name}`, `{email}`, `{phone}`, `{user_id}`, `{date}`, `{time}` and
+   * `{stamp}`. Substituted from the live account at render time so a
+   * capture is traceable to the buyer who made it.
    */
   watermark_template: string
-  /** 0-1. Low enough to read through, high enough to survive a photo. */
+  /** 0-1. The reader uses the 8–12% forensic band by default. */
   watermark_opacity: number
   max_devices_per_user: number
   session_timeout_minutes: number
