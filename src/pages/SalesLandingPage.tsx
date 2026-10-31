@@ -16,10 +16,11 @@ import { effectivePrice, isOnSale } from "../types"
 
 import Icon from "../components/icons"
 
-import ThemeToggle from "../components/ThemeToggle"
 import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
+import SiteHeader from "../components/layout/SiteHeader"
 
 import { loadContent } from "../content/store"
+import { MARKETING_NAV_LINKS } from "../content/site-nav"
 
 import { getDb, mutate } from "../data/db"
 
@@ -33,13 +34,6 @@ import {
 } from "../lib/sales-content"
 
 const EXIT_SEEN_KEY = "casanova_exit_seen_v2"
-
-const NAV_LINKS = [
-  { label: "על הספר", href: "#about" },
-  { label: "מה בפנים", href: "#inside" },
-  { label: "רכישה", href: "#purchase" },
-  { label: "שאלות נפוצות", href: "#faq" },
-]
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   ILS: "₪",
@@ -56,67 +50,6 @@ function currencySymbol(currency: string): string {
 
 function formatNumber(value: number): string {
   return value.toLocaleString("he-IL", { maximumFractionDigits: 2 })
-}
-
-interface LandingAccount {
-  ready: boolean
-  signedIn: boolean
-  href: string
-  label: string
-  memberLabel: string
-  guestLabel: string
-  displayName: string
-  initial: string
-  email: string
-}
-
-function AccountIndicator({ account }: { account: LandingAccount }) {
-  if (!account.ready) {
-    return (
-      <span
-        className="cv-auth-indicator cv-auth-indicator--pending"
-        aria-hidden="true"
-      >
-        <span className="cv-auth-icon">
-          <Icon name="user" size={16} />
-        </span>
-      </span>
-    )
-  }
-
-  if (!account.signedIn) {
-    return (
-      <Link
-        to={account.href}
-        className="cv-auth-indicator cv-auth-indicator--guest"
-        aria-label={account.guestLabel}
-      >
-        <span className="cv-auth-icon" aria-hidden="true">
-          <Icon name="user" size={16} />
-        </span>
-        <span className="cv-auth-indicator-label">{account.guestLabel}</span>
-      </Link>
-    )
-  }
-
-  return (
-    <Link
-      to={account.href}
-      className="cv-auth-indicator cv-auth-indicator--member"
-      aria-label={`${account.memberLabel} - ${account.displayName} (מחובר)`}
-      title={
-        account.email
-          ? `${account.displayName} · ${account.email}`
-          : account.displayName
-      }
-    >
-      <span className="cv-auth-avatar" aria-hidden="true">
-        {account.initial}
-        <span className="cv-auth-status" />
-      </span>
-      <span className="cv-auth-indicator-label">{account.memberLabel}</span>
-    </Link>
-  )
 }
 
 function Price({
@@ -436,145 +369,6 @@ function CoverArt({ product }: { product: Product }) {
   )
 }
 
-function MobileMenu({
-  open,
-  onClose,
-  onBuy,
-  buyLabel,
-  account,
-  price,
-  currency,
-  productName,
-}: {
-  open: boolean
-  onClose: () => void
-  onBuy: () => void
-  buyLabel: string
-  account: LandingAccount
-  price: number
-  currency: string
-  productName: string
-}) {
-  const panelRef = useRef<HTMLDivElement | null>(null)
-
-  useDialogFocus(open, panelRef, onClose)
-
-  if (!open) return null
-
-  const navigateTo = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    event.preventDefault()
-    onClose()
-
-    window.setTimeout(() => {
-      if (window.location.hash !== href) {
-        window.history.replaceState(null, "", href)
-      }
-
-      scrollToSection(href.replace("#", ""))
-    }, 80)
-  }
-
-  return (
-    <div
-      ref={panelRef}
-      id="cv-mobile-menu"
-      className="cv-mobile-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="cv-mobile-menu-title"
-    >
-      <h2 id="cv-mobile-menu-title" className="sr-only">
-        ניווט
-      </h2>
-
-      <div className="cv-mobile-head">
-        <span className="cv-brand-word" dir="ltr" lang="en">
-          CASANOVA
-        </span>
-        <button
-          type="button"
-          className="cv-mobile-close"
-          onClick={onClose}
-          aria-label="סגירת התפריט"
-        >
-          <Icon name="x" size={18} />
-        </button>
-      </div>
-
-      <nav className="cv-mobile-links" aria-label="ניווט ראשי">
-        {NAV_LINKS.map((link, index) => (
-          <a
-            key={link.href}
-            href={link.href}
-            className="cv-mobile-link"
-            onClick={(event) => navigateTo(event, link.href)}
-          >
-            {link.label}
-            <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-          </a>
-        ))}
-      </nav>
-
-      <div className="cv-mobile-actions">
-        <div className="cv-mobile-account">
-          {!account.ready ? null : account.signedIn ? (
-            <Link
-              to={account.href}
-              className="cv-mobile-account-card"
-              onClick={onClose}
-            >
-              <span className="cv-auth-avatar" aria-hidden="true">
-                {account.initial}
-                <span className="cv-auth-status" />
-              </span>
-              <span className="cv-mobile-account-copy">
-                <span className="cv-mobile-account-name">
-                  {account.displayName}
-                </span>
-                {account.email && (
-                  <span className="cv-mobile-account-email" dir="ltr">
-                    {account.email}
-                  </span>
-                )}
-                <span className="cv-mobile-account-state">
-                  <span className="cv-auth-dot" aria-hidden="true" />
-                  מחובר
-                </span>
-              </span>
-              <Icon name="arrowLeft" size={16} />
-            </Link>
-          ) : (
-            <Link
-              to={account.href}
-              className="cv-mobile-account-card cv-mobile-account-card--guest"
-              onClick={onClose}
-            >
-              <span className="cv-auth-icon" aria-hidden="true">
-                <Icon name="user" size={18} />
-              </span>
-              <span>{account.guestLabel}</span>
-              <Icon name="arrowLeft" size={16} />
-            </Link>
-          )}
-        </div>
-
-        <button type="button" className="cv-btn cv-btn--camel" onClick={onBuy}>
-          {buyLabel}
-          <span className="cv-btn-price" dir="ltr">
-            {currencySymbol(currency)}
-            {formatNumber(price)}
-          </span>
-          <Icon name="arrowLeft" size={16} />
-        </button>
-      </div>
-
-      <p className="cv-mobile-note">
-        {productName} · ספר דיגיטלי למבוגרים · 18+
-      </p>
-    </div>
-  )
-}
-
 function StickyCta({
   product,
   label,
@@ -709,7 +503,7 @@ function ExitDialog({
 export default function SalesLandingPage() {
   const navigate = useNavigate()
 
-  const { setSelectedProduct, authReady, isAuthenticated, user } = useApp()
+  const { setSelectedProduct, isAuthenticated } = useApp()
   const cms = useCms()
   const c = useContent()
 
@@ -717,8 +511,6 @@ export default function SalesLandingPage() {
   const price = effectivePrice(product)
   const onSale = isOnSale(product)
 
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
   const [openFaq, setOpenFaq] = useState(0)
 
   useEffect(() => {
@@ -734,15 +526,6 @@ export default function SalesLandingPage() {
     return () => {
       delete document.documentElement.dataset.cvLanding
     }
-  }, [])
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16)
-
-    onScroll()
-    window.addEventListener("scroll", onScroll, { passive: true })
-
-    return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
   const heroEyebrow = c("sales.hero.eyebrow")
@@ -801,24 +584,8 @@ export default function SalesLandingPage() {
   const footerPowered = c("sales.footer.powered")
   const memberLabel = c("sales.header.dashboard") || "האזור שלי"
   const guestLabel = c("sales.header.login") || "התחברות"
-  const displayName =
-    user?.first_name?.trim() || user?.email?.split("@")[0] || "משתמש"
-  const initial = (user?.first_name?.trim() || user?.email || "?")
-    .trim()
-    .charAt(0)
-    .toLocaleUpperCase()
-
-  const account: LandingAccount = {
-    ready: authReady,
-    signedIn: isAuthenticated,
-    href: isAuthenticated ? "/dashboard" : "/login",
-    label: isAuthenticated ? memberLabel : guestLabel,
-    memberLabel,
-    guestLabel,
-    displayName,
-    initial,
-    email: user?.email ?? "",
-  }
+  const accountHref = isAuthenticated ? "/dashboard" : "/login"
+  const accountLabel = isAuthenticated ? memberLabel : guestLabel
 
   const stickyLabel =
     cms.settings.sales_sticky_cta?.trim() ||
@@ -901,65 +668,16 @@ export default function SalesLandingPage() {
     navigate("/checkout")
   }
 
-  const handleMobileBuy = () => {
-    setMenuOpen(false)
-    handleBuy()
-  }
-
   return (
     <div className="cv-page" id="top">
       <a href="#main" className="skip-link">
         דלג לתוכן הראשי
       </a>
 
-      <header className="cv-header" data-scrolled={scrolled}>
-        <div className="cv-shell cv-header-inner">
-          <Link to="/" className="cv-brand" aria-label="CASANOVA - דף הבית">
-            <span className="cv-brand-word" dir="ltr" lang="en">
-              CASANOVA
-            </span>
-          </Link>
-
-          <nav className="cv-nav" aria-label="ניווט ראשי">
-            {NAV_LINKS.map((link) => (
-              <a key={link.href} href={link.href} className="cv-nav-link">
-                {link.label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="cv-header-actions">
-            <AccountIndicator account={account} />
-
-            <span className="cv-theme-toggle">
-              <ThemeToggle />
-            </span>
-
-            <button
-              type="button"
-              className="cv-btn cv-btn--camel cv-btn--sm cv-header-cta"
-              onClick={handleBuy}
-            >
-              {c("sales.header.cta") || "רכישת הספר"}
-              <Icon name="arrowLeft" size={15} />
-            </button>
-
-            <button
-              type="button"
-              className="cv-menu-btn"
-              onClick={(event) => {
-                event.currentTarget.focus()
-                setMenuOpen(true)
-              }}
-              aria-expanded={menuOpen}
-              aria-controls="cv-mobile-menu"
-              aria-label="פתיחת התפריט"
-            >
-              <Icon name="menu" size={18} />
-            </button>
-          </div>
-        </div>
-      </header>
+      <SiteHeader
+        ctaLabel={c("sales.header.cta") || "רכישת הספר"}
+        onCta={handleBuy}
+      />
 
       <main id="main">
         <section className="cv-hero">
@@ -1427,12 +1145,12 @@ export default function SalesLandingPage() {
 
             <nav className="cv-footer-nav" aria-label="ניווט בפוטר">
               <h2 className="cv-footer-heading">ניווט</h2>
-              {NAV_LINKS.map((link) => (
+              {MARKETING_NAV_LINKS.map((link) => (
                 <a key={link.href} href={link.href}>
                   {link.label}
                 </a>
               ))}
-              <Link to={account.href}>{account.label}</Link>
+              <Link to={accountHref}>{accountLabel}</Link>
             </nav>
 
             <nav className="cv-footer-legal" aria-label="מידע ותקנון">
@@ -1472,24 +1190,11 @@ export default function SalesLandingPage() {
         </div>
       </footer>
 
-      <MobileMenu
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        onBuy={handleMobileBuy}
-        buyLabel={buyLabel}
-        account={account}
-        price={price}
-        currency={product.currency}
-        productName={product.name}
+      <StickyCta
+        product={product}
+        label={fmt(stickyLabel, { price })}
+        onBuy={handleBuy}
       />
-
-      {!menuOpen && (
-        <StickyCta
-          product={product}
-          label={fmt(stickyLabel, { price })}
-          onBuy={handleBuy}
-        />
-      )}
 
       <ExitDialog
         title={fmt(exitTitle, { price })}
