@@ -1735,21 +1735,27 @@ body {
   border-bottom: 1px solid rgba(244, 238, 228, 0.1);
 }
 
+/* One flex column so the wordmark and the tagline are pinned to the exact
+ * same boundary (in this RTL footer, flex-start = the right edge). */
 .cv-footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8rem;
   max-width: 26rem;
 }
 
 .cv-footer .cv-brand-word {
   color: var(--cv-cream);
   font-size: min(clamp(1.7rem, 3vw, 2.35rem), 11vw);
-  /* The 0.16em tracking after the last Latin glyph extends the span's box
-   * beyond the visible word, so in this RTL footer the flush tagline drifts
-   * off the word's edge. Pull the ghost space back to share one boundary. */
+  /* The 0.16em tracking after the last Latin glyph extends the word's box
+   * beyond its visible edge; cancel it so both lines' glyphs share the
+   * boundary. Negative margins place predictably on flex items. */
   margin-inline-end: -0.16em;
 }
 
 .cv-footer-tagline {
-  margin: 0.8rem 0 0;
+  margin: 0;
   color: var(--cv-on-dark-soft);
   font-family: var(--cv-font-serif);
   font-size: 1rem;
