@@ -1742,6 +1742,10 @@ body {
 .cv-footer .cv-brand-word {
   color: var(--cv-cream);
   font-size: min(clamp(1.7rem, 3vw, 2.35rem), 11vw);
+  /* The 0.16em tracking after the last Latin glyph extends the span's box
+   * beyond the visible word, so in this RTL footer the flush tagline drifts
+   * off the word's edge. Pull the ghost space back to share one boundary. */
+  margin-inline-end: -0.16em;
 }
 
 .cv-footer-tagline {
