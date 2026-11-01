@@ -1146,11 +1146,11 @@ export default function SalesLandingPage() {
       <footer className="cv-footer">
         <div className="cv-shell">
           <div className="cv-footer-top">
-            <div className="cv-footer-brand">
-              <span className="cv-brand-word" dir="ltr" lang="en">
+            <div className="cv-footer-brand flex flex-col items-end text-right">
+              <span className="cv-brand-word w-full" dir="ltr" lang="en">
                 CASANOVA
               </span>
-              <p className="cv-footer-tagline">
+              <p className="cv-footer-tagline w-full">
                 {product.name} · ספר דיגיטלי למבוגרים
               </p>
             </div>

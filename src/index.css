@@ -1735,12 +1735,9 @@ body {
   border-bottom: 1px solid rgba(244, 238, 228, 0.1);
 }
 
-/* One flex column so the wordmark and the tagline are pinned to the exact
- * same boundary (in this RTL footer, flex-start = the right edge). */
+/* Layout (flex column, right-edge pinning) lives on the JSX utility classes;
+ * this only sizes the block and spaces its children. */
 .cv-footer-brand {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
   gap: 0.8rem;
   max-width: 26rem;
 }
