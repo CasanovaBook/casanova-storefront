@@ -42,6 +42,10 @@ import usePageTitle from "../lib/usePageTitle"
 
 const fieldClass = "w-full px-3.5 py-2.5 text-sm outline-none"
 
+const LOCKOUT_MAILTO = `mailto:support@casanova-books.com?subject=${encodeURIComponent(
+  "בעיית התחברות לחשבון - Casanova",
+)}`
+
 const fieldStyle = {
   background: "var(--color-card)",
   borderColor: "var(--color-border)",
@@ -517,6 +521,17 @@ export default function SupportPage() {
                 חזרה לחנות
               </Link>
             </div>
+
+            <p className="mx-auto mt-5 max-w-md text-balance text-xs leading-relaxed text-foreground/60 sm:text-[13px]">
+              {"הסתבכת עם ההתחברות? לבעיות גישה ואיפוס חשבון בלבד, ניתן לפנות אלינו במייל: "}
+              <a
+                dir="ltr"
+                href={LOCKOUT_MAILTO}
+                className="inline-block font-medium text-accent underline decoration-accent/40 underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground/60"
+              >
+                support@casanova-books.com
+              </a>
+            </p>
           </section>
         ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,0.85fr)] lg:items-start lg:gap-6">
