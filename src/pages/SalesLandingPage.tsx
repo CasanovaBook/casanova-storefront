@@ -8,7 +8,7 @@ import { useCms } from "../context/CmsContext"
 
 import { fmt, useContent } from "../content/useContent"
 
-import { Rich, SmartLink } from "../content/render"
+import { Md, Rich, SmartLink } from "../content/render"
 
 import type { Product } from "../types"
 
@@ -1132,7 +1132,7 @@ export default function SalesLandingPage() {
                         className="cv-faq-answer"
                         hidden={!isOpen}
                       >
-                        <p>{faq.answer}</p>
+                        <Md text={faq.answer} />
                       </div>
                     </div>
                   )
