@@ -12,13 +12,19 @@
 
 import { UI, UI_GROUPS } from "./ui";
 
-export type FieldType = "text" | "textarea" | "rich" | "md" | "image" | "link" | "strings" | "list";
+export type FieldType = "text" | "textarea" | "rich" | "md" | "image" | "link" | "strings" | "list" | "boolean" | "select";
+
+/** A `select` choice: `value` is the stable (ASCII) string stored in site_content; `label` is what the admin sees. */
+export interface FieldOption {
+  value: string;
+  label: string;
+}
 
 export interface ItemField {
   key: string;
   label: string;
   type: "text" | "textarea" | "image" | "link" | "select" | "boolean" | "md";
-  options?: { value: string; label: string }[];
+  options?: FieldOption[];
   hint?: string;
 }
 
@@ -29,6 +35,8 @@ export interface FieldDef {
   type: FieldType;
   default: unknown;
   hint?: string;
+  /** For type "select": the choices offered in the editor. */
+  options?: FieldOption[];
   /** For type "list": the fields of each item, and which one titles the row in the editor. */
   itemFields?: ItemField[];
   itemTitle?: string;
@@ -55,6 +63,7 @@ export const GROUPS: GroupDef[] = [
   { id: "privacy", label: "מדיניות פרטיות", path: "/privacy-policy", section: "legal" },
   { id: "cancellation", label: "ביטול והחזרים", path: "/cancellation-and-refund-policy", section: "legal" },
   { id: "global", label: "ניווט, כותרת ופוטר", path: "/", section: "global" },
+  { id: "announcements", label: "באנר והודעות", section: "global" },
   { id: "system", label: "הודעות מערכת", section: "global" },
   { id: "lists", label: "רשימות בחירה", section: "lists" },
 ];
@@ -78,6 +87,8 @@ const link = (group: string, key: string, label: string, def: string) => add({ g
 const strings = (group: string, key: string, label: string, def: string[], hint = "פריט אחד בכל שורה.") => add({ group, key: `${group}.${key}`, label, type: "strings", default: def, hint });
 const list = (group: string, key: string, label: string, def: unknown[], itemFields: ItemField[], itemTitle: string, hint?: string) =>
   add({ group, key: `${group}.${key}`, label, type: "list", default: def, itemFields, itemTitle, hint });
+const bool = (group: string, key: string, label: string, def: boolean, hint?: string) => add({ group, key: `${group}.${key}`, label, type: "boolean", default: def, hint });
+const sel = (group: string, key: string, label: string, def: string, options: FieldOption[], hint?: string) => add({ group, key: `${group}.${key}`, label, type: "select", default: def, options, hint });
 
 /** SEO fields for a page: title, description and social image. */
 const seo = (group: string, title: string, description: string, image = "") => {
@@ -108,6 +119,17 @@ list("global", "nav", "תפריט ראשי", [
 text("global", "footerTagline", "משפט בפוטר", "כל הספרים שלכם, במקום אחד.");
 text("global", "footerCopyright", "טקסט זכויות יוצרים", "© {year} Casanova. כל הזכויות שמורות.");
 seo("global", "Casanova - הספרייה הדיגיטלית שלכם", "ספרים דיגיטליים, מנויים וגישה מיידית - הכל במקום אחד.");
+
+// ── announcements: the live band above the site header ───────────────────────
+bool("announcements", "enabled", "הצגת באנר הודעות", false, "כשהוא כבוי הבאנר לא מופיע בשום עמוד.");
+text("announcements", "message", "טקסט הבאנר", "", "משפט קצר אחד, בלי מעברי שורה. ריק = הבאנר לא מוצג.");
+link("announcements", "linkUrl", "קישור לבאנר", "");
+text("announcements", "buttonText", "טקסט הכפתור", "", "מוצג רק כשיש גם קישור. בלי קישור - אין כפתור.");
+sel("announcements", "bgStyle", "סגנון רקע", "accent", [
+  { value: "accent", label: "זהב המותג" },
+  { value: "warning", label: "אזהרה" },
+  { value: "info", label: "ידיעה" },
+], "הסגנון קובע את גוון הרצועה ואת הסמל.");
 
 // ── system messages ──────────────────────────────────────────────────────────
 text("system", "maintenanceTitle", "כותרת מצב תחזוקה", "כבר חוזרים.");

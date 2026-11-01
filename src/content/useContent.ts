@@ -30,6 +30,18 @@ function list<T = Record<string, string>>(key: string): T[] {
   return Array.isArray(v) ? normalizeHyphensDeep(v as T[]) : [];
 }
 
+/**
+ * Boolean of a key. Only a real boolean - or an explicit truthy string form -
+ * counts as true; `Boolean("false") === true` is the trap this avoids, since
+ * jsonb round-trips and hand edits can arrive as text.
+ */
+function bool(key: string): boolean {
+  const v = getRaw(key);
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") return /^(true|1|on|כן)$/i.test(v.trim());
+  return false;
+}
+
 /** "label|/path" per line → links. */
 export function parseLinks(raw: string): LinkItem[] {
   return raw
@@ -48,11 +60,12 @@ export function parseLinks(raw: string): LinkItem[] {
  *   c("home.hero.title")            → string
  *   c.strings("lists.productTypes") → string[]
  *   c.list<Item>("home.features.items") → typed rows
+ *   c.bool("announcements.enabled") → boolean
  * The component re-renders automatically when content changes (admin save, live preview).
  */
 export function useContent() {
   const version = useContentVersion();
-  return useMemo(() => Object.assign((key: string) => text(key), { strings, list, raw: getRaw }), [version]);
+  return useMemo(() => Object.assign((key: string) => text(key), { strings, list, bool, raw: getRaw }), [version]);
 }
 
 export type Content = ReturnType<typeof useContent>;

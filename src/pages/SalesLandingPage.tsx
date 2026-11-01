@@ -17,6 +17,7 @@ import { effectivePrice, isOnSale } from "../types"
 import Icon from "../components/icons"
 
 import AccessibilityFooterLink from "../components/accessibility/AccessibilityFooterLink"
+import AnnouncementBanner from "../components/AnnouncementBanner"
 import SiteHeader from "../components/layout/SiteHeader"
 
 import { loadContent } from "../content/store"
@@ -673,6 +674,8 @@ export default function SalesLandingPage() {
       <a href="#main" className="skip-link">
         דלג לתוכן הראשי
       </a>
+
+      <AnnouncementBanner />
 
       <SiteHeader
         ctaLabel={c("sales.header.cta") || "רכישת הספר"}

@@ -25,6 +25,8 @@
   --color-ring:                #de9a60;
   --color-success:             #8fbf7f;
   --color-danger:              #e08a7c;
+  --color-warning:             #e0a86e;
+  --color-info:                #8fb8d9;
 
   --font-display: 'Frank Ruhl Libre', 'Heebo', serif;
   --font-body:    'Heebo', sans-serif;
@@ -108,6 +110,8 @@
   --color-ring:                #96552d;
   --color-success:             #4f7a4f;
   --color-danger:              #a74636;
+  --color-warning:             #9c6a2f;
+  --color-info:                #2f6b8a;
   --scroll-thumb:              #c6b9a7;
 }
 
@@ -3861,6 +3865,96 @@ body {
   padding-inline: clamp(1.25rem, 4vw, 3rem);
 }
 
+/* ── Announcement banner (CMS: announcements.*) ─────────────────────
+ * Non-sticky band above the sticky header: it scrolls away while the
+ * header keeps its top:0 perch, so it stays under the header's z-index.
+ * Each theme variant swaps one --ann-ink token; every colour is derived
+ * from it, so light and high-contrast themes need no extra overrides. */
+.announcement-banner {
+  --ann-ink: var(--color-primary);
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--ann-ink) 20%, var(--color-background)),
+    color-mix(in srgb, var(--ann-ink) 7%, var(--color-background)) 55%,
+    color-mix(in srgb, var(--ann-ink) 16%, var(--color-background))
+  );
+  color: var(--color-foreground);
+  border-bottom: 1px solid color-mix(in srgb, var(--ann-ink) 34%, var(--color-border));
+}
+
+.announcement-banner[data-style="warning"] { --ann-ink: var(--color-warning); }
+.announcement-banner[data-style="info"] { --ann-ink: var(--color-info); }
+
+.announcement-banner-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem 0.85rem;
+  padding-block: 0.6rem;
+  min-height: 3rem;
+  text-align: center;
+}
+
+.announcement-banner-icon {
+  flex: none;
+  color: var(--ann-ink);
+}
+
+.announcement-banner-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-foreground);
+}
+
+.announcement-banner-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.announcement-banner-link:hover {
+  color: var(--ann-ink);
+}
+
+.announcement-banner-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--ann-ink);
+  background: var(--ann-ink);
+  color: var(--color-background);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: filter 0.18s ease;
+}
+
+.announcement-banner-cta:hover {
+  filter: brightness(1.08);
+}
+
+@media (max-width: 640px) {
+  .announcement-banner-inner {
+    gap: 0.35rem 0.6rem;
+    padding-block: 0.5rem;
+  }
+  .announcement-banner-text { font-size: 0.85rem; }
+  .announcement-banner-cta { font-size: 0.78rem; }
+}
+
+/* Gradient tints must not survive the black/white contrast ladder. */
+:root[data-a11y-contrast='high'] .announcement-banner {
+  background: #000000;
+  border-bottom-color: #ffffff;
+}
+
 .site-header {
   --color-primary: #de9a60;
   --color-primary-foreground: #14110e;
@@ -5216,6 +5310,8 @@ html[data-app-shell='true'] .a11y-launcher {
   --color-ring: #ffffff;
   --color-success: #4dff4d;
   --color-danger: #ff8080;
+  --color-warning: #ffc94d;
+  --color-info: #7fd6ff;
   --scroll-thumb: #ffffff;
 
   /* The dark navigation rail is a fixed surface in every theme. */

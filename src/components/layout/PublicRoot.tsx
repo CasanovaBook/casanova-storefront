@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation } from "react-router"
 import { fmt, useContent } from "../../content/useContent"
 import { MARKETING_NAV_LINKS } from "../../content/site-nav"
 import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
+import AnnouncementBanner from "../AnnouncementBanner"
 import { loadContent } from "../../content/store"
 import useFavicon from "../useFavicon"
 import SiteHeader from "./SiteHeader"
@@ -46,6 +47,8 @@ export default function PublicRoot() {
       <a href="#main" className="skip-link">
         דלג לתוכן הראשי
       </a>
+
+      <AnnouncementBanner />
 
       <SiteHeader />
 

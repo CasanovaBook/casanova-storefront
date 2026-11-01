@@ -28,6 +28,7 @@ import {
   fieldsOfGroup,
   DEFAULT_CONTENT_GROUP,
   type FieldDef,
+  type FieldType,
 } from "@/content/registry"
 import {
   getDraft,
@@ -93,6 +94,8 @@ function AutoTextarea({
   style,
   dir,
   mono,
+  id,
+  ariaLabel,
 }: {
   value: string
   onChange: (v: string) => void
@@ -101,6 +104,8 @@ function AutoTextarea({
   style?: React.CSSProperties
   dir?: string
   mono?: boolean
+  id?: string
+  ariaLabel?: string
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const resize = useCallback(() => {
@@ -131,6 +136,8 @@ function AutoTextarea({
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       placeholder={placeholder}
+      id={id}
+      aria-label={ariaLabel}
       className={`w-full px-3 py-2 text-sm ${mono ? "font-mono" : ""}`}
       style={{ resize: "none", overflow: "hidden", ...style }}
       dir={dir ?? "rtl"}
@@ -143,6 +150,22 @@ const inputProps = (dir = "rtl") => ({
   dir,
 })
 
+/** Stable id for a field's single control; keys contain dots, so CSS selectors must quote them. */
+const controlId = (key: string) => `field-${key}`
+
+/** Types that render exactly one focusable control, so the row label can point at it. */
+const LABELABLE: FieldType[] = [
+  "text",
+  "textarea",
+  "rich",
+  "md",
+  "image",
+  "link",
+  "strings",
+  "select",
+  "boolean",
+]
+
 const TYPE_LABELS: Record<string, string> = {
   text: "טקסט",
   textarea: "טקסט ארוך",
@@ -152,6 +175,8 @@ const TYPE_LABELS: Record<string, string> = {
   link: "קישור",
   strings: "רשימה",
   list: "פריטים",
+  boolean: "כן/לא",
+  select: "בחירה",
 }
 
 // ── Field editor ──────────────────────────────────────────────────────────────
@@ -166,6 +191,45 @@ function FieldEditor({
   onChange: (v: unknown) => void
 }) {
   switch (field.type) {
+    case "boolean": {
+      const on = value === true
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            id={controlId(field.key)}
+            type="checkbox"
+            checked={on}
+            onChange={(e) => onChange(e.target.checked)}
+            className="h-4 w-4 flex-shrink-0"
+          />
+          {/* sibling text, not a second label: keeps the accessible name = the row label */}
+          <span className="app-hint">{on ? "מופעל" : "כבוי"}</span>
+        </div>
+      )
+    }
+    case "select": {
+      const v = typeof value === "string" ? value : ""
+      const opts = field.options ?? []
+      return (
+        <select
+          id={controlId(field.key)}
+          value={v}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3 py-2 text-sm"
+          style={{ cursor: "pointer" }}
+        >
+          {/* a stale/unknown stored value stays visible instead of silently coercing */}
+          {!opts.some((o) => o.value === v) && (
+            <option value={v}>{v || "(ריק)"}</option>
+          )}
+          {opts.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      )
+    }
     case "text": {
       const v = typeof value === "string" ? value : ""
       return (
@@ -174,6 +238,8 @@ function FieldEditor({
             type="text"
             value={v}
             onChange={(e) => onChange(e.target.value)}
+            id={controlId(field.key)}
+            aria-label={field.label}
             {...inputProps()}
           />
           <div className="mt-1 flex justify-end">
@@ -199,6 +265,8 @@ function FieldEditor({
           value={typeof value === "string" ? value : ""}
           onChange={onChange as (v: string) => void}
           rows={4}
+          id={controlId(field.key)}
+          ariaLabel={field.label}
         />
       )
     case "rich":
@@ -209,6 +277,8 @@ function FieldEditor({
             onChange={onChange as (v: string) => void}
             rows={3}
             placeholder="שורה חדשה = מעבר שורה. *מילה* = הדגשה."
+            id={controlId(field.key)}
+            ariaLabel={field.label}
           />
           <p className="app-hint mt-1">
             *מילה* = הדגשה · שורה חדשה = שורה חדשה
@@ -224,6 +294,8 @@ function FieldEditor({
             rows={8}
             placeholder="Markdown: פסקאות, ## כותרות, - רשימות, **מודגש**"
             mono
+            id={controlId(field.key)}
+            ariaLabel={field.label}
           />
           <p className="app-hint mt-1">
             ## כותרת · **מודגש** · - רשימה · פסקאות בהפרדת שורה ריקה
@@ -238,6 +310,8 @@ function FieldEditor({
             type="url"
             value={v}
             onChange={(e) => onChange(e.target.value)}
+            id={controlId(field.key)}
+            aria-label={field.label}
             {...inputProps("ltr")}
             placeholder="https://…"
           />
@@ -270,6 +344,8 @@ function FieldEditor({
           type="text"
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
+          id={controlId(field.key)}
+          aria-label={field.label}
           {...inputProps("ltr")}
           placeholder="/path או https://…"
         />
@@ -288,6 +364,8 @@ function FieldEditor({
             onChange={(v) => onChange(v.split("\n").filter(Boolean))}
             rows={4}
             placeholder={field.hint ?? "פריט אחד בכל שורה"}
+            id={controlId(field.key)}
+            ariaLabel={field.label}
           />
           <div className="mt-1 flex justify-end">
             <span className="app-hint">
@@ -1258,6 +1336,11 @@ export function ContentEditor() {
                     <label
                       className="flex min-w-0 items-center gap-2 text-sm font-medium"
                       style={{ color: "var(--color-foreground)" }}
+                      htmlFor={
+                        LABELABLE.includes(field.type)
+                          ? controlId(field.key)
+                          : undefined
+                      }
                     >
                       {field.label}
                       <span
