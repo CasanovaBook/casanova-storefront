@@ -412,7 +412,10 @@ export default function AdminSettingsPage() {
             description="שם המותג, המטבע וקידומות המספור של המסמכים."
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="שם המותג">
+              <Field
+                label="שם המותג"
+                hint="השם שמוצג בראש האתר, בתעודות ובחשבוניות, ובכותרת מסך הניהול."
+              >
                 <input
                   dir="ltr"
                   className={inputClass}
@@ -437,7 +440,10 @@ export default function AdminSettingsPage() {
                   ))}
                 </select>
               </Field>
-              <Field label="קידומת מספר הזמנה">
+              <Field
+                label="קידומת מספר הזמנה"
+                hint="האותיות שיתחילו כל מספר הזמנה חדש (למשל ORD). הזמנות קיימות לא ימוספרו מחדש."
+              >
                 <input
                   dir="ltr"
                   className={inputClass}
@@ -447,7 +453,10 @@ export default function AdminSettingsPage() {
                   }
                 />
               </Field>
-              <Field label="קידומת מספר חשבונית">
+              <Field
+                label="קידומת מספר חשבונית"
+                hint="האותיות שיתחילו כל מספר חשבונית חדש (למשל INV)."
+              >
                 <input
                   dir="ltr"
                   className={inputClass}
@@ -457,7 +466,10 @@ export default function AdminSettingsPage() {
                   }
                 />
               </Field>
-              <Field label="קידומת מספר פנייה">
+              <Field
+                label="קידומת מספר פנייה"
+                hint="האותיות שיתחילו מספר פנייה חדשה בתמיכה - כך מזהים פנייה במייל ובניהול."
+              >
                 <input
                   dir="ltr"
                   className={inputClass}
@@ -469,7 +481,7 @@ export default function AdminSettingsPage() {
               </Field>
               <Field
                 label="מגבלת העלאת קובץ (בתים)"
-                hint="קבצים גדולים יותר יש לאחסן בשרת הקבצים ולהדביק את הכתובת שלהם במוצר."
+                hint="הגודל המרבי של קובץ שמעלים למערכת, במספר שלם. להמרה: 1048576 = 1MB. קבצים גדולים יותר יש לאחסן בשרת הקבצים ולהדביק את הכתובת שלהם במוצר."
               >
                 <input
                   dir="ltr"
@@ -492,7 +504,7 @@ export default function AdminSettingsPage() {
             id="settings-site-copy"
             icon="sparkles"
             title="תוכן האתר"
-            description="כל מילה שהמבקר רואה בדף הבית מגיעה מכאן או מבלוקי ה־CMS."
+            description="הטקסט החי שמבקר רואה בדף הבית: תגית המותג, שורת ההבטחות, כותרות הקטלוג והחבילות ושורת הפוטר. כל שינוי כאן מוצג באתר מיד אחרי השמירה."
           >
             <p className="mb-5 text-sm leading-relaxed app-muted">
               שדה ריק אינו מציג טקסט חלופי: המבקר פשוט לא רואה את האזור, ומנהל
@@ -526,7 +538,10 @@ export default function AdminSettingsPage() {
                   }
                 />
               </Field>
-              <Field label="כותרת הקטלוג">
+              <Field
+                label="כותרת הקטלוג"
+                hint="הכותרת מעל רשימת הספרים בדף הבית."
+              >
                 <input
                   className={inputClass}
                   placeholder="ריק - הכותרת לא תוצג"
@@ -536,7 +551,7 @@ export default function AdminSettingsPage() {
                   }
                 />
               </Field>
-              <Field label="פתיח לקטלוג">
+              <Field label="פתיח לקטלוג" hint="הפסקה הקצרה מתחת לכותרת הקטלוג.">
                 <textarea
                   rows={2}
                   className={inputClass}
@@ -549,7 +564,7 @@ export default function AdminSettingsPage() {
               </Field>
               <Field
                 label="כותרת בלוק החבילות"
-                hint="הבלוק כולו מוצג רק כשיש גם מוצר חבילה וגם מוצר מנוי במצב פורסם."
+                hint="הכותרת של בלוק המחירים בדף הבית. הבלוק כולו מוצג רק כשיש גם מוצר חבילה וגם מוצר מנוי במצב פורסם."
               >
                 <input
                   className={inputClass}
@@ -560,7 +575,10 @@ export default function AdminSettingsPage() {
                   }
                 />
               </Field>
-              <Field label="פתיח לבלוק החבילות">
+              <Field
+                label="פתיח לבלוק החבילות"
+                hint="הפסקה מתחת לכותרת בלוק החבילות."
+              >
                 <textarea
                   rows={2}
                   className={inputClass}
@@ -596,12 +614,12 @@ export default function AdminSettingsPage() {
             id="settings-sales-copy"
             icon="target"
             title="דף מכירה - היא קודם"
-            description="הכפתור הדביק וחלון הנטישה בדף הנחיתה הראשי. שדה ריק מציג את טקסט ברירת המחדל."
+            description="הכפתור הדביק במובייל וחלון 'רגע לפני העזיבה' - חלון השמירה שקופץ כשמבקר עומד לעזוב את דף הנחיתה. ריק = ברירת המחדל."
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field
                 label="טקסט כפתור דביק (מובייל)"
-                hint="מופיע בתחתית המסך בגלילה במובייל."
+                hint="הכפתור שנשאר דבוק בתחתית המסך בטלפון במהלך הגלילה, ומציע רכישה בכל רגע. {price} מתחלף במחיר העדכני."
               >
                 <input
                   className={inputClass}
@@ -612,7 +630,10 @@ export default function AdminSettingsPage() {
                   }
                 />
               </Field>
-              <Field label="כותרת חלון נטישה">
+              <Field
+                label="כותרת חלון נטישה"
+                hint="השורה הגדולה בראש חלון הנטישה - לרוב שאלה שמנסה לעצור את העזיבה."
+              >
                 <input
                   className={inputClass}
                   placeholder="רגע לפני שאתה הולך…"
@@ -623,7 +644,10 @@ export default function AdminSettingsPage() {
                 />
               </Field>
               <div className="md:col-span-2">
-                <Field label="טקסט חלון נטישה">
+                <Field
+                  label="טקסט חלון נטישה"
+                  hint="גוף החלון: ההסבר שמראה מה המבקר מפסיד בעזיבה, או מה מחכה לו אם יישאר."
+                >
                   <textarea
                     rows={2}
                     className={inputClass}
@@ -635,7 +659,10 @@ export default function AdminSettingsPage() {
                   />
                 </Field>
               </div>
-              <Field label="כפתור חלון נטישה">
+              <Field
+                label="כפתור חלון נטישה"
+                hint="טקסט כפתור הפעולה בחלון - הקריאה להשלים את הקנייה."
+              >
                 <input
                   className={inputClass}
                   placeholder="כן. אני רוצה את הספר"
@@ -735,9 +762,11 @@ export default function AdminSettingsPage() {
         </Group>
 
         {/* Sticky so the form can be saved from anywhere on the page;
-         * app-main already reserves extra bottom padding for this bar. */}
+         * app-main already reserves extra bottom padding for this bar, and
+         * the inline-end padding keeps the button clear of the floating
+         * accessibility control. */}
         <div
-          className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border px-4 py-3"
+          className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border px-4 py-3 pe-[5rem]"
           style={{
             background:
               "color-mix(in srgb, var(--color-card) 92%, transparent)",
