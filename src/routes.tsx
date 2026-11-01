@@ -231,6 +231,8 @@ export const router = createBrowserRouter([
 
       { path: "privacy-policy", Component: PrivacyPage },
 
+      { path: "accessibility", Component: AccessibilityStatementPage },
+
       { path: "accessibility-statement", Component: AccessibilityStatementPage },
 
       {

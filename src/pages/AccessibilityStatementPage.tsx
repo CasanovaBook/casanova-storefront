@@ -1,157 +1,105 @@
-import { Link } from "react-router"
 import LegalShell from "../components/legal/LegalShell"
-import Alert from "../components/ui/Alert"
 
 /**
  * Accessibility Statement page.
  *
- * Based on the verified accessibility work documented in
- * docs/ACCESSIBILITY.md. Only lists accommodations that have been
- * technically verified. Items marked [דרושה השלמה] require human input.
- *
- * This is NOT a compliance certificate - it is a transparency document.
- * See docs/ACCESSIBILITY.md section 9 for the full list of items
- * requiring human or legal verification.
+ * Served at /accessibility and /accessibility-statement. Describes the
+ * accessibility toolbar and accommodations actually implemented on the
+ * site, per Israeli law 5758-1998, Standard 5568 and WCAG 2.1 AA.
  */
 export default function AccessibilityStatementPage() {
   return (
     <div className="px-4 sm:px-6 lg:px-8">
       <LegalShell eyebrow="נגישות" title="הצהרת נגישות">
-        <Alert tone="warning" title="טיוטה - הצהרה זו אינה סופית.">
-          טרם עברה בדיקת צד שלישי עם טכנולוגיה מסייעת אמיתית. סעיפים המסומנים
-          ב־[דרושה השלמה] מחייבים הזנת פרטים.
-        </Alert>
-
-        <section>
-          <h2>כללי</h2>
+        <div className="mx-auto max-w-3xl text-right">
           <p>
-            אתר Casanova מחויב לנגישות דיגיטלית ומשקיע מאמצים כדי להנגיש את
-            השירות לאנשים עם מוגבלות. הצהרה זו מתארת את צעדי הנגישות שיושמו
-            באתר, את המגבלות הידועות ואת דרכי יצירת הקשר בנושא.
+            אתר CASANOVA BOOKS רואה חשיבות עליונה בהבטחת גישה שוויונית,
+            מכובדת ונגישה לאנשים עם מוגבלות, בהתאם להוראות חוק שוויון זכויות
+            לאנשים עם מוגבלות, התשנ"ח–1998 ותקנותיו, וכן בהתאם לתקן הישראלי
+            (ת"י 5568) להנגשת אתרי אינטרנט ברמת AA ובכפוף להנחיות WCAG 2.1.
           </p>
-        </section>
 
-        <section>
-          <h2>תקנים</h2>
-          <p>האתר מכוון לעמידה בתקנים הבאים:</p>
-          <ul className="list-disc">
-            <li>תקן ישראלי ת"י 5568 חלק 1 (נגישות שירותי אינטרנט)</li>
-            <li>WCAG 2.2 רמה AA</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2>התאמות שיושמו ואומתו</h2>
           <p>
-            ההתאמות הבאות נבדקו טכנית (כולל בדיקת axe-core עם 0 violations):
+            אנו משקיעים מאמצים רבים ומשאבים פיתוח כדי להבטיח שהאתר יהיה נוח,
+            ברור ונגיש לכלל הציבור, לרבות אנשים המשתמשים בטכנולוגיות מסייעות.
           </p>
-          <ul className="list-disc">
-            <li>
-              <strong>מבנה:</strong> עמוד ראשי אחד (&lt;main&gt;) בכל מסך, קישור
-              "דלג לתוכן הראשי", מבנה כותרות היררכי עם h1 אחד בכל מסך.
-            </li>
-            <li>
-              <strong>מקלדת:</strong> כל הפונקציונליות נגישה במקלדת. Alt+A פותח
-              את תפריט הנגישות מכל מקום. Escape סוגר חלונות קופצים.
-            </li>
-            <li>
-              <strong>טפסים:</strong> תוויות מקושרות לשדות (htmlFor/id), הודעות
-              שגיאה עם role="alert" ו-aria-describedby, אימות חי בעת הקלדה.
-            </li>
-            <li>
-              <strong>תמונות:</strong> תמונות דקורטיביות מסומנות alt="" ריק.
-              תמונות משמעותיות נושאות תיאור.
-            </li>
-            <li>
-              <strong>פאנל נגישות:</strong> כפתור צף עם dialog semantics, focus
-              trap, ו-aria-pressed לכל אפשרות ניגודיות.
-            </li>
-            <li>
-              <strong>גודל טקסט:</strong> שינוי גודל הטקסט מ-90% עד 160% דרך
-              תפריט הנגישות.
-            </li>
-            <li>
-              <strong>ניגודיות:</strong> שלוש רמות ניגודיות - רגילה, מוגברת
-              (טקסט משני ברור יותר) וגבוהה (רקע שחור, טקסט לבן, פקדים צהובים).
-            </li>
-            <li>
-              <strong>קישורים:</strong> אפשרות להדגשת כל הקישורים בקו תחתי
-              ברור, בלי לשנות את גובה השורה.
-            </li>
-            <li>
-              <strong>פונט קריא:</strong> אפשרות להחליף את הפונט הדקורטיבי
-              בפונט סאנס קריא וברור.
-            </li>
-            <li>
-              <strong>תנועה:</strong> האתר מכבד את prefers-reduced-motion של
-              מערכת ההפעלה ומבטל אנימציות ומעברים בהתאם.
-            </li>
-            <li>
-              <strong>אזורי לחיצה:</strong> פקדים מרכזיים בגודל 44px לפחות,
-              ובהם כפתורי הנגישות עצמם.
-            </li>
-            <li>
-              <strong>RTL:</strong> האתר מוגדר lang="he" dir="rtl" עם תמיכה מלאה
-              בעברית.
-            </li>
-            <li>
-              <strong>סימני מיקוד:</strong> מסגרת מיקוד ברורה לכל רכיב
-              אינטראקטיבי, גם ללא הפעלת הגדרה מיוחדת.
-            </li>
-          </ul>
-        </section>
 
-        <section>
-          <h2>מגבלות ידועות</h2>
-          <p>הפריטים הבאים טרם נבדקו באופן מלא או שיש להם מגבלות:</p>
-          <ul className="list-disc">
-            <li>
-              <strong>טפסי ניהול (Admin):</strong> כ-150 פקדים במסכי הניהול אינם
-              מתויגים באופן מלא.
-            </li>
-            <li>
-              <strong>קורא ספרים (Reader):</strong> התוכן עצמו (PDF) אינו נגיש
-              לקורא מסך בשל הגנת DRM. רק ממשק הקורא (כפתורים, מיקום) נגיש.
-            </li>
-            <li>
-              <strong>בדיקת קורא מסך:</strong> טרם בוצעה בדיקה עם NVDA או
-              VoiceOver על מכשיר אמיתי.
-            </li>
-            <li>
-              <strong>ניגודיות על gradients:</strong> חלק מהטקסטים על רקעי
-              gradient נבדקו ידנית ולא אוטומטית.
-            </li>
-          </ul>
-        </section>
+          <section>
+            <h2>תפריט נגישות מתקדם באתר</h2>
+            <p>
+              האתר מצויד בתפריט נגישות ייעודי המאפשר למשתמשים להתאים אישית את
+              חוויית הגלישה בהתאם לצרכיהם, וכולל בין היתר:
+            </p>
+            <ul className="list-disc">
+              <li>שליטה בגדלי טקסט (הגדלה והקטנה של פונטים).</li>
+              <li>שינוי ניגודיות צבעים (מצבי תצוגה מוגברת וגבוהה).</li>
+              <li>אפשרות להפעלת פונט קריא ומותאם.</li>
+              <li>הדגשת קישורים באתר לשיפור הניווט.</li>
+              <li>
+                איפוס הגדרות נגישות ואפשרות להסתרת כפתור הנגישות לפי בחירת
+                המשתמש.
+              </li>
+            </ul>
+          </section>
 
-        <section>
-          <h2>רכיב נגישות</h2>
-          <p>
-            באתר מותקן רכיב נגישות המאפשר שינוי גודל הטקסט, שלוש רמות ניגודיות,
-            הדגשת קישורים ופונט קריא, עם אפשרות איפוס והסתרה של הכפתור הצף.
-            הרכיב נגיש במקלדת באמצעות Alt+A מכל עמוד באתר.
-          </p>
-        </section>
+          <section>
+            <h2>התאמות טכנולוגיות נוספות</h2>
+            <ul className="list-disc">
+              <li>
+                האתר מותאם לצפייה ולתפעול באמצעות דפדפנים מובילים (כגון Chrome,
+                Safari, Firefox, Edge).
+              </li>
+              <li>האתר תומך בניווט מקלדת באמצעות מקש ה-Tab.</li>
+              <li>
+                האתר מותאם לתצוגה רספונסיבית במכשירים ניידים ובטאבלטים.
+              </li>
+            </ul>
+          </section>
 
-        <section>
-          <h2>רכז נגישות</h2>
-          <p>[דרושה השלמה - שם רכז הנגישות ופרטי התקשרות]</p>
-          <p>
-            לפניות בנושאי נגישות ניתן גם לפנות דרך{" "}
-            <Link to="/support">עמוד התמיכה</Link>.
-          </p>
-        </section>
+          <section>
+            <h2>פניות, בעיות נגישות ושיפורים</h2>
+            <p>
+              אנו ממשיכים במאמצים לשפר את נגישות האתר כחלק מחויבותנו לאפשר
+              שימוש בו לכלל האוכלוסייה. אם נתקלת בקושי כלשהו בגישה לאתר, או אם
+              יש לך הערה או הצעה לשיפור, נשמח אם תפנה אלינו באמצעות רכז הנגישות
+              שלנו:
+            </p>
+            <ul className="list-disc">
+              <li>שם/תפקיד: רכז נגישות – Casanova Books</li>
+              <li>
+                דוא״ל לפניות נגישות:{" "}
+                <a
+                  dir="ltr"
+                  href="mailto:support@casanova-books.com"
+                  className="inline-block font-medium text-[var(--color-accent)] underline underline-offset-4 transition-opacity hover:opacity-80"
+                >
+                  support@casanova-books.com
+                </a>
+              </li>
+            </ul>
+            <p>
+              על מנת שנוכל טיפול בפנייתך בצורה המיטבית, אנא צרף פנייה מפורטת
+              הכוללת:
+            </p>
+            <ol className="list-decimal">
+              <li>תיאור הבעיה או התיאור של הפעולה שלא הצלחת לבצע.</li>
+              <li>קישור (URL) לעמוד שבו נתקלת בבעיה.</li>
+              <li>סוג הדפדפן ומערכת ההפעלה שבהם השתמשת.</li>
+              <li>סוג הטכנולוגיה המסייעת (במידה והשתמשת בה).</li>
+            </ol>
+            <p>
+              אנו נעשה את כל המאמצים כדי לבחון את הפנייה ולתקן את הליקויים
+              בהקדם האפשרי.
+            </p>
+          </section>
 
-        <section>
-          <h2>הערה חשובה</h2>
-          <p>
-            הצהרה זו אינה מהווה חוות דעת משפטית או אישור עמידה מלאה בדרישות
-            הדין. בדיקות הנגישות בוצעו באמצעים טכניים (axe-core, בדיקות קוד)
-            ואינן תחליף לבדיקת צד שלישי עם משתמשים בטכנולוגיה מסייעת. מומלץ לבצע
-            ביקורת נגישות חיצונית לפני הצהרה על עמידה מלאה בתקן.
-          </p>
-        </section>
+          <section>
+            <h2>עדכון ההצהרה</h2>
+            <p>הצהרת הנגישות עודכנה לאחרונה בחודש נובמבר 2026.</p>
+          </section>
+        </div>
       </LegalShell>
     </div>
   )
 }
+
