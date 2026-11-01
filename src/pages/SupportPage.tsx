@@ -431,6 +431,8 @@ export default function SupportPage() {
           eyebrow="CASANOVA · שירות לקוחות"
           title={<Rich text={heroTitle} />}
           metaTitle="תמיכה"
+          titleClassName="max-w-2xl"
+          descriptionClassName="max-w-2xl"
           description={
             c("support.hero.lede") ||
             "כל פנייה מקבלת מספר מעקב ונשמרת במערכת, כך שצוות התמיכה יכול לטפל בה ולשייך אותה להזמנה הרלוונטית."
