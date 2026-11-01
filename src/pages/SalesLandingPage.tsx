@@ -1024,8 +1024,20 @@ export default function SalesLandingPage() {
 
             <aside className="cv-purchase-card">
               <div className="cv-purchase-card-head">
-                <span className="cv-purchase-card-icon" aria-hidden="true">
-                  <Icon name="bookOpen" size={20} />
+                <span className="cv-purchase-card-icon overflow-hidden">
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={`עטיפת הספר ״${product.name}״`}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <span aria-hidden="true">
+                      <Icon name="bookOpen" size={20} />
+                    </span>
+                  )}
                 </span>
                 <div>
                   <p className="cv-purchase-card-name">{product.name}</p>
