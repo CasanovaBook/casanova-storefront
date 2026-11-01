@@ -63,10 +63,10 @@ export default function AccessibilityStatementPage() {
                 דוא״ל לפניות נגישות:{" "}
                 <a
                   dir="ltr"
-                  href="mailto:support@casanova-books.com"
+                  href="mailto:cazanova.books@gmail.com"
                   className="inline-block font-medium text-[var(--color-accent)] underline underline-offset-4 transition-opacity hover:opacity-80"
                 >
-                  support@casanova-books.com
+                  cazanova.books@gmail.com
                 </a>
               </li>
             </ul>

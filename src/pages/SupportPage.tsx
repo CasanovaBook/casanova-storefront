@@ -42,7 +42,7 @@ import usePageTitle from "../lib/usePageTitle"
 
 const fieldClass = "w-full px-3.5 py-2.5 text-sm outline-none"
 
-const LOCKOUT_MAILTO = `mailto:support@casanova-books.com?subject=${encodeURIComponent(
+const LOCKOUT_MAILTO = `mailto:cazanova.books@gmail.com?subject=${encodeURIComponent(
   "בעיית התחברות לחשבון - Casanova",
 )}`
 
@@ -529,7 +529,7 @@ export default function SupportPage() {
                 href={LOCKOUT_MAILTO}
                 className="inline-block font-medium text-accent underline decoration-accent/40 underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground/60"
               >
-                support@casanova-books.com
+                cazanova.books@gmail.com
               </a>
             </p>
           </section>
