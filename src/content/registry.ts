@@ -272,8 +272,8 @@ text("reader", "errorText", "שגיאת קריאה - טקסט", "בדקו את �
 
 // ── support ──────────────────────────────────────────────────────────────────
 text("support", "hero.eyebrow", "Hero - שורה קטנה", "SUPPORT");
-rich("support", "hero.title", "Hero - כותרת", "איך נוכל\n*לעזור?*");
-area("support", "hero.lede", "Hero - משפט משנה", "שאלה, בעיה או בקשה? אנחנו כאן.");
+rich("support", "hero.title", "Hero - כותרת", "איך נוכל לסייע לך היום?");
+area("support", "hero.lede", "Hero - משפט משנה", "לכל שאלה, בעיה או בקשה – הצוות שלנו כאן כדי לוודא שהחוויה שלך תהיה מושלמת.");
 text("support", "success.title", "הודעת הצלחה - כותרת", "הפנייה נשלחה");
 text("support", "success.text", "הודעת הצלחה - טקסט", "נחזור אליכם בהקדם.");
 seo("support", "תמיכה", "שאלה? בעיה? אנחנו כאן לעזור.");

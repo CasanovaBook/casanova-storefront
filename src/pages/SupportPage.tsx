@@ -37,8 +37,8 @@ import type { Inquiry, InquiryNote, InquiryTopic } from "../types"
 import Icon from "../components/icons"
 
 import Modal from "../components/Modal"
-import PageHeader from "../components/ui/PageHeader"
 import Alert from "../components/ui/Alert"
+import usePageTitle from "../lib/usePageTitle"
 
 const fieldClass = "w-full px-3.5 py-2.5 text-sm outline-none"
 
@@ -350,6 +350,8 @@ export default function SupportPage() {
   const location = useLocation()
   const inDashboard = location.pathname.startsWith("/dashboard")
 
+  usePageTitle("תמיכה")
+
   /* The conversation is part of the shared document, so subscribing here
    * keeps an open ticket up to date: a reply that arrives over realtime is
    * mirrored into the store and re-renders the modal and the list counts. */
@@ -415,8 +417,20 @@ export default function SupportPage() {
     setForm({ ...form, subject: "", message: "" })
   }
 
-  const heroTitle = c("support.hero.title") || "פנייה לשירות הלקוחות"
-  const plainTitle = heroTitle.replace(/\*/g, "").replace(/[.\s]+$/u, "")
+  const heroTitle = c("support.hero.title") || "איך נוכל לסייע לך היום?"
+  const heroLede =
+    c("support.hero.lede") ||
+    "לכל שאלה, בעיה או בקשה – הצוות שלנו כאן כדי לוודא שהחוויה שלך תהיה מושלמת."
+
+  const crumbs = inDashboard
+    ? [
+        { label: "לוח אישי", to: "/dashboard" },
+        { label: "תמיכה" },
+      ]
+    : [
+        { label: "דף הבית", to: "/" },
+        { label: "שירות לקוחות" },
+      ]
 
   return (
     <div
@@ -427,28 +441,46 @@ export default function SupportPage() {
       }
     >
       <div className="app-page app-page--content">
-        <PageHeader
-          eyebrow="CASANOVA · שירות לקוחות"
-          title={<Rich text={heroTitle} />}
-          metaTitle="תמיכה"
-          titleClassName="max-w-2xl"
-          descriptionClassName="max-w-2xl"
-          description={
-            c("support.hero.lede") ||
-            "כל פנייה מקבלת מספר מעקב ונשמרת במערכת, כך שצוות התמיכה יכול לטפל בה ולשייך אותה להזמנה הרלוונטית."
-          }
-          breadcrumbs={
-            inDashboard
-              ? [
-                  { label: "לוח אישי", to: "/dashboard" },
-                  { label: plainTitle },
-                ]
-              : [
-                  { label: "דף הבית", to: "/" },
-                  { label: plainTitle },
-                ]
-          }
-        />
+        <header className="mx-auto w-full max-w-3xl px-4 pb-8 pt-12 text-center">
+          <nav
+            aria-label="מיקום בעמוד"
+            className="mb-3 text-xs text-foreground/50 sm:text-sm"
+          >
+            <ol className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+              {crumbs.map((item, index) => (
+                <li key={item.label} className="flex items-center gap-x-2">
+                  {index > 0 && (
+                    <span aria-hidden="true" className="text-foreground/30">
+                      /
+                    </span>
+                  )}
+                  {item.to ? (
+                    <Link
+                      className="transition-colors hover:text-accent"
+                      to={item.to}
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <span>{item.label}</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
+
+          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.3em] text-accent sm:text-xs">
+            CASANOVA · שירות לקוחות
+          </p>
+
+          <h1 className="my-4 font-display text-3xl font-extrabold leading-tight tracking-tight text-balance md:text-5xl">
+            <Rich text={heroTitle} />
+          </h1>
+
+          <p className="mx-auto mt-4 max-w-xl text-balance text-base leading-relaxed text-foreground/70 md:text-lg">
+            {heroLede}
+          </p>
+        </header>
 
         {!user ? (
           <section className="app-surface mx-auto max-w-xl px-6 py-10 text-center sm:px-10">

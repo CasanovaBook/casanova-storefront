@@ -13,8 +13,6 @@ export default function PageHeader({
   actions,
   breadcrumbs,
   metaTitle,
-  titleClassName,
-  descriptionClassName,
 }: {
   eyebrow?: ReactNode
   title: ReactNode
@@ -22,8 +20,6 @@ export default function PageHeader({
   actions?: ReactNode
   breadcrumbs?: BreadcrumbItem[]
   metaTitle?: string
-  titleClassName?: string
-  descriptionClassName?: string
 }) {
   const documentTitle =
     metaTitle ?? (typeof title === "string" ? title : "")
@@ -57,11 +53,9 @@ export default function PageHeader({
       <div className="app-page-heading">
         <div>
           {eyebrow && <p className="app-eyebrow">{eyebrow}</p>}
-          <h1 className={`app-title text-balance${titleClassName ? ` ${titleClassName}` : ""}`}>{title}</h1>
+          <h1 className="app-title text-balance">{title}</h1>
           {description && (
-            <p className={`app-subtitle text-balance${descriptionClassName ? ` ${descriptionClassName}` : ""}`}>
-              {description}
-            </p>
+            <p className="app-subtitle text-balance">{description}</p>
           )}
         </div>
 
