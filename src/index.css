@@ -3231,6 +3231,38 @@ body {
   border-color: color-mix(in srgb, var(--color-danger) 24%, transparent);
 }
 
+/* Wrapping badge for long content keys. `.app-badge` pins `white-space:
+ * nowrap` unlayered, which beats Tailwind's whitespace utilities - so
+ * multi-line chips need a real class, not `whitespace-normal`. */
+.app-badge--wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  text-align: start;
+}
+
+/* Audit-log diff presentation (see src/cms/AuditDiffModal.tsx). Logical
+ * border keeps the color bar on the reading side in both RTL and LTR. */
+.app-audit-keylist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.app-audit-diff-before {
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+  border-inline-start: 3px solid color-mix(in srgb, var(--color-danger) 45%, transparent);
+}
+
+.app-audit-diff-after {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  border-inline-start: 3px solid color-mix(in srgb, var(--color-success) 45%, transparent);
+}
+
 .app-alert {
   display: flex;
   align-items: flex-start;

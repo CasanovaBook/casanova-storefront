@@ -92,6 +92,37 @@ export interface AuditEntry extends Base {
   detail: string | null;
 }
 
+/**
+ * Structured change payload written into `AuditEntry.detail` as JSON.
+ * Values are pre-clipped strings so the writer can guarantee the serialized
+ * envelope always fits the journal's size budget without cutting JSON.
+ */
+export type AuditAction = "create" | "update" | "delete" | "upsert" | "reset" | "import";
+
+export interface AuditChange {
+  /** Record field ("name") or content key ("sales.hero.title"). */
+  key: string;
+  /** Clipped previous value; null when there was none (create / new key). */
+  before: string | null;
+  /** Clipped new value; null when the value is gone (delete / reset). */
+  after: string | null;
+  /** True when `before` or `after` was clipped to the value budget. */
+  cut?: true;
+}
+
+export interface AuditDetail {
+  /** Format tag; absent on every row written before structured diffs. */
+  v: 1;
+  /** record = field diff of one row; content = diff of content keys. */
+  kind: "record" | "content";
+  changes: AuditChange[];
+  /** Key names that did not fit as full changes (dense fallback). */
+  keys?: string[];
+  /** True count of changes when `changes` was trimmed to fit the budget. */
+  total?: number;
+  truncated?: true;
+}
+
 // ── Site settings (singleton) ────────────────────────────────────────────────
 
 /**

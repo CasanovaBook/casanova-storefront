@@ -77,7 +77,7 @@ export function BackupPage() {
           return;
         }
 
-        const res = await maestro.content.saveMany(valid);
+        const res = await maestro.content.saveMany(valid, { source: "import" });
         if (res.error) {
           setImportResult({ ok: 0, skipped, error: res.error.message });
           return;
