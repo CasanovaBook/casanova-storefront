@@ -90,6 +90,9 @@ function AutoTextarea({
   value,
   onChange,
   rows = 3,
+  minHeight,
+  maxHeight,
+  resizable,
   placeholder,
   style,
   dir,
@@ -100,6 +103,12 @@ function AutoTextarea({
   value: string
   onChange: (v: string) => void
   rows?: number
+  /** Floor for the auto-grown height, in px - roomier than `rows` alone for long documents. */
+  minHeight?: number
+  /** Ceiling for the auto-grown height; past it the box scrolls instead of stretching the page. */
+  maxHeight?: number
+  /** Let the admin drag the bottom edge; once dragged, auto-grow stops fighting that height. */
+  resizable?: boolean
   placeholder?: string
   style?: React.CSSProperties
   dir?: string
@@ -108,12 +117,16 @@ function AutoTextarea({
   ariaLabel?: string
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
+  const userSized = useRef(false)
   const resize = useCallback(() => {
     const el = ref.current
-    if (!el) return
+    if (!el || userSized.current) return
     el.style.height = "auto"
-    el.style.height = `${Math.max(el.scrollHeight, rows * 22)}px`
-  }, [rows])
+    el.style.height = `${Math.min(
+      Math.max(el.scrollHeight, rows * 22, minHeight ?? 0),
+      maxHeight ?? Number.POSITIVE_INFINITY,
+    )}px`
+  }, [rows, minHeight, maxHeight])
   useEffect(() => {
     resize()
   }, [value, resize])
@@ -134,12 +147,27 @@ function AutoTextarea({
       ref={ref}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onPointerDown={(e) => {
+        // The drag grip lives at the bottom corner (bottom-left in RTL);
+        // a grab there is the admin setting the height on purpose.
+        const el = ref.current
+        if (!resizable || !el) return
+        const rect = el.getBoundingClientRect()
+        const nearBottom = e.clientY >= rect.bottom - 16
+        const nearEdge =
+          e.clientX <= rect.left + 16 || e.clientX >= rect.right - 16
+        if (nearBottom && nearEdge) userSized.current = true
+      }}
       rows={rows}
       placeholder={placeholder}
       id={id}
       aria-label={ariaLabel}
       className={`w-full px-3 py-2 text-sm ${mono ? "font-mono" : ""}`}
-      style={{ resize: "none", overflow: "hidden", ...style }}
+      style={{
+        resize: resizable ? "vertical" : "none",
+        overflow: resizable ? "auto" : "hidden",
+        ...style,
+      }}
       dir={dir ?? "rtl"}
     />
   )
@@ -157,6 +185,7 @@ const controlId = (key: string) => `field-${key}`
 const LABELABLE: FieldType[] = [
   "text",
   "textarea",
+  "body",
   "rich",
   "md",
   "image",
@@ -169,6 +198,7 @@ const LABELABLE: FieldType[] = [
 const TYPE_LABELS: Record<string, string> = {
   text: "טקסט",
   textarea: "טקסט ארוך",
+  body: "גוף מסמך",
   rich: "עשיר",
   md: "Markdown",
   image: "תמונה",
@@ -269,6 +299,32 @@ function FieldEditor({
           ariaLabel={field.label}
         />
       )
+    case "body": {
+      const v = typeof value === "string" ? value : ""
+      const lines = v.split("\n").filter((l) => l.trim() !== "").length
+      const chars = [...v].filter((ch) => !/\s/.test(ch)).length
+      return (
+        <div>
+          <AutoTextarea
+            value={v}
+            onChange={onChange as (v2: string) => void}
+            rows={10}
+            minHeight={250}
+            maxHeight={480}
+            resizable
+            id={controlId(field.key)}
+            ariaLabel={field.label}
+            style={{ lineHeight: 1.75, padding: "0.75rem 1rem" }}
+          />
+          <div className="mt-1 flex justify-end">
+            <span className="app-hint">
+              {lines === 1 ? "שורה אחת" : `${lines} שורות`} ·{" "}
+              {chars === 1 ? "תו אחד" : `${chars} תווים`}
+            </span>
+          </div>
+        </div>
+      )
+    }
     case "rich":
       return (
         <div>
@@ -1320,7 +1376,7 @@ export function ContentEditor() {
           <div className="grid grid-cols-1 gap-3 3xl:grid-cols-2 4xl:grid-cols-3">
             {visibleFields.map((field) => {
               const modified = isModified(field.key)
-              const spansFull = ["textarea", "rich", "md", "strings", "list"].includes(field.type)
+              const spansFull = ["textarea", "body", "rich", "md", "strings", "list"].includes(field.type)
               return (
                 <div
                   key={field.key}
