@@ -148,7 +148,15 @@ async function seed(
         }),
       )
       setIfNew("casanova_db_v1", JSON.stringify(value))
-      setIfNew("casanova_session_v1", sessionId)
+
+      /* The session pointer is seeded once per tab, not on every navigation.
+       * `setIfNew` would otherwise re-create it after a forced sign-out and
+       * restore the very session the teardown just destroyed - the test would
+       * then be asserting against its own scaffolding rather than the product. */
+      if (!sessionStorage.getItem("qa_session_seeded")) {
+        localStorage.setItem("casanova_session_v1", sessionId)
+        sessionStorage.setItem("qa_session_seeded", "1")
+      }
     },
     { value: doc, sessionId: signedInAs },
   )
@@ -440,38 +448,39 @@ test.describe("connected devices", () => {
       .click()
     await page.locator(`#release-${sessionId} .app-btn-danger`).click()
 
-    await expect(page).toHaveURL(/\/login$/)
+    /* A full-page navigation, not a router push: the React tree, its state and
+     * any pending effect are discarded rather than trusted to unwind. */
+    await expect(page).toHaveURL(/\/login\?signed_out=self_disconnect$/)
 
-    /* The local session pointer is what `logout()` clears in this mode; in
-     * Supabase mode the same call also runs supabase.auth.signOut(), which no
-     * local-mode test can observe. */
     await expect
-      .poll(() => page.evaluate(() => localStorage.getItem("casanova_session_v1")))
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("casanova_session_v1")),
+      )
       .toBeNull()
 
     const doc = await page.evaluate(
       () => JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}"),
     )
 
-    const released = doc.device_sessions.find(
-      (s: { session_id: string }) => s.session_id === sessionId,
-    )
+    /* The account's rows are gone from this browser. The server keeps the
+     * closed row and its SESSION_RELEASED event - asserted on the
+     * not-this-device path above, where no teardown runs. */
+    expect(
+      (doc.device_sessions ?? []).filter(
+        (s: { user_id: string }) => s.user_id === READER,
+      ),
+    ).toHaveLength(0)
 
-    expect(released.ended_at, "the row must be closed on the server/record").toBeTruthy()
-    expect(released.secure_flag_active).toBe(false)
+    await expect(
+      page.getByText("נתקת את המכשיר הזה"),
+    ).toBeVisible()
   })
 
-  test("a device blocked elsewhere signs itself out on the next load", async ({
-    page,
-  }) => {
+  test("a blocked device is signed out and told why", async ({ page }) => {
     await seed(page.context(), dbDoc([], true))
 
     await page.goto("/dashboard")
 
-    /* Learn this browser's real fingerprint from the row the claim created,
-     * then rewrite the document so that fingerprint is the blocked one - and
-     * drop the book, so the sign-in claim cannot hand the device a fresh slot
-     * before the guard gets a chance to read the revocation. */
     const fingerprint = await page.evaluate(() => {
       const stored = JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}")
 
@@ -480,6 +489,9 @@ test.describe("connected devices", () => {
 
     expect(fingerprint).toBeTruthy()
 
+    /* Rewrite the document so this browser's own fingerprint is the blocked
+     * one, and drop the book so the sign-in claim cannot hand it a fresh slot
+     * before the guard reads the revocation. */
     await page.evaluate((fp) => {
       const stored = JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}")
 
@@ -505,13 +517,16 @@ test.describe("connected devices", () => {
 
     await page.goto("/dashboard")
 
-    await expect(page).toHaveURL(/\/login$/)
+    await expect(page).toHaveURL(/\/login\?signed_out=blocked$/)
     await expect
-      .poll(() => page.evaluate(() => localStorage.getItem("casanova_session_v1")))
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("casanova_session_v1")),
+      )
       .toBeNull()
+    await expect(page.getByText("הגישה ממכשיר זה נחסמה")).toBeVisible()
   })
 
-  test("blocking another device does not sign this one out", async ({
+  test("an unrelated blocked device does not sign this one out", async ({
     page,
   }) => {
     /* The guard is scoped to this browser's fingerprint. Without that scope,

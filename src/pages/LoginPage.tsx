@@ -15,6 +15,7 @@ import {
   type PhoneParts,
 } from "../lib/auth"
 import { rememberReturnPath, safeInternalPath } from "../lib/checkout-intent"
+import { SIGNED_OUT_PARAM, type SignOutReason } from "../lib/teardown"
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import Icon from "../components/icons"
 import Alert from "../components/ui/Alert"
@@ -24,6 +25,23 @@ import {
   DEFAULT_RATE_LIMIT_SECONDS,
   LOGIN_MESSAGES,
 } from "../shared/auth-login"
+
+/**
+ * What each forced sign-out says on the way back in.
+ *
+ * Keyed by reason, so the query string selects from a fixed table instead of
+ * supplying text - the same reason the `redirect` beside it is sanitized.
+ * "session_gone" is worded as an ordinary expiry rather than an accusation,
+ * because that is what it usually is: a book left open overnight.
+ */
+const SIGNED_OUT_NOTICES: Partial<Record<SignOutReason, string>> = {
+  self_disconnect: "נתקת את המכשיר הזה. כדי לחזור לקרוא בו, יש להתחבר מחדש.",
+
+  blocked:
+    "הגישה ממכשיר זה נחסמה על ידי המערכת. ניתן להתחבר מחדש, והבקשה תיבדק מול מגבלת המכשירים של החשבון.",
+
+  session_gone: "הסשן של המכשיר הזה פג. יש להתחבר מחדש כדי להמשיך לקרוא.",
+}
 
 /** Marks a field the customer cannot submit without. The same red star the
  *  checkout screen already uses, so "required" is not a guess on either side. */
@@ -53,6 +71,21 @@ export default function LoginPage() {
   const redirect = safeInternalPath(
     new URLSearchParams(location.search).get("redirect"),
   )
+
+  /* A forced sign-out lands here with no explanation, and "the app threw me
+   * out" reads exactly like "my password stopped working" - which is a support
+   * ticket. The reason arrives in the query string, so it is looked up in a
+   * fixed table rather than rendered: the value is attacker-controlled. */
+  const signedOutParam = new URLSearchParams(location.search).get(
+    SIGNED_OUT_PARAM,
+  )
+
+  const signedOut =
+    signedOutParam === "self_disconnect" ||
+    signedOutParam === "blocked" ||
+    signedOutParam === "session_gone"
+      ? SIGNED_OUT_NOTICES[signedOutParam]
+      : undefined
 
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -515,6 +548,20 @@ export default function LoginPage() {
        * `emailProblem` / `passwordProblem`, while the `required` attributes
        * stay for assistive technology and for the field semantics. */}
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        {signedOut && (
+          <div role="status" className="app-alert app-alert--warning">
+            <Icon
+              name="alertTriangle"
+              size={17}
+              style={{
+                flexShrink: 0,
+                marginTop: 2,
+                color: "var(--color-primary)",
+              }}
+            />
+            <span className="text-xs">{signedOut}</span>
+          </div>
+        )}
         {mode === "register" && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="app-field">

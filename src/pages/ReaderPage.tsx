@@ -25,13 +25,13 @@ import {
   consumeContentGrant,
   issueContentGrant,
   isSessionExpired,
-  purgeLocalContentGrants,
   recordEvent,
   reportDeviceActivity,
   renderWatermark,
   resolveDrmPolicy,
 } from "../lib/api-security"
 import { useDeviceSessions } from "../lib/useDeviceSessions"
+import { forceSignOut } from "../lib/teardown"
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import { fetchProfile } from "../integrations/supabase/supabase-auth"
 import { DEFAULT_HIGHLIGHT_COLOR } from "../lib/annotation-utils"
@@ -235,7 +235,6 @@ export default function ReaderPage() {
     userProducts,
     user,
     actor,
-    logout,
     refreshEntitlements,
   } = useApp()
   const { products } = useCms()
@@ -451,18 +450,11 @@ export default function ReaderPage() {
 
     tornDown.current = true
 
-    setContentUrl((current) => {
-      if (current) clearDocumentCache(current)
-
-      return undefined
-    })
-
-    if (actor) purgeLocalContentGrants(actor.user_id)
-
-    void logout()
-
-    navigate("/login", { replace: true })
-  }, [terminated, actor, logout, navigate])
+    void forceSignOut(
+      deviceLock?.kind === "revoked" ? "blocked" : "session_gone",
+      actor?.user_id ?? null,
+    )
+  }, [actor, deviceLock?.kind, terminated])
   // Kept in a ref so the protection callbacks can attribute an event to
   // the right session without being rebuilt whenever it changes.
   const sessionIdRef = useRef<string | null>(null)

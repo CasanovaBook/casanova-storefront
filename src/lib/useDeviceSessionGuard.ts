@@ -16,11 +16,9 @@
  * which refuses the request whether or not the browser cooperates. */
 
 import { useEffect, useRef } from "react"
-import { useNavigate } from "react-router"
 
-import { useApp } from "../context/AppContext"
 import type { Actor } from "../shared/result"
-import { purgeLocalContentGrants } from "./api-security"
+import { forceSignOut } from "./teardown"
 import {
   useDeviceSessions,
   type DeviceSessionsView,
@@ -31,8 +29,6 @@ export function useDeviceSessionGuard(
   options: { staff?: boolean } = {},
 ): DeviceSessionsView {
   const view = useDeviceSessions(actor, options)
-  const { logout } = useApp()
-  const navigate = useNavigate()
 
   /* Once, and stickily. The teardown changes auth state, which re-renders
    * this tree with the same answer still in the document; without the latch
@@ -44,12 +40,8 @@ export function useDeviceSessionGuard(
 
     torn.current = true
 
-    if (actor) purgeLocalContentGrants(actor.user_id)
-
-    void logout()
-
-    navigate("/login", { replace: true })
-  }, [actor, logout, navigate, view.blockedHere])
+    void forceSignOut("blocked", actor?.user_id ?? null)
+  }, [actor, view.blockedHere])
 
   return view
 }

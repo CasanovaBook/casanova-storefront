@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router"
+import { Link } from "react-router"
 import { useApp } from "../context/AppContext"
 import { claimFirstLogin } from "../lib/first-login"
 import {
   deviceFingerprint,
   isSessionExpired,
-  purgeLocalContentGrants,
   releaseDevice,
 } from "../lib/api-security"
+import { forceSignOut } from "../lib/teardown"
 import { useDeviceSessionGuard } from "../lib/useDeviceSessionGuard"
 import { formatIsraelDateParts } from "../lib/datetime"
 import type { ProductSnapshot } from "../types"
@@ -74,8 +74,7 @@ function lastSeen(iso: string, now: number): string {
  * they hold and free one without asking anybody.
  */
 function ConnectedDevicesCard() {
-  const { actor, logout } = useApp()
-  const navigate = useNavigate()
+  const { actor } = useApp()
   const {
     sessions,
     policy,
@@ -128,11 +127,9 @@ function ConnectedDevicesCard() {
     }
 
     if (mine && actor) {
-      purgeLocalContentGrants(actor.user_id)
-
-      await logout()
-
-      navigate("/login", { replace: true })
+      /* Never returns: the teardown ends in a full-page navigation. Awaited
+       * so the release above is settled before local state is destroyed. */
+      await forceSignOut("self_disconnect", actor.user_id)
 
       return
     }

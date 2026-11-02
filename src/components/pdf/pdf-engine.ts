@@ -84,6 +84,53 @@ export function clearDocumentCache(url: string): void {
   docCache.delete(url)
 }
 
+/**
+ * Destroy every cached document and close every rendered page.
+ *
+ * `clearDocumentCache` drops a map entry so the next read re-parses - which is
+ * what an expired session pressing "continue reading" needs. A sign-out needs
+ * the opposite: a resolved document keeps its parsed page structures alive,
+ * and each cached bitmap is a rendered page of somebody's purchased book,
+ * both for the life of the tab. Removing the map entry releases neither.
+ *
+ * Destruction is fire-and-forget and individually guarded. It runs on the way
+ * out of a session that may already be broken, and a rejected teardown
+ * promise must not become an unhandled rejection on top of it.
+ */
+/** pdf.js declares `destroy()` on the loading task and `cleanup()` on the
+ *  resolved proxy, but the proxy also carries `destroy()` at runtime. The
+ *  cache holds proxies, so both names are probed rather than asserted. */
+type ReleasableDoc = PdfDoc & {
+  destroy?: () => Promise<unknown>
+}
+
+export function purgePdfEngine(): void {
+  for (const task of docCache.values()) {
+    void task
+      .then((doc) => {
+        const releasable = doc as ReleasableDoc
+
+        return releasable.destroy
+          ? releasable.destroy()
+          : releasable.cleanup()
+      })
+      .catch(() => undefined)
+  }
+
+  docCache.clear()
+
+  for (const bitmap of bitmapCache.values()) {
+    try {
+      bitmap.close?.()
+    } catch {
+      /* Already closed, or a stub without close (jsdom). */
+    }
+  }
+
+  bitmapCache.clear()
+  bitmapInFlight.clear()
+}
+
 export async function loadTextLayerClass() {
   const mod = await PDFJS_IMPORT()
   return mod.TextLayer
