@@ -202,6 +202,58 @@ async function disconnect(page: Page, id: string) {
   await page.locator(`#release-${id} .app-btn-danger`).click()
 }
 
+/**
+ * This browser's real device fingerprint, read from the card the reader
+ * already sees. Needed because the rows a test seeds must match the device the
+ * code under test believes it is running on.
+ *
+ * Seeds and navigates first: without a session the dashboard redirects to the
+ * login page and there is no card to read the attribute from.
+ */
+async function realFingerprint(
+  page: Page,
+  doc: ReturnType<typeof dbDoc> = dbDoc([], false),
+): Promise<string> {
+  await seed(page.context(), doc)
+
+  await page.goto("/dashboard")
+
+  const fp = await page
+    .locator("[data-device-fingerprint]")
+    .first()
+    .getAttribute("data-device-fingerprint")
+
+  expect(fp).toBeTruthy()
+
+  return fp as string
+}
+
+/**
+ * Replaces the stored document after the first navigation. Takes plain data:
+ * `page.evaluate` serializes its argument, so a function closed over module
+ * constants would arrive in the browser with those names undefined.
+ */
+async function rewrite(page: Page, doc: Record<string, unknown>) {
+  await page.evaluate((value) => {
+    localStorage.setItem("casanova_db_v1", JSON.stringify(value))
+  }, doc)
+}
+
+function liveRow(fp: string, id = "dvs-live") {
+  return {
+    session_id: id,
+    user_id: READER,
+    device_fingerprint: fp,
+    device_name: "Chrome · Windows",
+    platform: "WEB",
+    device_integrity: "UNKNOWN",
+    secure_flag_active: true,
+    revoked: false,
+    started_at: minutesAgo(30),
+    last_seen_at: minutesAgo(1),
+  }
+}
+
 test.describe("connected devices", () => {
   let issues: string[]
 
@@ -296,18 +348,44 @@ test.describe("connected devices", () => {
     ).toBeVisible()
   })
 
-  test("signing in with a book in the library registers this device", async ({
-    page,
-  }) => {
-    /* No sessions seeded: any row that appears was claimed by this browser. */
+  test("a restored session claims no slot on its own", async ({ page }) => {
+    /* The regression this guards: the claim ran on every mount, and a mount
+     * cannot tell a fresh sign-in from a silent token restore. A returning
+     * reader who had never registered - or who had just disconnected - got a
+     * slot written for them by a page load. Registering a device is something
+     * a person does, not something that happens to them. */
     await seed(page.context(), dbDoc([], true))
 
     await page.goto("/dashboard")
 
-    await expect(
-      page.locator('[data-testid="device-row"][data-mine="true"]'),
-    ).toHaveCount(1)
-    await expect(page.getByText("1 / 2")).toBeVisible()
+    await expect(page.locator('[data-testid="device-row"]')).toHaveCount(0)
+    await expect(page.getByText("אין מכשירים רשומים")).toBeVisible()
+  })
+
+  test("a refresh does not resurrect a disconnected device", async ({
+    page,
+  }) => {
+    const fp = await realFingerprint(page)
+
+    /* The row carries the stamp a release writes. Without `end_reason` the
+     * claim could not tell this from an ordinary idle expiry, and the honest
+     * answer for an expiry is to let the reader back in without a fuss. */
+    await rewrite(page, {
+      ...dbDoc([], true),
+      device_sessions: [
+        {
+          ...liveRow(fp),
+          ended_at: minutesAgo(1),
+          secure_flag_active: false,
+          end_reason: "released",
+        },
+      ],
+    })
+
+    await page.goto("/dashboard")
+
+    await expect(page.locator('[data-testid="device-row"]')).toHaveCount(0)
+    await expect(page.getByText("0 / 2")).toBeVisible()
   })
 
   test("a browser without a book claims no slot on sign-in", async ({
@@ -431,9 +509,12 @@ test.describe("connected devices", () => {
   test("disconnecting THIS device destroys the session and leaves the app", async ({
     page,
   }) => {
-    /* A book is seeded so the sign-in claim registers this browser and gives
-     * the test a row that is genuinely `mine`. */
-    await seed(page.context(), dbDoc([], true))
+    const fp = await realFingerprint(page)
+
+    await rewrite(page, {
+      ...dbDoc([], true),
+      device_sessions: [liveRow(fp, "dvs-mine")],
+    })
 
     await page.goto("/dashboard")
 
@@ -441,12 +522,10 @@ test.describe("connected devices", () => {
 
     await expect(mine).toHaveCount(1)
 
-    const sessionId = await mine.getAttribute("data-session-id")
-
     await mine
       .getByRole("button", { name: "לנתק מכשיר זה ולהתנתק" })
       .click()
-    await page.locator(`#release-${sessionId} .app-btn-danger`).click()
+    await page.locator("#release-dvs-mine .app-btn-danger").click()
 
     /* A full-page navigation, not a router push: the React tree, its state and
      * any pending effect are discarded rather than trusted to unwind. */
@@ -462,58 +541,31 @@ test.describe("connected devices", () => {
       () => JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}"),
     )
 
-    /* The account's rows are gone from this browser. The server keeps the
-     * closed row and its SESSION_RELEASED event - asserted on the
-     * not-this-device path above, where no teardown runs. */
     expect(
       (doc.device_sessions ?? []).filter(
         (s: { user_id: string }) => s.user_id === READER,
       ),
     ).toHaveLength(0)
 
-    await expect(
-      page.getByText("נתקת את המכשיר הזה"),
-    ).toBeVisible()
+    await expect(page.getByText("נתקת את המכשיר הזה")).toBeVisible()
   })
 
   test("a blocked device is signed out and told why", async ({ page }) => {
-    await seed(page.context(), dbDoc([], true))
+    const fp = await realFingerprint(page)
 
-    await page.goto("/dashboard")
-
-    const fingerprint = await page.evaluate(() => {
-      const stored = JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}")
-
-      return stored.device_sessions?.[0]?.device_fingerprint ?? ""
-    })
-
-    expect(fingerprint).toBeTruthy()
-
-    /* Rewrite the document so this browser's own fingerprint is the blocked
-     * one, and drop the book so the sign-in claim cannot hand it a fresh slot
-     * before the guard reads the revocation. */
-    await page.evaluate((fp) => {
-      const stored = JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}")
-
-      stored.device_sessions = [
+    await rewrite(page, {
+      ...dbDoc([], false),
+      device_sessions: [
         {
-          session_id: "dvs-blocked-here",
-          user_id: "usr_qa_reader",
-          device_fingerprint: fp,
-          device_name: "Chrome · Windows",
-          platform: "WEB",
-          device_integrity: "UNKNOWN",
-          secure_flag_active: false,
+          ...liveRow(fp, "dvs-blocked-here"),
           revoked: true,
-          revoked_at: new Date().toISOString(),
-          started_at: new Date(Date.now() - 60_000).toISOString(),
-          last_seen_at: new Date(Date.now() - 60_000).toISOString(),
+          revoked_at: minutesAgo(1),
+          ended_at: minutesAgo(1),
+          secure_flag_active: false,
+          end_reason: "revoked",
         },
-      ]
-      stored.user_products = []
-
-      localStorage.setItem("casanova_db_v1", JSON.stringify(stored))
-    }, fingerprint)
+      ],
+    })
 
     await page.goto("/dashboard")
 

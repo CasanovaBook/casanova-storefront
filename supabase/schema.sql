@@ -1093,6 +1093,11 @@ CREATE TABLE device_sessions (
   started_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   last_seen_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   ended_at           TIMESTAMPTZ,
+  -- Why the slot stopped. `ended_at` alone cannot answer it: a release, an
+  -- idle sweep and a staff block all set it, and only the first and third are
+  -- terminations that a re-claim must confirm. Migration 0037 added this
+  -- column; without it the claim path cannot tell a disconnect from a timeout.
+  end_reason         TEXT CHECK (end_reason IN ('released','expired','revoked')),
   revoked            BOOLEAN      NOT NULL DEFAULT FALSE,
   -- Revocation attribution lives on the row, not only in the audit trail:
   -- the reader that gets cut off has to be able to say why, and the
@@ -1132,7 +1137,7 @@ CREATE TABLE security_events (
                  'VISIBILITY_HIDDEN',
                  -- Session and device administration (both clients)
                  'SESSION_REVOKED','SESSION_RELEASED','DEVICE_LIMIT_EXCEEDED',
-                 'DEVICE_RECLAIM_AFTER_BLOCK',
+                 'DEVICE_RECLAIM_AFTER_BLOCK','DEVICE_REACTIVATED',
                  -- Native reader
                  'DOWNLOAD_BLOCKED',      -- save / export / "open in" refused
                  'SHARE_BLOCKED',         -- share sheet refused for protected content

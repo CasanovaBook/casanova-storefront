@@ -775,6 +775,11 @@ export interface DeviceSession {
   started_at: string
   last_seen_at: string
   ended_at?: string
+  /**
+   * Why the slot stopped. Only `released` and `revoked` are terminations that
+   * a re-claim must confirm; `expired` is a timeout the reader never asked for.
+   */
+  end_reason?: "released" | "expired" | "revoked"
   revoked: boolean
   /**
    * Revocation attribution, kept on the row rather than only in the
@@ -787,7 +792,7 @@ export interface DeviceSession {
 }
 
 export type SecurityEventType = "SCREENSHOT_BLOCKED" | "RECORDING_DETECTED" | "COPY_BLOCKED" | "PRINT_BLOCKED" | "CONTEXT_MENU_BLOCKED" | "SOURCE_VIEW_BLOCKED" | "VISIBILITY_HIDDEN" | "SESSION_REVOKED" | "SESSION_RELEASED" | "DEVICE_LIMIT_EXCEEDED" | "DEVICE_RECLAIM_AFTER_BLOCK" | /* Native reader */
-"DOWNLOAD_BLOCKED" | "SHARE_BLOCKED" | "MIRROR_DETECTED" | "DEVICE_COMPROMISED" | "GRANT_REPLAY_BLOCKED" | "OFFLINE_EXPIRED"
+"DOWNLOAD_BLOCKED" | "SHARE_BLOCKED" | "MIRROR_DETECTED" | "DEVICE_COMPROMISED" | "GRANT_REPLAY_BLOCKED" | "OFFLINE_EXPIRED" | "DEVICE_REACTIVATED"
 
 /**
  * A protection event raised by the reader. Written by the service layer

@@ -1169,10 +1169,16 @@ export default function ReaderPage() {
     if (!actor) return
     // A revoked slot cannot be renewed - it has to be claimed again, which
     // re-checks the device cap and can legitimately fail.
+    //
+    // `confirmReactivate` is what makes this button the deliberate act it
+    // looks like. The server refuses an ordinary claim for a fingerprint it
+    // has recorded as released or blocked; a click here is the reader saying
+    // they mean it. That is the difference between a refresh resurrecting a
+    // disconnected device and a person choosing to bring it back.
     const result =
       session && !session.revoked
         ? await reportDeviceActivity(actor, session.session_id)
-        : await claimDevice(actor)
+        : await claimDevice(actor, { confirmReactivate: true })
     if (result.ok) {
       setSessionId(result.data.session_id)
       setDeviceLock(null)

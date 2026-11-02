@@ -38,6 +38,7 @@ export type DeviceWriteFailure =
    * fail the reader's action. */
   | "unavailable"
   | "device_limit_exceeded"
+  | "device_previously_terminated"
   | "session_revoked"
   | "session_ended"
   | "session_not_open"
@@ -146,6 +147,7 @@ function classify(err: { code?: string; message?: string }): DeviceWriteFailure 
 
   const names: DeviceWriteFailure[] = [
     "device_limit_exceeded",
+    "device_previously_terminated",
     "session_revoked",
     "session_ended",
     "session_not_open",
@@ -277,6 +279,13 @@ export interface ClaimInput {
   deviceModel?: string
   osVersion?: string
   appVersion?: string
+  /**
+   * Deliberate re-entry for a fingerprint that was released or blocked.
+   *
+   * False is what an automatic call sends, and the server refuses it for a
+   * terminated device - which is the whole point: a page load is not consent.
+   */
+  confirmReactivate?: boolean
 }
 
 /**
@@ -296,6 +305,7 @@ export async function claimDeviceSession(
     p_device_model: input.deviceModel ?? null,
     p_os_version: input.osVersion ?? null,
     p_app_version: input.appVersion ?? null,
+    p_confirm_reactivate: input.confirmReactivate === true,
   })
 
   return result.ok

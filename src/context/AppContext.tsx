@@ -659,7 +659,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [user?.user_id, user?.email, user?.role, user?.admin_role])
 
+  /* Set only by an authentication event this provider started itself - a
+   * credential sign-in, a registration, a checkout grant. Nothing else.
+   *
+   * It exists because a device slot was claimed on every app mount, and a
+   * mount cannot tell a fresh login from a silent token restore. That meant an
+   * ordinary browser refresh re-registered a device its owner had just
+   * disconnected: the release closed the row, the claim found no live row for
+   * the fingerprint, read the slot as free, and wrote a new one. A page reload
+   * is not consent to be back, so the claim now waits for this. */
+  const attested = useRef(false)
+
   const beginSession = useCallback((next: User) => {
+    attested.current = true
     writeSessionUserId(next.user_id)
     setSessionId(next.user_id)
   }, [])
@@ -960,6 +972,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const uid = user?.user_id
 
     if (!uid || !ownsBook) return
+
+    /* Only after an authentication event. Without this the effect runs on
+     * every mount, including the silent token restore that a browser refresh
+     * produces, and it resurrects a device the owner disconnected. */
+    if (!attested.current) return
 
     if (claimedFor.current === uid) return
 

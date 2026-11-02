@@ -145,7 +145,15 @@ function ConnectedDevicesCard() {
   const idle = sessions.length - used
 
   return (
-    <section className="app-surface" aria-labelledby="devices-title">
+    <section
+      className="app-surface"
+      aria-labelledby="devices-title"
+      /* The reader's own fingerprint, already shown in full to staff in the
+       * admin device table. Exposing it here gives support a value the reader
+       * can quote without a screenshot, and it is the only way to talk about
+       * "this device" precisely once a slot has been released. */
+      data-device-fingerprint={thisDevice}
+    >
       <div className="app-surface-head">
         <div className="flex items-center gap-3 min-w-0">
           <span

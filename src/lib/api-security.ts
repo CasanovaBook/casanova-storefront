@@ -506,6 +506,7 @@ export function occupiesSlot(
 
 export function registerDeviceSession(
   actor: Actor | null,
+  options: { confirmReactivate?: boolean } = {},
 ): Result<DeviceSession> {
   const denied = requireActor(actor)
 
@@ -541,11 +542,31 @@ export function registerDeviceSession(
 
   if (existing) return ok(existing)
 
-  const claimed = db.device_sessions.filter(
+  /* The same rule the server enforces, so a project without the migration -
+   * or a browser running entirely on the local document - is not the weaker
+   * path. `expired` is deliberately excluded: a timeout is not a disconnect,
+   * and requiring a click to undo one would punish the reader for nothing. */
+  const terminated = db.device_sessions.find(
+    (s) =>
+      s.user_id === user.user_id &&
+      s.device_fingerprint === fingerprint &&
+      (s.revoked ||
+        s.end_reason === "released" ||
+        s.end_reason === "revoked"),
+  )
+
+  if (terminated && !options.confirmReactivate)
+    return fail(
+      "CONFLICT",
+
+      "המכשיר הזה נותק. כדי לחזור אליו יש להתחבר מחדש לחשבון.",
+    )
+
+  const open = db.device_sessions.filter(
     (s) => s.user_id === user.user_id && occupiesSlot(s, policy),
   )
 
-  if (claimed.length >= policy.max_devices_per_user) {
+  if (open.length >= policy.max_devices_per_user) {
     recordEvent({
       user_id: user.user_id,
 
@@ -556,7 +577,7 @@ export function registerDeviceSession(
       session_id: undefined,
 
       metadata: {
-        open_sessions: claimed.length,
+        open_sessions: open.length,
         limit: policy.max_devices_per_user,
       },
     })
@@ -688,7 +709,12 @@ export function endDeviceSession(
            * flag set would leave a released row looking like a live, secure
            * reader, which is the state the admin table and any future audit
            * of "who was protected when" both read. */
-          { ...s, ended_at: nowIso(), secure_flag_active: false }
+          {
+            ...s,
+            ended_at: nowIso(),
+            secure_flag_active: false,
+            end_reason: "released" as const,
+          }
         : s,
     )
   })
@@ -763,6 +789,8 @@ export function revokeDeviceSession(
         revoked_by: (actor as Actor).user_id,
 
         revoke_reason: reason?.trim() || undefined,
+
+        end_reason: "revoked" as const,
       }
 
       return next
@@ -988,6 +1016,7 @@ function capRefusal(policy: DrmPolicy): Failure {
  */
 export async function claimDevice(
   actor: Actor | null,
+  options: { confirmReactivate?: boolean } = {},
 ): Promise<Result<DeviceSession>> {
   const denied = requireActor(actor)
 
@@ -1000,6 +1029,8 @@ export async function claimDevice(
       platform: currentPlatform(),
 
       deviceName: describeDevice(),
+
+      confirmReactivate: options.confirmReactivate === true,
     })
 
     if (out.ok) {
@@ -1007,6 +1038,13 @@ export async function claimDevice(
 
       return ok(out.data)
     }
+
+    if (out.code === "device_previously_terminated")
+      return fail(
+        "CONFLICT",
+
+        "המכשיר הזה נותק. כדי לחזור אליו יש להתחבר מחדש לחשבון.",
+      )
 
     if (out.code === "device_limit_exceeded") {
       recordEvent({
@@ -1031,7 +1069,7 @@ export async function claimDevice(
       return fail("FORBIDDEN", "לא ניתן לרשום את המכשיר כעת. נסו שוב.")
   }
 
-  return registerDeviceSession(actor)
+  return registerDeviceSession(actor, options)
 }
 
 /**
@@ -1324,6 +1362,13 @@ export const SECURITY_EVENT_LABEL: Record<SecurityEventType, string> = {
    * one thing an administrator needs to see after pressing חסימה. */
 
   DEVICE_RECLAIM_AFTER_BLOCK: "מכשיר חסום נרשם מחדש",
+
+  /* Both the refusal and the confirmed re-claim land here, distinguished by
+   * metadata. An administrator who blocked a device should see the attempt
+   * even when it was refused - that is the only signal that something is
+   * trying to come back. */
+
+  DEVICE_REACTIVATED: "מכשיר שנותק ניסה לחזור",
 
   DOWNLOAD_BLOCKED: "הורדת קובץ התוכן נחסמה",
 
