@@ -451,7 +451,7 @@ function requireActor(actor: Actor | null): Failure | null {
   return null
 }
 
-/** A session still counts against the cap while it is neither revoked nor closed. */
+/** A row that is neither revoked nor closed. For cap math use `occupiesSlot`. */
 
 export function isSessionOpen(session: DeviceSession): boolean {
   return !session.revoked && !session.ended_at
@@ -466,6 +466,21 @@ export function isSessionExpired(
   const idleMs = Date.now() - new Date(session.last_seen_at).getTime()
 
   return idleMs > policy.session_timeout_minutes * 60_000
+}
+
+/**
+ * Whether a session still holds one of the account's device slots.
+ *
+ * Idle expiry is derived from `last_seen_at` and never written to the row, so
+ * under `isSessionOpen` alone an abandoned browser kept its slot until someone
+ * released it by hand. The cap blocks rather than evicts, so that ghost row
+ * could lock out a real second device for ever. Silence gives the place back.
+ */
+export function occupiesSlot(
+  session: DeviceSession,
+  policy: DrmPolicy,
+): boolean {
+  return isSessionOpen(session) && !isSessionExpired(session, policy)
 }
 
 /**
@@ -515,11 +530,11 @@ export function registerDeviceSession(
 
   if (existing) return ok(existing)
 
-  const open = db.device_sessions.filter(
-    (s) => s.user_id === user.user_id && isSessionOpen(s),
+  const claimed = db.device_sessions.filter(
+    (s) => s.user_id === user.user_id && occupiesSlot(s, policy),
   )
 
-  if (open.length >= policy.max_devices_per_user) {
+  if (claimed.length >= policy.max_devices_per_user) {
     recordEvent({
       user_id: user.user_id,
 
@@ -530,7 +545,7 @@ export function registerDeviceSession(
       session_id: undefined,
 
       metadata: {
-        open_sessions: open.length,
+        open_sessions: claimed.length,
         limit: policy.max_devices_per_user,
       },
     })
@@ -787,6 +802,30 @@ export function listDeviceSessions(
   if (staffDenied) return staffDenied
 
   return ok(db.device_sessions.filter((s) => s.user_id === userId))
+}
+
+/**
+ * Every device session in the store - staff holding `security`, nobody else.
+ *
+ * The admin screen has to answer "what is this account running right now"
+ * without being handed a user id, which `listDeviceSessions` cannot serve: it
+ * scopes an ordinary actor to their own rows whatever it is asked. The check is
+ * the same `guard` that service applies, so the permission stays in this module
+ * instead of being re-implemented by the page that needs it.
+ */
+
+export function listAllDeviceSessions(
+  actor: Actor | null,
+): Result<DeviceSession[]> {
+  const denied = requireActor(actor)
+
+  if (denied) return denied
+
+  const staffDenied = guard(actor, "security")
+
+  if (staffDenied) return staffDenied
+
+  return ok(getDb().device_sessions)
 }
 
 /* ── Protection events ────────────────────────────────── */

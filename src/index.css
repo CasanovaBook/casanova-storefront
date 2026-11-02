@@ -3370,6 +3370,36 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* Device sync status ---------------------------------------------------- */
+
+.app-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+}
+
+.app-sync-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-success);
+}
+
+/* The pulse is the point: it fires only when the rows actually moved, so a
+ * reader watching the panel sees it react instead of being told to reload. */
+.app-sync--moved .app-sync-dot {
+  animation: app-sync-pulse 1.4s ease-out;
+}
+
+@keyframes app-sync-pulse {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-success) 60%, transparent); }
+  to { box-shadow: 0 0 0 0.55rem transparent; }
+}
+
 /* Tabs ---------------------------------------------------------------- */
 
 .app-tabs {
@@ -4833,6 +4863,11 @@ html[data-app-shell='true'] .a11y-launcher {
 
 @media (prefers-reduced-motion: reduce) {
   .app-spinner {
+    animation: none;
+  }
+
+  /* The words "עודכן עכשיו" still carry the update; only the ring stops. */
+  .app-sync--moved .app-sync-dot {
     animation: none;
   }
 

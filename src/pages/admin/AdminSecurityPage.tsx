@@ -7,8 +7,11 @@
  *
  *   1. Protection policies - which deterrents are in force, the identity
  *      watermark, the device cap and the inactivity timeout.
- *   2. Device sessions - every browser currently holding a slot, with
- *      the ability to revoke one and stop that screen immediately.
+ *   2. Device sessions - every browser this store knows about, whether it holds
+ *      a slot or has idled out of one, with the ability to block one. That
+ *      reader's screen locks when the device next reports in, not the instant
+ *      this table changes - the wording here says so rather than promising a
+ *      reach this page does not have.
  *   3. Protection events - what the deterrents actually caught.
  *
  * Restricted to SUPER_ADMIN. The service layer enforces the same
@@ -24,6 +27,10 @@ import { useStore } from "../../data/store"
 
 import { can } from "../../lib/permissions"
 
+import { formatIsraelClockTime } from "../../lib/datetime"
+
+import { useDeviceSessions } from "../../lib/useDeviceSessions"
+
 import {
   HIGH_SIGNAL_EVENTS,
   SCOPE_LABEL,
@@ -31,7 +38,7 @@ import {
   deleteDrmPolicy,
   isSessionExpired,
   isSessionOpen,
-  listDeviceSessions,
+  occupiesSlot,
   resolveDrmPolicy,
   revokeDeviceSession,
   saveDrmPolicy,
@@ -48,6 +55,8 @@ import type {
 import AccessDenied from "../../components/AccessDenied"
 
 import EmptyState from "../../components/ui/EmptyState"
+
+import DeviceSyncBadge from "../../components/ui/DeviceSyncBadge"
 
 import PageHeader from "../../components/ui/PageHeader"
 
@@ -130,18 +139,12 @@ const FLAG_FIELDS: { key: keyof DrmPolicyInput, label: string, hint: string }[] 
     },
   ]
 
+/* Israel time, not the viewer's. This is a DRM audit surface: a device seen at
+ * 03:12 in the reader's zone must not be reported as 02:12 because the
+ * administrator is sitting somewhere else. `formatIsraelClockTime` is the
+ * deterministic `DD.MM.YYYY HH:mm` the rest of the admin already shows. */
 function formatDate(value: string): string {
-  return new Date(value).toLocaleString("he-IL", {
-    day: "numeric",
-
-    month: "short",
-
-    year: "numeric",
-
-    hour: "2-digit",
-
-    minute: "2-digit",
-  })
+  return formatIsraelClockTime(value)
 }
 
 function Card({
@@ -644,25 +647,35 @@ export default function AdminSecurityPage() {
 
   const inForce = useMemo(() => resolveDrmPolicy(policies, "WEB"), [policies])
 
-  const devices = useMemo(() => {
-    // Privileged staff see every account's devices. Without the permission
+  /* Privileged staff see every account's devices; without the permission the
+   * guarded service scopes the read to the caller's own sessions, so the page
+   * degrades to a personal device list rather than becoming a way to enumerate
+   * other customers.
+   *
+   * The view also carries a clock. A session that idles past the timeout is
+   * edited by nobody - expiry is derived from `last_seen_at` - so without it
+   * this table would go on calling a dead device "פעיל" until somebody
+   * reloaded the page. */
+  const view = useDeviceSessions(actor, {
+    staff: can(adminRole, "security"),
+  })
 
-    // the guarded service call is used instead, which returns only the
+  const devices = deviceFilter === "OPEN" ? view.sessions : view.rows
 
-    // caller's own sessions - so the page degrades to a personal device
+  /* Slots each account is actually holding, counted over every row rather than
+   * the filtered ones so "3 / 3" stays true whatever the tabs are showing. Not
+   * memoised on purpose: a row idling out changes this number without changing
+   * any row, and a memo keyed on rows would never see it. */
+  const heldByUser = new Map<string, number>()
 
-    // list rather than becoming a way to enumerate other customers.
+  for (const session of view.rows) {
+    if (!occupiesSlot(session, inForce)) continue
 
-    const all: DeviceSession[] = can(adminRole, "security")
-      ? db.device_sessions
-      : (() => {
-          const scoped = listDeviceSessions(actor)
-
-          return scoped.ok ? scoped.data : []
-        })()
-
-    return deviceFilter === "OPEN" ? all.filter(isSessionOpen) : all
-  }, [db.device_sessions, actor, adminRole, deviceFilter])
+    heldByUser.set(
+      session.user_id,
+      (heldByUser.get(session.user_id) ?? 0) + 1,
+    )
+  }
 
   const filteredEvents = useMemo(
     () =>
@@ -726,7 +739,10 @@ export default function AdminSecurityPage() {
 
     setMessage(
       result.ok
-        ? { kind: "ok", text: "המכשיר נחסם. מסך הקריאה שלו יינעל מיידית." }
+        ? {
+            kind: "ok",
+            text: "המכשיר נחסם. מסך הקריאה שלו יינעל בפעם הבאה שידווח פעילות.",
+          }
         : { kind: "error", text: result.error },
     )
 
@@ -972,8 +988,12 @@ export default function AdminSecurityPage() {
         <Card
           icon="smartphone"
           title="מכשירים מחוברים"
-          description="כל דפדפן שתופס מקום במכסת המכשירים של חשבון. חסימה כאן נועלת את מסך הקריאה של אותו מכשיר מיידית."
+          description="כל דפדפן שתופס מקום במכסת המכשירים של חשבון. חסימה כאן נועלת את מסך הקריאה של אותו מכשיר בפעם הבאה שהוא מדווח פעילות."
         >
+          <div className="mb-3 flex justify-end">
+            <DeviceSyncBadge syncedAt={view.syncedAt} revision={view.revision} />
+          </div>
+
           <div
             className="app-tabs mb-4"
             role="group"
@@ -997,7 +1017,7 @@ export default function AdminSecurityPage() {
             <EmptyState
               icon="smartphone"
               title="אין מכשירים רשומים"
-              description="מכשיר נרשם בפעם הראשונה כאשר לקוח פותח ספר שקנה."
+              description="מכשיר נרשם כאשר לקוח פותח ספר שקנה, וכן כאשר הוא מתחבר לחשבון שכבר יש בו ספר."
             />
           ) : (
             <div className="app-table-wrap">
@@ -1022,28 +1042,51 @@ export default function AdminSecurityPage() {
                   {devices.map((session) => {
                     const expired = isSessionExpired(session, inForce)
 
+                    /* "אינו תופס מקום" is the part an administrator has to see:
+                     * a silent device no longer blocks its owner from opening a
+                     * book elsewhere, so a full-looking list is not a full
+                     * quota. */
                     const status = session.revoked
                       ? { text: "נחסם", badge: "app-badge--danger" }
                       : session.ended_at
                         ? {
-                            text: "שוחרר",
+                            text: "נותק",
                             badge: "app-badge--neutral",
                           }
                         : expired
-                          ? { text: "פג תוקף", badge: "app-badge--warning" }
+                          ? {
+                              text: "פג תוקף - אינו תופס מקום",
+                              badge: "app-badge--warning",
+                            }
                           : { text: "פעיל", badge: "app-badge--success" }
 
                     return (
-                      <tr key={session.session_id}>
+                      <tr
+                        key={session.session_id}
+                        data-testid="device-row"
+                        data-session-id={session.session_id}
+                      >
                         <td
                           className="text-xs"
                           style={{ overflowWrap: "anywhere" }}
                         >
                           {nameOf(session.user_id)}
+                          {/* The quota in force is global, the usage is per
+                              account - without this line an administrator cannot
+                              tell one reader at their limit from ten at zero. */}
+                          <span className="block text-[10px] app-muted whitespace-nowrap">
+                            {heldByUser.get(session.user_id) ?? 0} /{" "}
+                            {inForce.max_devices_per_user} מקומות
+                          </span>
                         </td>
                         <td className="text-xs">
                           <span className="flex items-center gap-1.5">
-                            <Icon name="smartphone" size={13} />{" "}
+                            <Icon
+                              name={
+                                session.platform === "WEB" ? "grid" : "smartphone"
+                              }
+                              size={13}
+                            />{" "}
                             <span style={{ overflowWrap: "anywhere" }}>
                               {session.device_name}
                             </span>
@@ -1119,8 +1162,9 @@ export default function AdminSecurityPage() {
                 חסימת המכשיר של {nameOf(pendingRevoke.user_id)}
               </p>
               <p className="text-[11px] app-muted mb-3 leading-relaxed">
-                מסך הקריאה באותו מכשיר יינעל מיידית והמקום יתפנה במכסת המכשירים
-                של החשבון. הסיבה תירשם ביומן הפעולות וביומן אירועי ההגנה.
+                מסך הקריאה באותו מכשיר יינעל בפעם הבאה שהוא ידווח פעילות,
+                והמקום יתפנה במכסת המכשירים של החשבון. הסיבה תירשם ביומן
+                הפעולות וביומן אירועי ההגנה.
               </p>
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <input

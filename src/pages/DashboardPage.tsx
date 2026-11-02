@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { useApp } from "../context/AppContext"
-import { useStore } from "../data/store"
 import { claimFirstLogin } from "../lib/first-login"
-import {
-  deviceFingerprint,
-  endDeviceSession,
-  isSessionExpired,
-  isSessionOpen,
-  listDeviceSessions,
-  resolveDrmPolicy,
-} from "../lib/api-security"
+import { deviceFingerprint, endDeviceSession, isSessionExpired } from "../lib/api-security"
+import { useDeviceSessions } from "../lib/useDeviceSessions"
+import { formatIsraelDateParts } from "../lib/datetime"
 import type { ProductSnapshot } from "../types"
 import Icon, { type IconName } from "../components/icons"
 import PageHeader from "../components/ui/PageHeader"
 import EmptyState from "../components/ui/EmptyState"
 import Alert from "../components/ui/Alert"
+import Spinner from "../components/ui/Spinner"
+import DeviceSyncBadge from "../components/ui/DeviceSyncBadge"
 
 const FALLBACK_COVER: [string, string] = ["#1A1A2E", "#2A2A3E"]
 
@@ -47,9 +43,15 @@ function MiniCover({ snapshot }: { snapshot: ProductSnapshot }) {
   )
 }
 
-/** Coarse Hebrew "how long ago" text - a precise clock adds nothing here. */
-function lastSeen(iso: string): string {
-  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
+/**
+ * Coarse Hebrew "how long ago" text - a precise clock adds nothing here.
+ *
+ * `now` arrives from the shared clock rather than `Date.now()`: every row in
+ * the list then agrees with its neighbours, and the text ages on its own
+ * instead of sticking at "עכשיו" until somebody reloads the page.
+ */
+function lastSeen(iso: string, now: number): string {
+  const minutes = Math.round((now - new Date(iso).getTime()) / 60_000)
   if (minutes < 1) return "עכשיו"
   if (minutes < 60) return `לפני ${minutes} דק׳`
   const hours = Math.round(minutes / 60)
@@ -68,11 +70,8 @@ function lastSeen(iso: string): string {
  */
 function ConnectedDevicesCard() {
   const { actor } = useApp()
-  const db = useStore()
-  const policy = useMemo(
-    () => resolveDrmPolicy(db.drm_policies, "WEB"),
-    [db.drm_policies],
-  )
+  const { sessions, policy, used, cap, full, loading, syncedAt, revision, now } =
+    useDeviceSessions(actor)
   const thisDevice = useMemo(() => deviceFingerprint(), [])
   const [pending, setPending] = useState<string | null>(null)
   const [message, setMessage] = useState<{
@@ -80,33 +79,29 @@ function ConnectedDevicesCard() {
     text: string
   } | null>(null)
 
-  /* The read goes through the service so authorization stays in one
-   * place; `db.device_sessions` is the dependency that re-runs it when
-   * the reader or another tab changes a session. */
-  const open = useMemo(() => {
-    const scoped = listDeviceSessions(actor)
-    if (!scoped.ok) return []
-    return scoped.data
-      .filter(isSessionOpen)
-      .sort(
-        (a, b) =>
-          new Date(b.last_seen_at).getTime() -
-          new Date(a.last_seen_at).getTime(),
-      )
-  }, [actor, db.device_sessions])
+  /* This device first. It is the row a reader came to find, and the one most
+   * easily disconnected by mistake, so it should not sit buried mid-list. */
+  const rows = useMemo(() => {
+    const mine = sessions.filter((s) => s.device_fingerprint === thisDevice)
+    const others = sessions.filter((s) => s.device_fingerprint !== thisDevice)
 
-  const cap = policy.max_devices_per_user
-  const full = open.length >= cap
+    return [...mine, ...others]
+  }, [sessions, thisDevice])
 
   const release = (sessionId: string) => {
     const result = endDeviceSession(actor, sessionId)
     setPending(null)
     setMessage(
       result.ok
-        ? { tone: "ok", text: "המכשיר שוחרר והמקום התפנה במכסה." }
+        ? { tone: "ok", text: "המכשיר נותק והמקום התפנה במכסה." }
         : { tone: "err", text: result.error },
     )
   }
+
+  /* Listed but not counted. A session that idled past the timeout has already
+   * given its slot back; saying so stops a reader from "freeing" a device that
+   * was never holding one. */
+  const idle = sessions.length - used
 
   return (
     <section className="app-surface" aria-labelledby="devices-title">
@@ -131,14 +126,17 @@ function ConnectedDevicesCard() {
             </p>
           </div>
         </div>
-        <span
-          className={`app-badge ${
-            full ? "app-badge--danger" : "app-badge--accent"
-          }`}
-          aria-label={`${open.length} מתוך ${cap} מקומות מכשיר בשימוש`}
-        >
-          {open.length} / {cap}
-        </span>
+        <div className="flex items-center gap-3 min-w-0">
+          <DeviceSyncBadge syncedAt={syncedAt} revision={revision} />
+          <span
+            className={`app-badge ${
+              full ? "app-badge--danger" : "app-badge--accent"
+            }`}
+            aria-label={`${used} מתוך ${cap} מקומות מכשיר בשימוש`}
+          >
+            {used} / {cap}
+          </span>
+        </div>
       </div>
 
       <div className="app-surface-body">
@@ -150,21 +148,32 @@ function ConnectedDevicesCard() {
           </div>
         )}
 
-        {open.length === 0 ? (
+        {loading && sessions.length === 0 ? (
+          <Spinner />
+        ) : sessions.length === 0 ? (
           <p className="text-xs app-muted">
-            אין מכשירים רשומים. המכשיר הראשון יירשם אוטומטית כשתפתחו ספר
-            לקריאה.
+            אין מכשירים רשומים. מכשיר תופס מקום כשפותחים בו ספר לקריאה, וכן
+            כשמתחברים לחשבון שכבר יש בו ספר.
           </p>
         ) : (
           <ul className="space-y-2">
-            {open.map((session) => {
+            {rows.map((session) => {
               const mine = session.device_fingerprint === thisDevice
               const expired = isSessionExpired(session, policy)
               const isPending = pending === session.session_id
               const confirmId = `release-${session.session_id}`
+              const label = mine ? "המכשיר הזה" : session.device_name
+              const lockAt = new Date(
+                new Date(session.last_seen_at).getTime() +
+                  policy.session_timeout_minutes * 60_000,
+              ).toISOString()
+              const lockTime = formatIsraelDateParts(lockAt)?.time ?? ""
               return (
                 <li
                   key={session.session_id}
+                  data-testid="device-row"
+                  data-session-id={session.session_id}
+                  data-mine={mine ? "true" : "false"}
                   className="rounded-lg border p-3"
                   style={{
                     borderColor: "var(--color-border)",
@@ -189,8 +198,11 @@ function ConnectedDevicesCard() {
                       </p>
                       <p className="text-[11px] app-muted">
                         {expired
-                          ? "פג תוקף - יתחדש אוטומטית בפתיחת הספר"
-                          : `פעילות אחרונה ${lastSeen(session.last_seen_at)}`}
+                          ? "ננעל לאחר היעדר פעילות - יש ללחוץ ״המשך קריאה״ בפתיחת הספר"
+                          : `פעילות אחרונה ${lastSeen(
+                              session.last_seen_at,
+                              now,
+                            )}${lockTime ? ` · נעילה ב־${lockTime}` : ""}`}
                       </p>
                     </div>
                     <button
@@ -201,18 +213,19 @@ function ConnectedDevicesCard() {
                       }}
                       aria-expanded={isPending}
                       aria-controls={confirmId}
+                      aria-label={`לנתק את ${label}`}
                       className="app-btn-secondary flex-shrink-0"
                       style={{ minHeight: 44 }}
                     >
-                      שחרור
+                      ניתוק
                     </button>
                   </div>
 
                   {isPending && (
                     <div id={confirmId} className="mt-3">
                       <p className="text-xs app-muted mb-3">
-                        לשחרר את {mine ? "המכשיר הזה" : session.device_name}? אם
-                        ספר פתוח שם כרגע, הקריאה בו תינעל.
+                        לנתק את {label}? אם ספר פתוח שם כרגע, הקריאה בו תינעל
+                        בפעם הבאה שהמכשיר יתעדכן.
                       </p>
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -220,7 +233,7 @@ function ConnectedDevicesCard() {
                           onClick={() => release(session.session_id)}
                           className="app-btn-danger"
                         >
-                          שחרור
+                          ניתוק
                         </button>
                         <button
                           type="button"
@@ -238,9 +251,17 @@ function ConnectedDevicesCard() {
           </ul>
         )}
 
+        {idle > 0 && (
+          <p className="text-[11px] app-muted mt-3">
+            {idle === 1
+              ? "מכשיר אחד ברשימה כבר אינו תופס מקום - הוא ננעל לאחר היעדר פעילות."
+              : `${idle} מכשירים ברשימה כבר אינם תופסים מקום - הם ננעלו לאחר היעדר פעילות.`}
+          </p>
+        )}
+
         {full && (
           <p className="text-[11px] app-muted mt-3">
-            המכסה מלאה. שחררו מכשיר שלא בשימוש כדי לפתוח ספר במכשיר חדש.
+            המכסה מלאה. נתקו מכשיר שלא בשימוש כדי לפתוח ספר במכשיר חדש.
           </p>
         )}
       </div>

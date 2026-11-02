@@ -17,6 +17,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -72,6 +73,7 @@ import {
   type CheckoutInput,
   type CheckoutOutcome,
 } from "../lib/api-orders"
+import { registerDeviceSession } from "../lib/api-security"
 import {
   supabase,
   isSupabaseConfigured,
@@ -934,6 +936,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : [],
     [db.reading_progress, user],
   )
+
+  /* ── Device claim on sign-in ────────────────────────────
+   *
+   * A slot used to be claimed only when a book was opened, so a reader who
+   * signed in on a new phone found an empty device panel and assumed it was
+   * broken. An account that already owns a book now shows up the moment it
+   * arrives.
+   *
+   * Owners only, deliberately: logging in from a browser you are merely
+   * browsing in would otherwise consume one of three slots, and the cap
+   * blocks rather than evicts - so a reader could be locked out of a book they
+   * paid for by their own browsing.
+   *
+   * Keyed on the account id and on whether the library is empty, never on the
+   * document. `registerDeviceSession` writes, a write notifies every
+   * subscriber, and an effect that re-ran on its own notification would loop
+   * until React cut it off. */
+  const ownsBook = userProducts.length > 0
+  const claimedFor = useRef<string | null>(null)
+
+  useEffect(() => {
+    const uid = user?.user_id
+
+    if (!uid || !ownsBook) return
+
+    if (claimedFor.current === uid) return
+
+    claimedFor.current = uid
+
+    /* The result is ignored on purpose. A full cap or an already-listed
+     * browser is a state the panel itself explains; neither deserves to
+     * interrupt a sign-in. */
+    registerDeviceSession(actor)
+  }, [actor, ownsBook, user?.user_id])
 
   const orders = useMemo(() => listOrdersForUser(actor), [actor, db.orders])
 
