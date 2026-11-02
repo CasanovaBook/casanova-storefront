@@ -377,6 +377,41 @@ test.describe("connected devices", () => {
     await expect(page.getByText("1 / 4")).toBeVisible()
   })
 
+  test("a disconnect is written as state, not just removed from the list", async ({
+    page,
+  }) => {
+    await seed(page.context(), dbDoc([session("phone", 3)], false))
+
+    await page.goto("/dashboard")
+
+    await disconnect(page, "dvs-phone")
+
+    /* The row must still be there, closed, with the protection flag down and
+     * an event saying who released it. A UI that merely stops rendering the
+     * row would pass for the reader and leave the admin with nothing to audit. */
+    const stored = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}"),
+    )
+
+    const released = stored.device_sessions.find(
+      (s: { session_id: string }) => s.session_id === "dvs-phone",
+    )
+
+    expect(released, "the released row must survive as a record").toBeTruthy()
+    expect(released.ended_at).toBeTruthy()
+    expect(released.secure_flag_active).toBe(false)
+    expect(released.revoked).toBe(false)
+
+    const event = (stored.security_events ?? []).find(
+      (e: { event_type: string; session_id?: string }) =>
+        e.event_type === "SESSION_RELEASED" && e.session_id === "dvs-phone",
+    )
+
+    expect(event, "a release must be logged like a block is").toBeTruthy()
+
+    await expect(row(page, "dvs-phone")).toHaveCount(0)
+  })
+
   test("the panel says when it last looked, and where the rows came from", async ({
     page,
   }) => {

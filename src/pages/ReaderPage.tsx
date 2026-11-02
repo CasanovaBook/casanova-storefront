@@ -5,7 +5,10 @@ import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import { useStore } from "../data/store"
 import PdfSurface from "../components/pdf/PdfSurface"
-import { prefetchPdfRuntime } from "../components/pdf/pdf-engine"
+import {
+  clearDocumentCache,
+  prefetchPdfRuntime,
+} from "../components/pdf/pdf-engine"
 import WatermarkPattern from "../components/WatermarkPattern"
 import BookmarkToggle from "../components/reader/BookmarkToggle"
 import AnnotationsPanel from "../components/reader/AnnotationsPanel"
@@ -27,6 +30,7 @@ import {
   renderWatermark,
   resolveDrmPolicy,
 } from "../lib/api-security"
+import { useDeviceSessions } from "../lib/useDeviceSessions"
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import { fetchProfile } from "../integrations/supabase/supabase-auth"
 import { DEFAULT_HIGHLIGHT_COLOR } from "../lib/annotation-utils"
@@ -55,6 +59,44 @@ const TAP_DURATION = 500
 /** Heartbeat interval; the session is extended only after real activity. */
 const HEARTBEAT_MS = 20_000
 const ACTIVITY_WINDOW_MS = 60_000
+
+/**
+ * Why the reading screen stopped, named rather than a loose string.
+ *
+ * The reason used to be inferred at render time from whichever flag happened
+ * to be set, so a block that arrived while the row had also idled past the
+ * timeout was shown to the reader as "your session expired". That is the
+ * right lock with the wrong explanation, and it sends the support request to
+ * the wrong queue.
+ *
+ * `unreachable` is deliberately not a lock: it is the network's fault, not
+ * the reader's, and stopping somebody who paid for a book over a timed-out
+ * request is the wrong trade.
+ */
+type DeviceLock =
+  | {
+      kind:
+        | "revoked"
+        | "ended"
+        | "gone"
+        | "unregistered"
+        | "signed_out"
+      message: string
+    }
+  | { kind: "unreachable"; message: string }
+
+/**
+ * The heading each stop explains itself under. The body comes from the
+ * service, which already words these for a reader rather than for a log.
+ */
+const LOCK_HEADING: Record<DeviceLock["kind"], string> = {
+  revoked: "הגישה ממכשיר זה נחסמה",
+  ended: "המכשיר נותק",
+  gone: "הסשן פג תוקף",
+  unregistered: "המכשיר הזה לא נרשם",
+  signed_out: "ההתחברות פגה",
+  unreachable: "לא ניתן לאמת את המכשיר",
+}
 /**
  * How often the reader re-verifies the entitlement server-side while the
  * book is open.
@@ -311,11 +353,78 @@ export default function ReaderPage() {
 
   /* ── Device session ────────────────────────────────────── */
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [deviceError, setDeviceError] = useState<string | null>(null)
+  const [deviceLock, setDeviceLock] = useState<DeviceLock | null>(null)
+  /* The reader route had no live view of its own session: the mirror was
+   * pulled on the dashboard and the admin screen only. A device blocked from
+   * elsewhere was therefore invisible here unless this very tab wrote the
+   * change, and a reader who stopped moving the mouse never asked at all.
+   * The hook brings the subscription, the re-read and the clock that stops
+   * expiry from lying. */
+  const devices = useDeviceSessions(actor)
   const session = useMemo(
-    () => db.device_sessions.find((s) => s.session_id === sessionId) ?? null,
-    [db.device_sessions, sessionId],
+    () => devices.rows.find((s) => s.session_id === sessionId) ?? null,
+    [devices.rows, sessionId],
   )
+
+  /* Whether this device may still read, decided here so the grant mint below
+   * can refuse to run while the answer is no. */
+  const expired = session ? isSessionExpired(session, policy) : false
+  const revoked = Boolean(session?.revoked)
+  /* `unreachable` is the network failing, not the reader. Treating it as a
+   * lock would take a book away from somebody who paid because a request
+   * timed out; treating it as nothing would let a reader sit on a session
+   * nobody has vouched for. So it warns here and the revalidation beat keeps
+   * trying behind it. */
+  const stopped = deviceLock && deviceLock.kind !== "unreachable"
+  const locked = Boolean(stopped) || expired || revoked
+
+  /* A block explains itself as a block. Before, the heading was chosen by
+   * whichever flag the ternary reached first, so an administrator's revocation
+   * that arrived while the row had also idled past the timeout was reported to
+   * the reader as an expiry - and the real reason, already in hand, was
+   * thrown away. */
+  const lockHeading = revoked
+    ? LOCK_HEADING.revoked
+    : stopped && deviceLock
+      ? LOCK_HEADING[deviceLock.kind]
+      : expired
+        ? "ההתקשרות פגה"
+        : LOCK_HEADING.gone
+
+  const lockBody = revoked
+    ? "מנהל מערכת חסם את הקריאה מהמכשיר הזה. ניתן לבקש רישום מחדש, והבקשה תיבדק מול מגבלת המכשירים של החשבון."
+    : stopped && deviceLock
+      ? deviceLock.message
+      : expired
+        ? `לא הייתה פעילות במשך ${policy.session_timeout_minutes} דקות, ולכן הקריאה נעצרה. ההתקדמות שלך נשמרה.`
+        : "לא ניתן לפתוח את הקובץ."
+
+  const lockAction =
+    revoked ||
+    (deviceLock &&
+      (deviceLock.kind === "gone" || deviceLock.kind === "unregistered"))
+      ? "נסה לרשום את המכשיר שוב"
+      : "המשך קריאה"
+
+  /* Locking has to take the content with it.
+   *
+   * The overlay unmounts the document, which is the visible half, but the URL
+   * stayed in state and the parsed PDF stayed in the engine's cache. Pressing
+   * resume on the same slot therefore re-rendered a book that had never been
+   * re-authorized, and the bytes of a revoked reading sat in memory for the
+   * life of the tab. Dropping all three means the next page is a fresh grant
+   * request rather than a cache hit. */
+  useEffect(() => {
+    if (!locked) return
+
+    setContentUrl((current) => {
+      if (current) clearDocumentCache(current)
+
+      return undefined
+    })
+    setGrantWatermark(undefined)
+    grantRun.current = null
+  }, [locked])
   // Kept in a ref so the protection callbacks can attribute an event to
   // the right session without being rebuilt whenever it changes.
   const sessionIdRef = useRef<string | null>(null)
@@ -337,13 +446,17 @@ export default function ReaderPage() {
     void claimDevice(actor).then((result) => {
       if (result.ok) {
         setSessionId(result.data.session_id)
-        setDeviceError(null)
+        setDeviceLock(null)
       } else {
         /* Clear the guard so a retry can happen: hitting the device cap is
          * not permanent - freeing a slot in the dashboard makes the next
          * attempt succeed. */
         registeredFor.current = null
-        setDeviceError(result.error)
+        setDeviceLock(
+          result.code === "STORAGE"
+            ? { kind: "unreachable", message: result.error }
+            : { kind: "unregistered", message: result.error },
+        )
       }
     })
   }, [actor])
@@ -378,15 +491,31 @@ export default function ReaderPage() {
       void reportDeviceActivity(actor, session.session_id).then((result) => {
         if (result.ok) {
           setSessionId(result.data.session_id)
+          setDeviceLock(null)
 
           return
         }
-        /* A block reaches the reader through this call and nothing else:
-         * somebody who is reading does not reload the page. A failed request
-         * is deliberately not treated as a block - a network blip must not
-         * stop somebody who has paid from reading. */
-        if (result.code === "FORBIDDEN" || result.code === "CONFLICT")
-          setDeviceError(result.error)
+        /* Every authoritative answer stops the reader; only the network's
+         * failure does not. A deleted row used to fall through here unheard,
+         * which let a device keep reading on a session the database no longer
+         * contained. */
+        if (result.code === "STORAGE") {
+          setDeviceLock({ kind: "unreachable", message: result.error })
+
+          return
+        }
+
+        setDeviceLock({
+          kind:
+            result.code === "FORBIDDEN"
+              ? "revoked"
+              : result.code === "CONFLICT"
+                ? "ended"
+                : result.code === "UNAUTHENTICATED"
+                  ? "signed_out"
+                  : "gone",
+          message: result.error,
+        })
       })
     }, HEARTBEAT_MS)
     return () => window.clearInterval(id)
@@ -422,6 +551,10 @@ export default function ReaderPage() {
   const accessOn = Boolean(productId && hasAccess(productId))
   useEffect(() => {
     if (!actor || !productId || !sessionId || !accessOn) return
+    /* While the device is stopped no grant is issued, and when it is released
+     * the effect runs again rather than reusing the mint that was already in
+     * hand - which is the point: resuming has to earn a fresh address. */
+    if (locked) return
     const key = `${actor.user_id}:${productId}:${sessionId}`
     if (grantRun.current?.key === key) return
     grantRun.current = { key, status: "inflight" }
@@ -503,7 +636,7 @@ export default function ReaderPage() {
         grantRun.current = null
       }
     }
-  }, [actor, productId, sessionId, accessOn, grantAttempt])
+  }, [actor, productId, sessionId, accessOn, grantAttempt, locked])
 
   /* Live access revalidation.
    *
@@ -987,9 +1120,6 @@ export default function ReaderPage() {
   const zoomedIn = zoom !== ZOOM_FIT
   const canZoomIn = !zoomedIn || zoom < ZOOM_STEPS[ZOOM_STEPS.length - 1]
   const canZoomOut = !zoomedIn || zoom > ZOOM_STEPS[0]
-  const expired = session ? isSessionExpired(session, policy) : false
-  const revoked = Boolean(session?.revoked)
-  const locked = Boolean(deviceError) || expired || revoked
 
   /* One decision, made once, about what this screen is allowed to claim.
    * "The file was never uploaded" is a statement about the catalogue and it
@@ -1015,9 +1145,23 @@ export default function ReaderPage() {
         : await claimDevice(actor)
     if (result.ok) {
       setSessionId(result.data.session_id)
-      setDeviceError(null)
+      setDeviceLock(null)
     } else {
-      setDeviceError(result.error)
+      setDeviceLock(
+        result.code === "STORAGE"
+          ? { kind: "unreachable", message: result.error }
+          : {
+              kind:
+                result.code === "FORBIDDEN"
+                  ? "revoked"
+                  : result.code === "CONFLICT"
+                    ? "ended"
+                    : result.code === "UNAUTHENTICATED"
+                      ? "signed_out"
+                      : "unregistered",
+              message: result.error,
+            },
+      )
     }
   }
 
@@ -1507,6 +1651,24 @@ export default function ReaderPage() {
         />
       )}
 
+      {/* Not reachable is not the same as not allowed. The reader keeps the
+       * page they are on and is told, plainly, that the device could not be
+       * re-verified - so a network failure never masquerades as a block, and
+       * a block never hides behind a network failure. */}
+      {deviceLock?.kind === "unreachable" && !locked && (
+        <p
+          role="status"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] rounded-full px-4 py-2 text-xs"
+          style={{
+            background: "var(--color-secondary)",
+            color: "var(--color-foreground)",
+            border: "1px solid var(--color-border)",
+          }}
+        >
+          {deviceLock.message}
+        </p>
+      )}
+
       {/* Device / session lock - replaces the content, never sits behind it */}
       {locked && (
         <div
@@ -1514,30 +1676,20 @@ export default function ReaderPage() {
           style={{ background: bg, zIndex: 210 }}
         >
           <Icon
-            name={revoked ? "lock" : "clock"}
+            name={revoked || deviceLock?.kind === "signed_out" ? "lock" : "clock"}
             size={34}
             style={{ color: accentColor }}
           />
-          <h2 className="font-display text-xl font-semibold">
-            {revoked
-              ? "הגישה ממכשיר זה נחסמה"
-              : expired
-                ? "ההתקשרות פגה"
-                : "לא ניתן לפתוח את הקובץ"}
-          </h2>
+          <h2 className="font-display text-xl font-semibold">{lockHeading}</h2>
           <p className="text-sm max-w-md" style={{ color: mutedColor }}>
-            {revoked
-              ? "מנהל מערכת חסם את הקריאה מהמכשיר הזה. ניתן לבקש רישום מחדש, והבקשה תיבדק מול מגבלת המכשירים של החשבון."
-              : expired
-                ? `לא הייתה פעילות במשך ${policy.session_timeout_minutes} דקות, ולכן הקריאה נעצרה. ההתקדמות שלך נשמרה.`
-                : deviceError}
+            {lockBody}
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-2">
             <button
               onClick={() => void resume()}
               className="btn-gradient tap-target px-6 py-3 rounded-full text-sm font-semibold"
             >
-              {revoked ? "נסה לרשום את המכשיר שוב" : "המשך קריאה"}
+              {lockAction}
             </button>
             <button
               onClick={() => navigate("/dashboard/library")}

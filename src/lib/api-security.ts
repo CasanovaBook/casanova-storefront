@@ -683,8 +683,33 @@ export function endDeviceSession(
 
   mutate((draft) => {
     draft.device_sessions = draft.device_sessions.map((s) =>
-      s.session_id === sessionId ? { ...s, ended_at: nowIso() } : s,
+      s.session_id === sessionId
+        ? /* A closed slot stops claiming the device is protected. Leaving the
+           * flag set would leave a released row looking like a live, secure
+           * reader, which is the state the admin table and any future audit
+           * of "who was protected when" both read. */
+          { ...s, ended_at: nowIso(), secure_flag_active: false }
+        : s,
     )
+  })
+
+  /* Recorded, not just written: the server logs the same event, and a log
+   * that shows blocks but never the disconnects that preceded them tells
+   * support a story that is missing its first half. */
+  recordEvent({
+    user_id: session.user_id,
+
+    event_type: "SESSION_RELEASED",
+
+    product_id: undefined,
+
+    session_id: sessionId,
+
+    metadata: {
+      released_by: (actor as Actor).user_id,
+      own_row: session.user_id === (actor as Actor).user_id,
+      device_name: session.device_name,
+    },
   })
 
   return ok(undefined)
@@ -1033,14 +1058,38 @@ export async function reportDeviceActivity(
       return ok(out.data)
     }
 
+    /* The distinction here is the whole point. Everything below `unavailable`
+     * is the server speaking with authority about this row - blocked,
+     * closed, deleted, or no longer permitted - and each of those must reach
+     * application state so the reader stops. A transport failure is the one
+     * answer that must NOT stop anybody: somebody who paid for the book
+     * should not lose their page because a request timed out. Both used to
+     * collapse into `NOT_FOUND`, which the caller then discarded, so a
+     * deleted session kept reading forever and a network blip was
+     * indistinguishable from an administrative block. */
     if (out.code === "session_revoked")
       return fail("FORBIDDEN", "הגישה ממכשיר זה נחסמה על ידי מנהל.")
 
-    if (out.code === "session_ended")
+    if (out.code === "permission_denied")
+      return fail("FORBIDDEN", "המכשיר הזה אינו מורשה לפתוח תוכן מוגן.")
+
+    if (out.code === "session_ended" || out.code === "session_not_open")
       return fail("CONFLICT", "ההתקשרות הזו הסתיימה. יש לפתוח את הספר מחדש.")
 
-    if (out.code !== "unavailable")
-      return fail("NOT_FOUND", "ההתקשרות לא נמצאה.")
+    if (out.code === "session_not_found")
+      return fail(
+        "NOT_FOUND",
+        "ההתקשרות של המכשיר הזה כבר אינה רשומה. יש לפתוח את הספר מחדש.",
+      )
+
+    if (out.code === "unauthenticated")
+      return fail("UNAUTHENTICATED", "ההתחברות פגה. יש להתחבר מחדש.")
+
+    if (out.code === "error")
+      return fail("STORAGE", "לא ניתן לאמת את מצב המכשיר כעת.")
+
+    /* `unavailable`: no device RPCs on this project, so the document is the
+     * record and the synchronous path answers as it always did. */
   }
 
   return refreshDeviceSession(actor, sessionId)
@@ -1232,7 +1281,15 @@ export const SECURITY_EVENT_LABEL: Record<SecurityEventType, string> = {
 
   SESSION_REVOKED: "גישה ממכשיר נחסמה",
 
+  SESSION_RELEASED: "מכשיר נותק על ידי המשתמש",
+
   DEVICE_LIMIT_EXCEEDED: "חריגה ממגבלת מכשירים",
+
+  /* The admin blocked it, and the same fingerprint is reading again. Not a
+   * failure of the block - re-registration is the documented path - but the
+   * one thing an administrator needs to see after pressing חסימה. */
+
+  DEVICE_RECLAIM_AFTER_BLOCK: "מכשיר חסום נרשם מחדש",
 
   DOWNLOAD_BLOCKED: "הורדת קובץ התוכן נחסמה",
 
@@ -1253,6 +1310,8 @@ export const HIGH_SIGNAL_EVENTS: SecurityEventType[] = [
   "DEVICE_LIMIT_EXCEEDED",
 
   "SESSION_REVOKED",
+
+  "DEVICE_RECLAIM_AFTER_BLOCK",
 
   "SCREENSHOT_BLOCKED",
 

@@ -1131,7 +1131,8 @@ CREATE TABLE security_events (
                  'PRINT_BLOCKED','CONTEXT_MENU_BLOCKED','SOURCE_VIEW_BLOCKED',
                  'VISIBILITY_HIDDEN',
                  -- Session and device administration (both clients)
-                 'SESSION_REVOKED','DEVICE_LIMIT_EXCEEDED',
+                 'SESSION_REVOKED','SESSION_RELEASED','DEVICE_LIMIT_EXCEEDED',
+                 'DEVICE_RECLAIM_AFTER_BLOCK',
                  -- Native reader
                  'DOWNLOAD_BLOCKED',      -- save / export / "open in" refused
                  'SHARE_BLOCKED',         -- share sheet refused for protected content
