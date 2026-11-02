@@ -31,6 +31,8 @@ import {
   resolveDrmPolicy,
 } from "../lib/api-security"
 import { useDeviceSessions } from "../lib/useDeviceSessions"
+import { syncReadingProgress } from "../lib/api-support"
+import { saveReadingProgressRemote } from "../integrations/supabase/supabase-progress"
 import { forceSignOut } from "../lib/teardown"
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 import { fetchProfile } from "../integrations/supabase/supabase-auth"
@@ -60,6 +62,15 @@ const TAP_DURATION = 500
 /** Heartbeat interval; the session is extended only after real activity. */
 const HEARTBEAT_MS = 20_000
 const ACTIVITY_WINDOW_MS = 60_000
+
+/**
+ * How long a page turn waits before its position is pushed.
+ *
+ * Long enough that a reader flicking through six pages costs one request,
+ * short enough that closing the tab rarely loses more than the last turn - and
+ * the flush on hide and on unmount covers those.
+ */
+const PROGRESS_PUSH_MS = 4_000
 
 /**
  * Why the reading screen stopped, named rather than a loose string.
@@ -888,6 +899,49 @@ export default function ReaderPage() {
    * and re-ran again - a loop that took the reader down before the book ever
    * appeared. saveReadingProgress now declines no-op writes too; this is the
    * belt to that brace. */
+  /* The timestamp is captured when the page turns, not when the request goes
+   * out, because the server's conflict rule compares moments and the moment
+   * that matters is when a person acted. A push delayed behind a slow network
+   * must not arrive stamped later than it happened. */
+  const pendingPush = useRef<{
+    productId: string
+    currentPage: number
+    progressPercent: number
+    lastReadAt: string
+  } | null>(null)
+  const pushTimer = useRef<number | null>(null)
+
+  const flushProgress = useCallback(() => {
+    const pending = pendingPush.current
+
+    pendingPush.current = null
+
+    if (pushTimer.current !== null) {
+      window.clearTimeout(pushTimer.current)
+
+      pushTimer.current = null
+    }
+
+    if (pending) void saveReadingProgressRemote(pending)
+  }, [])
+
+  const queueProgress = useCallback(
+    (bookId: string, page: number, total: number) => {
+      pendingPush.current = {
+        productId: bookId,
+        currentPage: page,
+        progressPercent:
+          total > 0 ? Math.round((page / total) * 100 * 10) / 10 : 0,
+        lastReadAt: new Date().toISOString(),
+      }
+
+      if (pushTimer.current !== null) window.clearTimeout(pushTimer.current)
+
+      pushTimer.current = window.setTimeout(flushProgress, PROGRESS_PUSH_MS)
+    },
+    [flushProgress],
+  )
+
   const savedProgressKey = useRef<string | null>(null)
   useEffect(() => {
     /* No navigation, no write. Opening the book is not progress; saving
@@ -900,7 +954,60 @@ export default function ReaderPage() {
     if (savedProgressKey.current === key) return
     savedProgressKey.current = key
     updateProgress(productId, currentPage, totalPages)
-  }, [currentPage, productId, contentUrl, totalPages, updateProgress])
+    queueProgress(productId, currentPage, totalPages)
+  }, [
+    currentPage,
+    productId,
+    contentUrl,
+    totalPages,
+    updateProgress,
+    queueProgress,
+  ])
+
+  /* ── Cross-device position ─────────────────────────────
+   *
+   * Pulled when the book opens, pushed while reading, and never the other way
+   * round. A subscription would deliver the reader's own writes back to them
+   * and, worse, would deliver another device's page turn as a jump in the
+   * middle of a sentence.
+   *
+   * The pull lands in the local document and the late-resume effect below
+   * performs the jump with the clamp it already has - so a position from a
+   * different device reuses the one path that is known not to overwrite a
+   * reader's own place. Once anybody has turned a page here, the pull cannot
+   * move them: this device is by definition the newer one. */
+  const pulledFor = useRef<string | null>(null)
+  useEffect(() => {
+    const uid = actor?.user_id
+
+    if (!uid || !productId) return
+
+    if (pulledFor.current === uid) return
+
+    pulledFor.current = uid
+
+    void syncReadingProgress(uid)
+  }, [actor, productId])
+
+  useEffect(() => {
+    /* Closing a tab is not a page turn, and a debounce that never fires would
+     * lose exactly the last position another device most wants to know about. */
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flushProgress()
+    }
+
+    window.addEventListener("pagehide", flushProgress)
+
+    document.addEventListener("visibilitychange", onHide)
+
+    return () => {
+      window.removeEventListener("pagehide", flushProgress)
+
+      document.removeEventListener("visibilitychange", onHide)
+
+      flushProgress()
+    }
+  }, [flushProgress])
 
   /* Late resume. The mount initialiser could only clamp the saved page
    * against the total it had at that instant - often zero, before the

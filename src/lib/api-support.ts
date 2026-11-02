@@ -46,6 +46,8 @@ import {
   updateInquiryRemote,
 } from "../integrations/supabase/supabase-inquiries"
 
+import { fetchMyReadingProgress } from "../integrations/supabase/supabase-progress"
+
 import {
   fail,
   guard,
@@ -1835,4 +1837,82 @@ export function saveReadingProgress(
   })
 
   return ok(saved)
+}
+
+/* ── Reading progress, mirrored from the server ──────────
+ *
+ * Merge, never replace.
+ *
+ * The device-session mirror replaces an account's rows wholesale, and for
+ * slots that is right: the server is the only place a slot can be held. Here
+ * it would be destructive. `reading_progress` has never been written to by
+ * the web client, so the table starts empty for every existing reader - and a
+ * mirror that "corrected" local progress against an empty server would wipe
+ * each person's place in every book they own and present it as a sync.
+ *
+ * So each product is resolved by timestamp: whichever side knows the later
+ * moment wins, and a product the server has never heard of keeps its local
+ * row and gets pushed on the next page turn. The two converge without either
+ * side being able to erase the other.
+ */
+export function mirrorRemoteReadingProgress(
+  remote: ReadingProgress[] | null,
+  userId: string,
+): boolean {
+  if (remote === null) return false
+
+  const current = getDb().reading_progress
+  const remoteByProduct = new Map(remote.map((rp) => [rp.product_id, rp]))
+
+  const next = current.map((rp) => {
+    if (rp.user_id !== userId) return rp
+
+    const theirs = remoteByProduct.get(rp.product_id)
+
+    if (!theirs) return rp
+
+    return new Date(theirs.last_read_at).getTime() >
+      new Date(rp.last_read_at).getTime()
+      ? theirs
+      : rp
+  })
+
+  /* Products the server knows about that this browser has never seen. */
+  const known = new Set(
+    current.filter((rp) => rp.user_id === userId).map((rp) => rp.product_id),
+  )
+
+  for (const rp of remote) {
+    if (!known.has(rp.product_id)) next.push(rp)
+  }
+
+  if (progressStamp(current) === progressStamp(next)) return false
+
+  mutate((draft) => {
+    draft.reading_progress = next
+  })
+
+  return true
+}
+
+function progressStamp(list: ReadingProgress[]): string {
+  return list
+    .map((rp) => `${rp.product_id}:${rp.current_page}:${rp.last_read_at}`)
+    .sort()
+    .join(";")
+}
+
+/**
+ * Pulls this account's saved positions into the local document.
+ *
+ * Returns false when there is no server to ask, which is the ordinary answer
+ * in local mode and not a failure.
+ */
+export async function syncReadingProgress(userId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false
+
+  return mirrorRemoteReadingProgress(
+    await fetchMyReadingProgress(userId),
+    userId,
+  )
 }
