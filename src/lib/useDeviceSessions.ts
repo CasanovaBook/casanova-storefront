@@ -27,7 +27,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useStore } from "../data/store"
 import type { DeviceSession, DrmPolicy } from "../types"
 import {
+  deviceFingerprint,
   isSessionOpen,
+  isThisDeviceBlocked,
   listAllDeviceSessions,
   listDeviceSessions,
   occupiesSlot,
@@ -81,6 +83,8 @@ export interface DeviceSessionsView {
   syncedAt: number
   /** Moves whenever the visible set moves; lets the UI mark the moment. */
   revision: string
+  /** This browser's own device has been blocked by an administrator. */
+  blockedHere: boolean
   /** One clock per render, so rows in a list do not disagree with each other. */
   now: number
   /** Ask the server again now. Safe to call from a manual refresh control. */
@@ -263,6 +267,13 @@ export function useDeviceSessions(
     [sessions],
   )
 
+  const thisFingerprint = useMemo(() => deviceFingerprint(), [])
+
+  const blockedHere = useMemo(
+    () => isThisDeviceBlocked(rows, thisFingerprint),
+    [rows, thisFingerprint],
+  )
+
   const cap = policy.max_devices_per_user
 
   return {
@@ -277,6 +288,7 @@ export function useDeviceSessions(
     source: server ? "server" : "local",
     syncedAt,
     revision,
+    blockedHere,
     now: Date.now(),
     refresh: () => void pull(),
   }

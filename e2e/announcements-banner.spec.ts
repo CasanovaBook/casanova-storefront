@@ -85,8 +85,14 @@ test.describe("announcement banner", () => {
       if (m.type() === "warning" && /\[content\] unknown key/.test(m.text()))
         healthIssues.push(`content key drift: ${m.text()}`)
     })
-    page.on("requestfailed", (r) => {
+    page.on("requestfailed", async (r) => {
       if (/fonts\.(googleapis|gstatic)\.com/.test(r.url())) return
+      /* A request the browser abandoned because the page navigated away is
+       * not an outage. The cover image on the landing page is still loading
+       * when these tests move on, and `net::ERR_ABORTED` was being recorded
+       * as a failure - which made the suite red for a reason that had nothing
+       * to do with the banner. Anything else still counts. */
+      if ((await r.failure())?.errorText === "net::ERR_ABORTED") return
       healthIssues.push(`requestfailed: ${r.url()}`)
     })
     page.on("response", (r) => {

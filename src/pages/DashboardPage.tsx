@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { claimFirstLogin } from "../lib/first-login"
-import { deviceFingerprint, isSessionExpired, releaseDevice } from "../lib/api-security"
-import { useDeviceSessions } from "../lib/useDeviceSessions"
+import {
+  deviceFingerprint,
+  isSessionExpired,
+  purgeLocalContentGrants,
+  releaseDevice,
+} from "../lib/api-security"
+import { useDeviceSessionGuard } from "../lib/useDeviceSessionGuard"
 import { formatIsraelDateParts } from "../lib/datetime"
 import type { ProductSnapshot } from "../types"
 import Icon, { type IconName } from "../components/icons"
@@ -69,7 +74,8 @@ function lastSeen(iso: string, now: number): string {
  * they hold and free one without asking anybody.
  */
 function ConnectedDevicesCard() {
-  const { actor } = useApp()
+  const { actor, logout } = useApp()
+  const navigate = useNavigate()
   const {
     sessions,
     policy,
@@ -82,7 +88,7 @@ function ConnectedDevicesCard() {
     syncedAt,
     revision,
     now,
-  } = useDeviceSessions(actor)
+  } = useDeviceSessionGuard(actor)
   const thisDevice = useMemo(() => deviceFingerprint(), [])
   const [pending, setPending] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -100,18 +106,40 @@ function ConnectedDevicesCard() {
     return [...mine, ...others]
   }, [sessions, thisDevice])
 
-  const release = async (sessionId: string) => {
+  /* Two different actions wearing the same verb.
+   *
+   * Releasing another device is bookkeeping: the slot frees up and the reader
+   * stays exactly where they are. Releasing THIS one is a sign-out - the row
+   * being closed is the one holding this browser's session, so leaving the
+   * account signed in would keep a live token on a device its owner just
+   * disconnected, and the claim-on-login effect would hand the slot straight
+   * back. */
+  const release = async (sessionId: string, mine: boolean) => {
     setBusy(sessionId)
 
     const result = await releaseDevice(actor, sessionId)
 
+    if (!result.ok) {
+      setBusy(null)
+      setPending(null)
+      setMessage({ tone: "err", text: result.error })
+
+      return
+    }
+
+    if (mine && actor) {
+      purgeLocalContentGrants(actor.user_id)
+
+      await logout()
+
+      navigate("/login", { replace: true })
+
+      return
+    }
+
     setBusy(null)
     setPending(null)
-    setMessage(
-      result.ok
-        ? { tone: "ok", text: "המכשיר נותק והמקום התפנה במכסה." }
-        : { tone: "err", text: result.error },
-    )
+    setMessage({ tone: "ok", text: "המכשיר נותק והמקום התפנה במכסה." })
   }
 
   /* Listed but not counted. A session that idled past the timeout has already
@@ -239,29 +267,36 @@ function ConnectedDevicesCard() {
                       }}
                       aria-expanded={isPending}
                       aria-controls={confirmId}
-                      aria-label={`לנתק את ${label}`}
+                      aria-label={
+                        mine ? "לנתק מכשיר זה ולהתנתק" : `לנתק את ${label}`
+                      }
                       className="app-btn-secondary flex-shrink-0"
                       style={{ minHeight: 44 }}
                     >
-                      ניתוק
+                      {mine ? "נתק והתנתק" : "ניתוק"}
                     </button>
                   </div>
 
                   {isPending && (
                     <div id={confirmId} className="mt-3">
                       <p className="text-xs app-muted mb-3">
-                        לנתק את {label}? אם ספר פתוח שם כרגע, הקריאה בו תינעל
-                        בפעם הבאה שהמכשיר יתעדכן.
+                        {mine
+                          ? "ניתוק המכשיר הזה מסיים גם את ההתחברות בו. תצטרך להתחבר מחדש כדי להמשיך לקרוא."
+                          : `לנתק את ${label}? אם ספר פתוח שם כרגע, הקריאה בו תינעל בפעם הבאה שהמכשיר יתעדכן.`}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => void release(session.session_id)}
+                          onClick={() => void release(session.session_id, mine)}
                           disabled={busy !== null}
                           aria-busy={busy === session.session_id}
                           className="app-btn-danger"
                         >
-                          {busy === session.session_id ? "מנתק…" : "ניתוק"}
+                          {busy === session.session_id
+                            ? "מנתק…"
+                            : mine
+                              ? "נתק והתנתק"
+                              : "ניתוק"}
                         </button>
                         <button
                           type="button"

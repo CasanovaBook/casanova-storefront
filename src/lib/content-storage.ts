@@ -189,13 +189,23 @@ export function contentFailure(
  * signed URL exist only inside the function runtime. `v` is a per-mint cache
  * key so pdf.js's document cache cannot hand one reader's parsed document to
  * the next session on a shared browser.
+ *
+ * `session_id` travels as a query parameter rather than a header for one
+ * concrete reason: pdf.js issues its own byte-range requests, and a parameter
+ * rides along on every one of them automatically while a header would have to
+ * be threaded through the PDF worker's fetch configuration. It is an
+ * identifier, not a credential - the request is still authorised by the
+ * bearer token, and the function checks the session belongs to that token's
+ * account before serving a single byte.
  */
-function readerContentUrl(productId: string): string {
+function readerContentUrl(productId: string, sessionId?: string): string {
   const base = supabaseUrl.replace(/\/+$/, "")
 
   const url = new URL(`${base}/functions/v1/reader-content`)
 
   url.searchParams.set("product_id", productId)
+
+  if (sessionId) url.searchParams.set("session_id", sessionId)
 
   url.searchParams.set("v", crypto.randomUUID())
 
@@ -257,6 +267,7 @@ export async function contentRequestHeaders(): Promise<Record<string, string>> {
  */
 export async function fetchProtectedContentUrl(
   productId: string,
+  sessionId?: string,
 ): Promise<Result<{ contentUrl: string }>> {
   if (!isSupabaseConfigured) {
     return fail(
@@ -265,7 +276,7 @@ export async function fetchProtectedContentUrl(
     )
   }
 
-  const contentUrl = readerContentUrl(productId)
+  const contentUrl = readerContentUrl(productId, sessionId)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FUNCTION_TIMEOUT_MS)
 

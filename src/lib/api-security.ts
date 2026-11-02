@@ -1161,6 +1161,40 @@ export async function blockDevice(
   return revokeDeviceSession(actor, sessionId, reason)
 }
 
+/**
+ * Drops every content grant this account holds in the browser.
+ *
+ * A grant is a live, use-budgeted address to a book. Leaving them behind when
+ * a device is signed out means the next person at that browser - or anything
+ * reading localStorage - still holds something that opens a purchase, and the
+ * server cannot clean them up because it never saw them.
+ */
+export function purgeLocalContentGrants(userId: string): void {
+  const current = getDb().content_grants
+
+  if (!current.some((g) => g.user_id === userId)) return
+
+  mutate((draft) => {
+    draft.content_grants = current.filter((g) => g.user_id !== userId)
+  })
+}
+
+/**
+ * Whether THIS browser's device has been blocked.
+ *
+ * Judged on the newest row for this fingerprint. Every release, sweep and
+ * timeout leaves an older row behind, so scanning all of them would sign a
+ * reader out over history that was never a block.
+ */
+export function isThisDeviceBlocked(
+  rows: DeviceSession[],
+  fingerprint: string,
+): boolean {
+  const mine = rows.find((s) => s.device_fingerprint === fingerprint)
+
+  return mine?.revoked === true
+}
+
 /* ── Protection events ────────────────────────────────── */
 
 /**
@@ -1623,7 +1657,10 @@ export async function issueContentGrant(
   let contentUrl = legacyUrl ?? ""
 
   if (hosted) {
-    const protectedContent = await fetchProtectedContentUrl(input.productId)
+    const protectedContent = await fetchProtectedContentUrl(
+      input.productId,
+      input.sessionId,
+    )
 
     if (!protectedContent.ok)
       return fail(protectedContent.code, protectedContent.error)

@@ -25,6 +25,7 @@ import {
   consumeContentGrant,
   issueContentGrant,
   isSessionExpired,
+  purgeLocalContentGrants,
   recordEvent,
   reportDeviceActivity,
   renderWatermark,
@@ -234,6 +235,7 @@ export default function ReaderPage() {
     userProducts,
     user,
     actor,
+    logout,
     refreshEntitlements,
   } = useApp()
   const { products } = useCms()
@@ -425,6 +427,42 @@ export default function ReaderPage() {
     setGrantWatermark(undefined)
     grantRun.current = null
   }, [locked])
+
+  /* A block or a vanished row is a decision about this device, so the account
+   * is signed out here rather than being offered "continue reading" - leaving
+   * the token, the cart and the cached profile live on a machine somebody
+   * just disconnected would make the lock screen the only thing that changed.
+   *
+   * An expired session is deliberately NOT in this list. That is a timeout
+   * with a resume button, not a decision, and signing a reader out of their
+   * own library every two hours of inactivity is a worse outcome than the
+   * lock screen they get today.
+   *
+   * The parsed document is dropped on the way out because it is the book:
+   * tiles and text layer survive a redirect otherwise, in a tab that can be
+   * reopened by whoever sits down next. */
+  const terminated =
+    deviceLock?.kind === "revoked" || deviceLock?.kind === "gone"
+
+  const tornDown = useRef(false)
+
+  useEffect(() => {
+    if (!terminated || tornDown.current) return
+
+    tornDown.current = true
+
+    setContentUrl((current) => {
+      if (current) clearDocumentCache(current)
+
+      return undefined
+    })
+
+    if (actor) purgeLocalContentGrants(actor.user_id)
+
+    void logout()
+
+    navigate("/login", { replace: true })
+  }, [terminated, actor, logout, navigate])
   // Kept in a ref so the protection callbacks can attribute an event to
   // the right session without being rebuilt whenever it changes.
   const sessionIdRef = useRef<string | null>(null)

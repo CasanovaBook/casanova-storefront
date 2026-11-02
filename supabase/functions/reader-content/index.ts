@@ -10,7 +10,11 @@
  * 2. public.users must exist and not be SUSPENDED/DEACTIVATED.
  * 3. The caller must be an ADMIN, or hold an ACTIVE, unexpired
  *    public.user_products entitlement for the requested product.
- * 4. The Storage key is derived server-side (`product-<id>/book.pdf`);
+ * 4. A non-admin caller must name a device session that still exists, is
+ *    not revoked, is not ended, and has reported recently enough to satisfy
+ *    the active policy's idle timeout. Without this the fourth check, a
+ *    blocked device stopped reading only if its own browser agreed to stop.
+ * 5. The Storage key is derived server-side (`product-<id>/book.pdf`);
  *    the request cannot name an object.
  *
  * RESPONSES:
@@ -104,6 +108,19 @@ function safeProductId(value: unknown): string | null {
   return /^[A-Za-z0-9_-]{1,128}$/.test(trimmed) ? trimmed : null
 }
 
+/** The session column is a real `uuid`, so anything else cannot match a row
+ *  and would make the lookup error. Refusing it here turns a malformed value
+ *  into the same answer as an unknown device rather than a 500. */
+function safeUuid(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    trimmed,
+  )
+    ? trimmed
+    : null
+}
+
 /**
  * One byte range, or `null` when absent. Anything else - multiple ranges,
  * a malformed header, an over-long value - is refused rather than forwarded
@@ -143,6 +160,114 @@ interface EntitlementRow {
   expires_at?: string | null
 }
 
+interface SessionRow {
+  session_id?: string
+  revoked?: boolean
+  ended_at?: string | null
+  last_seen_at?: string
+}
+
+interface PolicyRow {
+  session_timeout_minutes?: number
+}
+
+/**
+ * Idle minutes from the most recently updated active policy, so "expired"
+ * means the same thing here as it does in the browser and in the claim RPC.
+ * The web reader is the only caller of this function, so a single lookup
+ * without per-platform precedence is enough.
+ */
+async function idleMinutes(admin: SupabaseClient): Promise<number> {
+  const { data } = await admin
+    .from("drm_policies")
+    .select("session_timeout_minutes")
+    .eq("active", true)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const row = (data ?? null) as PolicyRow | null
+
+  return typeof row?.session_timeout_minutes === "number"
+    ? row.session_timeout_minutes
+    : 120
+}
+
+/**
+ * The device the request claims to be on, checked against the database.
+ *
+ * This is what turns an administrator's חסימה into something other than a
+ * suggestion. Every earlier check answers "is this account entitled"; none of
+ * them asked "is this device still allowed to read", so a blocked device kept
+ * pulling pages because the only thing that noticed the block was a heartbeat
+ * the reader's own browser could choose not to run.
+ */
+async function sessionRefusal(
+  admin: SupabaseClient,
+  userId: string,
+  sessionId: string | null,
+  cors: Record<string, string>,
+): Promise<Response | null> {
+  if (!sessionId) {
+    return jsonResponse(
+      { error: "בקשת הקריאה אינה מזהה מכשיר. יש לרענן את העמוד." },
+      403,
+      cors,
+    )
+  }
+
+  /* Filtered by the caller's own id, so a guessed session uuid from another
+   * account resolves to "not found" rather than to someone else's row. */
+  const { data } = await admin
+    .from("device_sessions")
+    .select("session_id, revoked, ended_at, last_seen_at")
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  const session = (data ?? null) as SessionRow | null
+
+  if (!session) {
+    return jsonResponse(
+      { error: "המכשיר הזה אינו רשום עוד. יש להתחבר מחדש." },
+      403,
+      cors,
+    )
+  }
+
+  if (session.revoked) {
+    return jsonResponse(
+      { error: "הגישה ממכשיר זה נחסמה על ידי מנהל." },
+      403,
+      cors,
+    )
+  }
+
+  if (session.ended_at) {
+    return jsonResponse(
+      { error: "המכשיר נותק. יש לפתוח את הספר מחדש." },
+      403,
+      cors,
+    )
+  }
+
+  const idle = await idleMinutes(admin)
+
+  const stale =
+    !session.last_seen_at ||
+    Date.now() - new Date(session.last_seen_at).getTime() > idle * 60_000
+
+  if (stale) {
+    return jsonResponse(
+      { error: "הסשן פג תוקף. יש ללחוץ ״המשך קריאה״." },
+      403,
+      cors,
+    )
+  }
+
+  return null
+}
+
 /**
  * Returns `null` when the caller may stream the product, or the refusal to
  * send. Runs before any Storage call, so an unauthorized request never
@@ -152,6 +277,7 @@ async function authorize(
   admin: SupabaseClient,
   token: string,
   productId: string,
+  sessionId: string | null,
   cors: Record<string, string>,
 ): Promise<Response | null> {
   const { data: { user }, error: authError } = await admin.auth.getUser(token)
@@ -214,7 +340,10 @@ async function authorize(
     )
   }
 
-  return null
+  /* Staff already bypass the entitlement check above, and they read titles
+   * they do not own as their job, so they are not asked to present a device
+   * slot they were never issued. Every reader who is not staff is. */
+  return await sessionRefusal(admin, user.id, sessionId, cors)
 }
 
 /* ── handler ────────────────────────────────────────────────────────────── */
@@ -253,7 +382,9 @@ Deno.serve(async (req: Request) => {
   try {
     const admin = adminClient()
 
-    const refusal = await authorize(admin, token, productId, cors)
+    const sessionId = safeUuid(url.searchParams.get("session_id"))
+
+    const refusal = await authorize(admin, token, productId, sessionId, cors)
     if (refusal) return refusal
 
     const path = `product-${productId}/book.pdf`

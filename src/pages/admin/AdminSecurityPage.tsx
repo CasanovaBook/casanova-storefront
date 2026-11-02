@@ -29,7 +29,7 @@ import { can } from "../../lib/permissions"
 
 import { formatIsraelClockTime } from "../../lib/datetime"
 
-import { useDeviceSessions } from "../../lib/useDeviceSessions"
+import { useDeviceSessionGuard } from "../../lib/useDeviceSessionGuard"
 
 import {
   HIGH_SIGNAL_EVENTS,
@@ -661,7 +661,7 @@ export default function AdminSecurityPage() {
    * edited by nobody - expiry is derived from `last_seen_at` - so without it
    * this table would go on calling a dead device "פעיל" until somebody
    * reloaded the page. */
-  const view = useDeviceSessions(actor, {
+  const view = useDeviceSessionGuard(actor, {
     staff: can(adminRole, "security"),
   })
 

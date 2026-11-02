@@ -41,6 +41,10 @@ type SessionSeed = {
   started_at: string
 
   last_seen_at: string
+
+  revoked?: boolean
+
+  revoked_at?: string
 }
 
 function session(
@@ -161,8 +165,12 @@ function watchHealth(page: Page, issues: string[]) {
       issues.push(`content key drift: ${m.text()}`)
   })
 
-  page.on("requestfailed", (r) => {
+  page.on("requestfailed", async (r) => {
     if (/fonts\.(googleapis|gstatic)\.com/.test(r.url())) return
+
+    /* An abandoned request from a navigation is not an outage - see the same
+     * note in the banner spec. */
+    if ((await r.failure())?.errorText === "net::ERR_ABORTED") return
 
     issues.push(`requestfailed: ${r.url()}`)
   })
@@ -410,6 +418,121 @@ test.describe("connected devices", () => {
     expect(event, "a release must be logged like a block is").toBeTruthy()
 
     await expect(row(page, "dvs-phone")).toHaveCount(0)
+  })
+
+  test("disconnecting THIS device destroys the session and leaves the app", async ({
+    page,
+  }) => {
+    /* A book is seeded so the sign-in claim registers this browser and gives
+     * the test a row that is genuinely `mine`. */
+    await seed(page.context(), dbDoc([], true))
+
+    await page.goto("/dashboard")
+
+    const mine = page.locator('[data-testid="device-row"][data-mine="true"]')
+
+    await expect(mine).toHaveCount(1)
+
+    const sessionId = await mine.getAttribute("data-session-id")
+
+    await mine
+      .getByRole("button", { name: "לנתק מכשיר זה ולהתנתק" })
+      .click()
+    await page.locator(`#release-${sessionId} .app-btn-danger`).click()
+
+    await expect(page).toHaveURL(/\/login$/)
+
+    /* The local session pointer is what `logout()` clears in this mode; in
+     * Supabase mode the same call also runs supabase.auth.signOut(), which no
+     * local-mode test can observe. */
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem("casanova_session_v1")))
+      .toBeNull()
+
+    const doc = await page.evaluate(
+      () => JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}"),
+    )
+
+    const released = doc.device_sessions.find(
+      (s: { session_id: string }) => s.session_id === sessionId,
+    )
+
+    expect(released.ended_at, "the row must be closed on the server/record").toBeTruthy()
+    expect(released.secure_flag_active).toBe(false)
+  })
+
+  test("a device blocked elsewhere signs itself out on the next load", async ({
+    page,
+  }) => {
+    await seed(page.context(), dbDoc([], true))
+
+    await page.goto("/dashboard")
+
+    /* Learn this browser's real fingerprint from the row the claim created,
+     * then rewrite the document so that fingerprint is the blocked one - and
+     * drop the book, so the sign-in claim cannot hand the device a fresh slot
+     * before the guard gets a chance to read the revocation. */
+    const fingerprint = await page.evaluate(() => {
+      const stored = JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}")
+
+      return stored.device_sessions?.[0]?.device_fingerprint ?? ""
+    })
+
+    expect(fingerprint).toBeTruthy()
+
+    await page.evaluate((fp) => {
+      const stored = JSON.parse(localStorage.getItem("casanova_db_v1") ?? "{}")
+
+      stored.device_sessions = [
+        {
+          session_id: "dvs-blocked-here",
+          user_id: "usr_qa_reader",
+          device_fingerprint: fp,
+          device_name: "Chrome · Windows",
+          platform: "WEB",
+          device_integrity: "UNKNOWN",
+          secure_flag_active: false,
+          revoked: true,
+          revoked_at: new Date().toISOString(),
+          started_at: new Date(Date.now() - 60_000).toISOString(),
+          last_seen_at: new Date(Date.now() - 60_000).toISOString(),
+        },
+      ]
+      stored.user_products = []
+
+      localStorage.setItem("casanova_db_v1", JSON.stringify(stored))
+    }, fingerprint)
+
+    await page.goto("/dashboard")
+
+    await expect(page).toHaveURL(/\/login$/)
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem("casanova_session_v1")))
+      .toBeNull()
+  })
+
+  test("blocking another device does not sign this one out", async ({
+    page,
+  }) => {
+    /* The guard is scoped to this browser's fingerprint. Without that scope,
+     * an administrator blocking a reader's phone would log out the laptop
+     * they are reading on - so this row is blocked, and belongs to a device
+     * that is not this one. */
+    const blocked = session("other", 1)
+
+    await seed(
+      page.context(),
+      dbDoc([{ ...blocked, revoked: true, revoked_at: minutesAgo(2) }], false),
+    )
+
+    await page.goto("/dashboard")
+
+    await expect(page).toHaveURL(/\/dashboard/)
+    await expect
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("casanova_session_v1")),
+      )
+      .toBe("usr_qa_reader")
   })
 
   test("the panel says when it last looked, and where the rows came from", async ({
