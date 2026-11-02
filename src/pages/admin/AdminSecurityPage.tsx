@@ -1089,8 +1089,14 @@ export default function AdminSecurityPage() {
                               account - without this line an administrator cannot
                               tell one reader at their limit from ten at zero. */}
                           <span className="block text-[10px] app-muted whitespace-nowrap">
-                            {heldByUser.get(session.user_id) ?? 0} /{" "}
-                            {inForce.max_devices_per_user} מקומות
+                            {/* Isolated so the pair keeps its order; the
+                                surrounding RTL paragraph would mirror it and
+                                read a full account as an over-cap one. */}
+                            <bdi dir="ltr">
+                              {heldByUser.get(session.user_id) ?? 0} /{" "}
+                              {inForce.max_devices_per_user}
+                            </bdi>{" "}
+                            מקומות
                           </span>
                         </td>
                         <td className="text-xs">

@@ -322,6 +322,61 @@ test.describe("connected devices", () => {
     await expect(page.getByText("2 / 2")).toBeVisible()
   })
 
+  test("a stored policy from the three-device era is read as two", async ({
+    page,
+  }) => {
+    /* The bug this guards: the shipped default was 3 before the limit was
+     * lowered, `{ ...baseline, ...stored }` lets the stored 3 win, and the
+     * panel went on offering a third slot while the server refused it. */
+    const doc = dbDoc([session("a", 1)], false)
+
+    await seed(page.context(), {
+      ...doc,
+      drm_policies: [
+        {
+          policy_id: "pol_qa_legacy",
+          policy_name: "מדיניות ברירת מחדל",
+          applies_to: "ALL",
+          max_devices_per_user: 3,
+          session_timeout_minutes: 120,
+          active: true,
+        },
+      ],
+    })
+
+    await page.goto("/dashboard")
+
+    await expect(page.getByText("1 / 2")).toBeVisible()
+    await expect(
+      page.getByText("הקריאה מוגבלת ל־2 מכשירים בו־זמנית"),
+    ).toBeVisible()
+  })
+
+  test("a cap somebody chose deliberately is left alone", async ({ page }) => {
+    /* Only the legacy default is upgraded. An administrator who set four has
+     * a number that means something, and silently flattening it to two would
+     * be the same class of bug in the other direction. */
+    const doc = dbDoc([session("a", 1)], false)
+
+    await seed(page.context(), {
+      ...doc,
+      drm_policies: [
+        {
+          policy_id: "pol_qa_chosen",
+          policy_name: "מדיניות ברירת מחדל",
+          applies_to: "ALL",
+          max_devices_per_user: 4,
+          session_timeout_minutes: 120,
+          active: true,
+        },
+      ],
+    })
+
+    await page.goto("/dashboard")
+
+    await expect(page.getByText("1 / 4")).toBeVisible()
+  })
+
   test("the panel says when it last looked, and where the rows came from", async ({
     page,
   }) => {

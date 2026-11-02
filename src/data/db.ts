@@ -305,6 +305,15 @@ export function emptyDatabase(): Database {
  * offline setting defaults to off.
  */
 
+/**
+ * The device cap this build shipped with before the limit was set to two.
+ *
+ * Stored documents carry it in `max_devices_per_user`, and `{ ...baseline,
+ * ...p }` lets a stored value win over the new default - which is why the
+ * panel kept reading 3 while the server enforced 2.
+ */
+const LEGACY_MAX_DEVICES_DEFAULT = 3
+
 function withProtectionDefaults(policies: unknown[]): DrmPolicy[] {
   const baseline = defaultDrmPolicy()
 
@@ -340,6 +349,15 @@ function withProtectionDefaults(policies: unknown[]): DrmPolicy[] {
       watermark_opacity: Number.isFinite(storedOpacity)
         ? Math.min(0.12, Math.max(0.08, storedOpacity))
         : baseline.watermark_opacity,
+
+      /* Same resolution as the template above: a stored 3 is indistinguishable
+       * from "the shipped default nobody ever changed", and the limit is meant
+       * to be strict, so the legacy value gives way to the current one. Any
+       * other number - 1, 4, 10 - is a choice somebody made and is kept. */
+      max_devices_per_user:
+        Number(p.max_devices_per_user) === LEGACY_MAX_DEVICES_DEFAULT
+          ? baseline.max_devices_per_user
+          : (p.max_devices_per_user ?? baseline.max_devices_per_user),
     } as DrmPolicy
   })
 }

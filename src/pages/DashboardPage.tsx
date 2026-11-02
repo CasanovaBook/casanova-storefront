@@ -154,6 +154,11 @@ function ConnectedDevicesCard() {
               full ? "app-badge--danger" : "app-badge--accent"
             }`}
             aria-label={`${used} מתוך ${cap} מקומות מכשיר בשימוש`}
+            /* An ordered pair of digits is direction-neutral in the bidi
+             * algorithm, so an RTL paragraph mirrors it: "2 / 3" was being
+             * read as a cap of 3. Pinning the run to the author's order makes
+             * the screen agree with the accessible name above it. */
+            dir="ltr"
           >
             {used} / {cap}
           </span>
