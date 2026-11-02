@@ -1047,7 +1047,7 @@ CREATE TABLE drm_policies (
                             CHECK (watermark_opacity IS NULL
                                    OR (watermark_opacity >= 0.01
                                        AND watermark_opacity <= 0.4)),
-  max_devices_per_user    INTEGER      NOT NULL DEFAULT 3 CHECK (max_devices_per_user > 0),
+  max_devices_per_user    INTEGER      NOT NULL DEFAULT 2 CHECK (max_devices_per_user > 0),
   session_timeout_minutes INTEGER      NOT NULL DEFAULT 120 CHECK (session_timeout_minutes > 0),
   active                  BOOLEAN      NOT NULL DEFAULT TRUE,
   created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -1935,7 +1935,7 @@ INSERT INTO drm_policies (
   TRUE, TRUE, TRUE, TRUE,
   FALSE, NULL, TRUE,
   TRUE, '{name} · {email}', 0.07,
-  3, 120, TRUE
+  2, 120, TRUE
 )
 ON CONFLICT (policy_name) DO NOTHING;
 

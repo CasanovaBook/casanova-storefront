@@ -182,7 +182,10 @@ export function defaultDrmPolicy(): DrmPolicy {
 
     watermark_opacity: 0.1,
 
-    max_devices_per_user: 3,
+    /* Two, and the same number migration 0035 writes into the database. The
+     * browser default is what a reader without a server sees, so the two
+     * agreeing is the difference between a limit and a surprise. */
+    max_devices_per_user: 2,
 
     session_timeout_minutes: 120,
 

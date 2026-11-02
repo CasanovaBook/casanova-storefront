@@ -18,12 +18,12 @@ import {
 } from "../lib/content-storage"
 import { useScreenProtection } from "../lib/useScreenProtection"
 import {
+  claimDevice,
   consumeContentGrant,
   issueContentGrant,
   isSessionExpired,
   recordEvent,
-  refreshDeviceSession,
-  registerDeviceSession,
+  reportDeviceActivity,
   renderWatermark,
   resolveDrmPolicy,
 } from "../lib/api-security"
@@ -333,17 +333,19 @@ export default function ReaderPage() {
     if (!actor) return
     if (registeredFor.current === actor.user_id) return
     registeredFor.current = actor.user_id
-    const result = registerDeviceSession(actor)
-    if (result.ok) {
-      setSessionId(result.data.session_id)
-      setDeviceError(null)
-    } else {
-      /* Clear the guard so a retry can happen: hitting the device cap is
-       * not permanent - freeing a slot in the dashboard makes the next
-       * attempt succeed. */
-      registeredFor.current = null
-      setDeviceError(result.error)
-    }
+
+    void claimDevice(actor).then((result) => {
+      if (result.ok) {
+        setSessionId(result.data.session_id)
+        setDeviceError(null)
+      } else {
+        /* Clear the guard so a retry can happen: hitting the device cap is
+         * not permanent - freeing a slot in the dashboard makes the next
+         * attempt succeed. */
+        registeredFor.current = null
+        setDeviceError(result.error)
+      }
+    })
   }, [actor])
 
   /* ── Activity tracking ─────────────────────────────────── */
@@ -373,8 +375,19 @@ export default function ReaderPage() {
     if (!session || !actor || session.revoked) return
     const id = window.setInterval(() => {
       if (Date.now() - lastActivity.current > ACTIVITY_WINDOW_MS) return
-      const result = refreshDeviceSession(actor, session.session_id)
-      if (result.ok) setSessionId(result.data.session_id)
+      void reportDeviceActivity(actor, session.session_id).then((result) => {
+        if (result.ok) {
+          setSessionId(result.data.session_id)
+
+          return
+        }
+        /* A block reaches the reader through this call and nothing else:
+         * somebody who is reading does not reload the page. A failed request
+         * is deliberately not treated as a block - a network blip must not
+         * stop somebody who has paid from reading. */
+        if (result.code === "FORBIDDEN" || result.code === "CONFLICT")
+          setDeviceError(result.error)
+      })
     }, HEARTBEAT_MS)
     return () => window.clearInterval(id)
   }, [session, actor])
@@ -992,14 +1005,14 @@ export default function ReaderPage() {
       ? "checking"
       : "missing"
 
-  const resume = () => {
+  const resume = async () => {
     if (!actor) return
     // A revoked slot cannot be renewed - it has to be claimed again, which
     // re-checks the device cap and can legitimately fail.
     const result =
       session && !session.revoked
-        ? refreshDeviceSession(actor, session.session_id)
-        : registerDeviceSession(actor)
+        ? await reportDeviceActivity(actor, session.session_id)
+        : await claimDevice(actor)
     if (result.ok) {
       setSessionId(result.data.session_id)
       setDeviceError(null)
@@ -1521,7 +1534,7 @@ export default function ReaderPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-2">
             <button
-              onClick={resume}
+              onClick={() => void resume()}
               className="btn-gradient tap-target px-6 py-3 rounded-full text-sm font-semibold"
             >
               {revoked ? "נסה לרשום את המכשיר שוב" : "המשך קריאה"}

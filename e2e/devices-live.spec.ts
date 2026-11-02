@@ -205,7 +205,7 @@ test.describe("connected devices", () => {
 
     await seed(
       context,
-      dbDoc([session("desktop", 2), session("mobile", 5)], true),
+      dbDoc([session("desktop", 2), session("mobile", 5)], false),
     )
 
     const watching = await context.newPage()
@@ -231,8 +231,17 @@ test.describe("connected devices", () => {
 
   test("the slot meter counts held slots", async ({ page }) => {
     /* No book: an owner signing in claims this browser as a device of its own,
-     * and the meter would then be measuring four rows instead of the two this
+     * and the meter would then be measuring two rows instead of the one this
      * test seeded. The claim has its own test below. */
+    await seed(page.context(), dbDoc([session("a", 1)], false))
+
+    await page.goto("/dashboard")
+
+    await expect(page.getByText("1 / 2")).toBeVisible()
+    await expect(page.getByText("המכסה מלאה")).toHaveCount(0)
+  })
+
+  test("a full cap reads as full and is marked dangerous", async ({ page }) => {
     await seed(
       page.context(),
       dbDoc([session("a", 1), session("b", 2)], false),
@@ -240,19 +249,7 @@ test.describe("connected devices", () => {
 
     await page.goto("/dashboard")
 
-    await expect(page.getByText("2 / 3")).toBeVisible()
-    await expect(page.getByText("המכסה מלאה")).toHaveCount(0)
-  })
-
-  test("a full cap reads as full and is marked dangerous", async ({ page }) => {
-    await seed(
-      page.context(),
-      dbDoc([session("a", 1), session("b", 2), session("c", 3)], true),
-    )
-
-    await page.goto("/dashboard")
-
-    const badge = page.getByText("3 / 3")
+    const badge = page.getByText("2 / 2")
 
     await expect(badge).toBeVisible()
     await expect(badge).toHaveClass(/app-badge--danger/)
@@ -264,7 +261,7 @@ test.describe("connected devices", () => {
   }) => {
     /* Default policy ends a session after 120 minutes of silence. Three rows
      * are seeded so the old rule - every open row holds a slot - would read
-     * 3 / 3 and block this reader from opening a book anywhere else. No book
+     * 3 / 2 and block this reader from opening a book anywhere else. No book
      * seeded, so the sign-in claim cannot add a fourth row here either. */
     await seed(
       page.context(),
@@ -273,7 +270,7 @@ test.describe("connected devices", () => {
 
     await page.goto("/dashboard")
 
-    await expect(page.getByText("2 / 3")).toBeVisible()
+    await expect(page.getByText("2 / 2")).toBeVisible()
     await expect(row(page, "dvs-stale")).toBeVisible()
     await expect(
       page.getByText("ננעל לאחר היעדר פעילות - יש ללחוץ ״המשך קריאה״ בפתיחת הספר"),
@@ -294,7 +291,7 @@ test.describe("connected devices", () => {
     await expect(
       page.locator('[data-testid="device-row"][data-mine="true"]'),
     ).toHaveCount(1)
-    await expect(page.getByText("1 / 3")).toBeVisible()
+    await expect(page.getByText("1 / 2")).toBeVisible()
   })
 
   test("a browser without a book claims no slot on sign-in", async ({
@@ -308,7 +305,26 @@ test.describe("connected devices", () => {
     await expect(page.locator('[data-testid="device-row"]')).toHaveCount(0)
   })
 
-  test("the panel states when the list was last checked", async ({ page }) => {
+  test("a full cap blocks the sign-in claim rather than evicting a device", async ({
+    page,
+  }) => {
+    /* Two live rows and a book: signing in would like to claim this browser
+     * as a third device. The rule is to refuse the newcomer, never to cut off
+     * a reader who is already reading - so the row count stays at two. */
+    await seed(
+      page.context(),
+      dbDoc([session("a", 1), session("b", 2)], true),
+    )
+
+    await page.goto("/dashboard")
+
+    await expect(page.locator('[data-testid="device-row"]')).toHaveCount(2)
+    await expect(page.getByText("2 / 2")).toBeVisible()
+  })
+
+  test("the panel says when it last looked, and where the rows came from", async ({
+    page,
+  }) => {
     await seed(page.context(), dbDoc([session("a", 1)], true))
 
     await page.goto("/dashboard")
@@ -317,7 +333,16 @@ test.describe("connected devices", () => {
 
     await expect(status).toBeVisible()
     await expect(status).toHaveAttribute("role", "status")
-    await expect(status).toContainText("עודכן")
+
+    /* With no server to ask, the list is this browser's and has to say so.
+     * Claiming "עודכן" from a local document would tell a reader their phone
+     * is absent when it is only unreachable from here. */
+    await expect(status).toContainText("מקומי")
+    await expect(status).toHaveClass(/app-sync--local/)
+    await expect(status).toHaveAttribute(
+      "title",
+      /הרשימה מקומית לדפדפן הזה/,
+    )
   })
 
   test("admin shows Israel-time stamps and per-account slots", async ({
@@ -347,8 +372,8 @@ test.describe("connected devices", () => {
     await expect(target).toContainText(STAMP_ISRAEL)
 
     /* Open, but idled past the timeout - so it is listed and explicitly not
-     * counted against the reader's three slots. */
-    await expect(target).toContainText("0 / 3")
+     * counted against the reader's two slots. */
+    await expect(target).toContainText("0 / 2")
     await expect(target).toContainText("אינו תופס מקום")
   })
 })

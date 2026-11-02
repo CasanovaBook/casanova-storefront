@@ -40,7 +40,7 @@ import {
   isSessionOpen,
   occupiesSlot,
   resolveDrmPolicy,
-  revokeDeviceSession,
+  blockDevice,
   saveDrmPolicy,
   type DrmPolicyInput,
 } from "../../lib/api-security"
@@ -331,7 +331,7 @@ function PolicyEditor({
 
           watermark_opacity: 0.1,
 
-          max_devices_per_user: 3,
+          max_devices_per_user: 2,
 
           session_timeout_minutes: 120,
 
@@ -533,7 +533,7 @@ function PolicyEditor({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field
               label="מכשירים לכל חשבון"
-              hint="מספר הדפדפנים שיכולים לקרוא בו־זמנית. חריגה נחסמת ונרשמת ביומן האירועים."
+              hint="מספר המכשירים שיכולים לקרוא בו־זמנית. ברירת המחדל היא 2, וזה המספר שגם השרת אכף. ניסיון שלישי נחסם ונרשם ביומן האירועים. מכשיר שלא דיווח פעילות מאז 'פג תוקף אחרי' משחרר את המקום שלו אוטומטית, ולכן הרשימה יכולה להראות יותר שורות ממכסה תפוסה."
             >
               <input
                 dir="ltr"
@@ -637,6 +637,11 @@ export default function AdminSecurityPage() {
 
   const [revokeReason, setRevokeReason] = useState("")
 
+  /* A block on a server is a round-trip, and it takes a reader's open copies
+   * with it. The button has to say so while it is working rather than let a
+   * second click start a second revocation. */
+  const [revoking, setRevoking] = useState(false)
+
   /* Deleting a policy used to run on a single click. It stays the same
    * mutation, but it now passes through an explicit Hebrew confirmation. */
   const [pendingDelete, setPendingDelete] = useState<DrmPolicy | null>(null)
@@ -728,14 +733,18 @@ export default function AdminSecurityPage() {
     setPendingDelete(null)
   }
 
-  const revoke = () => {
-    if (!pendingRevoke) return
+  const revoke = async () => {
+    if (!pendingRevoke || revoking) return
 
-    const result = revokeDeviceSession(
+    setRevoking(true)
+
+    const result = await blockDevice(
       actor,
       pendingRevoke.session_id,
       revokeReason,
     )
+
+    setRevoking(false)
 
     setMessage(
       result.ok
@@ -991,7 +1000,12 @@ export default function AdminSecurityPage() {
           description="כל דפדפן שתופס מקום במכסת המכשירים של חשבון. חסימה כאן נועלת את מסך הקריאה של אותו מכשיר בפעם הבאה שהוא מדווח פעילות."
         >
           <div className="mb-3 flex justify-end">
-            <DeviceSyncBadge syncedAt={view.syncedAt} revision={view.revision} />
+            <DeviceSyncBadge
+              syncedAt={view.syncedAt}
+              revision={view.revision}
+              source={view.source}
+              syncing={view.syncing}
+            />
           </div>
 
           <div
@@ -1176,14 +1190,17 @@ export default function AdminSecurityPage() {
                 />
                 <button
                   type="button"
-                  onClick={revoke}
+                  onClick={() => void revoke()}
+                  disabled={revoking}
+                  aria-busy={revoking}
                   className="app-btn-danger"
                 >
-                  אישור חסימה
+                  {revoking ? "חוסם…" : "אישור חסימה"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setPendingRevoke(null)}
+                  disabled={revoking}
                   className="app-btn-secondary"
                 >
                   ביטול

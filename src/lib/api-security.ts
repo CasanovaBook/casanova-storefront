@@ -59,6 +59,17 @@ import { fetchProtectedContentUrl } from "./content-storage"
 
 import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
+import { isUuid } from "../integrations/supabase/supabase-entitlements"
+
+import {
+  adminRevokeDeviceSession,
+  claimDeviceSession,
+  endDeviceSessionRemote,
+  fetchAllDeviceSessions,
+  fetchMyDeviceSessions,
+  touchDeviceSession,
+} from "../integrations/supabase/supabase-devices"
+
 /* ── Policy resolution ────────────────────────────────── */
 
 /**
@@ -826,6 +837,279 @@ export function listAllDeviceSessions(
   if (staffDenied) return staffDenied
 
   return ok(getDb().device_sessions)
+}
+
+/* ── Server-backed device sessions ────────────────────────
+ *
+ * The document below is a mirror, not the record. Migration 0035 made the
+ * database the authority for who is reading where, and these helpers are the
+ * only places the two are reconciled.
+ *
+ * The rule that keeps the mirror honest: a read that *answered* replaces that
+ * account's rows entirely, while a read that failed leaves the document
+ * untouched. Pruning on a dropped request would tell a reader they own no
+ * devices, and a reader who believes that releases slots they never had.
+ * ────────────────────────────────────────────────────────── */
+
+/** Compact identity of a row set. Order-insensitive, so a re-sort by the
+ *  server does not count as a change worth a whole-document write. */
+function sessionSignature(list: DeviceSession[]): string {
+  return list
+    .map(
+      (s) =>
+        `${s.session_id}|${s.last_seen_at}|${s.started_at}|${s.ended_at ?? ""}|${
+          s.revoked ? 1 : 0
+        }|${s.secure_flag_active ? 1 : 0}`,
+    )
+    .sort()
+    .join(";")
+}
+
+/**
+ * Replaces the mirrored accounts' rows with the server's answer.
+ *
+ * Rows this browser invented before the server was the authority (`dvs_…`)
+ * belong to the accounts being mirrored and go with them: keeping one would
+ * show a slot the database does not know about, and the meter would then
+ * refuse a reader over a ghost.
+ *
+ * `ownersHint` names the accounts the answer is *about* even when it came
+ * back with nothing. Without it, "you hold no devices" and "the server had
+ * nothing to say about anybody" look identical, and a reader who released
+ * everything elsewhere would still see a full meter here.
+ */
+export function mirrorDeviceSessions(
+  remote: DeviceSession[] | null,
+  ownersHint?: string[],
+): boolean {
+  if (remote === null) return false
+
+  const owners = new Set(ownersHint ?? [])
+
+  for (const s of remote) owners.add(s.user_id)
+
+  const current = getDb().device_sessions
+
+  const next = [
+    ...current.filter((s) => !owners.has(s.user_id)),
+    ...remote,
+  ]
+
+  if (sessionSignature(current) === sessionSignature(next)) return false
+
+  mutate((draft) => {
+    draft.device_sessions = next
+  })
+
+  return true
+}
+
+/** Applies one row the server just returned, from a claim or a release. */
+export function patchDeviceSession(session: DeviceSession): void {
+  const current = getDb().device_sessions
+  const existing = current.find((s) => s.session_id === session.session_id)
+
+  if (existing && sessionSignature([existing]) === sessionSignature([session]))
+    return
+
+  mutate((draft) => {
+    draft.device_sessions = existing
+      ? current.map((s) => (s.session_id === session.session_id ? session : s))
+      : [...current, session]
+  })
+}
+
+/**
+ * Pulls this account's rows from the server into the mirror.
+ *
+ * Staff with the `security` permission get the whole table, because their
+ * screen is about other people's devices. Returns false when there is no
+ * server to ask, which is the ordinary answer in local mode and not an error.
+ */
+export async function syncDeviceSessions(
+  actor: Actor | null,
+): Promise<boolean> {
+  if (!isSupabaseConfigured || !actor) return false
+
+  const privileged = guard(actor, "security") === null
+
+  if (privileged) return mirrorDeviceSessions(await fetchAllDeviceSessions())
+
+  /* A customer's read is scoped to them by RLS, so an empty result is a real
+   * answer about their account and must clear this browser's ghosts. */
+  return mirrorDeviceSessions(
+    await fetchMyDeviceSessions(actor.user_id),
+    [actor.user_id],
+  )
+}
+
+/** The refusal a reader sees when every slot is taken. */
+function capRefusal(policy: DrmPolicy): Failure {
+  return fail(
+    "CONFLICT",
+
+    `המכשיר הזה לא נרשם: ההגדרה מגבילה קריאה ל־${policy.max_devices_per_user} מכשירים בו־זמנית, וכולם כבר תפוסים. ניתן לשחרר מכשיר מתוך הספרייה או לפנות לתמיכה.`,
+  )
+}
+
+/**
+ * Claims this browser's slot where the slot actually lives.
+ *
+ * With a server, the limit is decided there: two devices racing cannot both
+ * take the last place, and the rows that count are the ones whose device is
+ * still reporting. Without one - local mode, or a project whose migration has
+ * not been applied - the document is the whole truth and the synchronous
+ * path answers exactly as it always did.
+ */
+export async function claimDevice(
+  actor: Actor | null,
+): Promise<Result<DeviceSession>> {
+  const denied = requireActor(actor)
+
+  if (denied) return denied
+
+  if (isSupabaseConfigured) {
+    const out = await claimDeviceSession({
+      deviceFingerprint: deviceFingerprint(),
+
+      platform: currentPlatform(),
+
+      deviceName: describeDevice(),
+    })
+
+    if (out.ok) {
+      patchDeviceSession(out.data)
+
+      return ok(out.data)
+    }
+
+    if (out.code === "device_limit_exceeded") {
+      recordEvent({
+        user_id: (actor as Actor).user_id,
+
+        event_type: "DEVICE_LIMIT_EXCEEDED",
+
+        product_id: undefined,
+
+        session_id: undefined,
+
+        metadata: { source: "server" },
+      })
+
+      return capRefusal(activeDrmPolicy())
+    }
+
+    /* Anything else is a refusal about *this* row, and the reader's own
+     * device list is the thing that has to say so. Only a missing RPC
+     * (migration not applied) is safe to answer by writing locally. */
+    if (out.code !== "unavailable")
+      return fail("FORBIDDEN", "לא ניתן לרשום את המכשיר כעת. נסו שוב.")
+  }
+
+  return registerDeviceSession(actor)
+}
+
+/**
+ * Reports activity on this device.
+ *
+ * The heartbeat is the only thing that keeps a reading slot alive on the
+ * server, so a session that stops reporting is a device that stopped reading
+ * - which is what makes the server's cleanup safe to run.
+ */
+export async function reportDeviceActivity(
+  actor: Actor | null,
+  sessionId: string,
+): Promise<Result<DeviceSession>> {
+  const denied = requireActor(actor)
+
+  if (denied) return denied
+
+  if (isSupabaseConfigured && isUuid(sessionId)) {
+    const out = await touchDeviceSession(sessionId)
+
+    if (out.ok) {
+      patchDeviceSession(out.data)
+
+      return ok(out.data)
+    }
+
+    if (out.code === "session_revoked")
+      return fail("FORBIDDEN", "הגישה ממכשיר זה נחסמה על ידי מנהל.")
+
+    if (out.code === "session_ended")
+      return fail("CONFLICT", "ההתקשרות הזו הסתיימה. יש לפתוח את הספר מחדש.")
+
+    if (out.code !== "unavailable")
+      return fail("NOT_FOUND", "ההתקשרות לא נמצאה.")
+  }
+
+  return refreshDeviceSession(actor, sessionId)
+}
+
+/** Frees a slot - the reader's own, or any row for staff with `security`. */
+export async function releaseDevice(
+  actor: Actor | null,
+  sessionId: string,
+): Promise<Result> {
+  const denied = requireActor(actor)
+
+  if (denied) return denied
+
+  const own = getDb().device_sessions.find((s) => s.session_id === sessionId)
+
+  const mine = own?.user_id === (actor as Actor).user_id
+
+  if (isSupabaseConfigured && mine && isUuid(sessionId)) {
+    const out = await endDeviceSessionRemote(sessionId)
+
+    if (out.ok) {
+      patchDeviceSession(out.data)
+
+      return ok(undefined)
+    }
+
+    if (out.code !== "unavailable")
+      return fail("CONFLICT", "ההתקשרות כבר אינה פעילה.")
+  }
+
+  return endDeviceSession(actor, sessionId)
+}
+
+/**
+ * Staff block.
+ *
+ * On a server the cascade that revokes the reader's open copies is a trigger,
+ * so this cannot half-do it; locally the same effect is produced by the
+ * synchronous path, which writes the cascade itself.
+ */
+export async function blockDevice(
+  actor: Actor | null,
+  sessionId: string,
+  reason?: string,
+): Promise<Result<DeviceSession>> {
+  if (isSupabaseConfigured && isUuid(sessionId)) {
+    const out = await adminRevokeDeviceSession(sessionId, reason)
+
+    if (out.ok) {
+      patchDeviceSession(out.data)
+
+      return ok(out.data)
+    }
+
+    if (out.code === "permission_denied")
+      return fail(
+        "FORBIDDEN",
+        "אין להרשאה הזו לבצע חסימה. נדרש manage_drm.",
+      )
+
+    if (out.code === "session_not_revocable")
+      return fail("CONFLICT", "המכשיר כבר חסום או סגור.")
+
+    if (out.code !== "unavailable")
+      return fail("FORBIDDEN", "החסימה לא עברה. נסו שוב.")
+  }
+
+  return revokeDeviceSession(actor, sessionId, reason)
 }
 
 /* ── Protection events ────────────────────────────────── */

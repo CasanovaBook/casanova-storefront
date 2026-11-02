@@ -3389,6 +3389,13 @@ body {
   background: var(--color-success);
 }
 
+/* Local mode is not an error, but it is a narrower claim: this browser's
+ * rows, not the account's. An amber dot says "smaller than you think"
+ * without a paragraph of prose. */
+.app-sync--local .app-sync-dot {
+  background: var(--color-warning);
+}
+
 /* The pulse is the point: it fires only when the rows actually moved, so a
  * reader watching the panel sees it react instead of being told to reload. */
 .app-sync--moved .app-sync-dot {

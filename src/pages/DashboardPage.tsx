@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { useApp } from "../context/AppContext"
 import { claimFirstLogin } from "../lib/first-login"
-import { deviceFingerprint, endDeviceSession, isSessionExpired } from "../lib/api-security"
+import { deviceFingerprint, isSessionExpired, releaseDevice } from "../lib/api-security"
 import { useDeviceSessions } from "../lib/useDeviceSessions"
 import { formatIsraelDateParts } from "../lib/datetime"
 import type { ProductSnapshot } from "../types"
@@ -70,10 +70,22 @@ function lastSeen(iso: string, now: number): string {
  */
 function ConnectedDevicesCard() {
   const { actor } = useApp()
-  const { sessions, policy, used, cap, full, loading, syncedAt, revision, now } =
-    useDeviceSessions(actor)
+  const {
+    sessions,
+    policy,
+    used,
+    cap,
+    full,
+    loading,
+    syncing,
+    source,
+    syncedAt,
+    revision,
+    now,
+  } = useDeviceSessions(actor)
   const thisDevice = useMemo(() => deviceFingerprint(), [])
   const [pending, setPending] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<{
     tone: "ok" | "err"
     text: string
@@ -88,8 +100,12 @@ function ConnectedDevicesCard() {
     return [...mine, ...others]
   }, [sessions, thisDevice])
 
-  const release = (sessionId: string) => {
-    const result = endDeviceSession(actor, sessionId)
+  const release = async (sessionId: string) => {
+    setBusy(sessionId)
+
+    const result = await releaseDevice(actor, sessionId)
+
+    setBusy(null)
     setPending(null)
     setMessage(
       result.ok
@@ -127,7 +143,12 @@ function ConnectedDevicesCard() {
           </div>
         </div>
         <div className="flex items-center gap-3 min-w-0">
-          <DeviceSyncBadge syncedAt={syncedAt} revision={revision} />
+          <DeviceSyncBadge
+            syncedAt={syncedAt}
+            revision={revision}
+            source={source}
+            syncing={syncing}
+          />
           <span
             className={`app-badge ${
               full ? "app-badge--danger" : "app-badge--accent"
@@ -230,10 +251,12 @@ function ConnectedDevicesCard() {
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => release(session.session_id)}
+                          onClick={() => void release(session.session_id)}
+                          disabled={busy !== null}
+                          aria-busy={busy === session.session_id}
                           className="app-btn-danger"
                         >
-                          ניתוק
+                          {busy === session.session_id ? "מנתק…" : "ניתוק"}
                         </button>
                         <button
                           type="button"

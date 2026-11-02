@@ -73,7 +73,7 @@ import {
   type CheckoutInput,
   type CheckoutOutcome,
 } from "../lib/api-orders"
-import { registerDeviceSession } from "../lib/api-security"
+import { claimDevice } from "../lib/api-security"
 import {
   supabase,
   isSupabaseConfigured,
@@ -968,7 +968,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     /* The result is ignored on purpose. A full cap or an already-listed
      * browser is a state the panel itself explains; neither deserves to
      * interrupt a sign-in. */
-    registerDeviceSession(actor)
+    void claimDevice(actor)
   }, [actor, ownsBook, user?.user_id])
 
   const orders = useMemo(() => listOrdersForUser(actor), [actor, db.orders])
