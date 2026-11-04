@@ -33,6 +33,8 @@ const RATE_LIMIT_WINDOW_MINUTES = 10
 const RATE_LIMIT_MAX_ORDERS = 5
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails"
+/* Outbound-only notification. casanova-books.com publishes no MX record, so no
+ * address on it can receive a reply and no Reply-To is ever set. */
 const RESEND_FROM = "Casanova Books <no-reply@casanova-books.com>"
 const WELCOME_SUBJECT =
   "תודה שרכשת ב-Casanova! הגדרת סיסמה לספרייה האישית שלך"
