@@ -613,7 +613,7 @@ export default function AdminSettingsPage() {
           <Section
             id="settings-sales-copy"
             icon="target"
-            title="דף מכירה - היא קודם"
+            title="דף מכירה - לרדת לפרטים"
             description="הכפתור הדביק במובייל וחלון 'רגע לפני העזיבה' - חלון השמירה שקופץ כשמבקר עומד לעזוב את דף הנחיתה. ריק = ברירת המחדל."
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

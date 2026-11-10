@@ -29,7 +29,7 @@ const LAUNCH_SALE_PRICE = 59
 export const BUNDLED_PRODUCT: Product = {
   product_id: "prd_hi_kodem_bundle",
 
-  name: "היא קודם",
+  name: "לרדת לפרטים",
 
   slug: "hya-kvdm",
 
@@ -59,7 +59,7 @@ export const BUNDLED_PRODUCT: Product = {
     "חוויות מחדר המיטות - מדריך פרקטי לגבר שרוצה לדעת מה באמת קורה בגוף שלה.",
 
   description:
-    "היא קודם הוא מדריך פרקטי לגבר שרוצה להפסיק לנחש אם היא נהנתה - ולדעת בדיוק מה לעשות כדי שהיא תבקש עוד.",
+    "לרדת לפרטים הוא מדריך פרקטי לגבר שרוצה להפסיק לנחש אם היא נהנתה - ולדעת בדיוק מה לעשות כדי שהיא תבקש עוד.",
 
   cover_colors: ["#2C1810", "#1A0E0A"],
 

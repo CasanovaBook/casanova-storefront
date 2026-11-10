@@ -650,7 +650,7 @@ export default function SalesLandingPage() {
 
   const seoDescription =
     c("sales.seo.description") ||
-    "הכירו את CASANOVA - המדריך הדיגיטלי ״היא קודם״ על תשוקה, משיכה ואינטימיות."
+    "הכירו את CASANOVA - המדריך הדיגיטלי ״לרדת לפרטים״ על תשוקה, משיכה ואינטימיות."
 
   const seoImage = c("sales.seo.image") || "/covers/hi-kodem-cover-1024.webp"
 

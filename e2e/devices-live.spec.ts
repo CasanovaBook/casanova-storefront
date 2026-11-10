@@ -109,7 +109,7 @@ function dbDoc(sessions: SessionSeed[], withBook: boolean) {
             product_id: "prd_qa_book",
             product_snapshot: {
               product_id: "prd_qa_book",
-              name: "היא קודם",
+              name: "לרדת לפרטים",
               slug: "she-first",
               product_type: "EBOOK",
               cover_colors: ["#1A1A2E", "#2A2A3E"],

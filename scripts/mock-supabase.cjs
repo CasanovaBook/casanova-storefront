@@ -189,7 +189,7 @@ function profileRow() {
 function productRow() {
   return {
     product_id: PRODUCT_ID,
-    name: "היא קודם",
+    name: "לרדת לפרטים",
     subtitle: null,
     slug: "hi-kodem",
     sku: "HI-KODEM",
@@ -358,7 +358,7 @@ function restHandler(req, url, send, body) {
         order_item_id: "88888888-0000-0000-0000-000000000001",
         order_id: ORDER_ID,
         product_id: PRODUCT_ID,
-        product_name: "היא קודם",
+        product_name: "לרדת לפרטים",
         quantity: 1,
         unit_price: 99,
         discount_amount: 0,
@@ -406,7 +406,7 @@ function restHandler(req, url, send, body) {
         product_id: PRODUCT_ID,
         product_snapshot: {
           product_id: PRODUCT_ID,
-          name: "היא קודם",
+          name: "לרדת לפרטים",
           slug: "hi-kodem",
           product_type: "EBOOK",
           cover_colors: ["#1A1A2E", "#2A2A3E"],

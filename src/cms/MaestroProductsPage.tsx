@@ -814,7 +814,7 @@ export function MaestroProductsPage() {
                 <input
                   value={createName}
                   onChange={(e) => setCreateName(e.target.value)}
-                  placeholder="לדוגמה: היא קודם - מהדורה שנייה"
+                  placeholder="לדוגמה: לרדת לפרטים - מהדורה שנייה"
                   style={inputStyle}
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && handleCreate()}

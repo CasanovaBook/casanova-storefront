@@ -772,7 +772,14 @@ export function ContentEditor() {
   const [showSeo, setShowSeo] = useState(false)
   const [showModified, setShowModified] = useState(false)
   const [showPreview, setShowPreview] = useState(true)
+  /* Bumped only by the explicit refresh button. Draft edits must NOT remount
+   * the frame: the preview document is same-origin and subscribed to the
+   * content store, so it repaints in place on every draft write. */
   const [previewKey, setPreviewKey] = useState(0)
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null)
+  /* Offset captured before a manual refresh, re-applied once the fresh
+   * document finishes loading. Left at 0 for ordinary loads. */
+  const previewRestoreScroll = useRef(0)
   const draftRef = useRef(draft)
   draftRef.current = draft
   /* A ref, not only state, so a double click or a keyboard shortcut cannot
@@ -953,17 +960,38 @@ export function ContentEditor() {
   const previewPath = activeGroupDef?.path ?? "/"
   const hasSeo = !!FIELD_MAP[`${activeGroup}.seo.title`]
 
+  /* Same-origin preview document: it reads the draft from the content store
+   * and receives a `storage` event for every write, so editing a field
+   * updates the preview live without reloading it. The URL therefore depends
+   * only on the page being previewed - never on the draft. */
   const previewUrl = useMemo(() => {
     const url = new URL(previewPath, window.location.origin)
     url.searchParams.set("maestro-preview", "1")
     return url.toString()
-  }, [previewPath, previewKey])
+  }, [previewPath])
 
-  useEffect(() => {
-    if (!showPreview || !inlinePreviewAvailable || draftCount === 0) return
-    const timer = setTimeout(() => setPreviewKey((k) => k + 1), 800)
-    return () => clearTimeout(timer)
-  }, [draft, showPreview, inlinePreviewAvailable, draftCount])
+  /** Full reload of the preview, keeping the reader where they were. */
+  const refreshPreview = useCallback(() => {
+    try {
+      previewRestoreScroll.current =
+        previewFrameRef.current?.contentWindow?.scrollY ?? 0
+    } catch {
+      /* frame not readable yet: start from the top */
+      previewRestoreScroll.current = 0
+    }
+    setPreviewKey((k) => k + 1)
+  }, [])
+
+  const handlePreviewLoaded = useCallback(() => {
+    const offset = previewRestoreScroll.current
+    if (!offset) return
+    previewRestoreScroll.current = 0
+    try {
+      previewFrameRef.current?.contentWindow?.scrollTo(0, offset)
+    } catch {
+      /* unreachable same-origin guard: nothing to restore across origins */
+    }
+  }, [])
 
   const handlePreview = useCallback(() => {
     const url = new URL(previewPath, window.location.origin)
@@ -1501,7 +1529,7 @@ export function ContentEditor() {
               </span>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setPreviewKey((k) => k + 1)}
+                  onClick={refreshPreview}
                   className="rounded-lg p-1.5 transition-colors hover:bg-white/5"
                   style={{ color: "var(--color-muted-foreground)" }}
                   title="רענון תצוגה"
@@ -1523,7 +1551,9 @@ export function ContentEditor() {
             <div className="flex-1 overflow-hidden">
               <iframe
                 key={previewKey}
+                ref={previewFrameRef}
                 src={previewUrl}
+                onLoad={handlePreviewLoaded}
                 className="w-full h-full border-0"
                 title="תצוגה מקדימה חיה"
               />

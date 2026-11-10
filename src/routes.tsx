@@ -151,7 +151,7 @@ const MaestroAdminApp = lazyPage(() => import("./cms/AdminApp").then(m => ({ def
 
 export const router = createBrowserRouter([
   {
-    // Main landing page: the "היא קודם" sales letter, standalone with
+    // Main landing page: the "לרדת לפרטים" sales letter, standalone with
 
     // no PublicRoot chrome, served directly at the site root.
 
