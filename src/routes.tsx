@@ -1,8 +1,9 @@
 import { Suspense, lazy, type ComponentType } from "react"
 
-import { createBrowserRouter, Navigate, useLocation } from "react-router"
+import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router"
 
 import PublicRoot from "./components/layout/PublicRoot"
+import ScrollToTop from "./components/ScrollToTop"
 import { useApp } from "./context/AppContext"
 import { can } from "./lib/permissions"
 
@@ -150,6 +151,14 @@ const AdminSecurityPage = lazyPage(
 const MaestroAdminApp = lazyPage(() => import("./cms/AdminApp").then(m => ({ default: m.AdminApp })))
 
 export const router = createBrowserRouter([
+  {
+    // A pathless root layout keeps the scroll reset above every route,
+    // including the standalone landing, auth, reader and admin branches.
+    Component: RootRoute,
+
+    errorElement: <RouteError />,
+
+    children: [
   {
     // Main landing page: the "לרדת לפרטים" sales letter, standalone with
 
@@ -399,7 +408,19 @@ export const router = createBrowserRouter([
     Component: CmsAuthorizationGate,
     errorElement: <RouteError />,
   },
+    ],
+  },
 ])
+
+/** Route table root: the only global mount point for route-level chrome. */
+function RootRoute() {
+  return (
+    <>
+      <ScrollToTop />
+      <Outlet />
+    </>
+  )
+}
 
 /** Route-level authorization wrapper for the CMS editor; see the route
  * comment above for the rule set. Renders the lazy admin app only after

@@ -2216,7 +2216,8 @@ body {
 }
 
 @media (max-width: 900px) {
-  html[data-cv-landing='true'] .a11y-launcher {
+  html[data-cv-landing='true'] .a11y-launcher,
+  html[data-cv-landing='true'] .a11y-toast {
     top: auto;
     bottom: calc(5.75rem + env(safe-area-inset-bottom));
     right: 0.75rem;
@@ -4878,7 +4879,8 @@ body {
   }
 }
 
-html[data-app-shell='true'] .a11y-launcher {
+html[data-app-shell='true'] .a11y-launcher,
+html[data-app-shell='true'] .a11y-toast {
   top: auto;
   bottom: calc(1.25rem + env(safe-area-inset-bottom));
   right: 0.75rem;
@@ -4997,15 +4999,134 @@ html[data-app-shell='true'] .a11y-launcher {
 }
 
 /* The reader pager owns the bottom edge, so lift the launcher above it. */
-body:has(.reader-bottom-bar) .a11y-launcher {
+body:has(.reader-bottom-bar) .a11y-launcher,
+body:has(.reader-bottom-bar) .a11y-toast {
   bottom: calc(5.75rem + env(safe-area-inset-bottom));
 }
 
 /* The desktop app rail owns the physical right edge in RTL. Keep the launcher
- * in the content's bottom-right corner instead of underneath the rail. */
+ * and its restore notice in the content's bottom-right corner instead of
+ * underneath the rail. */
 @media (min-width: 1024px) {
-  body:has(.app-sidebar) .a11y-launcher {
+  body:has(.app-sidebar) .a11y-launcher,
+  body:has(.app-sidebar) .a11y-toast {
     right: calc(var(--app-nav-width) + 1rem);
+  }
+}
+
+/* Temporary restore notice after the launcher is hidden. It is fixed, so it
+ * never joins the page's layout or moves the reader's scroll position, and it
+ * borrows the launcher's corner offsets on the pages that own the bottom edge. */
+.a11y-toast {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  left: auto;
+  z-index: 82;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: min(23rem, calc(100vw - 2rem));
+  padding: 0.95rem;
+  color: var(--color-card-foreground);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.55);
+  animation: a11y-toast-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.a11y-toast-icon {
+  display: grid;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  color: var(--color-primary);
+  background: rgba(196, 122, 67, 0.12);
+  border: 1px solid rgba(196, 122, 67, 0.3);
+  border-radius: 50%;
+}
+
+.a11y-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.a11y-toast-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.a11y-toast-message {
+  flex: 1;
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  color: var(--color-foreground);
+}
+
+.a11y-toast-close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  color: var(--color-muted-foreground);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.a11y-toast-close:hover {
+  color: var(--color-foreground);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='light'] .a11y-toast-close:hover {
+  background: rgba(34, 36, 47, 0.06);
+}
+
+.a11y-toast-restore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  margin-top: 0.65rem;
+  padding: 0.45rem 0.95rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-primary-foreground);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.a11y-toast-restore:hover {
+  filter: brightness(1.08);
+}
+
+@keyframes a11y-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .a11y-toast {
+    animation: none;
   }
 }
 
@@ -5290,10 +5411,12 @@ body:has(.reader-bottom-bar) .a11y-launcher {
   opacity: 0.8;
 }
 
-/* The floating control has no place on a printed page. */
+/* The floating control and its temporary notice have no place on a printed
+ * page. */
 @media print {
   .a11y-launcher,
-  .a11y-panel {
+  .a11y-panel,
+  .a11y-toast {
     display: none !important;
   }
 }

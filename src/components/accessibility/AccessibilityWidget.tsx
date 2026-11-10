@@ -50,6 +50,9 @@ export const ACCESSIBILITY_LAUNCHER_ID = "accessibility-launcher"
 const PANEL_TITLE_ID = "accessibility-panel-title"
 const VIEWPORT_MARGIN = 12
 const ANCHOR_GAP = 12
+const TOAST_DURATION = 4500
+const HIDDEN_MESSAGE =
+  "כפתור הנגישות הוסתר. ניתן להחזירו בכל עת דרך תחתית העמוד או באמצעות מקש Alt+A"
 
 const CONTRAST_OPTIONS: { value: AccessibilityContrast; label: string }[] = [
   { value: "normal", label: "רגילה" },
@@ -90,14 +93,17 @@ export default function AccessibilityWidget() {
     openPanel,
     closePanel,
     hideWidget,
+    showWidget,
   } = useAccessibility()
 
   const launcherRef = useRef<HTMLButtonElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const [panelStyle, setPanelStyle] = useState<CSSProperties | null>(null)
   const [message, setMessage] = useState("")
+  const [toastOpen, setToastOpen] = useState(false)
   const wasOpen = useRef(false)
   const focusMoved = useRef(false)
+  const focusLauncherOnRestore = useRef(false)
 
   /**
    * Anchors the panel next to the launcher: on the side of the button with
@@ -257,7 +263,10 @@ export default function AccessibilityWidget() {
 
     if (restoreTarget) {
       try {
-        restoreTarget.focus()
+        /* The footer restore control lives at the bottom of the page. Moving
+         * focus to it must not also move the reader's viewport, otherwise
+         * hiding the floating button looks like a page jump. */
+        restoreTarget.focus({ preventScroll: true })
       } catch {
         /* Nothing else to do; the live region below still reports the change. */
       }
@@ -268,12 +277,37 @@ export default function AccessibilityWidget() {
     if (main) {
       try {
         main.setAttribute("tabindex", "-1")
-        main.focus()
+        main.focus({ preventScroll: true })
       } catch {
         /* Ignore. */
       }
     }
   }, [panelOpen, opener])
+
+  /* The restore notice is deliberately temporary. Closing it manually or
+   * restoring the launcher clears this timer through the effect cleanup. */
+  useEffect(() => {
+    if (!toastOpen) return
+    const timer = window.setTimeout(
+      () => setToastOpen(false),
+      TOAST_DURATION,
+    )
+    return () => window.clearTimeout(timer)
+  }, [toastOpen])
+
+  /* The footer link and Alt+A are independent ways back. Either one makes the
+   * launcher visible again, so the notice has nothing left to offer. */
+  useEffect(() => {
+    if (!hidden) setToastOpen(false)
+  }, [hidden])
+
+  /* When the toast's own action restores the launcher, put focus back on it
+   * so a keyboard user lands on the control they just brought back. */
+  useEffect(() => {
+    if (hidden || !focusLauncherOnRestore.current) return
+    focusLauncherOnRestore.current = false
+    launcherRef.current?.focus({ preventScroll: true })
+  }, [hidden])
 
   const onFontScaleChange = (value: number) => {
     setFontScale(value)
@@ -292,9 +326,15 @@ export default function AccessibilityWidget() {
 
   const onHide = () => {
     hideWidget()
-    setMessage(
-      "כפתור הנגישות הוסתר. אפשר להחזיר אותו מהקישור בתחתית העמוד או במקשי Alt ו-A יחד.",
-    )
+    setToastOpen(true)
+    setMessage(HIDDEN_MESSAGE)
+  }
+
+  const onRestoreNow = () => {
+    focusLauncherOnRestore.current = true
+    showWidget()
+    setToastOpen(false)
+    setMessage("כפתור הנגישות הוחזר")
   }
 
   const contrastMode = preferences.contrast
@@ -333,6 +373,42 @@ export default function AccessibilityWidget() {
           <AccessibilityLauncherLogo className="h-10 w-10" />
         </button>
       )}
+
+      {toastOpen &&
+        createPortal(
+          <div
+            className="a11y-toast"
+            role="region"
+            aria-label="התראת נגישות"
+            dir="rtl"
+          >
+            <span className="a11y-toast-icon" aria-hidden="true">
+              <Icon name="accessibility" size={18} />
+            </span>
+            <div className="a11y-toast-content">
+              <div className="a11y-toast-head">
+                <p className="a11y-toast-message">{HIDDEN_MESSAGE}</p>
+                <button
+                  type="button"
+                  className="a11y-toast-close"
+                  aria-label="סגירת התראת הנגישות"
+                  title="סגירה"
+                  onClick={() => setToastOpen(false)}
+                >
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+              <button
+                type="button"
+                className="a11y-toast-restore"
+                onClick={onRestoreNow}
+              >
+                החזר עכשיו
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       {panelOpen &&
         createPortal(
