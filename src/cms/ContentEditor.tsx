@@ -19,7 +19,7 @@
  *  - Loading indicator
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent } from "react"
 import { useLocation, useNavigate, useSearchParams } from "react-router"
 import {
   GROUPS,
@@ -41,6 +41,11 @@ import {
   previewEnabled,
   PREVIEW_KEY,
 } from "@/content/store"
+import {
+  PREVIEW_HIGHLIGHT_MESSAGE,
+  isPreviewReadyMessage,
+  type PreviewHighlightMessage,
+} from "@/content/preview-bridge"
 import { maestro } from "@/maestro"
 import { useApp } from "@/context/AppContext"
 import { can } from "@/lib/permissions"
@@ -181,6 +186,9 @@ const inputProps = (dir = "rtl") => ({
 /** Stable id for a field's single control; keys contain dots, so CSS selectors must quote them. */
 const controlId = (key: string) => `field-${key}`
 
+/** The slice of a field definition the preview bridge needs. */
+type PreviewField = Pick<FieldDef, "key" | "label" | "type">
+
 /** Types that render exactly one focusable control, so the row label can point at it. */
 const LABELABLE: FieldType[] = [
   "text",
@@ -207,6 +215,161 @@ const TYPE_LABELS: Record<string, string> = {
   list: "פריטים",
   boolean: "כן/לא",
   select: "בחירה",
+}
+
+// ── Section grouping ──────────────────────────────────────────────────────────
+
+/** A logical block of the edited page, rendered as one accordion card. */
+type ContentSection = {
+  id: string
+  label: string
+  fields: FieldDef[]
+  anchor?: string
+  order: number
+}
+
+type SectionRule = {
+  id: string
+  label: string
+  /** First key segment(s) after the group id that belong to this section. */
+  parts: string[]
+  order: number
+  /** Optional selector for the matching block in the previewed page. */
+  anchor?: string
+}
+
+const LEGAL_SECTION_RULES: SectionRule[] = [
+  { id: "intro", label: "כותרת ופתיחה", parts: ["eyebrow", "title"], order: 10 },
+  { id: "sections", label: "סעיפי המסמך", parts: ["sections"], order: 20 },
+  { id: "body", label: "גוף המסמך", parts: ["body"], order: 30 },
+  { id: "seo", label: "SEO ושיתוף", parts: ["seo"], order: 40 },
+]
+
+/**
+ * Page-specific section layouts. Order here is deliberate: the editorial
+ * flow of the page, not the raw registry order, so Header/Footer lands at the
+ * bottom where an editor expects it instead of between hero and benefits.
+ */
+const SECTION_RULES: Record<string, SectionRule[]> = {
+  sales: [
+    { id: "hero", label: "Hero", parts: ["hero"], order: 10, anchor: ".cv-hero, #hero" },
+    { id: "benefits", label: "רצועת יתרונות", parts: ["benefits"], order: 20, anchor: ".cv-strip" },
+    { id: "about", label: "על הספר", parts: ["about"], order: 30, anchor: "#about" },
+    { id: "quote", label: "ציטוט", parts: ["quote"], order: 40, anchor: ".cv-quote-band" },
+    { id: "inside", label: "מה בפנים", parts: ["inside", "features"], order: 50, anchor: "#inside" },
+    { id: "audience", label: "למי זה מתאים", parts: ["audience"], order: 60, anchor: "#inside" },
+    { id: "offer", label: "רכישה ומחיר", parts: ["offer"], order: 70, anchor: "#purchase" },
+    { id: "faq", label: "שאלות נפוצות", parts: ["faq"], order: 80, anchor: "#faq" },
+    { id: "exit", label: "פופאפ יציאה", parts: ["exit"], order: 90, anchor: "[role='dialog']" },
+    { id: "seo", label: "SEO ושיתוף", parts: ["seo"], order: 100 },
+    { id: "headerFooter", label: "הדר ופוטר", parts: ["header", "footer", "stickyCta"], order: 110, anchor: "header" },
+  ],
+  global: [
+    { id: "branding", label: "מיתוג", parts: ["logo", "favicon", "brand", "tagline"], order: 10, anchor: "header" },
+    { id: "nav", label: "ניווט ראשי", parts: ["nav"], order: 20, anchor: "header" },
+    { id: "footer", label: "פוטר", parts: ["footerTagline", "footerCopyright"], order: 30, anchor: "footer" },
+    { id: "seo", label: "SEO ושיתוף", parts: ["seo"], order: 40 },
+  ],
+  store: [
+    { id: "hero", label: "Hero", parts: ["hero"], order: 10, anchor: ".cv-hero, #hero" },
+    { id: "empty", label: "מצב ריק", parts: ["empty"], order: 20 },
+    { id: "seo", label: "SEO ושיתוף", parts: ["seo"], order: 30 },
+  ],
+  library: [
+    { id: "general", label: "כללי", parts: ["title"], order: 10 },
+    { id: "empty", label: "מצב ריק", parts: ["empty"], order: 20 },
+    { id: "seo", label: "SEO ושיתוף", parts: ["seo"], order: 30 },
+  ],
+  support: [
+    { id: "hero", label: "Hero", parts: ["hero"], order: 10, anchor: ".cv-hero, #hero" },
+    { id: "success", label: "הודעת הצלחה", parts: ["success"], order: 20 },
+    { id: "seo", label: "SEO ושיתוף", parts: ["seo"], order: 30 },
+  ],
+  announcements: [
+    { id: "announcements", label: "באנר הודעות", parts: ["*"], order: 10, anchor: ".announcement-banner" },
+  ],
+  system: [
+    { id: "system", label: "הודעות מערכת", parts: ["*"], order: 10 },
+  ],
+  terms: LEGAL_SECTION_RULES,
+  privacy: LEGAL_SECTION_RULES,
+  cancellation: LEGAL_SECTION_RULES,
+}
+
+const PART_LABELS: Record<string, string> = {
+  hero: "Hero",
+  benefits: "רצועת יתרונות",
+  about: "על הספר",
+  quote: "ציטוט",
+  inside: "מה בפנים",
+  features: "נושאים בתוכן",
+  audience: "למי זה מתאים",
+  offer: "רכישה ומחיר",
+  faq: "שאלות נפוצות",
+  exit: "פופאפ יציאה",
+  header: "הדר",
+  footer: "פוטר",
+  stickyCta: "סרגל נייד",
+  seo: "SEO ושיתוף",
+  empty: "מצב ריק",
+  success: "הודעת הצלחה",
+  sections: "סעיפים",
+  body: "גוף המסמך",
+  title: "כללי",
+  eyebrow: "פתיחה",
+  brand: "מיתוג",
+  nav: "ניווט",
+}
+
+/** The first key segment after the group id: `sales.hero.headline` → `hero`. */
+function fieldPart(field: FieldDef): string {
+  const prefix = `${field.group}.`
+  const tail = field.key.startsWith(prefix)
+    ? field.key.slice(prefix.length)
+    : field.key
+  return tail.split(".")[0] ?? ""
+}
+
+/** "Hero - שורת פתיחה" → "Hero"; used when no explicit rule exists. */
+function labelFromField(field: FieldDef): string {
+  return field.label.split(/\s[-–]\s/)[0]?.trim() || field.label
+}
+
+function buildSections(group: string, fields: FieldDef[]): ContentSection[] {
+  const rules = SECTION_RULES[group] ?? []
+  const sections = new Map<string, ContentSection>()
+  let fallbackOrder = 500
+  for (const field of fields) {
+    const part = fieldPart(field)
+    const rule = rules.find(
+      (r) => r.parts.includes("*") || r.parts.includes(part),
+    )
+    const id = rule?.id ?? part
+    const existing = sections.get(id)
+    if (existing) {
+      existing.fields.push(field)
+    } else {
+      sections.set(id, {
+        id,
+        label: rule?.label ?? PART_LABELS[part] ?? labelFromField(field),
+        fields: [field],
+        anchor: rule?.anchor,
+        order: rule?.order ?? fallbackOrder++,
+      })
+    }
+  }
+  return [...sections.values()].sort((a, b) => a.order - b.order)
+}
+
+/** A field counts as filled when any meaningful value exists at any depth. */
+function isFilledValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false
+  if (typeof value === "string") return value.trim().length > 0
+  if (Array.isArray(value)) return value.some(isFilledValue)
+  if (typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).some(isFilledValue)
+  }
+  return true
 }
 
 // ── Field editor ──────────────────────────────────────────────────────────────
@@ -771,6 +934,11 @@ export function ContentEditor() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showSeo, setShowSeo] = useState(false)
   const [showModified, setShowModified] = useState(false)
+  const [onlyUnfilled, setOnlyUnfilled] = useState(false)
+  /* Accordion state, keyed by stable section ids. */
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [showPreview, setShowPreview] = useState(true)
   /* Bumped only by the explicit refresh button. Draft edits must NOT remount
    * the frame: the preview document is same-origin and subscribed to the
@@ -780,6 +948,12 @@ export function ContentEditor() {
   /* Offset captured before a manual refresh, re-applied once the fresh
    * document finishes loading. Left at 0 for ordinary loads. */
   const previewRestoreScroll = useRef(0)
+  /* What the pointer and keyboard focus are on, mirrored into the preview.
+   * Hover wins while both are set; leaving the field returns to focus. */
+  const hoveredPreviewField = useRef<PreviewField | null>(null)
+  const focusedPreviewField = useRef<PreviewField | null>(null)
+  /* The section whose expansion was mirrored, so collapsing it can clear. */
+  const lastPreviewedSection = useRef<string | null>(null)
   const draftRef = useRef(draft)
   draftRef.current = draft
   /* A ref, not only state, so a double click or a keyboard shortcut cannot
@@ -828,15 +1002,7 @@ export function ContentEditor() {
 
   const draftCount = Object.keys(draft).length
 
-  const groupFields = useMemo(() => {
-    const fields = fieldsOfGroup(activeGroup)
-    if (!searchQuery) return fields
-    const q = searchQuery.toLowerCase()
-    return fields.filter(
-      (f) =>
-        f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q),
-    )
-  }, [activeGroup, searchQuery])
+  const groupFields = useMemo(() => fieldsOfGroup(activeGroup), [activeGroup])
 
   const handleChange = useCallback(
     (key: string, value: unknown) => {
@@ -993,6 +1159,145 @@ export function ContentEditor() {
     }
   }, [])
 
+  /** Single gate for everything sent into the preview frame. */
+  const postPreviewMessage = useCallback(
+    (message: PreviewHighlightMessage) => {
+      if (!showPreview || !inlinePreviewAvailable) return
+      const frame = previewFrameRef.current
+      if (!frame?.contentWindow) return
+      try {
+        frame.contentWindow.postMessage(message, window.location.origin)
+      } catch {
+        /* frame navigated or became unreadable: nothing to highlight */
+      }
+    },
+    [inlinePreviewAvailable, showPreview],
+  )
+
+  /** Posts the active field to the same-origin preview, or clears it. */
+  const postPreviewHighlight = useCallback(
+    (active: PreviewField | null, reveal: boolean) => {
+      if (!active) {
+        postPreviewMessage({ type: PREVIEW_HIGHLIGHT_MESSAGE, key: null })
+        return
+      }
+      /* The draft wins over saved/default for the same reason the preview
+       * shows it: the outline must match the value on screen. */
+      const value =
+        active.key in draftRef.current
+          ? draftRef.current[active.key]
+          : getRaw(active.key)
+      postPreviewMessage({
+        type: PREVIEW_HIGHLIGHT_MESSAGE,
+        key: active.key,
+        label: active.label,
+        kind: active.type,
+        value,
+        reveal,
+      })
+    },
+    [postPreviewMessage],
+  )
+
+  /** A section was opened: outline its block, not one of its values. */
+  const postPreviewSection = useCallback(
+    (section: ContentSection) => {
+      postPreviewMessage({
+        type: PREVIEW_HIGHLIGHT_MESSAGE,
+        key: `${activeGroup}.${section.id}`,
+        label: section.label,
+        kind: "section",
+        anchor: section.anchor,
+        reveal: true,
+      })
+    },
+    [activeGroup, postPreviewMessage],
+  )
+
+  const syncPreviewHighlight = useCallback(
+    (reveal = false) => {
+      postPreviewHighlight(
+        hoveredPreviewField.current ?? focusedPreviewField.current,
+        reveal,
+      )
+    },
+    [postPreviewHighlight],
+  )
+
+  /* A fresh preview document announces itself once its highlighter mounts;
+   * replay the active field so a refresh or preview toggle keeps the outline. */
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      const frame = previewFrameRef.current
+      if (!frame?.contentWindow || event.source !== frame.contentWindow) return
+      if (!isPreviewReadyMessage(event.data)) return
+      syncPreviewHighlight(false)
+    }
+    window.addEventListener("message", handler)
+    return () => window.removeEventListener("message", handler)
+  }, [syncPreviewHighlight])
+
+  /* Edits can re-render or replace the matched element. Re-resolve after the
+   * typing settles instead of scanning the preview DOM on every keystroke. */
+  useEffect(() => {
+    if (!hoveredPreviewField.current && !focusedPreviewField.current) return
+    const timer = window.setTimeout(() => syncPreviewHighlight(false), 200)
+    return () => window.clearTimeout(timer)
+  }, [draft, syncPreviewHighlight])
+
+  const previousPreviewGroup = useRef(activeGroup)
+  useEffect(() => {
+    if (previousPreviewGroup.current === activeGroup) return
+    previousPreviewGroup.current = activeGroup
+    hoveredPreviewField.current = null
+    focusedPreviewField.current = null
+    lastPreviewedSection.current = null
+    postPreviewHighlight(null, false)
+  }, [activeGroup, postPreviewHighlight])
+
+  const previewHoverStart = useCallback(
+    (field: FieldDef) => {
+      hoveredPreviewField.current = {
+        key: field.key,
+        label: field.label,
+        type: field.type,
+      }
+      /* Hover also reveals: the whole point is to find the element in the
+       * preview, and reveal() is a no-op when it is already on screen. */
+      syncPreviewHighlight(true)
+    },
+    [syncPreviewHighlight],
+  )
+
+  const previewHoverEnd = useCallback(() => {
+    if (!hoveredPreviewField.current) return
+    hoveredPreviewField.current = null
+    syncPreviewHighlight(false)
+  }, [syncPreviewHighlight])
+
+  const previewFocusStart = useCallback(
+    (field: FieldDef) => {
+      focusedPreviewField.current = {
+        key: field.key,
+        label: field.label,
+        type: field.type,
+      }
+      syncPreviewHighlight(true)
+    },
+    [syncPreviewHighlight],
+  )
+
+  const previewFocusEnd = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      const next = event.relatedTarget
+      if (next instanceof Node && event.currentTarget.contains(next)) return
+      focusedPreviewField.current = null
+      syncPreviewHighlight(false)
+    },
+    [syncPreviewHighlight],
+  )
+
   const handlePreview = useCallback(() => {
     const url = new URL(previewPath, window.location.origin)
     url.searchParams.set("maestro-preview", "1")
@@ -1025,9 +1330,135 @@ export function ContentEditor() {
     () => FIELDS.filter((f) => isModified(f.key)).length,
     [isModified],
   )
-  const visibleFields = showModified
-    ? groupFields.filter((f) => isModified(f.key))
-    : groupFields
+  const sections = useMemo(
+    () => buildSections(activeGroup, groupFields),
+    [activeGroup, groupFields],
+  )
+
+  const normalizedQuery = searchQuery.trim().toLowerCase()
+
+  const visibleSections = useMemo(
+    () =>
+      sections
+        .map((section) => {
+          /* A section-title match keeps the whole section together; otherwise
+           * only the fields whose label or key match remain. */
+          const titleMatch =
+            normalizedQuery.length > 0 &&
+            section.label.toLowerCase().includes(normalizedQuery)
+          let fields = section.fields
+          if (normalizedQuery) {
+            fields = titleMatch
+              ? fields
+              : fields.filter(
+                  (f) =>
+                    f.label.toLowerCase().includes(normalizedQuery) ||
+                    f.key.toLowerCase().includes(normalizedQuery),
+                )
+          }
+          if (showModified) fields = fields.filter((f) => isModified(f.key))
+          if (onlyUnfilled) {
+            fields = fields.filter(
+              (f) =>
+                !isFilledValue(
+                  f.key in draft ? draft[f.key] : getRaw(f.key),
+                ),
+            )
+          }
+          return { ...section, fields }
+        })
+        .filter((section) => section.fields.length > 0),
+    [sections, normalizedQuery, showModified, onlyUnfilled, draft, isModified],
+  )
+
+  const sectionStats = useMemo(() => {
+    const stats = new Map<string, { filled: number; total: number }>()
+    for (const section of sections) {
+      const filled = section.fields.filter((f) =>
+        isFilledValue(f.key in draft ? draft[f.key] : getRaw(f.key)),
+      ).length
+      stats.set(section.id, { filled, total: section.fields.length })
+    }
+    return stats
+  }, [sections, draft])
+
+  const firstSectionId = sections[0]?.id
+
+  /* Default: one open section. A group switch always starts there, so the
+   * editor never opens on a wall of expanded forms. */
+  useEffect(() => {
+    setExpandedSections(new Set(firstSectionId ? [firstSectionId] : []))
+  }, [activeGroup, firstSectionId])
+
+  /* Search reveals what it found; it never leaves matches hidden. */
+  useEffect(() => {
+    if (!normalizedQuery) return
+    const matches = sections
+      .filter(
+        (section) =>
+          section.label.toLowerCase().includes(normalizedQuery) ||
+          section.fields.some(
+            (f) =>
+              f.label.toLowerCase().includes(normalizedQuery) ||
+              f.key.toLowerCase().includes(normalizedQuery),
+          ),
+      )
+      .map((section) => section.id)
+    if (!matches.length) return
+    setExpandedSections((prev) => {
+      const next = new Set(prev)
+      for (const id of matches) next.add(id)
+      return next
+    })
+  }, [normalizedQuery, sections])
+
+  /* Empty-only mode is a to-do list: open every section that still needs work. */
+  useEffect(() => {
+    if (!onlyUnfilled) return
+    const unfinished = sections
+      .filter((section) =>
+        section.fields.some(
+          (f) =>
+            !isFilledValue(
+              f.key in draftRef.current
+                ? draftRef.current[f.key]
+                : getRaw(f.key),
+            ),
+        ),
+      )
+      .map((section) => section.id)
+    setExpandedSections(new Set(unfinished))
+  }, [onlyUnfilled, sections])
+
+  const expandAllSections = useCallback(() => {
+    setExpandedSections(new Set(visibleSections.map((s) => s.id)))
+  }, [visibleSections])
+
+  const collapseAllSections = useCallback(() => {
+    setExpandedSections(new Set())
+    lastPreviewedSection.current = null
+    postPreviewHighlight(null, false)
+  }, [postPreviewHighlight])
+
+  const toggleSection = useCallback(
+    (section: ContentSection) => {
+      const open = !expandedSections.has(section.id)
+      setExpandedSections((prev) => {
+        const next = new Set(prev)
+        if (open) next.add(section.id)
+        else next.delete(section.id)
+        return next
+      })
+      if (open) {
+        lastPreviewedSection.current = section.id
+        postPreviewSection(section)
+      } else if (lastPreviewedSection.current === section.id) {
+        lastPreviewedSection.current = null
+        postPreviewHighlight(null, false)
+      }
+    },
+    [expandedSections, postPreviewHighlight, postPreviewSection],
+  )
   /* The editing-context header replaces the old floating context bar. The
    * group label, save state and route back stay visible while the editor
    * columns keep their own independent scroll. */
@@ -1107,10 +1538,10 @@ export function ContentEditor() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="חיפוש שדות…"
+                placeholder="חיפוש סעיפים ושדות…"
                 className="w-full rounded-lg py-2 pe-3 ps-8 text-xs"
                 dir="rtl"
-                aria-label="חיפוש שדות בקבוצה הפעילה"
+                aria-label="חיפוש סעיפים ושדות בקבוצה הפעילה"
               />
               <span
                 className="absolute top-1/2 -translate-y-1/2 start-2.5 pointer-events-none"
@@ -1246,7 +1677,66 @@ export function ContentEditor() {
                 </span>
               )}
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
+              <div
+                className="flex items-center overflow-hidden rounded-lg"
+                style={{
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-card)",
+                }}
+              >
+                <button
+                  onClick={expandAllSections}
+                  className="px-2.5 py-1.5 text-xs transition-colors hover:bg-[var(--color-secondary)]"
+                  style={{ color: "var(--color-muted-foreground)" }}
+                  title="הרחבת כל הסעיפים"
+                >
+                  הרחב הכל
+                </button>
+                <span
+                  className="h-4 w-px"
+                  style={{ background: "var(--color-border)" }}
+                  aria-hidden="true"
+                />
+                <button
+                  onClick={collapseAllSections}
+                  className="px-2.5 py-1.5 text-xs transition-colors hover:bg-[var(--color-secondary)]"
+                  style={{ color: "var(--color-muted-foreground)" }}
+                  title="כיווץ כל הסעיפים"
+                >
+                  כווץ הכל
+                </button>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={onlyUnfilled}
+                onClick={() => setOnlyUnfilled((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors"
+                style={{
+                  border: "1px solid var(--color-border)",
+                  background: onlyUnfilled
+                    ? "rgba(222,154,96,0.12)"
+                    : "var(--color-card)",
+                  color: onlyUnfilled
+                    ? "var(--color-primary)"
+                    : "var(--color-muted-foreground)",
+                }}
+                title="הצגת שדות שעדיין לא מולאו"
+              >
+                <span
+                  className={`flex h-4 w-7 items-center rounded-full p-0.5 transition-colors ${onlyUnfilled ? "justify-end" : "justify-start"}`}
+                  style={{
+                    background: onlyUnfilled
+                      ? "var(--color-primary)"
+                      : "var(--color-border)",
+                  }}
+                  aria-hidden="true"
+                >
+                  <span className="h-3 w-3 rounded-full bg-white shadow-sm" />
+                </span>
+                הצג שדות ריקים בלבד
+              </button>
               <button
                 onClick={() => setShowModified(!showModified)}
                 className={btnBase}
@@ -1401,109 +1891,266 @@ export function ContentEditor() {
             </p>
           )}
 
-          <div className="grid grid-cols-1 gap-3 3xl:grid-cols-2 4xl:grid-cols-3">
-            {visibleFields.map((field) => {
-              const modified = isModified(field.key)
-              const spansFull = ["textarea", "body", "rich", "md", "strings", "list"].includes(field.type)
-              return (
-                <div
-                  key={field.key}
-                  className={`rounded-xl p-4${spansFull ? " col-span-full" : ""}`}
-                  style={{
-                    ...cardStyle,
-                    borderColor: modified
-                      ? "rgba(222,154,96,0.3)"
-                      : "var(--color-border)",
-                  }}
-                >
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <label
-                      className="flex min-w-0 items-center gap-2 text-sm font-medium"
-                      style={{ color: "var(--color-foreground)" }}
-                      htmlFor={
-                        LABELABLE.includes(field.type)
-                          ? controlId(field.key)
-                          : undefined
-                      }
-                    >
-                      {field.label}
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded-md"
-                        style={{
-                          background: "var(--color-secondary)",
-                          color: "var(--color-muted-foreground)",
-                          opacity: 0.7,
-                        }}
-                      >
-                        {TYPE_LABELS[field.type] ?? field.type}
-                      </span>
-                      {modified && (
-                        <span
-                          style={{ color: "var(--color-primary)" }}
-                          title="שונה מברירת המחדל"
-                        >
-                          <Icon name="pen" size={10} />
-                        </span>
-                      )}
-                    </label>
-                    {modified && (
-                      <button
-                        onClick={() => handleResetField(field.key)}
-                        disabled={resettingKey !== null}
-                        className="text-xs transition-opacity hover:opacity-70 disabled:opacity-40"
-                        style={{ color: "var(--color-muted-foreground)" }}
-                        title="שחזור לברירת המחדל"
-                      >
-                        {resettingKey === field.key
-                          ? "משחזר…"
-                          : "שחזר ברירת מחדל"}
-                      </button>
-                    )}
-                  </div>
-                  {field.hint && (
-                    <p
-                      className="mb-1.5 text-xs"
-                      style={{
-                        color: "var(--color-muted-foreground)",
-                        opacity: 0.6,
-                      }}
-                    >
-                      {field.hint}
-                    </p>
-                  )}
-                  <FieldEditor
-                    field={field}
-                    value={
-                      field.key in draft ? draft[field.key] : getRaw(field.key)
-                    }
-                    onChange={(v) => handleChange(field.key, v)}
-                  />
-                  <p
-                    className="mt-2 text-[10px] font-mono"
-                    dir="ltr"
+          {visibleSections.length > 0 ? (
+            <div className="space-y-3">
+              {visibleSections.map((section) => {
+                const open = expandedSections.has(section.id)
+                const stats = sectionStats.get(section.id) ?? {
+                  filled: 0,
+                  total: section.fields.length,
+                }
+                const percent =
+                  stats.total > 0
+                    ? Math.round((stats.filled / stats.total) * 100)
+                    : 0
+                const complete =
+                  stats.total > 0 && stats.filled === stats.total
+                const sectionModified = section.fields.filter((f) =>
+                  isModified(f.key),
+                ).length
+                return (
+                  <section
+                    key={section.id}
+                    className="overflow-hidden rounded-xl border"
                     style={{
-                      color: "var(--color-muted-foreground)",
-                      opacity: 0.3,
+                      ...cardStyle,
+                      borderColor: open
+                        ? "rgba(222,154,96,0.28)"
+                        : "var(--color-border)",
                     }}
+                    aria-labelledby={`cms-section-title-${section.id}`}
                   >
-                    {field.key}
-                  </p>
-                </div>
-              )
-            })}
-            {!visibleFields.length && (
-              <p
-                className="col-span-full text-sm"
-                style={{ color: "var(--color-muted-foreground)" }}
-              >
-                {showModified
-                  ? "אין שדות ששונו בקבוצה זו."
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(section)}
+                      aria-expanded={open}
+                      aria-controls={`cms-section-body-${section.id}`}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-[var(--color-secondary)]"
+                    >
+                      <Icon
+                        name={open ? "chevronDown" : "chevronRight"}
+                        size={14}
+                        style={{
+                          color: "var(--color-muted-foreground)",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span
+                            id={`cms-section-title-${section.id}`}
+                            className="truncate text-sm font-semibold"
+                            style={{ color: "var(--color-foreground)" }}
+                          >
+                            {section.label}
+                          </span>
+                          {sectionModified > 0 && (
+                            <span
+                              className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px]"
+                              style={{
+                                background: "rgba(222,154,96,0.12)",
+                                color: "var(--color-primary)",
+                              }}
+                              title={`${sectionModified} שדות ששונו`}
+                            >
+                              <Icon name="pen" size={9} />
+                              {sectionModified}
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className="mt-0.5 block truncate text-[10px] font-mono"
+                          dir="ltr"
+                          style={{
+                            color: "var(--color-muted-foreground)",
+                            opacity: 0.35,
+                          }}
+                        >
+                          {`${activeGroup}.${section.id}`}
+                        </span>
+                      </span>
+                      <span
+                        className="flex shrink-0 items-center gap-2"
+                        title={`${stats.filled} מתוך ${stats.total} שדות מלאים`}
+                      >
+                        <span
+                          className="hidden h-1 w-12 overflow-hidden rounded-full sm:block"
+                          style={{ background: "var(--color-secondary)" }}
+                          aria-hidden="true"
+                        >
+                          <span
+                            className="block h-full rounded-full transition-all"
+                            style={{
+                              width: `${percent}%`,
+                              background: complete
+                                ? "var(--color-success)"
+                                : "var(--color-primary)",
+                              opacity: complete ? 0.85 : 0.55,
+                            }}
+                          />
+                        </span>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px] font-medium tabular-nums"
+                          style={{
+                            background: complete
+                              ? "rgba(79,122,79,0.12)"
+                              : "var(--color-secondary)",
+                            color: complete
+                              ? "var(--color-success)"
+                              : "var(--color-muted-foreground)",
+                          }}
+                          aria-label={`${stats.filled} מתוך ${stats.total} שדות מלאים`}
+                        >
+                          {stats.filled}/{stats.total}
+                        </span>
+                      </span>
+                    </button>
+
+                    {open && (
+                      <div
+                        id={`cms-section-body-${section.id}`}
+                        className="border-t p-3 md:p-4"
+                        style={{ borderColor: "var(--color-border)" }}
+                      >
+                        <div className="grid grid-cols-1 gap-3 3xl:grid-cols-2 4xl:grid-cols-3">
+                          {section.fields.map((field) => {
+                            const modified = isModified(field.key)
+                            const spansFull = [
+                              "textarea",
+                              "body",
+                              "rich",
+                              "md",
+                              "strings",
+                              "list",
+                            ].includes(field.type)
+                            return (
+                              <div
+                                key={field.key}
+                                onMouseEnter={() => previewHoverStart(field)}
+                                onMouseLeave={previewHoverEnd}
+                                onFocusCapture={() => previewFocusStart(field)}
+                                onBlurCapture={previewFocusEnd}
+                                className={`rounded-lg p-3.5 transition-colors${spansFull ? " col-span-full" : ""}`}
+                                style={{
+                                  background: "var(--color-secondary)",
+                                  border: `1px solid ${
+                                    modified
+                                      ? "rgba(222,154,96,0.3)"
+                                      : "var(--color-border)"
+                                  }`,
+                                }}
+                              >
+                                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                  <label
+                                    className="flex min-w-0 items-center gap-2 text-[13px] font-semibold"
+                                    style={{ color: "var(--color-foreground)" }}
+                                    htmlFor={
+                                      LABELABLE.includes(field.type)
+                                        ? controlId(field.key)
+                                        : undefined
+                                    }
+                                  >
+                                    {field.label}
+                                    <span
+                                      className="rounded-md px-1.5 py-0.5 text-[9px] font-normal tracking-wide"
+                                      style={{
+                                        background:
+                                          "color-mix(in srgb, var(--color-background) 60%, transparent)",
+                                        color:
+                                          "var(--color-muted-foreground)",
+                                        opacity: 0.65,
+                                      }}
+                                    >
+                                      {TYPE_LABELS[field.type] ?? field.type}
+                                    </span>
+                                    {modified && (
+                                      <span
+                                        style={{ color: "var(--color-primary)" }}
+                                        title="שונה מברירת המחדל"
+                                      >
+                                        <Icon name="pen" size={10} />
+                                      </span>
+                                    )}
+                                  </label>
+                                  {modified && (
+                                    <button
+                                      onClick={() =>
+                                        handleResetField(field.key)
+                                      }
+                                      disabled={resettingKey !== null}
+                                      className="text-[11px] transition-opacity hover:opacity-70 disabled:opacity-40"
+                                      style={{
+                                        color: "var(--color-muted-foreground)",
+                                      }}
+                                      title="שחזור לברירת המחדל"
+                                    >
+                                      {resettingKey === field.key
+                                        ? "משחזר…"
+                                        : "שחזר ברירת מחדל"}
+                                    </button>
+                                  )}
+                                </div>
+                                {field.hint && (
+                                  <p
+                                    className="mb-1.5 text-[11px] leading-5"
+                                    style={{
+                                      color: "var(--color-muted-foreground)",
+                                      opacity: 0.6,
+                                    }}
+                                  >
+                                    {field.hint}
+                                  </p>
+                                )}
+                                <FieldEditor
+                                  field={field}
+                                  value={
+                                    field.key in draft
+                                      ? draft[field.key]
+                                      : getRaw(field.key)
+                                  }
+                                  onChange={(v) =>
+                                    handleChange(field.key, v)
+                                  }
+                                />
+                                <p
+                                  className="mt-2 truncate text-[10px] font-mono"
+                                  dir="ltr"
+                                  title={field.key}
+                                  style={{
+                                    color: "var(--color-muted-foreground)",
+                                    opacity: 0.28,
+                                  }}
+                                >
+                                  {field.key}
+                                </p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )
+              })}
+            </div>
+          ) : (
+            <div
+              className="rounded-xl border p-6 text-center text-sm"
+              style={{
+                borderColor: "var(--color-border)",
+                background: "var(--color-card)",
+                color: "var(--color-muted-foreground)",
+              }}
+            >
+              {showModified
+                ? "אין שדות ששונו בקבוצה זו."
+                : onlyUnfilled
+                  ? "כל השדות בקבוצה הזו מלאים."
                   : searchQuery
-                    ? "לא נמצאו שדות תואמים."
+                    ? "לא נמצאו שדות או סעיפים תואמים."
                     : "אין שדות לקבוצה זו."}
-              </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Live preview pane - desktop only; tablets use the new-tab

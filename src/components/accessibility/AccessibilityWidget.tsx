@@ -19,17 +19,17 @@ import AccessibilityLauncherLogo from "./AccessibilityLauncherLogo"
 /**
  * The single accessibility interface for the site.
  *
- * A compact control attached to the inline-end edge of the viewport (the left
- * edge in this RTL layout), vertically centred so it clears the fixed header,
- * the checkout summary and the reader's bottom bar instead of covering a
- * control at either end of the screen.
+ * A compact control pinned to the bottom-right corner of the viewport, where
+ * it stays out of the reading column. Page-specific CSS lifts it above the
+ * landing page's sticky buy bar and the reader's pager when those are present.
  *
- * The panel is a non-modal popup anchored beside that button:
+ * The panel is a non-modal popup anchored above that button and aligned to its
+ * right edge, so it always opens upward and inward:
  *  - it is a portal to `document.body`, so no transformed or clipped ancestor
  *    can cut it off or trap it - the same reason `Modal.tsx` portals;
  *  - its position is measured from the button's own rect on open and on every
- *    resize, so it opens on whichever side has room and is clamped inside the
- *    viewport at any zoom level, rather than being pinned to fixed pixels;
+ *    resize, so its bottom clears the launcher and its right edge stays inside
+ *    the viewport at any zoom level, rather than being pinned to fixed pixels;
  *  - it carries dialog semantics with a heading for its accessible name, moves
  *    focus into itself, cycles Tab inside itself, closes on Escape or on a
  *    click outside, and hands focus back to whatever opened it.
@@ -115,56 +115,32 @@ export default function AccessibilityWidget() {
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
     const width = Math.min(measured.width, viewportWidth - VIEWPORT_MARGIN * 2)
-    const height = Math.min(
-      measured.height,
+    const availableAbove = Math.max(
+      0,
+      anchor.top - ANCHOR_GAP - VIEWPORT_MARGIN,
+    )
+    /* Cap the panel to the room above the launcher. Its body already scrolls,
+     * so a short landscape viewport gets a shorter sheet instead of one that
+     * runs off the bottom (or overlaps the button it belongs to). */
+    const maxHeight = Math.min(
       viewportHeight - VIEWPORT_MARGIN * 2,
+      Math.max(availableAbove, 180),
     )
+    const height = Math.min(measured.height, maxHeight)
 
-    const roomAfter = viewportWidth - anchor.right
-    const roomBefore = anchor.left
-
-    let left: number
-    if (roomAfter >= width + ANCHOR_GAP) left = anchor.right + ANCHOR_GAP
-    else if (roomBefore >= width + ANCHOR_GAP)
-      left = anchor.left - ANCHOR_GAP - width
-    else left = (viewportWidth - width) / 2
-
-    left = Math.min(
-      Math.max(left, VIEWPORT_MARGIN),
-      Math.max(VIEWPORT_MARGIN, viewportWidth - width - VIEWPORT_MARGIN),
+    /* Right-align the panel to the launcher and grow it leftward, into the
+     * page. The clamp keeps the same right edge on narrow screens. */
+    const maxLeft = Math.max(
+      VIEWPORT_MARGIN,
+      viewportWidth - width - VIEWPORT_MARGIN,
     )
-
-    // An overlap with the launcher has to be total or none. A panel that
-    // merely steps over the button hides it without being able to stand in
-    // for it: nothing remains visible to click. When the clamped placement
-    // lands in that in-between band, snap it so the panel either covers the
-    // launcher completely or clears it entirely.
-    const coversLauncher = (x: number) =>
-      x <= anchor.left && x + width >= anchor.right
-    const clearsLauncher = (x: number) =>
-      x + width <= anchor.left || x >= anchor.right
-    if (!coversLauncher(left) && !clearsLauncher(left)) {
-      const maxLeft = Math.max(
-        VIEWPORT_MARGIN,
-        viewportWidth - width - VIEWPORT_MARGIN,
-      )
-      const coverFrom = Math.max(VIEWPORT_MARGIN, anchor.right - width)
-      const coverTo = Math.min(maxLeft, anchor.left)
-      const clearFrom = Math.max(VIEWPORT_MARGIN, anchor.right + ANCHOR_GAP)
-      const clearTo = Math.min(maxLeft, anchor.left - ANCHOR_GAP - width)
-      if (coverFrom <= coverTo)
-        left = Math.min(Math.max(left, coverFrom), coverTo)
-      else if (clearFrom <= clearTo)
-        left = Math.min(Math.max(left, clearFrom), clearTo)
-    }
-
-    const anchorCenter = anchor.top + anchor.height / 2
-    const top = Math.min(
-      Math.max(anchorCenter - height / 2, VIEWPORT_MARGIN),
-      Math.max(VIEWPORT_MARGIN, viewportHeight - height - VIEWPORT_MARGIN),
+    const left = Math.min(
+      Math.max(anchor.right - width, VIEWPORT_MARGIN),
+      maxLeft,
     )
+    const top = Math.max(VIEWPORT_MARGIN, anchor.top - ANCHOR_GAP - height)
 
-    setPanelStyle({ top, left })
+    setPanelStyle({ top, left, maxHeight })
   }, [])
 
   /* Measure once the panel is in the DOM, and again whenever the viewport or

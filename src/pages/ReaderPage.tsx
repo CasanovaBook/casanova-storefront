@@ -1753,7 +1753,7 @@ export default function ReaderPage() {
       {/* Bottom navigation bar */}
       {canStep && !locked && (
         <div
-          className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t"
+          className="safe-bottom reader-bottom-bar fixed inset-x-0 bottom-0 z-50 border-t"
           style={{ background: panelBg, borderColor }}
         >
           <PageNavigator
