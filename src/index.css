@@ -5585,6 +5585,16 @@ body:has(.reader-bottom-bar) .a11y-toast {
   border-color: #ffffff;
   box-shadow: none;
 }
+
+/* The portrait is deliberately multiplied into its cream plate in the normal
+ * palette. High contrast turns that plate black, which would multiply every
+ * pixel of the portrait to black as well. Content images are exempt from the
+ * blend so the artwork stays visible; the white frame still carries contrast. */
+:root[data-a11y-contrast='high'] .cv-about-photo img {
+  mix-blend-mode: normal;
+  filter: none;
+  opacity: 1;
+}
 :root[data-a11y-contrast='high'] .cv-btn--outline-ink:hover {
   background: #000000;
 }
