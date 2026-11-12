@@ -7,120 +7,84 @@
  *
  * The banner distinguishes between:
  *  - Essential storage (session, checkout) - always active
- *  - Functional storage (accessibility prefs, theme) - user can opt out
- *  - Analytics (Google Analytics, if configured) - requires explicit consent
+ *  - Functional storage (accessibility prefs, theme) - opt-in only
+ *  - Analytics storage (anonymous usage measurement) - opt-in only
  *
  * Consent state is stored in localStorage under a versioned key.
  * ───────────────────────────────────────────────────────────── */
 
 import { useEffect, useState } from "react"
 import Icon from "./icons"
-
-const CONSENT_KEY = "casanova_cookie_consent_v1"
-
-interface ConsentState {
-  essential: true // always true, cannot be declined
-  functional: boolean
-  analytics: boolean
-  timestamp: string
-}
-
-const DEFAULT_CONSENT: ConsentState = {
-  essential: true,
-  functional: true,
-  analytics: false,
-  timestamp: "",
-}
-
-function readConsent(): ConsentState | null {
-  try {
-    const raw = localStorage.getItem(CONSENT_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<ConsentState>
-    if (!parsed || typeof parsed.functional !== "boolean") return null
-    return {
-      essential: true,
-      functional: parsed.functional ?? true,
-      analytics: parsed.analytics ?? false,
-      timestamp: parsed.timestamp ?? "",
-    }
-  } catch {
-    return null
-  }
-}
-
-function writeConsent(state: ConsentState): void {
-  try {
-    localStorage.setItem(CONSENT_KEY, JSON.stringify(state))
-  } catch {
-    /* Storage unavailable - consent stays in memory only */
-  }
-}
-
-/**
- * Returns the current consent state. If no consent has been given yet,
- * returns null (which triggers the banner).
- */
-export function getConsent(): ConsentState | null {
-  return readConsent()
-}
-
-/**
- * Returns true if analytics storage is permitted by the user's consent.
- */
-export function isAnalyticsAllowed(): boolean {
-  return readConsent()?.analytics === true
-}
+import {
+  CONSENT_KEY,
+  CONSENT_OPEN_EVENT,
+  CONSENT_VERSION,
+  DEFAULT_CONSENT,
+  clearFunctionalStorage,
+  readConsent,
+  writeConsent,
+  type ConsentState,
+} from "../lib/consent"
 
 export default function CookieConsent() {
-  const [show, setShow] = useState(false)
-  const [consent, setConsent] = useState<ConsentState | null>(null)
+  /* Read synchronously so the banner is present on the first paint and the
+   * customization view always starts from a real, editable record. This is
+   * what keeps `consent` non-null for a first-time visitor, so both optional
+   * checkboxes are unchecked and fully interactive. */
+  const [consent, setConsent] = useState<ConsentState>(
+    () => readConsent() ?? DEFAULT_CONSENT,
+  )
+  const [show, setShow] = useState(() => readConsent() === null)
   const [detailed, setDetailed] = useState(false)
 
   useEffect(() => {
-    const existing = readConsent()
-    if (existing) {
-      setConsent(existing)
-    } else {
+    const sync = () => setConsent(readConsent() ?? DEFAULT_CONSENT)
+
+    const open = () => {
+      sync()
+      setDetailed(true)
       setShow(true)
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== CONSENT_KEY) return
+
+      const next = readConsent()
+      setConsent(next ?? DEFAULT_CONSENT)
+      setShow(next === null)
+    }
+
+    window.addEventListener(CONSENT_OPEN_EVENT, open)
+    window.addEventListener("storage", onStorage)
+
+    return () => {
+      window.removeEventListener(CONSENT_OPEN_EVENT, open)
+      window.removeEventListener("storage", onStorage)
     }
   }, [])
 
-  const handleAcceptAll = () => {
+  const saveConsent = (functional: boolean, analytics: boolean) => {
+    /* Declining the functional tier must remove what it already stored. */
+    if (!functional) clearFunctionalStorage()
+
     const state: ConsentState = {
+      version: CONSENT_VERSION,
       essential: true,
-      functional: true,
-      analytics: true,
+      functional,
+      analytics,
       timestamp: new Date().toISOString(),
     }
+
     writeConsent(state)
     setConsent(state)
     setShow(false)
+    setDetailed(false)
   }
 
-  const handleEssentialOnly = () => {
-    const state: ConsentState = {
-      essential: true,
-      functional: false,
-      analytics: false,
-      timestamp: new Date().toISOString(),
-    }
-    writeConsent(state)
-    setConsent(state)
-    setShow(false)
-  }
-
-  const handleSavePreferences = () => {
-    const state: ConsentState = {
-      essential: true,
-      functional: consent?.functional ?? true,
-      analytics: consent?.analytics ?? false,
-      timestamp: new Date().toISOString(),
-    }
-    writeConsent(state)
-    setConsent(state)
-    setShow(false)
-  }
+  const handleAcceptAll = () => saveConsent(true, true)
+  const handleEssentialOnly = () => saveConsent(false, false)
+  const handleSavePreferences = () =>
+    saveConsent(consent.functional, consent.analytics)
 
   if (!show) return null
 
@@ -139,10 +103,9 @@ export default function CookieConsent() {
 
         <div id="cookie-consent-desc" className="text-sm mb-3 space-y-2" style={{ color: "#ded4c6" }}>
           <p>
-            האתר משתמש ב-<strong>localStorage</strong> חיוני לתפעול (התחברות
-            ורכישה) ובהעדפות אופציונליות (נגישות וערכת נושא). אין שימוש
-            ב-<strong>Cookies של צד שלישי</strong> למעט Google Analytics, אם
-            הופעל, ולא נאסף מידע לפרסום ללא הסכמתך.
+            האתר משתמש ב-<strong>localStorage</strong> חיוני לתפעול
+            (התחברות ורכישה) ובהעדפות אופציונליות (נגישות, ערכת נושא
+            ואנליטיקה). העדפות אופציונליות נשמרות רק לאחר אישורך.
           </p>
           {detailed && (
             <div className="consent-detail mt-3 space-y-3 p-3 rounded-lg">
@@ -159,14 +122,19 @@ export default function CookieConsent() {
                 <label className="flex items-start gap-3 cursor-pointer flex-1">
                   <input
                     type="checkbox"
-                    checked={consent?.functional ?? true}
-                    onChange={(e) => setConsent((prev) => prev ? { ...prev, functional: e.target.checked } : prev)}
+                    checked={consent.functional}
+                    onChange={(event) =>
+                      setConsent((prev) => ({
+                        ...prev,
+                        functional: event.target.checked,
+                      }))
+                    }
                     className="consent-checkbox mt-1 w-4 h-4 flex-shrink-0"
                   />
                   <div>
                     <p className="font-semibold text-sm">פונקציונלי</p>
                     <p className="consent-muted text-xs">
-                      העדפות נגישות, ערכת נושא, מטמון תוכן. משפר את חוויית השימוש.
+                      העדפות נגישות וערכת נושא. משפר את חוויית השימוש.
                     </p>
                   </div>
                 </label>
@@ -175,14 +143,19 @@ export default function CookieConsent() {
                 <label className="flex items-start gap-3 cursor-pointer flex-1">
                   <input
                     type="checkbox"
-                    checked={consent?.analytics ?? false}
-                    onChange={(e) => setConsent((prev) => prev ? { ...prev, analytics: e.target.checked } : prev)}
+                    checked={consent.analytics}
+                    onChange={(event) =>
+                      setConsent((prev) => ({
+                        ...prev,
+                        analytics: event.target.checked,
+                      }))
+                    }
                     className="consent-checkbox mt-1 w-4 h-4 flex-shrink-0"
                   />
                   <div>
-                    <p className="font-semibold text-sm">אנליטיקה (Google Analytics)</p>
+                    <p className="font-semibold text-sm">אנליטיקה</p>
                     <p className="consent-muted text-xs">
-                      סטטיסטיקה אנונימית על ביקורים באתר. מופעל רק אם האתר מפעיל את השירות.
+                      מדידת שימוש אנונימית לשיפור האתר. כבויה כברירת מחדל.
                     </p>
                   </div>
                 </label>

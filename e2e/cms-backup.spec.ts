@@ -34,6 +34,7 @@ async function openBackupPage(
       localStorage.setItem(
         "casanova_cookie_consent_v1",
         JSON.stringify({
+          version: 1,
           essential: true,
           functional: true,
           analytics: false,

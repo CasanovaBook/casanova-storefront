@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from "react"
 
+import { isFunctionalAllowed } from "../lib/consent"
+
 /**
  * Accessibility preferences for the whole storefront.
  *
@@ -128,6 +130,9 @@ function loadState(): StoredState {
   if (typeof window === "undefined") {
     return { preferences: { ...DEFAULT_PREFERENCES }, hidden: false }
   }
+  if (!isFunctionalAllowed()) {
+    return { preferences: { ...DEFAULT_PREFERENCES }, hidden: false }
+  }
   try {
     for (const key of LEGACY_STORAGE_KEYS) window.localStorage.removeItem(key)
   } catch {
@@ -217,6 +222,13 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
+      /* Functional storage is opt-in only. Declining it also removes what an
+       * earlier session may have written. */
+      if (!isFunctionalAllowed()) {
+        window.localStorage.removeItem(ACCESSIBILITY_STORAGE_KEY)
+        return
+      }
+
       /* All-defaults state is not a preference: remove the key instead of
        * rewriting the defaults, so the reset button leaves no stored state
        * behind (and a manually cleared storage stays cleared). */

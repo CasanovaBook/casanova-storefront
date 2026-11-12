@@ -28,6 +28,7 @@ async function seed(page: Page, content: Seed | null) {
       setIfNew(
         "casanova_cookie_consent_v1",
         JSON.stringify({
+          version: 1,
           essential: true,
           functional: true,
           analytics: false,

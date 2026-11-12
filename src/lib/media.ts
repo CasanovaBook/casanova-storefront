@@ -21,13 +21,13 @@ export function toEmbedUrl(url: string): string | null {
     /(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]{6,})/,
   )
 
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}`
+  if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}`
 
   // Vimeo: vimeo.com/ID
 
   const vm = url.match(/vimeo\.com\/(\d+)/)
 
-  if (vm) return `https://player.vimeo.com/video/${vm[1]}`
+  if (vm) return `https://player.vimeo.com/video/${vm[1]}?dnt=1`
 
   return null
 }

@@ -101,6 +101,7 @@ async function openAuditPage(page: Page) {
       localStorage.setItem(
         "casanova_cookie_consent_v1",
         JSON.stringify({
+          version: 1,
           essential: true,
           functional: true,
           analytics: false,
@@ -294,6 +295,7 @@ test.describe("Maestro CMS audit log", () => {
       setIfNew(
         "casanova_cookie_consent_v1",
         JSON.stringify({
+          version: 1,
           essential: true,
           functional: true,
           analytics: false,

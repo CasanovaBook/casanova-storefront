@@ -1370,6 +1370,7 @@ function ProductModal({
                           title={link.label}
                           className="w-full aspect-video block"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          referrerPolicy="no-referrer"
                           allowFullScreen
                           style={{ border: 0 }}
                         />

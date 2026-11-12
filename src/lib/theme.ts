@@ -1,3 +1,5 @@
+import { isFunctionalAllowed } from "./consent"
+
 export type Theme = "light" | "dark"
 
 export const THEME_STORAGE_KEY = "casanova_theme"
@@ -8,6 +10,7 @@ export function isTheme(value: unknown): value is Theme {
 
 export function getStoredTheme(): Theme | null {
   if (typeof window === "undefined") return null
+  if (!isFunctionalAllowed()) return null
 
   try {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY)
@@ -52,6 +55,7 @@ export function applyTheme(theme: Theme): void {
 
 export function storeTheme(theme: Theme): void {
   if (typeof window === "undefined") return
+  if (!isFunctionalAllowed()) return
 
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme)

@@ -12,11 +12,25 @@
     <meta name="rating" content="adult" />
     <script>
       (function () {
-        var stored = null
+        var consent = null
         try {
-          stored = window.localStorage.getItem('casanova_theme')
+          consent = JSON.parse(
+            window.localStorage.getItem('casanova_cookie_consent_v1') || 'null'
+          )
         } catch (error) {
-          /* Storage can be blocked; fall through to the OS preference. */
+          /* Unreadable or blocked storage: treat as no consent. */
+        }
+
+        var mayStorePreferences = !!(
+          consent && consent.version === 1 && consent.functional === true
+        )
+        var stored = null
+        if (mayStorePreferences) {
+          try {
+            stored = window.localStorage.getItem('casanova_theme')
+          } catch (error) {
+            /* Storage can be blocked; fall through to the OS preference. */
+          }
         }
 
         var theme = stored === 'dark' || stored === 'light' ? stored : null

@@ -318,6 +318,7 @@ export default function LandingPage() {
                 title={s.title}
                 className="absolute inset-0 w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                referrerPolicy="no-referrer"
                 allowFullScreen
               />
             </div>

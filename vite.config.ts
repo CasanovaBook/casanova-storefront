@@ -107,15 +107,6 @@ type FigmaSiteConfiguration = {
   openGraph?: {
     image?: string
   }
-  analytics?: {
-    googleAnalyticsId?: string
-  }
-  customScripts?: {
-    headStart?: string
-    headEnd?: string
-    bodyStart?: string
-    bodyEnd?: string
-  }
   accessibility?: {
     addBypassLinks?: boolean
   }
@@ -145,13 +136,6 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
   const favicon = config.icons?.icon ?? ""
   const socialImage = config.openGraph?.image ?? ""
   const language = sanitizeHtmlValue(config.language) || "en"
-  const googleAnalyticsId = sanitizeHtmlValue(
-    config.analytics?.googleAnalyticsId,
-  )
-  const headStart = config.customScripts?.headStart ?? ""
-  const headEnd = config.customScripts?.headEnd ?? ""
-  const bodyStart = config.customScripts?.bodyStart ?? ""
-  const bodyEnd = config.customScripts?.bodyEnd ?? ""
   const robotsTxt =
     config.robots?.index === false ? "User-agent: *\nDisallow: /\n" : ""
 
@@ -185,10 +169,6 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
           "figma:title",
           escapeHtmlText(title),
         )
-        result = replaceHtmlCommentSlot(result, "figma:head-start", headStart)
-        result = replaceHtmlCommentSlot(result, "figma:head-end", headEnd)
-        result = replaceHtmlCommentSlot(result, "figma:body-start", bodyStart)
-        result = replaceHtmlCommentSlot(result, "figma:body-end", bodyEnd)
 
         const tags: HtmlTagDescriptor[] = []
         if (description) {
@@ -241,29 +221,6 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
             {
               tag: "meta",
               attrs: { name: "twitter:image", content: socialImage },
-              injectTo: "head",
-            },
-          )
-        }
-
-        if (googleAnalyticsId) {
-          tags.push(
-            {
-              tag: "script",
-              attrs: {
-                async: true,
-                src: `https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`,
-              },
-              injectTo: "head",
-            },
-            {
-              tag: "script",
-              children: `
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', ${JSON.stringify(googleAnalyticsId)});
-`,
               injectTo: "head",
             },
           )
@@ -378,16 +335,16 @@ function figmaContentSecurityPolicy(isDevServer: boolean): Plugin {
            * nonce cannot cover an element application code creates itself. */
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "font-src 'self' https://fonts.gstatic.com",
-          /* Covers and gallery images come from the CMS and may point at any
-           * https origin, so img-src cannot be narrowed to 'self' without
-           * breaking assets an administrator uploaded. */
-          "img-src 'self' data: blob: https:",
-          "media-src 'self' blob: https:",
+          /* CMS uploads live in Supabase Storage. Allowing every https origin
+           * would turn a pasted image URL into a tracking pixel, so only
+           * same-origin assets, Supabase Storage and local previews load. */
+          "img-src 'self' data: blob: https://*.supabase.co",
+          "media-src 'self' blob: https://*.supabase.co",
           /* The reader <iframe> loads the PDF from a Supabase Storage signed
            * URL, which is cross-origin, so frame-src has to name *.supabase.co
-           * or the viewer is blocked before it renders. YouTube/Vimeo stay for
-           * the CMS media embeds. */
-          "frame-src 'self' https://*.supabase.co https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://challenges.cloudflare.com",
+           * or the viewer is blocked before it renders. Video embeds use
+           * YouTube's privacy-enhanced host and Vimeo's DNT mode. */
+          "frame-src 'self' https://*.supabase.co https://www.youtube-nocookie.com https://player.vimeo.com https://challenges.cloudflare.com",
           /* Supabase is reached over HTTPS for PostgREST/Auth/Storage and over
            * WSS for Realtime, so connect-src has to name *.supabase.co or every
            * query the client issues is blocked before it leaves the browser.
@@ -399,10 +356,9 @@ function figmaContentSecurityPolicy(isDevServer: boolean): Plugin {
           ...(isDevServer ? [] : ["upgrade-insecure-requests"]),
         ]
 
-        /* site.json analytics adds an inline gtag snippet (covered by the
-         * hashes above) and an external googletagmanager.com script, which
-         * script-src must name explicitly. Nothing else in the app loads
-         * third-party script. */
+        /* No analytics or tag-manager snippet is injected into the document.
+         * script-src and connect-src therefore stay limited to the app, the
+         * Supabase backend and Turnstile. */
         return [
           {
             tag: "meta",

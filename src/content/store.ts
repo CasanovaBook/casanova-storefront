@@ -10,6 +10,7 @@ import { useSyncExternalStore } from "react";
 import { maestro } from "@/maestro";
 import { FIELD_MAP } from "./registry";
 import { normalizeHyphens } from "../lib/text";
+import { isFunctionalAllowed } from "../lib/consent";
 
 type Values = Record<string, unknown>;
 
@@ -27,7 +28,8 @@ const readJson = (storage: Storage | undefined, key: string): Values => {
   }
 };
 
-let saved: Values = typeof localStorage !== "undefined" ? readJson(localStorage, CACHE_KEY) : {};
+const mayCache = typeof localStorage !== "undefined" && isFunctionalAllowed();
+let saved: Values = mayCache ? readJson(localStorage, CACHE_KEY) : {};
 let draft: Values = typeof localStorage !== "undefined" ? readJson(localStorage, DRAFT_KEY) : {};
 let version = 0;
 const listeners = new Set<() => void>();
@@ -87,7 +89,9 @@ export async function loadContent(): Promise<void> {
   const all = await maestro.content.all();
   saved = all;
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(all));
+    if (isFunctionalAllowed()) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(all));
+    }
   } catch {
     /* ignore */
   }
@@ -100,7 +104,9 @@ export function applySaved(values: Values, removedKeys: string[] = []): void {
   for (const k of removedKeys) delete next[k];
   saved = next;
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(saved));
+    if (isFunctionalAllowed()) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(saved));
+    }
   } catch {
     /* ignore */
   }
@@ -125,7 +131,7 @@ if (typeof window !== "undefined") {
       draft = readJson(localStorage, DRAFT_KEY);
       emit();
     }
-    if (e.key === CACHE_KEY) {
+    if (e.key === CACHE_KEY && isFunctionalAllowed()) {
       saved = readJson(localStorage, CACHE_KEY);
       emit();
     }
