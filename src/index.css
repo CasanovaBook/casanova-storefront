@@ -2754,6 +2754,13 @@ body {
 
 .consent-checkbox {
   accent-color: #c47a43;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.consent-checkbox:focus-visible {
+  outline: 2px solid #de9a60;
+  outline-offset: 3px;
 }
 .gold-rule {
   display: block;
@@ -4334,6 +4341,52 @@ body {
   color: #f4eee4;
 }
 
+.footer-cookie-settings {
+  justify-self: start;
+  min-height: 1.5rem;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  font: inherit;
+  line-height: 1.5;
+  text-align: start;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.footer-cookie-settings:hover {
+  color: #f4eee4;
+}
+
+.footer-cookie-settings:focus-visible {
+  outline: 2px solid #de9a60;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.site-footer-legal .footer-cookie-settings {
+  font-size: 0.76rem;
+}
+
+.cv-footer-legal .footer-cookie-settings {
+  color: var(--cv-on-dark-soft);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.cv-footer-legal .footer-cookie-settings:hover {
+  color: var(--cv-cream);
+}
+
+:root[data-theme='light'] .cv-footer-legal .footer-cookie-settings {
+  color: var(--cv-ink-soft);
+}
+
+:root[data-theme='light'] .cv-footer-legal .footer-cookie-settings:hover {
+  color: var(--cv-ink);
+}
+
 .site-footer-bottom {
   display: flex;
   flex-wrap: wrap;
@@ -5659,9 +5712,15 @@ body:has(.reader-bottom-bar) .a11y-toast {
 :root[data-a11y-contrast='high'] .site-footer-tagline,
 :root[data-a11y-contrast='high'] .site-footer-nav a,
 :root[data-a11y-contrast='high'] .site-footer-legal a,
+:root[data-a11y-contrast='high'] .site-footer-legal .footer-cookie-settings,
 :root[data-a11y-contrast='high'] .site-footer-utility .a11y-footer-link,
-:root[data-a11y-contrast='high'] .site-footer-bottom {
+:root[data-a11y-contrast='high'] .site-footer-bottom,
+:root[data-a11y-contrast='high'] .cv-footer-legal .footer-cookie-settings {
   color: #ffffff;
+}
+
+:root[data-a11y-contrast='high'] .footer-cookie-settings:hover {
+  color: #ffe066;
 }
 :root[data-a11y-contrast='high'] .site-footer-heading,
 :root[data-a11y-contrast='high'] .site-footer-age {

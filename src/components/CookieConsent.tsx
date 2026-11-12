@@ -8,7 +8,6 @@
  * The banner distinguishes between:
  *  - Essential storage (session, checkout) - always active
  *  - Functional storage (accessibility prefs, theme) - opt-in only
- *  - Analytics storage (anonymous usage measurement) - opt-in only
  *
  * Consent state is stored in localStorage under a versioned key.
  * ───────────────────────────────────────────────────────────── */
@@ -29,8 +28,8 @@ import {
 export default function CookieConsent() {
   /* Read synchronously so the banner is present on the first paint and the
    * customization view always starts from a real, editable record. This is
-   * what keeps `consent` non-null for a first-time visitor, so both optional
-   * checkboxes are unchecked and fully interactive. */
+   * what keeps `consent` non-null for a first-time visitor, so the optional
+   * checkbox is unchecked and fully interactive. */
   const [consent, setConsent] = useState<ConsentState>(
     () => readConsent() ?? DEFAULT_CONSENT,
   )
@@ -63,7 +62,7 @@ export default function CookieConsent() {
     }
   }, [])
 
-  const saveConsent = (functional: boolean, analytics: boolean) => {
+  const saveConsent = (functional: boolean) => {
     /* Declining the functional tier must remove what it already stored. */
     if (!functional) clearFunctionalStorage()
 
@@ -71,7 +70,6 @@ export default function CookieConsent() {
       version: CONSENT_VERSION,
       essential: true,
       functional,
-      analytics,
       timestamp: new Date().toISOString(),
     }
 
@@ -81,10 +79,9 @@ export default function CookieConsent() {
     setDetailed(false)
   }
 
-  const handleAcceptAll = () => saveConsent(true, true)
-  const handleEssentialOnly = () => saveConsent(false, false)
-  const handleSavePreferences = () =>
-    saveConsent(consent.functional, consent.analytics)
+  const handleAcceptAll = () => saveConsent(true)
+  const handleEssentialOnly = () => saveConsent(false)
+  const handleSavePreferences = () => saveConsent(consent.functional)
 
   if (!show) return null
 
@@ -103,9 +100,9 @@ export default function CookieConsent() {
 
         <div id="cookie-consent-desc" className="text-sm mb-3 space-y-2" style={{ color: "#ded4c6" }}>
           <p>
-            האתר משתמש ב-<strong>localStorage</strong> חיוני לתפעול
-            (התחברות ורכישה) ובהעדפות אופציונליות (נגישות, ערכת נושא
-            ואנליטיקה). העדפות אופציונליות נשמרות רק לאחר אישורך.
+            האתר משתמש באחסון מקומי חיוני לתפעולו (התחברות ורכישה)
+            ובהעדפות אופציונליות (נגישות וערכת נושא). העדפות אופציונליות
+            נשמרות רק לאחר אישורך.
           </p>
           {detailed && (
             <div className="consent-detail mt-3 space-y-3 p-3 rounded-lg">
@@ -114,50 +111,42 @@ export default function CookieConsent() {
                 <div>
                   <p className="font-semibold text-sm">חיוני (תמיד פעיל)</p>
                   <p className="consent-muted text-xs">
-                    סשן התחברות, שמירת רכישה במהלך אימות דוא"ל. לא ניתן לבטל.
+                    שמירת מצב ההתחברות והשלמת הרכישה, כולל אימות כתובת
+                    הדוא״ל. לא ניתן לבטל.
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <label className="flex items-start gap-3 cursor-pointer flex-1">
+                <label
+                  htmlFor="consent-functional"
+                  className="flex min-h-[44px] w-full cursor-pointer items-start gap-3 rounded-md py-1 flex-1"
+                >
                   <input
+                    id="consent-functional"
+                    name="functional"
                     type="checkbox"
                     checked={consent.functional}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked
                       setConsent((prev) => ({
                         ...prev,
-                        functional: event.target.checked,
+                        functional: checked,
                       }))
-                    }
+                    }}
+                    aria-describedby="consent-functional-desc"
                     className="consent-checkbox mt-1 w-4 h-4 flex-shrink-0"
                   />
-                  <div>
-                    <p className="font-semibold text-sm">פונקציונלי</p>
-                    <p className="consent-muted text-xs">
-                      העדפות נגישות וערכת נושא. משפר את חוויית השימוש.
-                    </p>
-                  </div>
-                </label>
-              </div>
-              <div className="flex items-start gap-3">
-                <label className="flex items-start gap-3 cursor-pointer flex-1">
-                  <input
-                    type="checkbox"
-                    checked={consent.analytics}
-                    onChange={(event) =>
-                      setConsent((prev) => ({
-                        ...prev,
-                        analytics: event.target.checked,
-                      }))
-                    }
-                    className="consent-checkbox mt-1 w-4 h-4 flex-shrink-0"
-                  />
-                  <div>
-                    <p className="font-semibold text-sm">אנליטיקה</p>
-                    <p className="consent-muted text-xs">
-                      מדידת שימוש אנונימית לשיפור האתר. כבויה כברירת מחדל.
-                    </p>
-                  </div>
+                  <span>
+                    <span className="block font-semibold text-sm">
+                      פונקציונלי
+                    </span>
+                    <span
+                      id="consent-functional-desc"
+                      className="consent-muted block text-xs"
+                    >
+                      שמירת העדפות נגישות וערכת נושא לשיפור חוויית השימוש.
+                    </span>
+                  </span>
                 </label>
               </div>
             </div>

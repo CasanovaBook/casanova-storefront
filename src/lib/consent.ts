@@ -2,13 +2,13 @@
  * Cookie & localStorage consent storage.
  *
  * One source of truth for the banner, the theme/accessibility gates and
- * any future consumer. Consent is strict opt-in: optional categories are
- * false until the visitor affirmatively turns them on.
+ * any future consumer. Consent is strict opt-in: the optional category is
+ * false until the visitor affirmatively turns it on.
  * ───────────────────────────────────────────────────────────── */
 
 export const CONSENT_KEY = "casanova_cookie_consent_v1"
 
-/** Bump when the stored shape or the category list changes. */
+/** Bump only when older records can no longer be honoured safely. */
 export const CONSENT_VERSION = 1
 
 export const CONSENT_CHANGED_EVENT = "casanova:consent-changed"
@@ -18,7 +18,6 @@ export interface ConsentState {
   version: number
   essential: true
   functional: boolean
-  analytics: boolean
   timestamp: string
 }
 
@@ -26,7 +25,6 @@ export const DEFAULT_CONSENT: ConsentState = {
   version: CONSENT_VERSION,
   essential: true,
   functional: false,
-  analytics: false,
   timestamp: "",
 }
 
@@ -44,13 +42,12 @@ export function readConsent(): ConsentState | null {
 
     if (value.version !== CONSENT_VERSION) return null
     if (typeof value.functional !== "boolean") return null
-    if (typeof value.analytics !== "boolean") return null
 
+    /* The retired analytics flag in older records is intentionally ignored. */
     return {
       version: CONSENT_VERSION,
       essential: true,
       functional: value.functional,
-      analytics: value.analytics,
       timestamp: typeof value.timestamp === "string" ? value.timestamp : "",
     }
   } catch {
@@ -73,11 +70,6 @@ export function writeConsent(state: ConsentState): void {
 /** True only after the visitor explicitly opted in to functional storage. */
 export function isFunctionalAllowed(): boolean {
   return readConsent()?.functional === true
-}
-
-/** True only after the visitor explicitly opted in to analytics storage. */
-export function isAnalyticsAllowed(): boolean {
-  return readConsent()?.analytics === true
 }
 
 /** Keys owned by the functional tier; never include auth or checkout keys. */

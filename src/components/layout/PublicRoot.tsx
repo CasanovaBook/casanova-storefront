@@ -5,6 +5,7 @@ import { MARKETING_NAV_LINKS } from "../../content/site-nav"
 import AccessibilityFooterLink from "../accessibility/AccessibilityFooterLink"
 import AnnouncementBanner from "../AnnouncementBanner"
 import { loadContent } from "../../content/store"
+import { openConsentPreferences } from "../../lib/consent"
 import useFavicon from "../useFavicon"
 import SiteHeader from "./SiteHeader"
 
@@ -80,6 +81,13 @@ export default function PublicRoot() {
               <h2 className="site-footer-heading">מידע ותקנון</h2>
               <Link to="/terms-and-conditions">תנאי שימוש</Link>
               <Link to="/privacy-policy">מדיניות פרטיות</Link>
+              <button
+                type="button"
+                className="footer-cookie-settings"
+                onClick={openConsentPreferences}
+              >
+                הגדרות עוגיות
+              </button>
               <Link to="/cancellation-and-refund-policy">
                 ביטול והחזרים
               </Link>

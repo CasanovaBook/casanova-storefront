@@ -59,7 +59,6 @@ async function readConsent(page: Page): Promise<{
   version?: number
   essential?: boolean
   functional?: boolean
-  analytics?: boolean
   timestamp?: string
 } | null> {
   return page.evaluate((key) => {
@@ -177,7 +176,7 @@ test("Accept All enables local functional storage and still sends no tracker req
   await expectOnlyLocalKeys(page)
 })
 
-test("first visit presents both optional categories unchecked and interactive", async ({
+test("first visit presents one optional category unchecked and supports withdrawal from the footer", async ({
   page,
 }) => {
   await page.goto("/privacy-policy")
@@ -187,31 +186,41 @@ test("first visit presents both optional categories unchecked and interactive", 
 
   await page.getByRole("button", { name: "התאמה אישית" }).click()
 
-  const checkboxes = page.getByRole("checkbox")
-  await expect(checkboxes).toHaveCount(2)
-  await expect(checkboxes.nth(0)).not.toBeChecked()
-  await expect(checkboxes.nth(1)).not.toBeChecked()
+  const checkbox = page.getByRole("checkbox")
+  await expect(checkbox).toHaveCount(1)
+  await expect(checkbox).not.toBeChecked()
 
-  await checkboxes.nth(0).check()
-  await expect(checkboxes.nth(0)).toBeChecked()
+  await checkbox.check()
+  await expect(checkbox).toBeChecked()
+  await checkbox.uncheck()
+  await expect(checkbox).not.toBeChecked()
+  await checkbox.check()
 
-  await checkboxes.nth(1).check()
-  await expect(checkboxes.nth(1)).toBeChecked()
+  await page.getByRole("button", { name: "שמור העדפות" }).click()
+  await expect(
+    page.getByRole("button", { name: "שמור העדפות" }),
+  ).toHaveCount(0)
 
-  await checkboxes.nth(0).uncheck()
-  await expect(checkboxes.nth(0)).not.toBeChecked()
+  const accepted = await readConsent(page)
+  expect(accepted).toMatchObject({
+    version: 1,
+    essential: true,
+    functional: true,
+  })
+  expect(accepted).not.toHaveProperty("analytics")
 
-  await checkboxes.nth(0).check()
-  await checkboxes.nth(1).uncheck()
-  await expect(checkboxes.nth(1)).not.toBeChecked()
+  await page.getByRole("button", { name: "הגדרות עוגיות" }).click()
+  await expect(
+    page.getByRole("heading", { name: "פרטיות ואחסון נתונים" }),
+  ).toBeVisible()
+  await expect(page.getByRole("checkbox")).toBeChecked()
 
-  await checkboxes.nth(1).check()
+  await page.getByRole("checkbox").uncheck()
   await page.getByRole("button", { name: "שמור העדפות" }).click()
 
   expect(await readConsent(page)).toMatchObject({
     version: 1,
     essential: true,
-    functional: true,
-    analytics: true,
+    functional: false,
   })
 })

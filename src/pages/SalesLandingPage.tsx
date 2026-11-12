@@ -22,6 +22,7 @@ import SiteHeader from "../components/layout/SiteHeader"
 
 import { loadContent } from "../content/store"
 import { MARKETING_NAV_LINKS } from "../content/site-nav"
+import { openConsentPreferences } from "../lib/consent"
 
 import { getDb, mutate } from "../data/db"
 
@@ -1172,6 +1173,13 @@ export default function SalesLandingPage() {
               <h2 className="cv-footer-heading">מידע ותקנון</h2>
               <Link to="/terms-and-conditions">תנאי שימוש</Link>
               <Link to="/privacy-policy">מדיניות פרטיות</Link>
+              <button
+                type="button"
+                className="footer-cookie-settings"
+                onClick={openConsentPreferences}
+              >
+                הגדרות עוגיות
+              </button>
               <Link to="/cancellation-and-refund-policy">ביטול והחזרים</Link>
               <Link to="/accessibility-statement">הצהרת נגישות</Link>
               <Link to="/support">תמיכה</Link>
