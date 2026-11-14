@@ -417,7 +417,15 @@ function OrderDetailModal({
 }
 
 export default function AdminOrdersPage() {
-  const { orders, invoices, adminRole, lifetime } = useAdmin()
+  const {
+    orders,
+    invoices,
+    adminRole,
+    lifetime,
+    ordersLoading,
+    ordersError,
+    refreshOrders,
+  } = useAdmin()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("ALL")
   const [productFilter, setProductFilter] = useState("ALL")
@@ -589,12 +597,36 @@ export default function AdminOrdersPage() {
         </div>
       </section>
 
-      {orders.length === 0 ? (
+      {ordersError && (
+        <div className="mb-4">
+          <Alert tone="error" title="טעינת ההזמנות נכשלה">
+            <p>{ordersError}</p>
+            <button
+              type="button"
+              className="app-btn-secondary mt-2"
+              onClick={() => void refreshOrders()}
+              disabled={ordersLoading}
+            >
+              {ordersLoading ? "טוען…" : "ניסיון חוזר"}
+            </button>
+          </Alert>
+        </div>
+      )}
+
+      {ordersLoading && orders.length === 0 ? (
         <EmptyState
-          icon="receipt"
-          title="אין עדיין הזמנות."
-          description="הזמנות שיושלמו בקופה יופיעו כאן עם סטטוס התשלום והחשבונית."
+          icon="refresh"
+          title="טוען הזמנות…"
+          description="קורא את ההזמנות משרת הנתונים."
         />
+      ) : orders.length === 0 ? (
+        ordersError ? null : (
+          <EmptyState
+            icon="receipt"
+            title="אין עדיין הזמנות."
+            description="הזמנות שיושלמו בקופה יופיעו כאן עם סטטוס התשלום והחשבונית."
+          />
+        )
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="search"

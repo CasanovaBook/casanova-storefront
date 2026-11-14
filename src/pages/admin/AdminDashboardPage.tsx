@@ -182,6 +182,9 @@ export default function AdminDashboardPage() {
     adminRole,
     revenueFor,
     lifetime,
+    ordersLoading,
+    ordersError,
+    refreshOrders,
   } = useAdmin()
   const [preset, setPreset] = useState<RangePreset>("MONTH")
 
@@ -295,6 +298,28 @@ export default function AdminDashboardPage() {
           </div>
         }
       />
+
+      {ordersError && (
+        <div className="mb-6">
+          <Alert tone="error" title="נתוני ההזמנות לא נטענו">
+            <p>{ordersError}</p>
+            <button
+              type="button"
+              className="app-btn-secondary mt-2"
+              onClick={() => void refreshOrders()}
+              disabled={ordersLoading}
+            >
+              {ordersLoading ? "טוען…" : "ניסיון חוזר"}
+            </button>
+          </Alert>
+        </div>
+      )}
+
+      {ordersLoading && orders.length === 0 && !ordersError && (
+        <div className="mb-6">
+          <Alert tone="info">טוען הזמנות מהשרת…</Alert>
+        </div>
+      )}
 
       {/* Key metrics - derived from transactions in the selected period */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">

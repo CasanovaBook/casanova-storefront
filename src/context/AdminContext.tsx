@@ -106,6 +106,8 @@ import { fetchAllEntitlements } from "../integrations/supabase/supabase-entitlem
 
 import { createAdminPasswordResetLink } from "../integrations/supabase/supabase-admin"
 
+import { fetchAllOrders } from "../integrations/supabase/supabase-orders"
+
 import { useApp } from "./AppContext"
 
 interface AdminContextValue {
@@ -128,7 +130,22 @@ interface AdminContextValue {
   /** Re-reads `public.users` now. Safe to call repeatedly. */
   refreshUsers: () => Promise<void>
 
+  /**
+   * Every known order: the local document merged with `public.orders`, which
+   * wins on any `order_id` present in both. The admin screens read this one
+   * array so the dashboard and /admin/orders cannot disagree.
+   */
   orders: Order[]
+
+  /** True while the Supabase order list is being (re)read. */
+  ordersLoading: boolean
+
+  /** Non-null when the last hosted order read failed. The previous list is
+   *  kept on screen; this is what stops an outage rendering as "0 orders". */
+  ordersError: string | null
+
+  /** Re-reads the hosted orders now. Safe to call repeatedly. */
+  refreshOrders: () => Promise<void>
 
   payments: Payment[]
 
@@ -488,6 +505,80 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.user_id, isStaff, refreshInquiries])
 
+  /* ── Orders ───────────────────────────────────────────────
+   *
+   * Purchases are recorded in Supabase by the checkout RPCs, while
+   * `db.orders` only ever holds what this browser saw. Reading the hosted
+   * rows here is what makes a sale from another device appear in
+   * /admin/orders and in the dashboard's order and revenue figures.
+   *
+   * A failed read keeps the last successful list and records the error,
+   * so the screens can distinguish "no orders" from "could not load".
+   */
+  const [remoteOrders, setRemoteOrders] = useState<Order[] | null>(null)
+
+  const [ordersLoading, setOrdersLoading] = useState(false)
+
+  const [ordersError, setOrdersError] = useState<string | null>(null)
+
+  const refreshOrders = useMemo(
+    () => async () => {
+      if (!isSupabaseConfigured) {
+        setRemoteOrders(null)
+        setOrdersError(null)
+        return
+      }
+
+      setOrdersLoading(true)
+      try {
+        const result = await fetchAllOrders()
+        if (result.ok) {
+          setRemoteOrders(result.data)
+          setOrdersError(null)
+        } else {
+          setOrdersError(result.error)
+        }
+      } finally {
+        setOrdersLoading(false)
+      }
+    },
+    [],
+  )
+
+  /* Read once a staff session exists: the query is RLS-gated on that
+   * identity, so running it while signed out could only return nothing. */
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !isStaff) return
+    void refreshOrders()
+  }, [user?.user_id, isStaff, refreshOrders])
+
+  /* And on return to the tab, so an order placed while the panel sat open
+   * appears without a manual reload. */
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !isStaff) return
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void refreshOrders()
+    }
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [user?.user_id, isStaff, refreshOrders])
+
+  /* The hosted row wins on a shared id: checkout mirrors what the server
+   * returned, so the local copy is always the derived one. */
+  const orders = useMemo(() => {
+    const byId = new Map<string, Order>()
+
+    db.orders.forEach((order) => byId.set(order.order_id, order))
+
+    if (isSupabaseConfigured && remoteOrders) {
+      remoteOrders.forEach((order) => byId.set(order.order_id, order))
+    }
+
+    return [...byId.values()].sort((a, b) =>
+      b.created_at.localeCompare(a.created_at),
+    )
+  }, [db.orders, remoteOrders])
+
   const userProducts = useMemo(() => {
     /* Admin manages the source of truth, which is `public.user_products`.
      * Merging the localStorage document in here resurrected rows that had
@@ -551,7 +642,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       refreshUsers,
 
-      orders: db.orders,
+      orders,
+
+      ordersLoading,
+
+      ordersError,
+
+      refreshOrders,
 
       payments: db.payments,
 
@@ -583,7 +680,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       reinstateAlert: (alertId) => reinstateAlert(actor, alertId),      revenueFor: (preset, custom) =>
         computeRevenue(
-          db.orders,
+          orders,
 
           db.refunds,
 
@@ -592,7 +689,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       rangeFor: (preset, custom) => presetRange(preset, custom),
 
-      lifetime: lifetimeTotals(db.orders, db.refunds),
+      lifetime: lifetimeTotals(orders, db.refunds),
 
       recordAudit: (entry) => writeAudit(actor, entry),
 
@@ -753,6 +850,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     refreshUsers,
     refreshEntitlements,
     upsertRemoteEntitlement,
+    orders,
+    ordersLoading,
+    ordersError,
+    refreshOrders,
   ])
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>
