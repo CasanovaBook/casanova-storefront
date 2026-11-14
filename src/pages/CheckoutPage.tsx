@@ -118,13 +118,24 @@ export default function CheckoutPage() {
   const [cooldown, setCooldown] = useState(0)
   const [captchaToken, setCaptchaToken] = useState("")
   const [captchaReset, setCaptchaReset] = useState(0)
+  const [orderCaptchaToken, setOrderCaptchaToken] = useState("")
+  const [orderCaptchaReset, setOrderCaptchaReset] = useState(0)
 
   const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
   const captchaEnabled = isSupabaseConfigured && Boolean(captchaSiteKey)
+  /* Guest checkout is public, so it carries its own single-use Turnstile
+   * token. A signed-in checkout is authenticated by the Supabase session. */
+  const orderCaptchaRequired = isSupabaseConfigured && !user
+  const orderCaptchaUnavailable = orderCaptchaRequired && !captchaSiteKey
 
   const resetCaptcha = () => {
     setCaptchaToken("")
     setCaptchaReset((value) => value + 1)
+  }
+
+  const resetOrderCaptcha = () => {
+    setOrderCaptchaToken("")
+    setOrderCaptchaReset((value) => value + 1)
   }
 
   useEffect(() => {
@@ -228,6 +239,13 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     window.scrollTo(0, 0)
+  }, [step])
+
+  /* A token belongs to the review screen. Going back to edit details discards
+   * it, so returning to review always mounts a fresh challenge. */
+  useEffect(() => {
+    if (step === "review") return
+    setOrderCaptchaToken("")
   }, [step])
 
   /* A purchase interrupted by the sign-up-then-verify trip comes back to
@@ -379,6 +397,14 @@ export default function CheckoutPage() {
       setStep("details")
       return
     }
+    if (orderCaptchaRequired && !orderCaptchaToken) {
+      setSubmitError(
+        orderCaptchaUnavailable
+          ? "אימות האבטחה אינו זמין כרגע, ולכן לא ניתן לשלוח את ההזמנה. נסו שוב מאוחר יותר."
+          : "יש להשלים את אימות האבטחה לפני שליחת ההזמנה.",
+      )
+      return
+    }
     setIsProcessing(true)
     setSubmitError("")
     const result = await placeOrder({
@@ -388,17 +414,23 @@ export default function CheckoutPage() {
       email: checkoutEmail.trim(),
       phone,
       idempotency_key: idempotencyKey.current,
+      turnstile_token: orderCaptchaRequired
+        ? orderCaptchaToken
+        : undefined,
     })
     setIsProcessing(false)
     if (!result.ok) {
       setSubmitError(result.error)
+      resetOrderCaptcha()
       setStep("details")
       return
     }
     /* The purchase is recorded, so there is nothing left to resume - and a
      * leftover intent would offer this book again on the next visit. */
     clearCheckoutIntent()
-    navigate("/checkout/success")
+    navigate("/checkout/success", {
+      state: { email_sent: result.data.email_sent },
+    })
   }
 
   const providerConfigured = Boolean(cms.settings.payment_provider)
@@ -1154,10 +1186,45 @@ export default function CheckoutPage() {
                     </p>
                   )}
 
+                  {orderCaptchaRequired && (
+                    <div className="mt-4">
+                      <p className="app-hint mb-2">
+                        אימות אבטחה נדרש לפני יצירת החשבון, שמירת ההזמנה
+                        ושליחת המייל.
+                      </p>
+                      {captchaSiteKey ? (
+                        <TurnstileWidget
+                          siteKey={captchaSiteKey}
+                          theme={theme}
+                          onToken={(token) => {
+                            setOrderCaptchaToken(token)
+                            setSubmitError("")
+                          }}
+                          onExpire={() => setOrderCaptchaToken("")}
+                          onError={() => {
+                            setOrderCaptchaToken("")
+                            setSubmitError(
+                              "אימות האבטחה אינו זמין כרגע. אנא נסה שוב בעוד רגע.",
+                            )
+                          }}
+                          resetSignal={orderCaptchaReset}
+                        />
+                      ) : (
+                        <Alert tone="error">
+                          אימות האבטחה אינו זמין כרגע, ולכן לא ניתן לשלוח את
+                          ההזמנה. נסו שוב מאוחר יותר.
+                        </Alert>
+                      )}
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={handleSubmitOrder}
-                    disabled={isProcessing}
+                    disabled={
+                      isProcessing ||
+                      (orderCaptchaRequired && !orderCaptchaToken)
+                    }
                     aria-busy={isProcessing}
                     className="app-btn mt-5 flex w-full items-center justify-center gap-2 py-3.5"
                   >

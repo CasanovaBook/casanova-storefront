@@ -44,6 +44,8 @@ export interface StorefrontCheckoutInput {
   discount: number
   /** Guest checkout only: deduplicates a retry after a lost response. */
   idempotency_key?: string
+  /** Guest checkout only: Cloudflare Turnstile response token. */
+  turnstile_token?: string
 }
 
 export interface StorefrontCheckoutResult {
@@ -121,6 +123,19 @@ const GUEST_CHECKOUT_REFUSALS: Record<
   rate_limited: {
     error: "יותר מדי ניסיונות רכישה. נסו שוב בעוד מספר דקות.",
     code: "CONFLICT",
+  },
+  captcha_required: {
+    error: "יש להשלים את אימות האבטחה לפני שליחת ההזמנה.",
+    code: "VALIDATION",
+  },
+  captcha_failed: {
+    error: "אימות האבטחה נכשל. יש לרענן את האימות ולנסות שוב.",
+    code: "VALIDATION",
+  },
+  email_disposable: {
+    error:
+      "לא ניתן להשלים רכישה עם כתובת מייל חד-פעמית. יש להשתמש בכתובת מייל קבועה.",
+    code: "VALIDATION",
   },
   service_unavailable: {
     error: "לא ניתן להשלים את הרכישה כרגע. נסו שוב בעוד רגע.",
@@ -314,6 +329,7 @@ export async function createGuestStorefrontOrder(
           email: input.email,
           phone: input.phone ?? null,
           idempotency_key: input.idempotency_key ?? null,
+          turnstile_token: input.turnstile_token ?? null,
         },
       },
     )

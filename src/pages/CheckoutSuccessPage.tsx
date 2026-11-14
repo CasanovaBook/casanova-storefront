@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Link, useNavigate } from "react-router"
+import { Link, useLocation, useNavigate } from "react-router"
 import { useApp } from "../context/AppContext"
 import { useCms } from "../context/CmsContext"
 import Icon, { type IconName } from "../components/icons"
@@ -14,6 +14,7 @@ export default function CheckoutSuccessPage() {
   const { lastOrder, isAuthenticated } = useApp()
   const { settings } = useCms()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (!lastOrder) navigate("/store", { replace: true })
@@ -27,6 +28,14 @@ export default function CheckoutSuccessPage() {
    * was captured, so it must not be presented as "payment approved". Access
    * is still granted, and the read-now path stays the same. */
   const isFree = order.total_amount === 0
+  const emailSent = (
+    location.state as { email_sent?: boolean } | null
+  )?.email_sent
+  /* A guest account was created, but the password-setup mail did not go out.
+   * The order is still valid; the next step must be the recovery flow, not a
+   * claim that an email was sent. */
+  const passwordEmailFailed =
+    paid && !isAuthenticated && emailSent === false
   const failed =
     order.payment_status === "FAILED" || order.order_status === "FAILED"
   // An auto-approved checkout signs the buyer in, so they can jump straight
@@ -64,10 +73,14 @@ export default function CheckoutSuccessPage() {
       ? isFree
         ? isAuthenticated
           ? "תודה. הספר החינמי נפתח בספרייה שלך - לא בוצע חיוב."
-          : `תודה. הספר החינמי נשמר בחשבון ${order.customer_email}; שלחנו קישור להגדרת סיסמה.`
+          : passwordEmailFailed
+            ? `תודה. הספר החינמי נשמר בחשבון ${order.customer_email}, אבל לא הצלחנו לשלוח קישור להגדרת סיסמה. אפשר לבקש קישור חדש דרך "שכחתי סיסמה".`
+            : `תודה. הספר החינמי נשמר בחשבון ${order.customer_email}; שלחנו קישור להגדרת סיסמה.`
         : isAuthenticated
           ? "תודה שרכשת. הגישה שלך למוצר נפתחה."
-          : `תודה שרכשת. הרכישה מקושרת לחשבון ${order.customer_email}; שלחנו קישור להגדרת סיסמה.`
+          : passwordEmailFailed
+            ? `תודה שרכשת. ההזמנה נוצרה, אבל לא הצלחנו לשלוח קישור להגדרת סיסמה אל ${order.customer_email}. אפשר לבקש קישור חדש דרך "שכחתי סיסמה".`
+            : `תודה שרכשת. הרכישה מקושרת לחשבון ${order.customer_email}; שלחנו קישור להגדרת סיסמה.`
       : "תודה. ההזמנה נרשמה במערכת והיא ממתינה לאישור תשלום. נעדכן אותך ברגע שהתשלום יאושר והגישה תיפתח."
 
   const steps: { step: string, icon: IconName, title: string, desc: string }[] =
@@ -96,7 +109,9 @@ export default function CheckoutSuccessPage() {
             desc: isAuthenticated
               ? 'החשבון נוצר עם כתובת המייל שמילאת. השתמש ב"שכחת סיסמה?" כדי להגדיר סיסמה ולהתחבר.'
               : paid
-                ? `שלחנו קישור להגדרת סיסמה אל ${order.customer_email}. אם לא הגיע, השתמשו ב"שכחת סיסמה?" בעמוד ההתחברות.`
+                ? passwordEmailFailed
+                  ? `ההזמנה נוצרה, אבל לא הצלחנו לשלוח קישור להגדרת סיסמה אל ${order.customer_email}. השתמשו ב"שכחתי סיסמה" כדי לבקש קישור חדש.`
+                  : `שלחנו קישור להגדרת סיסמה אל ${order.customer_email}. אם לא הגיע, השתמשו ב"שכחת סיסמה?" בעמוד ההתחברות.`
                 : 'החשבון נוצר עם כתובת המייל שמילאת. לאחר אישור התשלום ניתן להגדיר סיסמה ולהתחבר.',
           },
           {
@@ -313,6 +328,15 @@ export default function CheckoutSuccessPage() {
               className="app-btn w-full sm:w-auto"
             >
               התחברות לספרייה שלי
+            </Link>
+          )}
+          {passwordEmailFailed && (
+            <Link
+              to="/forgot-password"
+              className="app-btn-secondary w-full sm:w-auto"
+            >
+              <Icon name="mail" size={15} aria-hidden="true" />
+              שכחתי סיסמה
             </Link>
           )}
           <Link

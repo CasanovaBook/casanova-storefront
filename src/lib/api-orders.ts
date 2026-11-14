@@ -129,6 +129,9 @@ export interface CheckoutInput {
 
   /** Guest checkout only: deduplicates a retry after a lost response. */
   idempotency_key?: string
+
+  /** Guest checkout only: single-use Cloudflare Turnstile token. */
+  turnstile_token?: string
 }
 
 export interface CheckoutOutcome {
@@ -377,6 +380,7 @@ export async function checkoutGuest(
       phone: input.phone?.trim() || undefined,
       discount: 0,
       idempotency_key: input.idempotency_key,
+      turnstile_token: input.turnstile_token,
     },
     product,
   )

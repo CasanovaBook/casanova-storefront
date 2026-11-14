@@ -11,8 +11,16 @@
  *   3. call create_guest_storefront_order (service_role only);
  *   4. generate a recovery link and send a branded welcome email via Resend.
  *
- * Required Edge Function secrets: RESEND_API_KEY, SITE_URL, ALLOWED_ORIGIN.
+ * Required Edge Function secrets: RESEND_API_KEY, SITE_URL, ALLOWED_ORIGIN,
+ * TURNSTILE_SECRET_KEY, UPSTASH_REDIS_REST_URL and
+ * UPSTASH_REDIS_REST_TOKEN. RATE_LIMIT_PEPPER is optional but recommended.
  * The standard SUPABASE_* secrets are injected by Supabase.
+ *
+ * Every request must carry a Cloudflare Turnstile token. It is verified before
+ * the service-role client is touched, and an Upstash IP limiter runs before
+ * account creation. Both protections fail closed when configuration or Redis
+ * is unavailable, so the endpoint never silently becomes an open signup/email
+ * relay.
  *
  * The order RPC re-derives the price from public.products and keeps the
  * payment-gateway guard. This function refuses missing products, unavailable
@@ -31,6 +39,56 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 const RATE_LIMIT_WINDOW_MINUTES = 10
 const RATE_LIMIT_MAX_ORDERS = 5
+const RATE_LIMIT_IP_WINDOW_SECONDS = 10 * 60
+const RATE_LIMIT_IP_MAX_ORDERS = 10
+
+const TURNSTILE_VERIFY_ENDPOINT =
+  "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
+/* A deliberately small starter list of well-known disposable-mail domains.
+ * The check is exact-or-subdomain, never a substring, so a legitimate domain
+ * such as "notmailinator.com" is not caught by "mailinator.com". */
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  "10minutemail.com",
+  "10minutemail.net",
+  "1secmail.com",
+  "1secmail.net",
+  "1secmail.org",
+  "burnermail.io",
+  "discard.email",
+  "dispostable.com",
+  "emailondeck.com",
+  "fakeinbox.com",
+  "generator.email",
+  "getnada.com",
+  "grr.la",
+  "guerrillamail.biz",
+  "guerrillamail.com",
+  "guerrillamail.de",
+  "guerrillamail.net",
+  "guerrillamail.org",
+  "mailcatch.com",
+  "maildrop.cc",
+  "mailinator.com",
+  "mailnesia.com",
+  "mintemail.com",
+  "mohmal.com",
+  "moakt.com",
+  "mytrashmail.com",
+  "sharklasers.com",
+  "spam4.me",
+  "spamgourmet.com",
+  "tmail.ws",
+  "temp-mail.io",
+  "temp-mail.org",
+  "tempail.com",
+  "tempmail.com",
+  "tempmailo.com",
+  "tempinbox.com",
+  "throwawaymail.com",
+  "trashmail.com",
+  "yopmail.com",
+])
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails"
 /* Outbound-only notification. casanova-books.com publishes no MX record, so no
@@ -81,10 +139,11 @@ function jsonResponse(
   body: unknown,
   status: number,
   cors: HeadersInit,
+  extraHeaders: HeadersInit = {},
 ): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...cors, "Content-Type": "application/json" },
+    headers: { ...cors, ...extraHeaders, "Content-Type": "application/json" },
   })
 }
 
@@ -108,6 +167,7 @@ interface GuestRequest {
   email: string
   phone: string
   idempotency_key: string
+  turnstile_token: string
 }
 
 function parseRequest(body: unknown): { data?: GuestRequest; error?: string } {
@@ -129,6 +189,9 @@ function parseRequest(body: unknown): { data?: GuestRequest; error?: string } {
   const idempotencyKey = typeof value.idempotency_key === "string"
     ? value.idempotency_key.trim()
     : ""
+  const turnstileToken = typeof value.turnstile_token === "string"
+    ? value.turnstile_token.trim()
+    : ""
 
   if (!UUID_RE.test(productId)) return { error: "המוצר לא נמצא." }
   if (!firstName || !lastName) return { error: "יש למלא שם מלא." }
@@ -136,6 +199,7 @@ function parseRequest(body: unknown): { data?: GuestRequest; error?: string } {
     return { error: "השם ארוך מדי." }
   if (!EMAIL_RE.test(email)) return { error: "כתובת המייל אינה תקינה." }
   if (email.length > 255) return { error: "כתובת המייל ארוכה מדי." }
+  if (isDisposableEmail(email)) return { error: "email_disposable" }
   if (!phone) return { error: "שדה חובה" }
   if (!PHONE_RE.test(phone)) return { error: "יש להזין מספר טלפון תקין." }
 
@@ -149,7 +213,176 @@ function parseRequest(body: unknown): { data?: GuestRequest; error?: string } {
       idempotency_key: UUID_RE.test(idempotencyKey)
         ? idempotencyKey
         : crypto.randomUUID(),
+      turnstile_token: turnstileToken,
     },
+  }
+}
+
+function isDisposableEmail(email: string): boolean {
+  const domain = email.split("@").pop()?.trim().toLowerCase().replace(/\.$/, "")
+
+  if (!domain) return false
+
+  for (const blocked of DISPOSABLE_EMAIL_DOMAINS) {
+    if (domain === blocked || domain.endsWith(`.${blocked}`)) return true
+  }
+
+  return false
+}
+
+/**
+ * Supabase terminates the public function request, so use the address it
+ * controls rather than `cf-connecting-ip` (which a direct caller can forge on
+ * the supabase.co hostname). X-Forwarded-For is append-only: the last entry is
+ * the nearest proxy hop, while the leftmost value is caller-controlled.
+ */
+function clientIp(req: Request): string | null {
+  const forwarded = req.headers.get("x-forwarded-for")
+  const candidate = forwarded
+    ?.split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .pop()
+
+  return candidate && candidate.length <= 64 ? candidate : null
+}
+
+async function hashIdentifier(value: string): Promise<string> {
+  const pepper = Deno.env.get("RATE_LIMIT_PEPPER") ?? ""
+  const bytes = new TextEncoder().encode(`${pepper}${value}`)
+  const digest = await crypto.subtle.digest("SHA-256", bytes)
+
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+}
+
+type TurnstileCheck =
+  | { ok: true }
+  | { ok: false; status: number; error: string }
+
+async function verifyTurnstile(
+  token: string,
+  remoteIp: string | null,
+): Promise<TurnstileCheck> {
+  const secret = Deno.env.get("TURNSTILE_SECRET_KEY")
+
+  if (!secret) {
+    console.error(
+      "[guest-checkout] TURNSTILE_SECRET_KEY is missing; refusing checkout",
+    )
+    return { ok: false, status: 503, error: "service_unavailable" }
+  }
+
+  if (!token) return { ok: false, status: 400, error: "captcha_required" }
+  if (token.length > 4096) {
+    return { ok: false, status: 403, error: "captcha_failed" }
+  }
+
+  const form = new URLSearchParams({ secret, response: token })
+  if (remoteIp) form.set("remoteip", remoteIp)
+
+  let response: Response
+
+  try {
+    response = await fetch(TURNSTILE_VERIFY_ENDPOINT, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(5_000),
+    })
+  } catch (err) {
+    console.error(
+      "[guest-checkout] Turnstile verification failed",
+      err instanceof Error ? err.message : err,
+    )
+    return { ok: false, status: 503, error: "service_unavailable" }
+  }
+
+  if (!response.ok) {
+    console.error(
+      "[guest-checkout] Turnstile siteverify returned",
+      response.status,
+    )
+    return { ok: false, status: 503, error: "service_unavailable" }
+  }
+
+  const payload = (await response.json().catch(() => null)) as {
+    success?: unknown
+    "error-codes"?: unknown
+  } | null
+
+  if (payload?.success === true) return { ok: true }
+
+  const codes = Array.isArray(payload?.["error-codes"])
+    ? payload["error-codes"].slice(0, 5)
+    : []
+
+  console.warn("[guest-checkout] Turnstile rejected the token", codes)
+  return { ok: false, status: 403, error: "captcha_failed" }
+}
+
+interface IpRateLimitDecision {
+  allowed: boolean
+  retryAfterSeconds: number
+}
+
+/**
+ * Fixed-window counter in Upstash. The INCR and EXPIRE commands are one
+ * pipeline so a new counter always receives its TTL. This fails closed: a
+ * missing or unreachable Redis makes checkout unavailable rather than
+ * silently removing the IP limit.
+ */
+async function checkIpRateLimit(ipHash: string): Promise<IpRateLimitDecision> {
+  const baseUrl = Deno.env.get("UPSTASH_REDIS_REST_URL")?.replace(/\/+$/, "")
+  const token = Deno.env.get("UPSTASH_REDIS_REST_TOKEN")
+
+  if (!baseUrl || !token) {
+    throw new Error(
+      "UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN is missing",
+    )
+  }
+
+  const key = `guest-checkout:ip:${ipHash}`
+  const response = await fetch(`${baseUrl}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify([
+      ["INCR", key],
+      ["EXPIRE", key, RATE_LIMIT_IP_WINDOW_SECONDS, "NX"],
+    ]),
+    signal: AbortSignal.timeout(5_000),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Upstash responded ${response.status}`)
+  }
+
+  const payload = (await response.json()) as unknown
+
+  if (!Array.isArray(payload) || payload.length === 0) {
+    throw new Error("Upstash returned an unexpected response")
+  }
+
+  const entries = payload as Array<Record<string, unknown>>
+
+  for (const entry of entries) {
+    if (typeof entry?.error === "string" && entry.error) {
+      throw new Error("Upstash rejected a rate-limit command")
+    }
+  }
+
+  const count = Number(entries[0]?.result)
+
+  if (!Number.isFinite(count) || count < 1) {
+    throw new Error("Upstash returned an invalid counter")
+  }
+
+  return {
+    allowed: count <= RATE_LIMIT_IP_MAX_ORDERS,
+    retryAfterSeconds: RATE_LIMIT_IP_WINDOW_SECONDS,
   }
 }
 
@@ -499,6 +732,40 @@ Deno.serve(async (req: Request) => {
   }
 
   const input = parsed.data
+  const ip = clientIp(req)
+
+  // Turnstile is the first gate: no token, no account, order, entitlement or
+  // email. The secret is deliberately required, so a missing deployment
+  // setting fails closed instead of turning the endpoint into an open relay.
+  const turnstile = await verifyTurnstile(input.turnstile_token, ip)
+
+  if (!turnstile.ok) {
+    return jsonResponse(
+      { error: turnstile.error },
+      turnstile.status,
+      cors,
+    )
+  }
+
+  // IP limit after token verification so an unauthenticated caller cannot
+  // exhaust a victim's bucket with requests that never solve a challenge.
+  try {
+    const ipHash = await hashIdentifier(ip ?? "unknown")
+    const ipLimit = await checkIpRateLimit(ipHash)
+
+    if (!ipLimit.allowed) {
+      return jsonResponse({ error: "rate_limited" }, 429, cors, {
+        "Retry-After": String(ipLimit.retryAfterSeconds),
+      })
+    }
+  } catch (err) {
+    console.error(
+      "[guest-checkout] IP rate limit unavailable; refusing checkout",
+      err instanceof Error ? err.message : err,
+    )
+    return jsonResponse({ error: "service_unavailable" }, 503, cors)
+  }
+
   const admin = adminClient()
 
   // Preflight: never create an account for a request the order will refuse.
@@ -557,7 +824,9 @@ Deno.serve(async (req: Request) => {
   if (countError) {
     console.error("[guest-checkout] rate check failed", countError.message)
   } else if ((count ?? 0) >= RATE_LIMIT_MAX_ORDERS) {
-    return jsonResponse({ error: "rate_limited" }, 429, cors)
+    return jsonResponse({ error: "rate_limited" }, 429, cors, {
+      "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60),
+    })
   }
 
   const lookup = await findAuthUserId(admin, input.email)
