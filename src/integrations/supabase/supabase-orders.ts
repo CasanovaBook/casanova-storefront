@@ -254,3 +254,129 @@ export async function fetchAllOrders(): Promise<Result<Order[]>> {
     )
   }
 }
+
+/* ── Hosted mutations ───────────────────────────────────
+ *
+ * The local services cannot find a row that only exists in Postgres.
+ * These call the SECURITY DEFINER RPCs in migration 0039, so the write
+ * happens on the server and a refusal comes back as a Result failure
+ * instead of a silent local-only edit.
+ */
+
+export interface ConfirmPaymentInput {
+  provider?: string
+  transaction_reference?: string
+  card_last4?: string
+  note?: string
+}
+
+interface RpcError {
+  message?: string
+  code?: string
+}
+
+const RPC_MESSAGES: Record<string, string> = {
+  order_not_found: "ההזמנה לא נמצאה.",
+  order_already_paid: "ההזמנה כבר סומנה כשולמה.",
+  order_cancelled: "לא ניתן לאשר תשלום עבור הזמנה שבוטלה.",
+  order_paid_cannot_cancel:
+    "הזמנה ששולמה לא ניתנת לביטול - יש לבצע החזר כספי.",
+  permission_denied: "אין הרשאה לבצע את הפעולה.",
+  admin_required: "הפעולה זמינה למנהלים בלבד.",
+}
+
+function mapOrderRpcError(error: RpcError): {
+  code: "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "STORAGE"
+  message: string
+} {
+  const text = error.message ?? ""
+  const token = Object.keys(RPC_MESSAGES).find((key) => text.includes(key))
+
+  if (token) {
+    return {
+      code:
+        token === "permission_denied" || token === "admin_required"
+          ? "FORBIDDEN"
+          : token === "order_not_found"
+            ? "NOT_FOUND"
+            : "CONFLICT",
+      message: RPC_MESSAGES[token],
+    }
+  }
+
+  if (error.code === "42501")
+    return { code: "FORBIDDEN", message: RPC_MESSAGES.permission_denied }
+
+  if (error.code === "P0002")
+    return { code: "NOT_FOUND", message: RPC_MESSAGES.order_not_found }
+
+  return {
+    code: "STORAGE",
+    message: text || "הפעולה נכשלה בשרת.",
+  }
+}
+
+async function callOrderRpc(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<Result<Order>> {
+  if (!isSupabaseConfigured) {
+    return fail("PROVIDER_NOT_CONFIGURED", "שרת Supabase אינו מוגדר.")
+  }
+
+  try {
+    const { data, error } = await requireSupabase().rpc(name, args)
+
+    if (error) {
+      const mapped = mapOrderRpcError(error)
+      return fail(mapped.code, mapped.message)
+    }
+
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row || typeof row !== "object") {
+      return fail("STORAGE", "השרת לא החזיר את ההזמנה לאחר הפעולה.")
+    }
+
+    /* The RPC returns the order header; the lines are refreshed by the
+     * caller's next fetchAllOrders(). Returning the header now keeps the
+     * Result contract without inventing line items. */
+    return ok(toOrder(row as OrderRow, []))
+  } catch (err) {
+    return fail(
+      "STORAGE",
+      err instanceof Error ? err.message : "שגיאת רשת בלתי צפויה.",
+    )
+  }
+}
+
+export async function markOrderPaidRemote(
+  orderId: string,
+  input: ConfirmPaymentInput = {},
+): Promise<Result<Order>> {
+  return callOrderRpc("admin_mark_order_paid", {
+    p_order_id: orderId,
+    p_provider: input.provider ?? null,
+    p_reference: input.transaction_reference ?? null,
+    p_card_last4: input.card_last4 ?? null,
+  })
+}
+
+export async function markOrderFailedRemote(
+  orderId: string,
+  reason: string,
+): Promise<Result<Order>> {
+  return callOrderRpc("admin_mark_order_failed", {
+    p_order_id: orderId,
+    p_reason: reason,
+  })
+}
+
+export async function cancelOrderRemote(
+  orderId: string,
+  reason?: string,
+): Promise<Result<Order>> {
+  return callOrderRpc("admin_cancel_order", {
+    p_order_id: orderId,
+    p_reason: reason ?? null,
+  })
+}

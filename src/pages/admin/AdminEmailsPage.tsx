@@ -8,6 +8,8 @@ import type { EmailStatus } from "../../types"
 
 import AccessDenied from "../../components/AccessDenied"
 
+import LocalDataNotice from "../../components/admin/LocalDataNotice"
+
 import Alert from "../../components/ui/Alert"
 
 import EmptyState from "../../components/ui/EmptyState"
@@ -118,6 +120,8 @@ export default function AdminEmailsPage() {
           </>
         }
       />
+
+      <LocalDataNotice items={["יומן המיילים", "שליחה חוזרת"]} />
 
       {queuedCount > 0 && (
         <div className="mb-4">

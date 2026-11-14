@@ -8,6 +8,7 @@ import type { SystemAlert } from "../../types"
 import Icon, { type IconName } from "../../components/icons"
 import PageHeader from "../../components/ui/PageHeader"
 import Alert from "../../components/ui/Alert"
+import LocalDataNotice from "../../components/admin/LocalDataNotice"
 
 function StatCard({
   label,
@@ -185,6 +186,13 @@ export default function AdminDashboardPage() {
     ordersLoading,
     ordersError,
     refreshOrders,
+    financeLoading,
+    financeError,
+    refreshFinance,
+    usersError,
+    entitlementsError,
+    refreshUsers,
+    refreshEntitlements,
   } = useAdmin()
   const [preset, setPreset] = useState<RangePreset>("MONTH")
 
@@ -320,6 +328,50 @@ export default function AdminDashboardPage() {
           <Alert tone="info">טוען הזמנות מהשרת…</Alert>
         </div>
       )}
+
+      {financeError && (
+        <div className="mb-6">
+          <Alert tone="error" title="נתוני ההחזרים והחשבוניות לא נטענו">
+            <p>{financeError}</p>
+            <p className="text-xs mt-1.5">
+              הכנסה נטו אינה כוללת החזרים שלא נטענו. אין להסתמך על המספרים
+              המוצגים עד לטעינה חוזרת מוצלחת.
+            </p>
+            <button
+              type="button"
+              className="app-btn-secondary mt-2"
+              onClick={() => void refreshFinance()}
+              disabled={financeLoading}
+            >
+              {financeLoading ? "טוען…" : "ניסיון חוזר"}
+            </button>
+          </Alert>
+        </div>
+      )}
+
+      {(usersError || entitlementsError) && (
+        <div className="mb-6">
+          <Alert tone="error" title="חלק מנתוני הניהול לא נטענו">
+            {usersError && <p>משתמשים: {usersError}</p>}
+            {entitlementsError && <p>הרשאות גישה: {entitlementsError}</p>}
+            <p className="text-xs mt-1.5">
+              המספרים והרשימות המוצגים עבור הנתונים האלה חסרים ואינם מלאים.
+            </p>
+            <button
+              type="button"
+              className="app-btn-secondary mt-2"
+              onClick={() => {
+                if (usersError) void refreshUsers()
+                if (entitlementsError) void refreshEntitlements()
+              }}
+            >
+              ניסיון חוזר
+            </button>
+          </Alert>
+        </div>
+      )}
+
+      <LocalDataNotice items={["מנויים", "התראות מערכת"]} />
 
       {/* Key metrics - derived from transactions in the selected period */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">

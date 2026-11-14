@@ -143,8 +143,10 @@ export async function fetchMyEntitlements(
  * read returns an empty array rather than throwing, so the panel falls
  * back to whatever it already has instead of blanking the screen.
  */
-export async function fetchAllEntitlements(): Promise<UserProduct[]> {
-  if (!isSupabaseConfigured) return []
+export async function fetchAllEntitlements(): Promise<Result<UserProduct[]>> {
+  if (!isSupabaseConfigured) {
+    return fail("PROVIDER_NOT_CONFIGURED", "שרת Supabase אינו מוגדר.")
+  }
 
   try {
     const { data, error } = await requireSupabase()
@@ -152,17 +154,20 @@ export async function fetchAllEntitlements(): Promise<UserProduct[]> {
       .select(ENTITLEMENT_COLUMNS)
 
     if (error) {
-      console.warn(
-        "[supabase-entitlements] entitlements list refused:",
-        error.message,
+      return fail(
+        "STORAGE",
+        `לא ניתן לטעון את הרשאות הגישה מהשרת: ${error.message}`,
       )
-      return []
     }
 
-    return ((data ?? []) as UserProductRow[]).map(toUserProduct)
+    return ok(((data ?? []) as UserProductRow[]).map(toUserProduct))
   } catch (err) {
-    console.warn("[supabase-entitlements] entitlements list failed:", err)
-    return []
+    return fail(
+      "STORAGE",
+      err instanceof Error
+        ? `שגיאת רשת בטעינת הרשאות הגישה: ${err.message}`
+        : "שגיאת רשת בלתי צפויה בטעינת הרשאות הגישה.",
+    )
   }
 }
 

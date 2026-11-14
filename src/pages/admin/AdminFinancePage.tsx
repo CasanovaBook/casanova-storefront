@@ -6,6 +6,7 @@ import { SECURITY_NOTE } from "../../lib/sensitive"
 import type { InquiryStatus } from "../../types"
 import AccessDenied from "../../components/AccessDenied"
 import Icon, { type IconName } from "../../components/icons"
+import Alert from "../../components/ui/Alert"
 import PageHeader from "../../components/ui/PageHeader"
 
 /**
@@ -58,7 +59,14 @@ function StatCard({
 }
 
 export default function AdminFinancePage() {
-  const { adminRole, orders, inquiries } = useAdmin()
+  const {
+    adminRole,
+    orders,
+    inquiries,
+    ordersLoading,
+    ordersError,
+    refreshOrders,
+  } = useAdmin()
 
   if (!can(adminRole, "finance")) {
     return <AccessDenied page="finance" />
@@ -109,6 +117,25 @@ export default function AdminFinancePage() {
           ) : undefined
         }
       />
+
+      {ordersError && (
+        <div className="mb-5">
+          <Alert tone="error" title="נתוני ההזמנות לא נטענו">
+            <p>{ordersError}</p>
+            <p className="text-xs mt-1.5">
+              הסיכומים בעמוד זה חסרים הזמנות ולכן אינם מלאים.
+            </p>
+            <button
+              type="button"
+              className="app-btn-secondary mt-2"
+              onClick={() => void refreshOrders()}
+              disabled={ordersLoading}
+            >
+              {ordersLoading ? "טוען…" : "ניסיון חוזר"}
+            </button>
+          </Alert>
+        </div>
+      )}
 
       {/* ---- Four summary metrics ---- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">

@@ -81,8 +81,15 @@ function OrderDetailModal({
   order: Order
   onClose: () => void
 }) {
-  const { invoices, adminRole, issueInvoice, markOrderPaid, markOrderFailed } =
-    useAdmin()
+  const {
+    invoices,
+    adminRole,
+    issueInvoice,
+    markOrderPaid,
+    markOrderFailed,
+    financeLoading,
+    financeError,
+  } = useAdmin()
   const { settings } = useCms()
 
   const [showConfirmPayment, setShowConfirmPayment] = useState(false)
@@ -97,9 +104,15 @@ function OrderDetailModal({
   const canFinance = can(adminRole, "finance")
   const canMarkPaid = can(adminRole, "mark_paid")
 
-  const run = (result: { ok: boolean; error?: string }) => {
-    if (!result.ok) {
-      setError(result.error ?? "הפעולה נכשלה.")
+  const run = async (
+    result:
+      | { ok: boolean; error?: string }
+      | Promise<{ ok: boolean; error?: string }>,
+  ) => {
+    const resolved = await result
+
+    if (!resolved.ok) {
+      setError(resolved.error ?? "הפעולה נכשלה.")
       return false
     }
     setError("")
@@ -258,9 +271,13 @@ function OrderDetailModal({
             </span>
           )}
         </div>
-        {!invoice && captured && canFinance && (
+        {!invoice &&
+          captured &&
+          canFinance &&
+          !financeLoading &&
+          !financeError && (
           <button
-            onClick={() => run(issueInvoice(order.order_id))}
+            onClick={() => void run(issueInvoice(order.order_id))}
             className="app-btn flex-shrink-0"
             style={{
               minHeight: "2.2rem",
@@ -331,19 +348,18 @@ function OrderDetailModal({
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => {
-                  if (
-                    run(
-                      markOrderPaid(order.order_id, {
-                        provider: provider.trim() || undefined,
-                        transaction_reference: reference.trim() || undefined,
-                        card_last4: last4.trim() || undefined,
-                      }),
-                    )
-                  ) {
+                  void run(
+                    markOrderPaid(order.order_id, {
+                      provider: provider.trim() || undefined,
+                      transaction_reference: reference.trim() || undefined,
+                      card_last4: last4.trim() || undefined,
+                    }),
+                  ).then((ok) => {
+                    if (!ok) return
                     setShowConfirmPayment(false)
                     setReference("")
                     setLast4("")
-                  }
+                  })
                 }}
                 className="app-btn flex-1"
                 style={{
@@ -394,7 +410,7 @@ function OrderDetailModal({
           />
           <button
             onClick={() =>
-              run(
+              void run(
                 markOrderFailed(
                   order.order_id,
                   failureReason.trim() || "התשלום נכשל",
@@ -425,6 +441,9 @@ export default function AdminOrdersPage() {
     ordersLoading,
     ordersError,
     refreshOrders,
+    financeLoading,
+    financeError,
+    refreshFinance,
   } = useAdmin()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("ALL")
@@ -485,7 +504,7 @@ export default function AdminOrdersPage() {
         description={`${orders.length} הזמנות · ${paidCount} שולמו · ₪${Math.round(
           lifetime.net,
         ).toLocaleString()} הכנסות מאושרות · ${
-          invoices.length
+          financeError ? "—" : financeLoading ? "…" : invoices.length
         } חשבוניות הונפקו`}
         breadcrumbs={[{ label: "ניהול", to: "/admin" }, { label: "הזמנות" }]}
         actions={
@@ -608,6 +627,22 @@ export default function AdminOrdersPage() {
               disabled={ordersLoading}
             >
               {ordersLoading ? "טוען…" : "ניסיון חוזר"}
+            </button>
+          </Alert>
+        </div>
+      )}
+
+      {financeError && (
+        <div className="mb-4">
+          <Alert tone="error" title="טעינת נתוני החשבוניות נכשלה">
+            <p>{financeError}</p>
+            <button
+              type="button"
+              className="app-btn-secondary mt-2"
+              onClick={() => void refreshFinance()}
+              disabled={financeLoading}
+            >
+              {financeLoading ? "טוען…" : "ניסיון חוזר"}
             </button>
           </Alert>
         </div>

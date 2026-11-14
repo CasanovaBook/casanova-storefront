@@ -24,6 +24,7 @@ import {
   type LoginSuccess,
 } from "../../shared/auth-login"
 import type { StoredUser, User, Role, AdminRole, AccountStatus } from "../../types"
+import { fail, ok, type Result } from "../../shared/result"
 
 export interface AuthSuccess<T = undefined> {
   ok: true
@@ -284,29 +285,37 @@ export async function fetchProfile(authUserId: string): Promise<User | null> {
  * "משתמשים אחרונים" panel and the users table can render this list
  * directly, with no client-side re-sort that could disagree with it.
  *
- * Returns an empty array when Supabase is unconfigured or the read is
- * refused. The read is gated by the live RLS policies on `public.users`
- * - "Users can view own profile" / "Admins have full access to users",
- * both keyed on `is_admin()`. Callers must treat an empty result as "no
- * remote data", never as "there are no users" - an empty table and a
- * denied query look identical, so the caller falls back to the local
- * store rather than blanking the screen.
+ * A successful empty answer is a real "no users"; a refused read is a
+ * failure, never an empty list. The distinction is what stops the
+ * dashboard from rendering "0 users" when RLS or the network refused.
  */
-export async function fetchAllProfiles(): Promise<User[]> {
-  if (!isSupabaseConfigured) return []
-  const client = requireSupabase()
-
-  const { data, error } = await client
-    .from("users")
-    .select("*")
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.warn("[supabase-auth] users list refused:", error.message)
-    return []
+export async function fetchAllProfiles(): Promise<Result<User[]>> {
+  if (!isSupabaseConfigured) {
+    return fail("PROVIDER_NOT_CONFIGURED", "שרת Supabase אינו מוגדר.")
   }
 
-  return ((data ?? []) as UserRow[]).map(toUserRow)
+  try {
+    const { data, error } = await requireSupabase()
+      .from("users")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      return fail(
+        "STORAGE",
+        `לא ניתן לטעון את רשימת המשתמשים מהשרת: ${error.message}`,
+      )
+    }
+
+    return ok(((data ?? []) as UserRow[]).map(toUserRow))
+  } catch (err) {
+    return fail(
+      "STORAGE",
+      err instanceof Error
+        ? `שגיאת רשת בטעינת המשתמשים: ${err.message}`
+        : "שגיאת רשת בלתי צפויה בטעינת המשתמשים.",
+    )
+  }
 }
 
 /**

@@ -10,6 +10,8 @@ import type { SystemAlert } from "../../types"
 
 import AccessDenied from "../../components/AccessDenied"
 
+import LocalDataNotice from "../../components/admin/LocalDataNotice"
+
 import Alert from "../../components/ui/Alert"
 
 import EmptyState from "../../components/ui/EmptyState"
@@ -116,6 +118,8 @@ export default function AdminAlertsPage() {
           ) : undefined
         }
       />
+
+      <LocalDataNotice items={["התראות מערכת"]} />
 
       {feedback && (
         <div className="mb-4">

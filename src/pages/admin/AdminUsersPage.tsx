@@ -7,10 +7,12 @@ import { can } from "../../lib/permissions"
 import { SECURITY_NOTE } from "../../lib/sensitive"
 import type { ProductSnapshot, User } from "../../types"
 import AccessDenied from "../../components/AccessDenied"
+import LocalDataNotice from "../../components/admin/LocalDataNotice"
 import Modal from "../../components/Modal"
 import Icon from "../../components/icons"
 import PageHeader from "../../components/ui/PageHeader"
 import EmptyState from "../../components/ui/EmptyState"
+import Alert from "../../components/ui/Alert"
 import { useAccessActions } from "./useAccessActions"
 
 const ROLE_LABEL_USER: Record<string, string> = {
@@ -305,6 +307,14 @@ function UserDetailModal({
             </button>
           ))}
         </div>
+
+        <LocalDataNotice
+          items={[
+            "התקדמות קריאה",
+            "יומן מיילים",
+            "פרטי החזרים היסטוריים",
+          ]}
+        />
 
         {/* Overview */}
         {tab === "overview" && (
@@ -1018,7 +1028,8 @@ function UserDetailModal({
 }
 
 export default function AdminUsersPage() {
-  const { users, userProducts, adminRole } = useAdmin()
+  const { users, userProducts, adminRole, usersError, refreshUsers } =
+    useAdmin()
   const [selected, setSelected] = useState<User | null>(null)
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState("ALL")
@@ -1053,6 +1064,24 @@ export default function AdminUsersPage() {
           ) : undefined
         }
       />
+
+      {usersError && (
+        <div className="mb-4">
+          <Alert tone="error" title="טעינת המשתמשים נכשלה">
+            <p>{usersError}</p>
+            <p className="text-xs mt-1.5">
+              הרשימה המוצגת חסרה חשבונות ואינה מלאה.
+            </p>
+            <button
+              type="button"
+              className="app-btn-secondary mt-2"
+              onClick={() => void refreshUsers()}
+            >
+              ניסיון חוזר
+            </button>
+          </Alert>
+        </div>
+      )}
 
       <div className="app-surface mb-4">
         <div className="app-surface-body">

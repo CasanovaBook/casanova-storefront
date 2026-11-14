@@ -10,6 +10,8 @@ import type { AdminRole } from "../../types"
 
 import AccessDenied from "../../components/AccessDenied"
 
+import Alert from "../../components/ui/Alert"
+
 import EmptyState from "../../components/ui/EmptyState"
 
 import PageHeader from "../../components/ui/PageHeader"
@@ -89,7 +91,13 @@ const CATEGORY_ICON: Record<AuditCategory, IconName> = {
 }
 
 export default function AdminAuditPage() {
-  const { auditLog, adminRole } = useAdmin()
+  const {
+    auditLog,
+    auditLoading,
+    auditError,
+    refreshAudit,
+    adminRole,
+  } = useAdmin()
 
   const [categoryFilter, setCategoryFilter] = useState("ALL")
 
@@ -127,6 +135,31 @@ export default function AdminAuditPage() {
         title="יומן פעולות"
         description="תיעוד מלא ובלתי הפיך של כל פעולה משמעותית שביצע מנהל - שינוי מחיר, החזר, הרשאות, חסימות והחלפות תוכן."
       />
+
+      {auditError && (
+        <div className="mb-4">
+          <Alert tone="error" title="טעינת יומן הפעולות נכשלה">
+            <p>{auditError}</p>
+            <p className="text-xs mt-1.5">
+              יומן הפעולות המצורף אינו שלם. אין להסיק ממנו שלא בוצעו פעולות.
+            </p>
+            <button
+              type="button"
+              className="app-btn-secondary mt-2"
+              onClick={() => void refreshAudit()}
+              disabled={auditLoading}
+            >
+              {auditLoading ? "טוען…" : "ניסיון חוזר"}
+            </button>
+          </Alert>
+        </div>
+      )}
+
+      {auditLoading && auditLog.length === 0 && !auditError && (
+        <div className="mb-4">
+          <Alert tone="info">טוען את יומן הפעולות מהשרת…</Alert>
+        </div>
+      )}
 
       <section
         className="app-surface app-surface--flat mb-4"
@@ -177,7 +210,7 @@ export default function AdminAuditPage() {
       </section>
 
       {filtered.length === 0 ? (
-        auditLog.length === 0 ? (
+        auditError ? null : auditLog.length === 0 ? (
           <EmptyState
             icon="list"
             title="אין רישומים עדיין"

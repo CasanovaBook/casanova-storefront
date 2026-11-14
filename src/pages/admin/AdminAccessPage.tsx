@@ -47,6 +47,8 @@ export default function AdminAccessPage() {
     users,
     orders,
     userProducts,
+    entitlementsError,
+    refreshEntitlements,
     adminRole,
     grantAccess,
     setAccessStatus,
@@ -154,6 +156,24 @@ export default function AdminAccessPage() {
           ) : undefined
         }
       />
+
+      {entitlementsError && (
+        <div className="mb-4">
+          <Alert tone="error" title="טעינת הרשאות הגישה נכשלה">
+            <p>{entitlementsError}</p>
+            <p className="text-xs mt-1.5">
+              הרשימה חסרה הרשאות ולכן אינה מלאה. אין להסיק ממנה שאין גישות.
+            </p>
+            <button
+              type="button"
+              className="app-btn-secondary mt-2"
+              onClick={() => void refreshEntitlements()}
+            >
+              ניסיון חוזר
+            </button>
+          </Alert>
+        </div>
+      )}
 
       {/* Grant new access */}
       {canGrant && (

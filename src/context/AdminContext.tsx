@@ -63,18 +63,31 @@ import {
 
 import {
   cancelSubscription,
-  confirmRefund,
-  executeRefund,
-  failRefund,
-  issueInvoice,
-  markOrderFailed,
-  markOrderPaid,
-  refundableAmount,
-  requestRefund,
-  reviewRefund,
-  cancelOrder,
+  confirmRefund as confirmRefundLocal,
+  executeRefund as executeRefundLocal,
+  failRefund as failRefundLocal,
+  issueInvoice as issueInvoiceLocal,
+  markOrderFailed as markOrderFailedLocal,
+  markOrderPaid as markOrderPaidLocal,
+  refundableAmount as refundableAmountLocal,
+  requestRefund as requestRefundLocal,
+  reviewRefund as reviewRefundLocal,
+  cancelOrder as cancelOrderLocal,
   type ConfirmPaymentInput,
 } from "../lib/api-orders"
+
+import {
+  confirmRefundRemote,
+  executeRefundRemote,
+  failRefundRemote,
+  fetchAllInvoices,
+  fetchAllPayments,
+  fetchAllRefunds,
+  fetchAuditLog,
+  issueInvoiceRemote,
+  requestRefundRemote,
+  reviewRefundRemote,
+} from "../integrations/supabase/supabase-finance"
 
 import {
   addInquiryNote,
@@ -106,7 +119,12 @@ import { fetchAllEntitlements } from "../integrations/supabase/supabase-entitlem
 
 import { createAdminPasswordResetLink } from "../integrations/supabase/supabase-admin"
 
-import { fetchAllOrders } from "../integrations/supabase/supabase-orders"
+import {
+  cancelOrderRemote,
+  fetchAllOrders,
+  markOrderFailedRemote,
+  markOrderPaidRemote,
+} from "../integrations/supabase/supabase-orders"
 
 import { useApp } from "./AppContext"
 
@@ -129,6 +147,9 @@ interface AdminContextValue {
 
   /** Re-reads `public.users` now. Safe to call repeatedly. */
   refreshUsers: () => Promise<void>
+
+  /** Non-null when the hosted user list could not be read. */
+  usersError: string | null
 
   /**
    * Every known order: the local document merged with `public.orders`, which
@@ -153,15 +174,41 @@ interface AdminContextValue {
 
   refunds: Refund[]
 
+  /** True while the hosted finance reads are in flight. */
+  financeLoading: boolean
+
+  /** Non-null when invoices, refunds or payments failed to load. The last
+   *  successful lists stay on screen; this is what prevents an outage from
+   *  rendering as "no invoices / no refunds". */
+  financeError: string | null
+
+  /** Re-reads hosted invoices, refunds and payments now. */
+  refreshFinance: () => Promise<void>
+
   subscriptions: AdminSubscription[]
 
   userProducts: UserProduct[]
+
+  /** Non-null when the hosted entitlement list could not be read. */
+  entitlementsError: string | null
+
+  /** Re-reads the hosted entitlements now. */
+  refreshEntitlements: () => Promise<void>
 
   readingProgress: ReadingProgress[]
 
   emailLogs: EmailLog[]
 
   auditLog: AuditLogEntry[]
+
+  /** True while the hosted audit log is being read. */
+  auditLoading: boolean
+
+  /** Non-null when the hosted audit log could not be read. */
+  auditError: string | null
+
+  /** Re-reads the hosted audit log now. */
+  refreshAudit: () => Promise<void>
 
   inquiries: Inquiry[]
 
@@ -242,13 +289,16 @@ interface AdminContextValue {
 
   /* Orders & payments */
 
-  markOrderPaid: (orderId: string, input?: ConfirmPaymentInput) => Result<Order>
+  markOrderPaid: (
+    orderId: string,
+    input?: ConfirmPaymentInput,
+  ) => Promise<Result<Order>>
 
-  markOrderFailed: (orderId: string, reason: string) => Result<Order>
+  markOrderFailed: (orderId: string, reason: string) => Promise<Result<Order>>
 
-  cancelOrder: (orderId: string, reason?: string) => Result<Order>
+  cancelOrder: (orderId: string, reason?: string) => Promise<Result<Order>>
 
-  issueInvoice: (orderId: string) => Result<Invoice>
+  issueInvoice: (orderId: string) => Promise<Result<Invoice>>
 
   /* Refunds - recording a request never moves money */
 
@@ -258,19 +308,22 @@ interface AdminContextValue {
     orderId: string,
     amount: number,
     reason: string,
-  ) => Result<Refund>
+  ) => Promise<Result<Refund>>
 
   reviewRefund: (
     refundId: string,
     decision: "APPROVED" | "REJECTED",
     note?: string,
-  ) => Result<Refund>
+  ) => Promise<Result<Refund>>
 
-  executeRefund: (refundId: string) => Result<Refund>
+  executeRefund: (refundId: string) => Promise<Result<Refund>>
 
-  confirmRefund: (refundId: string, providerRefundId: string) => Result<Refund>
+  confirmRefund: (
+    refundId: string,
+    providerRefundId: string,
+  ) => Promise<Result<Refund>>
 
-  failRefund: (refundId: string, note: string) => Result<Refund>
+  failRefund: (refundId: string, note: string) => Promise<Result<Refund>>
 
   /* Subscriptions & email */
 
@@ -336,11 +389,30 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const [usersLoading, setUsersLoading] = useState(false)
 
+  const [usersError, setUsersError] = useState<string | null>(null)
+
   const refreshUsers = useMemo(
     () => async () => {
+      if (!isSupabaseConfigured) {
+        setRemoteUsers([])
+        setUsersError(null)
+        return
+      }
+
       setUsersLoading(true)
       try {
-        setRemoteUsers(await fetchAllProfiles())
+        const result = await fetchAllProfiles()
+
+        if (result.ok) {
+          setRemoteUsers(result.data)
+          setUsersError(null)
+        } else {
+          setUsersError(result.error)
+        }
+      } catch (err) {
+        setUsersError(
+          err instanceof Error ? err.message : "טעינת המשתמשים נכשלה.",
+        )
       } finally {
         setUsersLoading(false)
       }
@@ -373,7 +445,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, [user?.user_id, refreshUsers])
 
   const users = useMemo(
-    () => mergeUserSources(db.users, remoteUsers),
+    () => (isSupabaseConfigured ? remoteUsers : mergeUserSources(db.users, [])),
     [db.users, remoteUsers],
   )
 
@@ -391,6 +463,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
    */
   const [remoteEntitlements, setRemoteEntitlements] = useState<UserProduct[]>([])
 
+  const [entitlementsError, setEntitlementsError] = useState<string | null>(
+    null,
+  )
+
   /** Merges rows returned by an admin action into the cache immediately, so
    *  the list updates even before (or without) the next full read. */
   const upsertRemoteEntitlement = useCallback((row: UserProduct) => {
@@ -404,14 +480,30 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const refreshEntitlements = useMemo(
     () => async () => {
-      const rows = await fetchAllEntitlements()
-      /* Set unconditionally, including empty: the previous `length > 0`
-       * guard kept rows deleted from Supabase (הסרה מלאה, a lapsed test
-       * grant) on screen forever, and every action against such a ghost
-       * row came back "הרשאת הגישה לא נמצאה". A transient read failure
-       * also returns [], which drops back to the local document - the
-       * same fallback the page already renders when signed out. */
-      setRemoteEntitlements(rows)
+      if (!isSupabaseConfigured) {
+        setRemoteEntitlements([])
+        setEntitlementsError(null)
+        return
+      }
+
+      try {
+        const result = await fetchAllEntitlements()
+
+        /* A successful empty answer clears the list: rows deleted in
+         * Supabase must not linger as ghost grants. A failed read keeps
+         * the last successful list and records the error, so an outage
+         * cannot be mistaken for "no entitlements". */
+        if (result.ok) {
+          setRemoteEntitlements(result.data)
+          setEntitlementsError(null)
+        } else {
+          setEntitlementsError(result.error)
+        }
+      } catch (err) {
+        setEntitlementsError(
+          err instanceof Error ? err.message : "טעינת הרשאות הגישה נכשלה.",
+        )
+      }
     },
     [],
   )
@@ -563,21 +655,192 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("focus", onFocus)
   }, [user?.user_id, isStaff, refreshOrders])
 
-  /* The hosted row wins on a shared id: checkout mirrors what the server
-   * returned, so the local copy is always the derived one. */
-  const orders = useMemo(() => {
-    const byId = new Map<string, Order>()
+  /* ── Finance: invoices, refunds, payments ─────────────────
+   *
+   * These are the rows the finance/orders screens render and the
+   * refund totals revenue is derived from. They are read from Postgres
+   * whenever it is configured; the local document is only the fallback
+   * for an unconfigured install. A failed read keeps the last successful
+   * list and records the error, so an outage is never rendered as
+   * "no invoices" or "no refunds".
+   */
+  const [remoteInvoices, setRemoteInvoices] = useState<Invoice[] | null>(null)
 
-    db.orders.forEach((order) => byId.set(order.order_id, order))
+  const [remoteRefunds, setRemoteRefunds] = useState<Refund[] | null>(null)
 
-    if (isSupabaseConfigured && remoteOrders) {
-      remoteOrders.forEach((order) => byId.set(order.order_id, order))
+  const [remotePayments, setRemotePayments] = useState<Payment[] | null>(null)
+
+  const [financeLoading, setFinanceLoading] = useState(false)
+
+  const [financeError, setFinanceError] = useState<string | null>(null)
+
+  const refreshFinance = useMemo(
+    () => async () => {
+      if (!isSupabaseConfigured) {
+        setRemoteInvoices(null)
+        setRemoteRefunds(null)
+        setRemotePayments(null)
+        setFinanceError(null)
+        return
+      }
+
+      setFinanceLoading(true)
+      try {
+        const [invoicesResult, refundsResult, paymentsResult] =
+          await Promise.all([
+            fetchAllInvoices(),
+            fetchAllRefunds(),
+            fetchAllPayments(),
+          ])
+
+        const errors: string[] = []
+
+        if (invoicesResult.ok) setRemoteInvoices(invoicesResult.data)
+        else errors.push(invoicesResult.error)
+
+        if (refundsResult.ok) setRemoteRefunds(refundsResult.data)
+        else errors.push(refundsResult.error)
+
+        if (paymentsResult.ok) setRemotePayments(paymentsResult.data)
+        else errors.push(paymentsResult.error)
+
+        setFinanceError(errors.length > 0 ? errors.join(" ") : null)
+      } catch (err) {
+        setFinanceError(
+          err instanceof Error ? err.message : "טעינת נתוני הכספים נכשלה.",
+        )
+      } finally {
+        setFinanceLoading(false)
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !isStaff) return
+    void refreshFinance()
+  }, [user?.user_id, isStaff, refreshFinance])
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !isStaff) return
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void refreshFinance()
     }
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [user?.user_id, isStaff, refreshFinance])
 
-    return [...byId.values()].sort((a, b) =>
-      b.created_at.localeCompare(a.created_at),
-    )
+  /* ── Audit log ────────────────────────────────────────────
+   * Server-side RPCs append their own audit rows; every other hosted
+   * admin write is followed by a re-read. The browser-local audit trail
+   * is only used when Supabase is unconfigured.
+   */
+  const [remoteAudit, setRemoteAudit] = useState<AuditLogEntry[] | null>(null)
+
+  const [auditLoading, setAuditLoading] = useState(false)
+
+  const [auditError, setAuditError] = useState<string | null>(null)
+
+  const refreshAudit = useMemo(
+    () => async () => {
+      if (!isSupabaseConfigured) {
+        setRemoteAudit(null)
+        setAuditError(null)
+        return
+      }
+
+      setAuditLoading(true)
+      try {
+        const result = await fetchAuditLog()
+        if (result.ok) {
+          setRemoteAudit(result.data)
+          setAuditError(null)
+        } else {
+          setAuditError(result.error)
+        }
+      } catch (err) {
+        setAuditError(
+          err instanceof Error ? err.message : "טעינת יומן הפעולות נכשלה.",
+        )
+      } finally {
+        setAuditLoading(false)
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !isStaff) return
+    void refreshAudit()
+  }, [user?.user_id, isStaff, refreshAudit])
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured || !isStaff) return
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void refreshAudit()
+    }
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [user?.user_id, isStaff, refreshAudit])
+
+  /* Hosted rows are the whole answer once Supabase is configured: mixing
+   * the local document back in would resurrect rows deleted server-side
+   * and make a browser-local order look like a real sale. */
+  const payments = isSupabaseConfigured ? (remotePayments ?? []) : db.payments
+
+  const invoices = isSupabaseConfigured ? (remoteInvoices ?? []) : db.invoices
+
+  const refunds = isSupabaseConfigured ? (remoteRefunds ?? []) : db.refunds
+
+  const auditLog = isSupabaseConfigured ? (remoteAudit ?? []) : db.audit_log
+
+  const baseOrders = useMemo(() => {
+    const rows = isSupabaseConfigured ? (remoteOrders ?? []) : db.orders
+
+    return [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at))
   }, [db.orders, remoteOrders])
+
+  /* `orders` deliberately stores no refund roll-up (schema.sql derives it
+   * in v_order_refunds), and no provider fields either (those live on the
+   * captured payment). Both are attached here so the list, the modal and
+   * the revenue figures read the same facts. */
+  const orders = useMemo(() => {
+    const captured = new Map<string, Payment>()
+
+    payments.forEach((payment) => {
+      if (payment.status === "CAPTURED" && !captured.has(payment.order_id))
+        captured.set(payment.order_id, payment)
+    })
+
+    return baseOrders.map((order) => {
+      const refunded = refunds
+        .filter(
+          (refund) =>
+            refund.order_id === order.order_id &&
+            (refund.status === "REFUNDED" || refund.status === "PROCESSING"),
+        )
+        .reduce((sum, refund) => sum + refund.amount, 0)
+
+      const refundStatus: Order["refund_status"] =
+        refunded <= 0
+          ? order.refund_status
+          : refunded >= order.total_amount
+            ? "FULL"
+            : "PARTIAL"
+
+      const payment = captured.get(order.order_id)
+
+      return {
+        ...order,
+        refunded_amount: refunded,
+        refund_status: refundStatus,
+        payment_provider: payment?.provider ?? order.payment_provider,
+        transaction_reference:
+          payment?.transaction_reference ?? order.transaction_reference,
+        card_last4: payment?.card_last4 ?? order.card_last4,
+      }
+    })
+  }, [baseOrders, payments, refunds])
 
   const userProducts = useMemo(() => {
     /* Admin manages the source of truth, which is `public.user_products`.
@@ -631,6 +894,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
     const dismissed = db.dismissed_alerts
 
+    /* Hosted writes are followed by a re-read: the RPC's own row is enough
+     * for the Result contract, but the lists and revenue need the server's
+     * committed values. */
+    const refreshAfterHostedWrite = async () => {
+      await Promise.all([refreshOrders(), refreshFinance(), refreshAudit()])
+    }
+
     return {
       actor,
 
@@ -639,6 +909,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       users,
 
       usersLoading,
+
+      usersError,
 
       refreshUsers,
 
@@ -650,21 +922,37 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
       refreshOrders,
 
-      payments: db.payments,
+      payments,
 
-      invoices: db.invoices,
+      invoices,
 
-      refunds: db.refunds,
+      refunds,
+
+      financeLoading,
+
+      financeError,
+
+      refreshFinance,
 
       subscriptions: db.subscriptions,
 
       userProducts,
 
+      entitlementsError,
+
+      refreshEntitlements,
+
       readingProgress: db.reading_progress,
 
       emailLogs: db.email_logs,
 
-      auditLog: db.audit_log,
+      auditLog,
+
+      auditLoading,
+
+      auditError,
+
+      refreshAudit,
 
       inquiries,
 
@@ -682,14 +970,14 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         computeRevenue(
           orders,
 
-          db.refunds,
+          refunds,
 
           presetRange(preset, custom),
         ),
 
       rangeFor: (preset, custom) => presetRange(preset, custom),
 
-      lifetime: lifetimeTotals(orders, db.refunds),
+      lifetime: lifetimeTotals(orders, refunds),
 
       recordAudit: (entry) => writeAudit(actor, entry),
 
@@ -798,29 +1086,104 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         return result
       },
 
-      markOrderPaid: (orderId, input) => markOrderPaid(actor, orderId, input),
+      markOrderPaid: async (orderId, input) => {
+        if (!isSupabaseConfigured)
+          return markOrderPaidLocal(actor, orderId, input)
 
-      markOrderFailed: (orderId, reason) =>
-        markOrderFailed(actor, orderId, reason),
+        const result = await markOrderPaidRemote(orderId, input)
+        if (result.ok) await refreshAfterHostedWrite()
+        return result
+      },
 
-      cancelOrder: (orderId, reason) => cancelOrder(actor, orderId, reason),
+      markOrderFailed: async (orderId, reason) => {
+        if (!isSupabaseConfigured)
+          return markOrderFailedLocal(actor, orderId, reason)
 
-      issueInvoice: (orderId) => issueInvoice(actor, orderId),
+        const result = await markOrderFailedRemote(orderId, reason)
+        if (result.ok) await refreshAfterHostedWrite()
+        return result
+      },
 
-      refundableAmount,
+      cancelOrder: async (orderId, reason) => {
+        if (!isSupabaseConfigured)
+          return cancelOrderLocal(actor, orderId, reason)
 
-      requestRefund: (orderId, amount, reason) =>
-        requestRefund(actor, orderId, amount, reason),
+        const result = await cancelOrderRemote(orderId, reason)
+        if (result.ok) await refreshAfterHostedWrite()
+        return result
+      },
 
-      reviewRefund: (refundId, decision, note) =>
-        reviewRefund(actor, refundId, decision, note),
+      issueInvoice: async (orderId) => {
+        if (!isSupabaseConfigured)
+          return issueInvoiceLocal(actor, orderId)
 
-      executeRefund: (refundId) => executeRefund(actor, refundId),
+        const result = await issueInvoiceRemote(orderId)
+        if (result.ok) await refreshAfterHostedWrite()
+        return result
+      },
 
-      confirmRefund: (refundId, providerRefundId) =>
-        confirmRefund(actor, refundId, providerRefundId),
+      refundableAmount: (order) => {
+        if (!isSupabaseConfigured) return refundableAmountLocal(order)
 
-      failRefund: (refundId, note) => failRefund(actor, refundId, note),
+        const confirmed = refunds
+          .filter(
+            (refund) =>
+              refund.order_id === order.order_id &&
+              (refund.status === "REFUNDED" ||
+                refund.status === "PROCESSING"),
+          )
+          .reduce((sum, refund) => sum + refund.amount, 0)
+
+        return Math.max(
+          0,
+          Math.round((order.total_amount - confirmed) * 100) / 100,
+        )
+      },
+
+      requestRefund: async (orderId, amount, reason) => {
+        if (!isSupabaseConfigured)
+          return requestRefundLocal(actor, orderId, amount, reason)
+
+        const result = await requestRefundRemote(orderId, amount, reason)
+        if (result.ok) await refreshAfterHostedWrite()
+        return result
+      },
+
+      reviewRefund: async (refundId, decision, note) => {
+        if (!isSupabaseConfigured)
+          return reviewRefundLocal(actor, refundId, decision, note)
+
+        const result = await reviewRefundRemote(refundId, decision, note)
+        if (result.ok) await refreshAfterHostedWrite()
+        return result
+      },
+
+      executeRefund: async (refundId) => {
+        if (!isSupabaseConfigured)
+          return executeRefundLocal(actor, refundId)
+
+        const result = await executeRefundRemote(refundId)
+        if (result.ok) await refreshAfterHostedWrite()
+        return result
+      },
+
+      confirmRefund: async (refundId, providerRefundId) => {
+        if (!isSupabaseConfigured)
+          return confirmRefundLocal(actor, refundId, providerRefundId)
+
+        const result = await confirmRefundRemote(refundId, providerRefundId)
+        if (result.ok) await refreshAfterHostedWrite()
+        return result
+      },
+
+      failRefund: async (refundId, note) => {
+        if (!isSupabaseConfigured)
+          return failRefundLocal(actor, refundId, note)
+
+        const result = await failRefundRemote(refundId, note)
+        if (result.ok) await refreshAfterHostedWrite()
+        return result
+      },
 
       cancelSubscription: (subscriptionId) =>
         cancelSubscription(actor, subscriptionId),
@@ -847,6 +1210,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     users,
     userProducts,
     usersLoading,
+    usersError,
+    entitlementsError,
     refreshUsers,
     refreshEntitlements,
     upsertRemoteEntitlement,
@@ -854,6 +1219,16 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     ordersLoading,
     ordersError,
     refreshOrders,
+    payments,
+    invoices,
+    refunds,
+    financeLoading,
+    financeError,
+    refreshFinance,
+    auditLog,
+    auditLoading,
+    auditError,
+    refreshAudit,
   ])
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>

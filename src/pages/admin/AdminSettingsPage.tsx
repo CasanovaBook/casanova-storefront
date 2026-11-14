@@ -35,6 +35,8 @@ import type { PlatformSettings } from "../../types"
 
 import AccessDenied from "../../components/AccessDenied"
 
+import LocalDataNotice from "../../components/admin/LocalDataNotice"
+
 import Alert from "../../components/ui/Alert"
 
 import PageHeader from "../../components/ui/PageHeader"
@@ -379,6 +381,8 @@ export default function AdminSettingsPage() {
         }
         actions={saveButton}
       />
+
+      <LocalDataNotice items={["הגדרות הפלטפורמה"]} />
 
       {message && (
         <div className="mt-5">
