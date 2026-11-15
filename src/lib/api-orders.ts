@@ -49,7 +49,11 @@ import { isSupabaseConfigured } from "../integrations/supabase/supabase"
 
 import { fetchProductByIdFromDb } from "../integrations/supabase/supabase-catalog"
 
-import { createGuestStorefrontOrder, createStorefrontOrder } from "../integrations/supabase/supabase-checkout"
+import {
+  createGuestStorefrontOrder,
+  createStorefrontOrder,
+} from "../integrations/supabase/supabase-checkout"
+import type { GuestCheckoutEmailReason } from "../integrations/supabase/supabase-checkout"
 
 import { isUuid } from "../integrations/supabase/supabase-entitlements"
 
@@ -157,10 +161,18 @@ export interface CheckoutOutcome {
 
   is_guest?: boolean
 
+  /** Guest checkout only: true only when this request inserted the order. */
+
+  created?: boolean
+
   /** Guest checkout only. False means the order succeeded but Supabase Auth
-   *  could not send the password-setup mail. */
+   *  or Resend could not send the password-setup mail. */
 
   email_sent?: boolean
+
+  /** Guest checkout only. A sanitized, deterministic delivery outcome. */
+
+  email_reason?: GuestCheckoutEmailReason
 }
 
 /**
@@ -438,7 +450,11 @@ export async function checkoutGuest(
 
     is_guest: true,
 
+    created: remote.data.created,
+
     email_sent: remote.data.email_sent,
+
+    email_reason: remote.data.email_reason,
   })
 }
 

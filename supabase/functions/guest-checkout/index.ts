@@ -26,9 +26,12 @@
  * payment-gateway guard. This function refuses missing products, unavailable
  * products and a configured gateway BEFORE creating an account.
  *
- * A Resend or link-generation failure returns email_sent:false. The completed
- * order and entitlement are never rolled back; the success page falls back to
- * the normal "forgot password" flow.
+ * A Resend or link-generation failure returns email_sent:false with a
+ * sanitized email_reason. The completed order and entitlement are never
+ * rolled back; the success page falls back to the normal "forgot password"
+ * flow. One private delivery row per order records the outcome, so an
+ * idempotent retry can return that outcome without generating another
+ * recovery link or calling Resend again.
  */
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2"
@@ -268,9 +271,7 @@ async function verifyTurnstile(
   const secret = Deno.env.get("TURNSTILE_SECRET_KEY")
 
   if (!secret) {
-    console.error(
-      "[guest-checkout] TURNSTILE_SECRET_KEY is missing; refusing checkout",
-    )
+    logCheckoutEvent("skipped", "turnstile_not_configured")
     return { ok: false, status: 503, error: "service_unavailable" }
   }
 
@@ -290,19 +291,17 @@ async function verifyTurnstile(
       body: form,
       signal: AbortSignal.timeout(5_000),
     })
-  } catch (err) {
-    console.error(
-      "[guest-checkout] Turnstile verification failed",
-      err instanceof Error ? err.message : err,
-    )
+  } catch (error) {
+    logCheckoutEvent("failed", "turnstile_unavailable", {
+      error_name: errorName(error),
+    })
     return { ok: false, status: 503, error: "service_unavailable" }
   }
 
   if (!response.ok) {
-    console.error(
-      "[guest-checkout] Turnstile siteverify returned",
-      response.status,
-    )
+    logCheckoutEvent("failed", "turnstile_unavailable", {
+      http_status: response.status,
+    })
     return { ok: false, status: 503, error: "service_unavailable" }
   }
 
@@ -316,8 +315,13 @@ async function verifyTurnstile(
   const codes = Array.isArray(payload?.["error-codes"])
     ? payload["error-codes"].slice(0, 5)
     : []
+  const safeCodes = codes
+    .map((code) => safeLogToken(code))
+    .filter((code): code is string => Boolean(code))
 
-  console.warn("[guest-checkout] Turnstile rejected the token", codes)
+  logCheckoutEvent("failed", "turnstile_rejected", {
+    error_codes: safeCodes,
+  })
   return { ok: false, status: 403, error: "captcha_failed" }
 }
 
@@ -521,32 +525,390 @@ function welcomeEmailText(data: WelcomeEmailData): string {
   return lines.filter((line): line is string => line !== null).join("\n")
 }
 
+type EmailReason =
+  | "sent"
+  | "already_sent"
+  | "auth_rate_limited"
+  | "auth_link_error"
+  | "resend_rate_limited"
+  | "resend_rejected"
+  | "resend_unavailable"
+  | "resend_invalid_response"
+  | "network_timeout"
+  | "network_error"
+  | "email_not_configured"
+  | "email_state_unavailable"
+  | "email_state_unknown"
+  | "email_in_progress"
+
+const EMAIL_REASON_VALUES: EmailReason[] = [
+  "sent",
+  "already_sent",
+  "auth_rate_limited",
+  "auth_link_error",
+  "resend_rate_limited",
+  "resend_rejected",
+  "resend_unavailable",
+  "resend_invalid_response",
+  "network_timeout",
+  "network_error",
+  "email_not_configured",
+  "email_state_unavailable",
+  "email_state_unknown",
+  "email_in_progress",
+]
+
+interface EmailDispatchResult {
+  sent: boolean
+  reason: EmailReason
+  messageId?: string
+}
+
+interface EmailDeliveryRow {
+  status?: unknown
+  reason?: unknown
+  provider_message_id?: unknown
+}
+
+type EmailDeliveryClaim =
+  | { state: "claimed" }
+  | { state: "existing"; row: EmailDeliveryRow | null }
+  | { state: "unavailable" }
+
+type EmailDeliveryRead =
+  | { state: "found"; row: EmailDeliveryRow }
+  | { state: "missing" }
+  | { state: "unavailable" }
+
+const SAFE_LOG_TOKEN_RE = /^[A-Za-z0-9_.:-]{1,64}$/
+const RESEND_MESSAGE_ID_RE = /^[A-Za-z0-9_-]{1,128}$/
+
+function safeLogToken(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+
+  const trimmed = value.trim()
+  return SAFE_LOG_TOKEN_RE.test(trimmed) ? trimmed : undefined
+}
+
+function safeOrderId(value: string): string | undefined {
+  return UUID_RE.test(value) ? value.toLowerCase() : undefined
+}
+
+function resendMessageId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+
+  const trimmed = value.trim()
+  return RESEND_MESSAGE_ID_RE.test(trimmed) ? trimmed : undefined
+}
+
+function payloadField(payload: unknown, key: string): unknown {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return undefined
+  }
+
+  return (payload as Record<string, unknown>)[key]
+}
+
+function authStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined
+
+  const status = (error as { status?: unknown }).status
+  return typeof status === "number" && Number.isInteger(status) && status >= 400 && status <= 599
+    ? status
+    : undefined
+}
+
+function authCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") return undefined
+
+  return safeLogToken((error as { code?: unknown }).code)
+}
+
+function authFailureReason(error: unknown): EmailReason {
+  const status = authStatus(error)
+  const code = authCode(error)
+
+  if (
+    status === 429 ||
+    code === "over_email_send_rate_limit" ||
+    code === "over_request_rate_limit"
+  ) {
+    return "auth_rate_limited"
+  }
+
+  return "auth_link_error"
+}
+
+function resendFailureReason(status: number): EmailReason {
+  if (status === 429) return "resend_rate_limited"
+  if (status >= 500) return "resend_unavailable"
+  return "resend_rejected"
+}
+
+function networkFailureReason(error: unknown): EmailReason {
+  if (!error || typeof error !== "object") return "network_error"
+
+  const name = (error as { name?: unknown }).name
+  return name === "AbortError" || name === "TimeoutError"
+    ? "network_timeout"
+    : "network_error"
+}
+
+function storedEmailReason(value: unknown): EmailReason {
+  const token = safeLogToken(value)
+
+  if (token && EMAIL_REASON_VALUES.includes(token as EmailReason)) {
+    return token as EmailReason
+  }
+
+  return "email_state_unknown"
+}
+
+function logEmailEvent(
+  outcome: "sent" | "failed" | "skipped",
+  fields: Record<string, unknown>,
+): void {
+  const line = JSON.stringify({
+    service: "guest-checkout",
+    event: "welcome_email",
+    outcome,
+    ...fields,
+  })
+
+  if (outcome === "sent") console.info(line)
+  else console.warn(line)
+}
+
+function logCheckoutEvent(
+  outcome: "failed" | "skipped",
+  reason: string,
+  fields: Record<string, unknown> = {},
+): void {
+  console.warn(
+    JSON.stringify({
+      service: "guest-checkout",
+      event: "checkout",
+      outcome,
+      reason,
+      ...fields,
+    }),
+  )
+}
+
+function errorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") return undefined
+
+  return safeLogToken((error as { code?: unknown }).code)
+}
+
+function errorName(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") return undefined
+
+  return safeLogToken((error as { name?: unknown }).name)
+}
+
+async function readResponsePayload(response: Response): Promise<unknown> {
+  const raw = await response.text().catch(() => "")
+
+  // Provider responses are small. Refuse to parse an unexpectedly large body
+  // rather than keeping it in memory or risking it reaching a log line.
+  if (!raw || raw.length > 32_000) return null
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+async function readEmailDelivery(
+  admin: SupabaseClient,
+  orderId: string,
+): Promise<EmailDeliveryRead> {
+  const { data, error } = await admin
+    .from("guest_checkout_email_deliveries")
+    .select("status, reason, provider_message_id")
+    .eq("order_id", orderId)
+    .maybeSingle()
+
+  if (error) {
+    logEmailEvent("skipped", {
+      reason: "email_state_unavailable",
+      order_id: safeOrderId(orderId),
+      error_code: safeLogToken(error.code),
+    })
+    return { state: "unavailable" }
+  }
+
+  if (!data) return { state: "missing" }
+
+  return { state: "found", row: data as EmailDeliveryRow }
+}
+
+async function claimEmailDelivery(
+  admin: SupabaseClient,
+  orderId: string,
+): Promise<EmailDeliveryClaim> {
+  const { error } = await admin
+    .from("guest_checkout_email_deliveries")
+    .insert({
+      order_id: orderId,
+      status: "SENDING",
+      attempted_at: new Date().toISOString(),
+    })
+
+  if (!error) return { state: "claimed" }
+
+  if (error.code !== "23505") {
+    logEmailEvent("skipped", {
+      reason: "email_state_unavailable",
+      order_id: safeOrderId(orderId),
+      error_code: safeLogToken(error.code),
+    })
+    return { state: "unavailable" }
+  }
+
+  const existing = await readEmailDelivery(admin, orderId)
+
+  if (existing.state === "unavailable") return { state: "unavailable" }
+  if (existing.state === "missing") return { state: "existing", row: null }
+
+  return { state: "existing", row: existing.row }
+}
+
+function recordedEmailResult(
+  row: EmailDeliveryRow | null,
+  orderId: string,
+  created: boolean,
+): EmailDispatchResult {
+  const status = typeof row?.status === "string" ? row.status : ""
+  const storedMessageId = resendMessageId(row?.provider_message_id)
+
+  if (status === "SENT") {
+    logEmailEvent("skipped", {
+      order_id: safeOrderId(orderId),
+      created,
+      reason: "already_sent",
+      provider_message_id: storedMessageId,
+    })
+    return { sent: true, reason: "already_sent", messageId: storedMessageId }
+  }
+
+  if (status === "FAILED") {
+    const reason = storedEmailReason(row?.reason)
+
+    logEmailEvent("skipped", {
+      order_id: safeOrderId(orderId),
+      created,
+      reason,
+      provider_message_id: storedMessageId,
+    })
+
+    return { sent: false, reason }
+  }
+
+  if (status === "SENDING") {
+    logEmailEvent("skipped", {
+      order_id: safeOrderId(orderId),
+      created,
+      reason: "email_in_progress",
+    })
+    return { sent: false, reason: "email_in_progress" }
+  }
+
+  logEmailEvent("skipped", {
+    order_id: safeOrderId(orderId),
+    created,
+    reason: "email_state_unknown",
+  })
+  return { sent: false, reason: "email_state_unknown" }
+}
+
+async function finishEmailDelivery(
+  admin: SupabaseClient,
+  orderId: string,
+  result: EmailDispatchResult,
+): Promise<void> {
+  const now = new Date().toISOString()
+
+  const { error } = await admin
+    .from("guest_checkout_email_deliveries")
+    .update({
+      status: result.sent ? "SENT" : "FAILED",
+      reason: result.reason,
+      provider_message_id: result.messageId ?? null,
+      completed_at: now,
+      updated_at: now,
+    })
+    .eq("order_id", orderId)
+
+  if (error) {
+    logEmailEvent("failed", {
+      reason: "email_state_unavailable",
+      order_id: safeOrderId(orderId),
+      error_code: safeLogToken(error.code),
+    })
+  }
+}
+
 async function sendWelcomeEmail(
   admin: SupabaseClient,
   input: GuestRequest,
   orderResult: Record<string, unknown>,
-): Promise<boolean> {
+  orderId: string,
+  created: boolean,
+): Promise<EmailDispatchResult> {
+  const startedAt = Date.now()
+  const logBase = {
+    order_id: safeOrderId(orderId),
+    created,
+  }
   const apiKey = Deno.env.get("RESEND_API_KEY")
 
   if (!apiKey) {
-    console.error("[guest-checkout] RESEND_API_KEY is missing; welcome email skipped")
-    return false
+    logEmailEvent("skipped", {
+      ...logBase,
+      reason: "email_not_configured",
+    })
+    return { sent: false, reason: "email_not_configured" }
   }
 
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email: input.email,
-    options: { redirectTo: `${siteUrl()}/setup-password?mode=welcome` },
-  })
+  let actionLink: string | undefined
 
-  const actionLink = data?.properties?.action_link
+  try {
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email: input.email,
+      options: { redirectTo: `${siteUrl()}/setup-password?mode=welcome` },
+    })
 
-  if (error || !actionLink) {
-    console.error(
-      "[guest-checkout] recovery link generation failed",
-      error?.message ?? "no action link returned",
-    )
-    return false
+    actionLink = data?.properties?.action_link
+
+    if (error || !actionLink) {
+      const reason = authFailureReason(error)
+
+      logEmailEvent("failed", {
+        ...logBase,
+        reason,
+        auth_status: authStatus(error),
+        auth_code: authCode(error),
+        duration_ms: Date.now() - startedAt,
+      })
+
+      return { sent: false, reason }
+    }
+  } catch (error) {
+    const reason = authFailureReason(error)
+
+    logEmailEvent("failed", {
+      ...logBase,
+      reason,
+      auth_status: authStatus(error),
+      auth_code: authCode(error),
+      duration_ms: Date.now() - startedAt,
+    })
+
+    return { sent: false, reason }
   }
 
   const order = orderResult.order as Record<string, unknown> | undefined
@@ -560,8 +922,6 @@ async function sendWelcomeEmail(
   const orderNumber =
     typeof order?.order_number === "string" ? order.order_number : undefined
 
-  const orderId = typeof order?.order_id === "string" ? order.order_id : undefined
-
   const emailData: WelcomeEmailData = {
     firstName: input.first_name,
     productName,
@@ -569,15 +929,15 @@ async function sendWelcomeEmail(
     actionLink,
   }
 
+  let response: Response
+
   try {
-    const response = await fetch(RESEND_ENDPOINT, {
+    response = await fetch(RESEND_ENDPOINT, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        ...(orderId
-          ? { "Idempotency-Key": `guest-welcome-${orderId}` }
-          : {}),
+        "Idempotency-Key": `guest-welcome-${orderId}`,
       },
       body: JSON.stringify({
         from: RESEND_FROM,
@@ -588,25 +948,110 @@ async function sendWelcomeEmail(
       }),
       signal: AbortSignal.timeout(10_000),
     })
+  } catch (error) {
+    const reason = networkFailureReason(error)
 
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "")
-      console.error(
-        "[guest-checkout] Resend refused the welcome email",
-        response.status,
-        detail.slice(0, 500),
-      )
-      return false
+    logEmailEvent("failed", {
+      ...logBase,
+      reason,
+      duration_ms: Date.now() - startedAt,
+    })
+
+    return { sent: false, reason }
+  }
+
+  const durationMs = Date.now() - startedAt
+
+  if (!response.ok) {
+    const payload = await readResponsePayload(response)
+    const reason = resendFailureReason(response.status)
+
+    logEmailEvent("failed", {
+      ...logBase,
+      reason,
+      http_status: response.status,
+      provider_error_name: safeLogToken(payloadField(payload, "name")),
+      duration_ms: durationMs,
+    })
+
+    return { sent: false, reason }
+  }
+
+  const payload = await readResponsePayload(response)
+  const messageId = resendMessageId(payloadField(payload, "id"))
+
+  if (!messageId) {
+    logEmailEvent("failed", {
+      ...logBase,
+      reason: "resend_invalid_response",
+      http_status: response.status,
+      duration_ms: durationMs,
+    })
+
+    return { sent: false, reason: "resend_invalid_response" }
+  }
+
+  logEmailEvent("sent", {
+    ...logBase,
+    provider: "resend",
+    provider_message_id: messageId,
+    http_status: response.status,
+    duration_ms: durationMs,
+  })
+
+  return { sent: true, reason: "sent", messageId }
+}
+
+async function deliverWelcomeEmail(
+  admin: SupabaseClient,
+  input: GuestRequest,
+  orderResult: Record<string, unknown>,
+  orderId: string,
+  created: boolean,
+): Promise<EmailDispatchResult> {
+  // A retry only reads. If it arrives in the small window between the order
+  // insert and the original request's claim, it leaves the state untouched so
+  // the original request can still send the one welcome email.
+  if (!created) {
+    const recorded = await readEmailDelivery(admin, orderId)
+
+    if (recorded.state === "unavailable") {
+      return { sent: false, reason: "email_state_unavailable" }
     }
 
-    return true
-  } catch (err) {
-    console.error(
-      "[guest-checkout] Resend request failed",
-      err instanceof Error ? err.message : err,
-    )
-    return false
+    if (recorded.state === "missing") {
+      logEmailEvent("skipped", {
+        order_id: safeOrderId(orderId),
+        created,
+        reason: "email_state_unknown",
+      })
+      return { sent: false, reason: "email_state_unknown" }
+    }
+
+    return recordedEmailResult(recorded.row, orderId, created)
   }
+
+  const claim = await claimEmailDelivery(admin, orderId)
+
+  if (claim.state === "unavailable") {
+    return { sent: false, reason: "email_state_unavailable" }
+  }
+
+  if (claim.state === "existing") {
+    return recordedEmailResult(claim.row, orderId, created)
+  }
+
+  const result = await sendWelcomeEmail(
+    admin,
+    input,
+    orderResult,
+    orderId,
+    created,
+  )
+
+  await finishEmailDelivery(admin, orderId, result)
+
+  return result
 }
 
 function refusalFor(message: string): { status: number; token: string } {
@@ -653,7 +1098,9 @@ async function ensureProfile(
     .maybeSingle()
 
   if (readError) {
-    console.error("[guest-checkout] profile read failed", readError.message)
+    logCheckoutEvent("failed", "profile_read_failed", {
+      error_code: errorCode(readError),
+    })
     return { status: 500, token: "service_unavailable" }
   }
 
@@ -687,7 +1134,9 @@ async function ensureProfile(
   if (!insertError) return {}
 
   if (insertError.code !== "23505") {
-    console.error("[guest-checkout] profile insert failed", insertError.message)
+    logCheckoutEvent("failed", "profile_insert_failed", {
+      error_code: errorCode(insertError),
+    })
     return { status: 500, token: "service_unavailable" }
   }
 
@@ -758,11 +1207,10 @@ Deno.serve(async (req: Request) => {
         "Retry-After": String(ipLimit.retryAfterSeconds),
       })
     }
-  } catch (err) {
-    console.error(
-      "[guest-checkout] IP rate limit unavailable; refusing checkout",
-      err instanceof Error ? err.message : err,
-    )
+  } catch (error) {
+    logCheckoutEvent("failed", "rate_limit_unavailable", {
+      error_name: errorName(error),
+    })
     return jsonResponse({ error: "service_unavailable" }, 503, cors)
   }
 
@@ -776,7 +1224,9 @@ Deno.serve(async (req: Request) => {
     .maybeSingle()
 
   if (settingsError) {
-    console.error("[guest-checkout] settings read failed", settingsError.message)
+    logCheckoutEvent("failed", "settings_read_failed", {
+      error_code: errorCode(settingsError),
+    })
     return jsonResponse({ error: "service_unavailable" }, 500, cors)
   }
 
@@ -795,7 +1245,9 @@ Deno.serve(async (req: Request) => {
     .maybeSingle()
 
   if (productError) {
-    console.error("[guest-checkout] product read failed", productError.message)
+    logCheckoutEvent("failed", "product_read_failed", {
+      error_code: errorCode(productError),
+    })
     return jsonResponse({ error: "service_unavailable" }, 500, cors)
   }
 
@@ -822,7 +1274,9 @@ Deno.serve(async (req: Request) => {
     .gte("created_at", since)
 
   if (countError) {
-    console.error("[guest-checkout] rate check failed", countError.message)
+    logCheckoutEvent("failed", "order_rate_check_failed", {
+      error_code: errorCode(countError),
+    })
   } else if ((count ?? 0) >= RATE_LIMIT_MAX_ORDERS) {
     return jsonResponse({ error: "rate_limited" }, 429, cors, {
       "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60),
@@ -832,7 +1286,7 @@ Deno.serve(async (req: Request) => {
   const lookup = await findAuthUserId(admin, input.email)
 
   if (lookup.error) {
-    console.error("[guest-checkout] auth lookup failed", lookup.error)
+    logCheckoutEvent("failed", "auth_lookup_failed")
     return jsonResponse({ error: "service_unavailable" }, 500, cors)
   }
 
@@ -856,10 +1310,10 @@ Deno.serve(async (req: Request) => {
       userId = retryLookup.id
 
       if (!userId) {
-        console.error(
-          "[guest-checkout] auth user creation failed",
-          createError?.message ?? retryLookup.error ?? "no user returned",
-        )
+        logCheckoutEvent("failed", "auth_user_creation_failed", {
+          auth_status: authStatus(createError),
+          auth_code: authCode(createError),
+        })
         return jsonResponse({ error: "service_unavailable" }, 500, cors)
       }
     } else {
@@ -908,7 +1362,10 @@ Deno.serve(async (req: Request) => {
 
   if (orderError) {
     const refusal = refusalFor(orderError.message ?? "")
-    console.error("[guest-checkout] order refused", orderError.message)
+    logCheckoutEvent("failed", "order_refused", {
+      refusal: refusal.token,
+      error_code: errorCode(orderError),
+    })
     return jsonResponse({ error: refusal.token }, refusal.status, cors)
   }
 
@@ -916,23 +1373,45 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "service_unavailable" }, 500, cors)
   }
 
-  let emailSent = false
+  const result = orderResult as Record<string, unknown>
+  const order = result.order as Record<string, unknown> | undefined
+  const orderId = typeof order?.order_id === "string" ? order.order_id : ""
+  const created = result.created === true
 
-  try {
-    emailSent = await sendWelcomeEmail(
-      admin,
-      input,
-      orderResult as Record<string, unknown>,
-    )
-  } catch (err) {
-    console.error(
-      "[guest-checkout] welcome email failed",
-      err instanceof Error ? err.message : err,
-    )
+  let email: EmailDispatchResult
+
+  if (!orderId) {
+    logEmailEvent("failed", {
+      reason: "email_state_unavailable",
+      created,
+    })
+    email = { sent: false, reason: "email_state_unavailable" }
+  } else {
+    try {
+      email = await deliverWelcomeEmail(
+        admin,
+        input,
+        result,
+        orderId,
+        created,
+      )
+    } catch {
+      logEmailEvent("failed", {
+        reason: "email_state_unavailable",
+        order_id: safeOrderId(orderId),
+        created,
+      })
+      email = { sent: false, reason: "email_state_unavailable" }
+    }
   }
 
   return jsonResponse(
-    { ...(orderResult as Record<string, unknown>), email_sent: emailSent },
+    {
+      ...result,
+      created,
+      email_sent: email.sent,
+      email_reason: email.reason,
+    },
     200,
     cors,
   )

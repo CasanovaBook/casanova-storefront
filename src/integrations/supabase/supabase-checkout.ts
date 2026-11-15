@@ -57,10 +57,30 @@ export interface StorefrontCheckoutResult {
   customer: User
 }
 
+export type GuestCheckoutEmailReason =
+  | "sent"
+  | "already_sent"
+  | "auth_rate_limited"
+  | "auth_link_error"
+  | "resend_rate_limited"
+  | "resend_rejected"
+  | "resend_unavailable"
+  | "resend_invalid_response"
+  | "network_timeout"
+  | "network_error"
+  | "email_not_configured"
+  | "email_state_unavailable"
+  | "email_state_unknown"
+  | "email_in_progress"
+
 export interface GuestStorefrontCheckoutResult extends StorefrontCheckoutResult {
-  /** False when Supabase Auth rate-limited or failed to send the setup mail.
+  /** True when this request inserted the order; false for an idempotent retry. */
+  created: boolean
+  /** False when Supabase Auth or Resend failed to deliver the setup mail.
    *  The order is still recorded and access is still granted. */
   email_sent: boolean
+  /** Sanitized delivery outcome; never a provider error body. */
+  email_reason: GuestCheckoutEmailReason
 }
 
 /** Refusals raised by `create_storefront_order`, translated once. */
@@ -161,11 +181,13 @@ function describeCheckoutRefusal(
 }
 
 interface RpcRow {
+  created?: unknown
   order?: Record<string, unknown>
   item?: Record<string, unknown>
   entitlement?: Record<string, unknown>
   customer?: Record<string, unknown>
   email_sent?: unknown
+  email_reason?: unknown
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -181,6 +203,34 @@ const num = (value: unknown, fallback = 0) => {
 
 const str = (value: unknown, fallback = "") =>
   typeof value === "string" ? value : fallback
+
+const GUEST_EMAIL_REASONS = new Set<GuestCheckoutEmailReason>([
+  "sent",
+  "already_sent",
+  "auth_rate_limited",
+  "auth_link_error",
+  "resend_rate_limited",
+  "resend_rejected",
+  "resend_unavailable",
+  "resend_invalid_response",
+  "network_timeout",
+  "network_error",
+  "email_not_configured",
+  "email_state_unavailable",
+  "email_state_unknown",
+  "email_in_progress",
+])
+
+function toGuestEmailReason(
+  value: unknown,
+  emailSent: boolean,
+): GuestCheckoutEmailReason {
+  if (typeof value === "string" && GUEST_EMAIL_REASONS.has(value as GuestCheckoutEmailReason)) {
+    return value as GuestCheckoutEmailReason
+  }
+
+  return emailSent ? "sent" : "email_state_unknown"
+}
 
 function toOrder(row: RpcRow, product: Product): Order {
   const o = row.order ?? {}
@@ -363,13 +413,16 @@ export async function createGuestStorefrontOrder(
     }
 
     const entitlement = row.entitlement ?? {}
+    const emailSent = row.email_sent === true
 
     return ok({
       order: toOrder(row, product),
       user_product_id: str(entitlement.user_product_id),
       granted_at: str(entitlement.granted_at),
       customer: toCustomer(row),
-      email_sent: row.email_sent === true,
+      created: row.created === true,
+      email_sent: emailSent,
+      email_reason: toGuestEmailReason(row.email_reason, emailSent),
     })
   } catch (err) {
     return fail(

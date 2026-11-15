@@ -429,7 +429,10 @@ export default function CheckoutPage() {
      * leftover intent would offer this book again on the next visit. */
     clearCheckoutIntent()
     navigate("/checkout/success", {
-      state: { email_sent: result.data.email_sent },
+      state: {
+        email_sent: result.data.email_sent,
+        email_reason: result.data.email_reason,
+      },
     })
   }
 
